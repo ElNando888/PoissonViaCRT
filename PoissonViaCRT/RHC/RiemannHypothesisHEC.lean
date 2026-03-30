@@ -1,6 +1,11 @@
+/-
+Copyright (c) 2026 Math Inc. All rights reserved.
+-/
+
 import Mathlib
 import PoissonViaCRT.RHC.StepanovPolynomial
 import PoissonViaCRT.RHC.Utils
+
 noncomputable def hyperellipticCurve (F : Type*) [Field F] (f : Polynomial F) : Set (F × F) :=
   {p | p.2 ^ 2 = Polynomial.eval p.1 f}
 

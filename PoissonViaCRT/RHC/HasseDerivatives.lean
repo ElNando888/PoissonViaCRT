@@ -1,3 +1,7 @@
+/-
+Copyright (c) 2026 Math Inc. All rights reserved.
+-/
+
 import Mathlib
 noncomputable def hasseDerivOp (F : Type*) [Field F] (k : ℕ) : Polynomial F → Polynomial F :=
   Polynomial.hasseDeriv k

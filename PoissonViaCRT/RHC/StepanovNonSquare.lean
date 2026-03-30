@@ -1,3 +1,7 @@
+/-
+Copyright (c) 2026 Math Inc. All rights reserved.
+-/
+
 import Mathlib
 import PoissonViaCRT.RHC.StepanovAuxiliary
 lemma stepanov_square_from_eq (F : Type*) [Field F] (f : Polynomial F) (r s : Polynomial F) (f₀ : F)

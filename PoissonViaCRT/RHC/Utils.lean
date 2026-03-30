@@ -1,3 +1,7 @@
+/-
+Copyright (c) 2026 Math Inc. All rights reserved.
+-/
+
 import Mathlib
 
 lemma natCast_le_div (a b n : ℕ) (h : a ≤ b / n) :

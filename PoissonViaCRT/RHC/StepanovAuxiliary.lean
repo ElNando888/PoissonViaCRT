@@ -1,3 +1,7 @@
+/-
+Copyright (c) 2026 Math Inc. All rights reserved.
+-/
+
 import Mathlib
 import PoissonViaCRT.RHC.HasseDerivatives
 

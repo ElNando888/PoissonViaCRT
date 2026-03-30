@@ -1,3 +1,7 @@
+/-
+Copyright (c) 2026 Math Inc. All rights reserved.
+-/
+
 import Mathlib
 
 lemma stepanov_polynomial_natDegree_le (F : Type*) [Field F] [Fintype F] (f : Polynomial F)
