@@ -1,0 +1,142 @@
+/-
+Copyright (c) 2025. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+-/
+import Mathlib
+import PoissonViaCRT.Defs
+
+/-!
+# Properties of the Counting Function `N_k`
+
+This file contains key properties of the tuple counting function `N_k(h, Ω)` from
+"Poisson statistics via the Chinese remainder theorem" by Granville–Kurlberg.
+
+## Main Results
+
+* `PoissonCRT.tupleCount_sum_eq`: `∑_h N_k(h, Ω) = q · |Ω|^k`.
+* `PoissonCRT.tupleCount_sum_cons_eq`: The paper's version with `h₀ = 0` fixed:
+  `∑_{g} N_k(0 :: g, Ω) = |Ω|^{k+1}` (Lemma 3.5).
+* `PoissonCRT.tupleCount_le_card`: `N_{k+1}(h, Ω) ≤ |Ω|`.
+
+## References
+
+* [A. Granville, P. Kurlberg, *Poisson statistics via the Chinese remainder theorem*]
+  [arXiv:math/0412135v2], §3.2
+-/
+
+open Finset BigOperators
+
+namespace PoissonCRT
+
+variable {q : ℕ} [NeZero q]
+
+/-! ### Basic properties -/
+
+/-- `N_{k+1}(h, Ω) ≤ |Ω|`, since each valid `t` satisfies `t + h 0 ∈ Ω`, and the map
+`t ↦ t + h 0` is injective. -/
+theorem tupleCount_le_card (Ω : Finset (ZMod q)) (h : Fin (k + 1) → ZMod q) :
+    tupleCount Ω h ≤ Ω.card := by
+  refine le_trans ?_ (Finset.card_le_card <| show Finset.image (fun t : ZMod q => t + h 0)
+    (Finset.filter (fun t : ZMod q => ∀ i, t + h i ∈ Ω) Finset.univ) ⊆ Ω from ?_)
+  · rw [Finset.card_image_of_injective _ (add_left_injective _)]; rfl
+  · grind
+
+/-- When `k = 0`, `N_0(h, Ω)` counts all elements of `ℤ/qℤ`, i.e., equals `q`. -/
+theorem tupleCount_zero (Ω : Finset (ZMod q)) (h : Fin 0 → ZMod q) :
+    tupleCount Ω h = q := by
+  unfold tupleCount; aesop
+
+/-- Shifting all offsets by a constant doesn't change `N_k`. -/
+theorem tupleCount_shift (Ω : Finset (ZMod q)) (h : Fin k → ZMod q) (c : ZMod q) :
+    tupleCount Ω (fun i => h i + c) = tupleCount Ω h := by
+  unfold tupleCount
+  rw [Finset.card_filter, Finset.card_filter]
+  apply Finset.sum_bij (fun i _ => i + c)
+  · exact fun _ _ => Finset.mem_univ _
+  · aesop
+  · exact fun b _ => ⟨b - c, Finset.mem_univ _, sub_add_cancel _ _⟩
+  · simp +decide only [add_comm, add_left_comm]
+    tauto
+
+/-! ### The sum formula
+
+The fundamental identity `∑_h N_k(h, Ω) = q · |Ω|^k` is established by exchanging the order
+of summation. Each `t ∈ ℤ/qℤ` contributes `|Ω|^k` to the sum (by independence of coordinates).
+
+The paper uses the variant with `h₀ = 0` fixed (Lemma 3.5): summing over `g : Fin k → ℤ/qℤ`,
+we have `∑_g N_{k+1}(0 :: g, Ω) = |Ω|^{k+1}`. The condition `t + 0 ∈ Ω` restricts `t` to
+`Ω`, giving `|Ω|` choices of `t`, each contributing `|Ω|^k` from the remaining coordinates.
+-/
+
+/-- **Sum formula for `N_k`**: `∑_h N_k(h, Ω) = q · |Ω|^k`. -/
+theorem tupleCount_sum_eq (Ω : Finset (ZMod q)) :
+    ∑ h : Fin k → ZMod q, tupleCount Ω h = q * Ω.card ^ k := by
+  have h_fubini : ∑ h : Fin k → ZMod q, (Finset.univ.filter fun t : ZMod q =>
+      ∀ i, t + h i ∈ Ω).card =
+      ∑ t : ZMod q, ∑ h : Fin k → ZMod q, if ∀ i, t + h i ∈ Ω then 1 else 0 := by
+    rw [Finset.sum_comm, Finset.sum_congr rfl]; aesop
+  have h_inner_sum : ∀ t : ZMod q, ∑ h : Fin k → ZMod q,
+      (if ∀ i, t + h i ∈ Ω then 1 else 0) = Ω.card ^ k := by
+    intro t
+    have : ∑ h : Fin k → ZMod q, (if ∀ i, t + h i ∈ Ω then 1 else 0) =
+        ∏ i : Fin k, ∑ h_i : ZMod q, (if t + h_i ∈ Ω then 1 else 0) := by
+      rw [Finset.prod_sum]
+      refine Finset.sum_bij (fun h _ => fun i _ => h i) ?_ ?_ ?_ ?_ <;>
+        simp +decide [Finset.prod_ite]
+      · simp +decide [funext_iff]
+      · exact fun b => ⟨fun i => b i (Finset.mem_univ i), funext fun i => rfl⟩
+      · intro a; split_ifs <;> simp_all +decide [Finset.ext_iff]
+    simp_all +decide
+    rw [show Finset.filter (fun x => t + x ∈ Ω) Finset.univ =
+        Finset.image (fun x => x - t) Ω from ?_,
+      Finset.card_image_of_injective _ fun x y hxy => by simpa using hxy]
+    aesop
+  simp_all +decide [Finset.card_univ]
+  convert h_fubini using 1
+
+/-- **Sum formula with `h₀ = 0` fixed** (Lemma 3.5 identity):
+`∑_g N_{k+1}(Fin.cons 0 g, Ω) = |Ω|^{k+1}`. -/
+theorem tupleCount_sum_cons_eq (Ω : Finset (ZMod q)) :
+    ∑ g : Fin k → ZMod q, tupleCount Ω (Fin.cons 0 g) = Ω.card ^ (k + 1) := by
+  unfold tupleCount
+  simp +decide only [card_filter]
+  rw [Finset.sum_comm]
+  have h_inner : ∀ t ∈ Ω, ∑ g : Fin k → ZMod q,
+      (if ∀ j, t + g j ∈ Ω then 1 else 0) = Ω.card ^ k := by
+    intro t ht
+    have : (∑ g : Fin k → ZMod q, if ∀ j : Fin k, t + g j ∈ Ω then 1 else 0) =
+        (∏ j : Fin k, (∑ g : ZMod q, if t + g ∈ Ω then 1 else 0)) := by
+      rw [Finset.prod_sum]
+      refine Finset.sum_bij (fun g _ => fun j _ => g j) ?_ ?_ ?_ ?_ <;> simp +decide
+      · simp +decide [funext_iff]
+      · exact fun b => ⟨fun j => b j (Finset.mem_univ j), funext fun j => rfl⟩
+      · intro a; split_ifs <;> simp_all +decide [Finset.prod_ite]
+    simp_all +decide
+    rw [show Finset.filter (fun x => t + x ∈ Ω) Finset.univ =
+        Finset.image (fun x => x - t) Ω from ?_,
+      Finset.card_image_of_injective _ sub_left_injective]
+    grind
+  convert Finset.sum_congr rfl h_inner using 1
+  · simp +decide [Fin.forall_fin_succ]
+    rw [← Finset.sum_subset (Finset.subset_univ Ω)]; aesop
+    simp +contextual
+  · norm_num [pow_succ']
+
+/-! ### Monotonicity and subset properties -/
+
+/-- `N_k(h, Ω)` is monotone in `Ω`. -/
+theorem tupleCount_mono {Ω₁ Ω₂ : Finset (ZMod q)} (h : Fin k → ZMod q)
+    (hsub : Ω₁ ⊆ Ω₂) : tupleCount Ω₁ h ≤ tupleCount Ω₂ h :=
+  Finset.card_mono fun x hx => by aesop
+
+/-- `N_k(h, ∅) = 0` for `k ≥ 1`. -/
+theorem tupleCount_empty (h : Fin (k + 1) → ZMod q) :
+    tupleCount (∅ : Finset (ZMod q)) h = 0 := by
+  unfold tupleCount; aesop
+
+/-- `N_k(h, univ) = q` for all `h`. -/
+theorem tupleCount_univ (h : Fin k → ZMod q) :
+    tupleCount (univ : Finset (ZMod q)) h = q := by
+  unfold tupleCount; aesop
+
+end PoissonCRT

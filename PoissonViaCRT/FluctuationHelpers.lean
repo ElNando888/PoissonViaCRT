@@ -1,0 +1,45 @@
+/-
+Copyright (c) 2025. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+-/
+import Mathlib
+import PoissonViaCRT.Defs
+import PoissonViaCRT.TupleCount
+
+/-!
+# Helper lemmas for the fluctuation bound (Proposition 3.6)
+-/
+
+open Finset BigOperators
+
+namespace PoissonCRT
+
+variable {q : ℕ} [NeZero q]
+
+/-- `kCorrelation` is nonneg. -/
+theorem kCorrelation_nonneg (Ω : Finset (ZMod q)) (X : Box m) :
+    0 ≤ kCorrelation Ω X := by
+  unfold kCorrelation
+  apply mul_nonneg
+  · positivity
+  · apply Finset.sum_nonneg
+    intros; positivity
+
+/-- The deviation sum vanishes: `∑_g (tupleCount(Ω, 0::g) - μ) = 0`
+where `μ = |Ω|^{m+1} / q^m`. -/
+theorem tupleCount_cons_deviation_sum_zero (Ω : Finset (ZMod q)) (m : ℕ) :
+    (∑ g : Fin m → ZMod q,
+      ((tupleCount Ω (Fin.cons (0 : ZMod q) g) : ℝ) -
+        (Ω.card : ℝ) ^ (m + 1) / (q : ℝ) ^ m)) = 0 := by
+  have hq : (q : ℝ) ≠ 0 := Nat.cast_ne_zero.mpr (NeZero.ne q)
+  have hqm : (q : ℝ) ^ m ≠ 0 := pow_ne_zero _ hq
+  rw [Finset.sum_sub_distrib]
+  have h1 : (∑ g : Fin m → ZMod q, (tupleCount Ω (Fin.cons 0 g) : ℝ)) =
+      (Ω.card : ℝ) ^ (m + 1) := by
+    have := tupleCount_sum_cons_eq (k := m) Ω
+    exact_mod_cast this
+  rw [h1, Finset.sum_const, Finset.card_univ, Fintype.card_fun, ZMod.card, nsmul_eq_mul]
+  simp only [Fintype.card_fin, Nat.cast_pow]
+  rw [mul_div_cancel₀ _ hqm, sub_self]
+
+end PoissonCRT
