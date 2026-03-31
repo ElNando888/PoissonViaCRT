@@ -2,10 +2,11 @@
 Copyright (c) 2026 Math Inc. All rights reserved.
 -/
 
-import Mathlib
 import PoissonViaCRT.RHC.Utils
 import PoissonViaCRT.RHC.StepanovNonSquare
 import PoissonViaCRT.RHC.StepanovVanishing
+import Mathlib.Data.NNReal.Basic
+import Mathlib.RingTheory.Polynomial.DegreeLT
 
 lemma stepanov_sigma_degree_bound_fin (F : Type*) [Field F] (d k m J : ℕ) (a : F)
     (rjk sjk : Fin J → Polynomial F) (hdeg_r : ∀ j : Fin J, (rjk j).natDegree ≤ d + k * (m - 1))

@@ -4,6 +4,8 @@ Copyright (c) 2026 Math Inc. All rights reserved.
 
 import PoissonViaCRT.RHC.StepanovPolynomial
 import PoissonViaCRT.RHC.Utils
+import Mathlib.Data.Real.Sqrt
+import Mathlib.Tactic.NormNum.RealSqrt
 
 noncomputable def hyperellipticCurve (F : Type*) [Field F] (f : Polynomial F) : Set (F × F) :=
   {p | p.2 ^ 2 = Polynomial.eval p.1 f}
