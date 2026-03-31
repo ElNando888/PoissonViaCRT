@@ -74,4 +74,38 @@ lemma deviation_bound (k : ℕ) (hk : 2 ≤ k) (q : ℕ) [NeZero q]
   · exact mul_pos ( add_pos_of_nonneg_of_pos ( abs_nonneg _ ) zero_lt_one ) ( div_pos ( Nat.cast_pos.mpr <| NeZero.pos q ) <| Nat.cast_pos.mpr hcard );
   · rw [ Real.rpow_neg_one, mul_assoc, mul_inv_cancel₀ ( ne_of_gt <| div_pos ( Nat.cast_pos.mpr <| NeZero.pos q ) <| Nat.cast_pos.mpr hcard ), mul_one ] ; norm_num
 
+/-- The key q-independent deviation bound: the deviation sum
+`(1/|Ω_q|) * ∑_{h in box} (N_k(0::h) - μ)` is bounded by `C * s^{-1}`
+where C depends only on the box X and the local subsets Ω, not on q.
+This follows from complete period cancellation: grouping lattice points
+by residue class mod q, complete periods cancel by
+`tupleCount_cons_deviation_sum_zero`, and only a boundary of size `O(s^{k-2})`
+remains. Each boundary term contributes at most `|Ω_q|` to the deviation.
+The product `s^{k-2} * |Ω_q| / |Ω_q|` = `s^{k-2}` combined with the factor
+`s^{-(k-1)}` from the main term gives `s^{-1}`. -/
+lemma deviation_sum_bound_q_indep (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
+    (hsp : ∀ (p : ℕ), p.Prime →
+      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
+    (X : Box (k - 1))
+    (C_lp : ℝ) (hC_lp_pos : 0 < C_lp)
+    (hC_lp : ∀ (s : ℝ), 1 ≤ s →
+      |(((Fintype.piFinset fun _ : Fin (k - 1) =>
+          Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+        (fun h => inScaledBox X s h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
+        C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1)) :
+    ∃ C : ℝ, 0 < C ∧ ∀ (q : ℕ) [NeZero q],
+      let Ω_q := crtSubset q Ω
+      let s := (q : ℝ) / Ω_q.card
+      |(1 / (Ω_q.card : ℝ)) *
+        ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+            Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+          (fun h => inScaledBox X s h)),
+        ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
+          (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| ≤
+      C * s ^ (-(1 : ℝ)) := by
+  sorry
+
 end PoissonCRT

@@ -21,7 +21,7 @@ import PoissonViaCRT.Combinatorics
 import PoissonViaCRT.FluctuationHelpers
 import PoissonViaCRT.LatticePointBound
 import PoissonViaCRT.CancellationHelpers
-import PoissonViaCRT.RHC.RiemannHypothesisHEC
+import RiemannHypothesisCurves.RiemannHypothesisHEC
 
 /-!
 # Main Theorems (§1, §3.2)
@@ -276,14 +276,43 @@ lemma euler_product_convergence
       · haveI := Fact.mk pp; exact le_trans ( Finset.card_le_univ _ ) ( by norm_num ) ;
       · exact pp.pos
 
-/-- **Complete period cancellation application**: For a divisor `d > 1` of `q`,
+/-
+PROBLEM
+**Complete period cancellation application**: For a divisor `d > 1` of `q`,
 the sum of the error product `e_k(h, d) = ∏_{p|d} ε_k(h, p)` over lattice
 points `h` in the scaled box `sX` is bounded using the cancellation from
 `tupleCount_cons_deviation_sum_zero`. The key insight is that complete periods
 cancel, and only boundary terms of size `O(s^{k-2})` remain.
 
 Combining the lattice point box bound, the Euler product convergence, and the
-period cancellation, the overall error is bounded by `C / s_q`. -/
+period cancellation, the overall error is bounded by `C / s_q`.
+
+PROVIDED SOLUTION
+Decompose kCorrelation into main term + deviation:
+
+kCorrelation Ω_q X = (1/|Ω_q|) * ∑_h tupleCount(0::h)
+
+Split tupleCount into expected μ = |Ω_q|^k / q^{k-1} plus deviation:
+= (1/|Ω_q|) * [|box| * μ + ∑_h (tupleCount - μ)]
+= (μ/|Ω_q|) * |box| + deviation_sum
+= s^{-(k-1)} * |box| + deviation_sum
+
+where s^{-(k-1)} = (|Ω_q|/q)^{k-1} = μ/|Ω_q|.
+
+By the triangle inequality:
+|kCorrelation - vol(X)| ≤ |s^{-(k-1)} * |box| - vol(X)| + |deviation_sum|
+
+For the first term: s^{-(k-1)} * ||box| - s^{k-1} * vol(X)| ≤ s^{-(k-1)} * C_lp * s^{(k-1)-1} = C_lp * s^{-1}.
+This uses h_lp_q.
+
+For the second term: |deviation_sum| ≤ C_dev * s^{-1}.
+This is exactly h_dev_q.
+
+So: |kCorrelation - vol| ≤ C_lp * s^{-1} + C_dev * s^{-1} = (C_lp + C_dev) * s^{-1} ≤ (C_lp + C_dev + 1) * s^{-1}.
+
+Key steps: unfold kCorrelation, use Finset.sum_sub_distrib to split the sum, convert the main term to s^{-(k-1)} * |box| using algebra, apply the triangle inequality, use h_lp_q and h_dev_q, and combine.
+-/
+set_option maxHeartbeats 800000 in
 lemma complete_period_cancellation_apply
     (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
@@ -304,22 +333,71 @@ lemma complete_period_cancellation_apply
       ∀ (q : ℕ) [NeZero q],
         |kCorrelation (crtSubset q Ω) X - X.volume| ≤
           C * ((q : ℝ) / (crtSubset q Ω).card) ^ (-(1 : ℝ)) := by
-  -- Use the deviation_bound helper and the lattice point bound
   intro X
   obtain ⟨C_lp, hC_lp_pos, hC_lp⟩ := h_lp X
-  -- Choose C = 2 * C_lp + 1 (covers both main term and deviation errors)
-  refine ⟨2 * C_lp + 1, by positivity, fun q _ => ?_⟩
-  -- Use deviation_bound for each fixed q
-  obtain ⟨C_dev, hC_dev_pos, hC_dev⟩ :=
-    deviation_bound k hk q (crtSubset q Ω) X (crtSubset_card_pos Ω hΩ q)
-  set Ω_q := crtSubset q Ω
+  obtain ⟨C_ep, hC_ep_pos, hC_ep⟩ := h_ep
+  -- Get q-independent deviation bound
+  obtain ⟨C_dev, hC_dev_pos, hC_dev⟩ := deviation_sum_bound_q_indep ε hε k hk Ω hΩ hWD hsp X C_lp hC_lp_pos hC_lp
+  refine ⟨C_lp + C_dev + 1, by positivity, fun q inst => ?_⟩
+  set Ω_q := crtSubset q Ω with hΩq_def
   set s := (q : ℝ) / Ω_q.card with hs_def
   have hs : 1 ≤ s := spacing_ge_one Ω hΩ q
   have hΩ_pos : (0 : ℝ) < Ω_q.card :=
     Nat.cast_pos.mpr (crtSubset_card_pos Ω hΩ q)
-  -- The bound on kCorrelation - vol(X) follows from the main term error
-  -- (from h_lp) and the deviation error (from deviation_bound)
-  sorry
+  have hq_pos : (0 : ℝ) < q := Nat.cast_pos.mpr (NeZero.pos q)
+  have hs_pos : 0 < s := lt_of_lt_of_le zero_lt_one hs
+  -- Instantiate the deviation bound for this q
+  have h_dev_q := hC_dev q
+  -- Instantiate the lattice point bound for this s
+  have h_lp_q := hC_lp s hs
+  refine' abs_sub_le_iff.mpr ⟨ _, _ ⟩;
+  · -- By definition of $kCorrelation$, we know that
+    have h_kCorrelation : kCorrelation Ω_q X = (1 / (Ω_q.card : ℝ)) * ∑ h ∈ (Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc 1 (⌈s * ∑ i, X.sides i⌉)).filter (fun h => inScaledBox X s h), (tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) := by
+      unfold kCorrelation;
+      convert rfl;
+      exact Eq.symm <| Int.toNat_of_nonneg <| Int.ceil_nonneg <| mul_nonneg hs_pos.le <| Finset.sum_nonneg fun _ _ => le_of_lt <| X.sides_pos _;
+    -- Using the bounds from h_lp_q and h_dev_q, we can bound the difference.
+    have h_bound : (1 / (Ω_q.card : ℝ)) * ∑ h ∈ (Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc 1 (⌈s * ∑ i, X.sides i⌉)).filter (fun h => inScaledBox X s h), (tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) ≤ s ^ (-(k - 1) : ℝ) * (s ^ (k - 1) * X.volume + C_lp * s ^ ((k - 1 : ℤ) - 1)) + C_dev * s ^ (-1 : ℝ) := by
+      have h_bound : (1 / (Ω_q.card : ℝ)) * ∑ h ∈ (Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc 1 (⌈s * ∑ i, X.sides i⌉)).filter (fun h => inScaledBox X s h), (tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) ≤ (1 / (Ω_q.card : ℝ)) * ((Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1)) * (s ^ (k - 1) * X.volume + C_lp * s ^ ((k - 1 : ℤ) - 1)) + C_dev * s ^ (-1 : ℝ) := by
+        have h_bound : (1 / (Ω_q.card : ℝ)) * ∑ h ∈ (Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc 1 (⌈s * ∑ i, X.sides i⌉)).filter (fun h => inScaledBox X s h), (tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) ≤ (1 / (Ω_q.card : ℝ)) * ((Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1)) * ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc 1 (⌈s * ∑ i, X.sides i⌉)).filter (fun h => inScaledBox X s h)).card + C_dev * s ^ (-1 : ℝ) := by
+          norm_num [ Finset.sum_sub_distrib, mul_sub ] at *;
+          linarith [ abs_le.mp h_dev_q ];
+        refine le_trans h_bound ?_;
+        gcongr;
+        rcases k with ( _ | _ | k ) <;> norm_num at *;
+        linarith [ abs_le.mp h_lp_q ];
+      convert h_bound using 2 ; norm_cast ; norm_num ; ring_nf;
+      rw [ Int.subNatNat_of_le ( by linarith ) ] ; norm_cast ; norm_num ; ring_nf ; norm_num [ hΩ_pos.ne', hq_pos.ne' ];
+      field_simp [hs_def];
+      rw [ div_pow, div_mul_eq_mul_div, eq_div_iff ] <;> first | positivity | ring_nf;
+      exact Or.inl ( by rw [ ← pow_succ', Nat.sub_add_cancel ( by linarith ) ] );
+    rcases k with ( _ | _ | k ) <;> norm_num [ pow_succ, mul_assoc, mul_left_comm, mul_add, add_mul, sub_eq_add_neg ] at *;
+    convert h_bound.trans _ using 1 ; norm_num [ Real.rpow_add hs_pos, Real.rpow_neg_one ] ; ring_nf ; norm_num [ hs_pos.ne' ] ; ring_nf ; norm_num [ hs_pos.ne' ] ;
+    field_simp;
+    linarith;
+  · have h_sum : ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter (fun h => inScaledBox X s h)), (tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) = (∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter (fun h => inScaledBox X s h)), ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) - (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))) + (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1) * ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter (fun h => inScaledBox X s h)).card := by
+      simp +decide [mul_comm];
+    have h_sum : kCorrelation Ω_q X = (1 / (Ω_q.card : ℝ)) * (∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter (fun h => inScaledBox X s h)), ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) - (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))) + (Ω_q.card : ℝ) ^ (k - 1) / (q : ℝ) ^ (k - 1) * ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter (fun h => inScaledBox X s h)).card := by
+      convert congr_arg ( fun x : ℝ => ( 1 / ( Ω_q.card : ℝ ) ) * x ) h_sum using 1;
+      · unfold kCorrelation; norm_cast;
+        congr!;
+        exact Int.toNat_of_nonneg <| Int.ceil_nonneg <| mul_nonneg ( by positivity ) <| Finset.sum_nonneg fun _ _ => le_of_lt <| X.sides_pos _;
+      · field_simp;
+        exact congrArg₂ ( · + · ) ( by congr; ext; ring ) ( by rw [ ← pow_succ', Nat.sub_add_cancel ( by linarith ) ] );
+    have h_sum : (Ω_q.card : ℝ) ^ (k - 1) / (q : ℝ) ^ (k - 1) = s ^ (-(k - 1) : ℝ) := by
+      cases k <;> norm_num at *;
+      rw [ inv_eq_one_div, div_pow, div_div_eq_mul_div ] ; ring;
+    have h_sum : kCorrelation Ω_q X ≥ -C_dev * s ^ (-1 : ℝ) + s ^ (-(k - 1) : ℝ) * (s ^ (k - 1) * X.volume - C_lp * s ^ ((k - 1 : ℤ) - 1)) := by
+      have h_sum : kCorrelation Ω_q X ≥ -C_dev * s ^ (-1 : ℝ) + s ^ (-(k - 1) : ℝ) * ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter (fun h => inScaledBox X s h)).card := by
+        nlinarith [ abs_le.mp h_dev_q, show 0 < s ^ ( - ( k - 1 : ℝ ) ) by positivity ];
+      refine le_trans ?_ h_sum;
+      gcongr;
+      rcases k with ( _ | _ | k ) <;> norm_num at *;
+      linarith [ abs_le.mp h_lp_q ];
+    rcases k with ( _ | _ | k ) <;> norm_num [ pow_succ' ] at *;
+    norm_num [ Real.rpow_add hs_pos, Real.rpow_neg hs_pos.le ] at *;
+    field_simp at h_sum ⊢;
+    linarith
 
 /-- **Fluctuation bound** (core of Proposition 3.6): Under the well-distribution hypothesis,
 the error `|R_k(X) - vol(X)|` is bounded by `C · s_q^{-δ}` for some `δ > 0`.
