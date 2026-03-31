@@ -14,17 +14,28 @@ To cite Aristotle, tag @Aristotle-Harmonic on GitHub PRs/issues, and add as co-a
 Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
-import Mathlib
 import PoissonViaCRT.Defs
 import PoissonViaCRT.TupleCount
 import PoissonViaCRT.FluctuationHelpers
 import PoissonViaCRT.LatticePointBound
+import PoissonViaCRT.CancellationInfra
 
 /-!
 # Cancellation Helpers for Proposition 3.6
 This file contains the key deviation bound used in `complete_period_cancellation_apply`.
 The bound states that the deviation sum (sum of `N_k(0::h) - μ` over the box) is
 controlled by the boundary terms after complete period cancellation.
+
+## Infrastructure lemmas (in CancellationInfra.lean)
+
+The following intermediate lemmas support the deviation bound:
+
+* `sum_by_residue_classes`: Rewrites a sum over lattice points into a sum grouped by
+  residue classes mod `q`, with multiplicities.
+* `box_card_upper_bound`: Upper bound on the number of lattice points in a scaled box.
+* `deviation_sum_period_zero`: The unweighted deviation sum over all residue classes is zero
+  (direct consequence of `tupleCount_cons_deviation_sum_zero`).
+* `individual_deviation_bound`: Each individual deviation `|N_k(0::g) - μ|` is bounded by `2|Ω|`.
 -/
 
 open Finset BigOperators Classical
@@ -77,12 +88,21 @@ lemma deviation_bound (k : ℕ) (hk : 2 ≤ k) (q : ℕ) [NeZero q]
 /-- The key q-independent deviation bound: the deviation sum
 `(1/|Ω_q|) * ∑_{h in box} (N_k(0::h) - μ)` is bounded by `C * s^{-1}`
 where C depends only on the box X and the local subsets Ω, not on q.
-This follows from complete period cancellation: grouping lattice points
-by residue class mod q, complete periods cancel by
-`tupleCount_cons_deviation_sum_zero`, and only a boundary of size `O(s^{k-2})`
-remains. Each boundary term contributes at most `|Ω_q|` to the deviation.
-The product `s^{k-2} * |Ω_q| / |Ω_q|` = `s^{k-2}` combined with the factor
-`s^{-(k-1)}` from the main term gives `s^{-1}`. -/
+
+## Proof status
+
+This lemma requires the **Möbius inversion decomposition** from §3.2 of
+Granville–Kurlberg to obtain the `O(s^{-1})` bound. The approach via residue
+class decomposition and complete period cancellation yields only an `O(s^{k-2})`
+bound (using `sum_by_residue_classes`, `deviation_sum_period_zero`, and
+`individual_deviation_bound` from `CancellationInfra.lean`), which is insufficient
+when `k ≥ 3`. The Möbius decomposition reorganises the error as
+`∑_{d|q, d>1} (contribution from d)`, where each `d`-contribution uses
+period cancellation with period `d` (not `q`), giving a boundary of size
+`O(s^{k-2}/d^{k-2})` times a product error `d^{-ε}`. The resulting series
+`∑_{d} d^{-(k-2+ε)}` converges for `k ≥ 3` and requires additional care for
+`k = 2` via the critical exponent `λ₂`. Formalizing this decomposition is left
+for future work. -/
 lemma deviation_sum_bound_q_indep (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
