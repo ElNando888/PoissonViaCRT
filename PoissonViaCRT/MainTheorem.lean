@@ -19,6 +19,8 @@ import PoissonViaCRT.Defs
 import PoissonViaCRT.TupleCount
 import PoissonViaCRT.Combinatorics
 import PoissonViaCRT.FluctuationHelpers
+import PoissonViaCRT.LatticePointBound
+import PoissonViaCRT.CancellationHelpers
 import PoissonViaCRT.RHC.RiemannHypothesisHEC
 
 /-!
@@ -207,16 +209,30 @@ private lemma spacing_ge_one (Ω : ∀ p : ℕ, Finset (ZMod p))
 
 /-! ### Intermediate lemmas for Proposition 3.6 (salami-sliced) -/
 
-/-- **Lattice point box bound**: The number of lattice points in a scaled box `sX`
+/-
+PROBLEM
+**Lattice point box bound**: The number of lattice points in a scaled box `sX`
 deviates from `s^m · vol(X)` by at most `C_X · s^{m-1}`, where `C_X` depends on the
-box dimensions and `m` is the dimension. This is a standard lattice point counting result. -/
+box dimensions and `m` is the dimension. This is a standard lattice point counting result.
+PROVIDED SOLUTION
+The lattice points satisfying inScaledBox can be parametrized by increments d_i = h_i - h_{i-1} (with h_{-1} = 0), where each d_i is a positive integer with d_i ≤ s * X.sides i. So d_i ranges over {1, 2, ..., ⌊s * X.sides i⌋}, and the count equals ∏_i ⌊s * X.sides i⌋.
+The volume X.volume = ∏_i X.sides i, so s^m * X.volume = ∏_i (s * X.sides i).
+The error |∏_i ⌊s * b_i⌋ - ∏_i (s * b_i)| is bounded by C * s^(m-1) using the telescoping product bound: ∏ a_i - ∏ n_i = ∑_j (a_j - n_j) * ∏_{i&lt;j} n_i * ∏_{i>j} a_i, where each |a_j - n_j| &lt; 1 and each factor is at most s * max(b_i).
+Choose C = m * (max b_i)^(m-1) + 1 (or similar).
+For m = 0: the box is 0-dimensional, the count is 1, the volume is 1 (empty product), and s^0 * 1 = 1, so the error is 0 and any C > 0 works.
+-/
 lemma lattice_point_box_bound (m : ℕ) (X : Box m) :
     ∃ C : ℝ, 0 < C ∧ ∀ (s : ℝ), 1 ≤ s →
       |(((Fintype.piFinset fun _ : Fin m =>
           Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
         (fun h => inScaledBox X s h)).card : ℝ) - s ^ m * X.volume| ≤
         C * s ^ ((m : ℤ) - 1) := by
-  sorry
+  -- Obtain the product-of-floors representation and the error bound
+  obtain ⟨C, hCp, hCb⟩ := prod_floor_approx m X.sides X.sides_pos
+  exact ⟨C, hCp, fun s hs => by
+    rw [count_inScaledBox_eq_prod_floor m X s hs]
+    simp only [Nat.cast_prod, Box.volume]
+    exact hCb s hs⟩
 
 /-
 PROBLEM
@@ -288,6 +304,21 @@ lemma complete_period_cancellation_apply
       ∀ (q : ℕ) [NeZero q],
         |kCorrelation (crtSubset q Ω) X - X.volume| ≤
           C * ((q : ℝ) / (crtSubset q Ω).card) ^ (-(1 : ℝ)) := by
+  -- Use the deviation_bound helper and the lattice point bound
+  intro X
+  obtain ⟨C_lp, hC_lp_pos, hC_lp⟩ := h_lp X
+  -- Choose C = 2 * C_lp + 1 (covers both main term and deviation errors)
+  refine ⟨2 * C_lp + 1, by positivity, fun q _ => ?_⟩
+  -- Use deviation_bound for each fixed q
+  obtain ⟨C_dev, hC_dev_pos, hC_dev⟩ :=
+    deviation_bound k hk q (crtSubset q Ω) X (crtSubset_card_pos Ω hΩ q)
+  set Ω_q := crtSubset q Ω
+  set s := (q : ℝ) / Ω_q.card with hs_def
+  have hs : 1 ≤ s := spacing_ge_one Ω hΩ q
+  have hΩ_pos : (0 : ℝ) < Ω_q.card :=
+    Nat.cast_pos.mpr (crtSubset_card_pos Ω hΩ q)
+  -- The bound on kCorrelation - vol(X) follows from the main term error
+  -- (from h_lp) and the deviation error (from deviation_bound)
   sorry
 
 /-- **Fluctuation bound** (core of Proposition 3.6): Under the well-distribution hypothesis,
