@@ -2,7 +2,7 @@
 Copyright (c) 2026 Math Inc. All rights reserved.
 -/
 
-import Mathlib
+import Mathlib.Algebra.Polynomial.BigOperators
 
 lemma stepanov_polynomial_natDegree_le (F : Type*) [Field F] [Fintype F] (f : Polynomial F)
   (q m ℓ c d J : ℕ) (hfdeg : f.natDegree = m) (rj sj : ℕ → Polynomial F)

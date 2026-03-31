@@ -2,8 +2,9 @@
 Copyright (c) 2026 Math Inc. All rights reserved.
 -/
 
-import Mathlib
+-- import Mathlib
 import PoissonViaCRT.RHC.HasseDerivatives
+import Mathlib.FieldTheory.Finite.Basic
 
 lemma auxiliary_derivatives (F : Type*) [Field F] (f : Polynomial F) (m d ℓ c : ℕ)
     (hfdeg : f.natDegree = m) (rj sj : Polynomial F) (hr : rj.natDegree ≤ d) (hs : sj.natDegree ≤ d)
@@ -102,9 +103,9 @@ lemma auxiliary_derivatives (F : Type*) [Field F] (f : Polynomial F) (m d ℓ c 
     have h_nat_ineq : d + k * m - k ≤ d + k * (m - 1) := by
       cases m with
       | zero =>
-          simpa using Nat.sub_le d k
+          simp only [Nat.sub_le]
       | succ m' =>
-          simp [Nat.mul_succ, Nat.add_assoc, Nat.add_comm, Nat.add_left_comm]
+          simp [Nat.mul_succ, Nat.add_comm, Nat.add_left_comm]
     refine ⟨rjk, sjk, hr_eq, hs_eq, ?_, ?_⟩
     · exact le_trans hnat_rjk_le h_nat_ineq
     · exact le_trans hnat_sjk_le h_nat_ineq
@@ -236,7 +237,7 @@ lemma stepanov_form (F : Type*) [Field F] [Fintype F] (f : Polynomial F) (ℓ q 
       _ = rjk j * f ^ (ℓ - k) + sjk j * f ^ (ℓ + c - k) := by
               simp [hrjk j, hsjk j]
       _ = f ^ (ℓ - k) * (rjk j + sjk j * f ^ c) := by
-              simp [hpow, add_mul, mul_add, mul_assoc, mul_left_comm, mul_comm]
+              simp [hpow, add_mul, mul_assoc, mul_comm]
   calc
     hasseDerivOp F k
         (f ^ ℓ *
@@ -246,7 +247,7 @@ lemma stepanov_form (F : Type*) [Field F] [Fintype F] (f : Polynomial F) (ℓ q 
         Finset.sum (Finset.range J)
           (fun j =>
             hasseDerivOp F k ((f ^ ℓ * (rj j + sj j * f ^ c)) * Polynomial.X ^ (j * q))) := by
-          simp [hasseDerivOp, Finset.mul_sum, mul_assoc, mul_left_comm, mul_comm, _root_.map_sum]
+          simp [hasseDerivOp, Finset.mul_sum, mul_assoc, mul_comm, _root_.map_sum]
     _ =
         Finset.sum (Finset.range J)
           (fun j =>

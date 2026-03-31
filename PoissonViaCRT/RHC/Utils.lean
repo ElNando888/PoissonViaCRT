@@ -2,7 +2,10 @@
 Copyright (c) 2026 Math Inc. All rights reserved.
 -/
 
-import Mathlib
+import Mathlib.Algebra.Polynomial.Roots
+import Mathlib.Data.Fintype.Card
+import Mathlib.Data.Nat.Cast.Order.Field
+import Mathlib.Data.Real.Basic
 
 lemma natCast_le_div (a b n : ℕ) (h : a ≤ b / n) :
     (a : ℝ) ≤ (b : ℝ) / n := by

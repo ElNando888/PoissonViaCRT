@@ -2,7 +2,6 @@
 Copyright (c) 2026 Math Inc. All rights reserved.
 -/
 
-import Mathlib
 import PoissonViaCRT.RHC.StepanovAuxiliary
 
 lemma stepanov_vanishing_roots (F : Type*) [Field F] (f g : Polynomial F) (ℓ : ℕ) (x : F)

@@ -87,7 +87,7 @@ theorem stepanov_polynomial (F : Type*) [Field F] [Fintype F] (hF : ringChar F �
       nlinarith
     have hd_le_ceil : d ≤ Nat.ceil ((q : ℚ) / 2) := by
       have : d ≤ Nat.ceil (((q : ℚ) - (m : ℚ)) / 2) := by
-        simpa [d] using (Nat.sub_le (Nat.ceil (((q : ℚ) - (m : ℚ)) / 2)) 1)
+        simp [d] -- simpa [d] using (Nat.sub_le (Nat.ceil (((q : ℚ) - (m : ℚ)) / 2)) 1)
       exact this.trans hx
     have hx2_nonneg : (0 : ℚ) ≤ (q : ℚ) / 2 :=
       div_nonneg (le_of_lt hq_pos) (by norm_num)
