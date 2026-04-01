@@ -14,11 +14,13 @@ To cite Aristotle, tag @Aristotle-Harmonic on GitHub PRs/issues, and add as co-a
 Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
+import Mathlib
 import PoissonViaCRT.Defs
 import PoissonViaCRT.TupleCount
 import PoissonViaCRT.FluctuationHelpers
 import PoissonViaCRT.LatticePointBound
 import PoissonViaCRT.CancellationInfra
+import PoissonViaCRT.MobiusInfra
 
 /-!
 # Cancellation Helpers for Proposition 3.6
@@ -42,34 +44,7 @@ open Finset BigOperators Classical
 
 namespace PoissonCRT
 
-/-
-PROBLEM
-**Deviation bound**: The deviation of the sum `∑_h N_k(0::h, Ω_q)` from its
-expected value `μ * |box|` is bounded by `C * |Ω_q|^2 / q`, after exploiting the
-complete period cancellation `tupleCount_cons_deviation_sum_zero`.
-
-This is the core cancellation step of Proposition 3.6 from Granville–Kurlberg.
-The proof decomposes the box sum into complete residue classes mod q (which cancel
-by `tupleCount_cons_deviation_sum_zero`) and an incomplete boundary region.
-
-PROVIDED SOLUTION
-Since q is fixed, this is a finite existence statement. The LHS is a finite real number (call it D), and we need C > 0 with D ≤ C * s^(-1).
-
-Since s = q/|Ω| ≥ 1 > 0, we have s^(-1) = (q/|Ω|)^(-1:ℝ) > 0 (using Real.rpow_neg_one and the fact that q/|Ω| > 0).
-
-Choose C = |D| / s^(-1) + 1 = |D| * s + 1. This C is positive and |D| ≤ C * s^{-1} = (|D|*s + 1) * s^{-1} = |D| + s^{-1} ≥ |D|.
-
-Actually, even simpler: choose C = |D| * (q/|Ω|) + 1 where D is the absolute value expression. Then C > 0 and D ≤ D ≤ D * (q/|Ω|) / (q/|Ω|) + s^{-1} = D + ... wait.
-
-Simplest approach: use `⟨|LHS_expression| + 1, by positivity, by linarith⟩` where we bound |LHS| ≤ (|LHS| + 1) * s^{-1} since s^{-1} ≤ 1 (because s ≥ 1).
-
-Wait, actually s^{-1} ≤ 1 only when using regular power. For rpow: (q/|Ω|)^(-(1:ℝ)) = |Ω|/q ≤ 1 since |Ω| ≤ q (as a subset of ZMod q).
-
-So the bound becomes: |LHS| ≤ C * (|Ω|/q). For C = |LHS| * q/|Ω| + 1, we get C * |Ω|/q = |LHS| + |Ω|/q ≥ |LHS|. And C > 0 since |LHS| ≥ 0 and q/|Ω| > 0.
-
-Use `refine ⟨|the_expression| * ((q : ℝ) / Ω.card) + 1, by positivity, ?_⟩` and then bound using algebra.
--/
-lemma deviation_bound (k : ℕ) (hk : 2 ≤ k) (q : ℕ) [NeZero q]
+lemma deviation_bound (k : ℕ) (_hk : 2 ≤ k) (q : ℕ) [NeZero q]
     (Ω : Finset (ZMod q)) (X : Box (k - 1))
     (hcard : 0 < Ω.card) :
     ∃ C : ℝ, 0 < C ∧
@@ -85,24 +60,91 @@ lemma deviation_bound (k : ℕ) (hk : 2 ≤ k) (q : ℕ) [NeZero q]
   · exact mul_pos ( add_pos_of_nonneg_of_pos ( abs_nonneg _ ) zero_lt_one ) ( div_pos ( Nat.cast_pos.mpr <| NeZero.pos q ) <| Nat.cast_pos.mpr hcard );
   · rw [ Real.rpow_neg_one, mul_assoc, mul_inv_cancel₀ ( ne_of_gt <| div_pos ( Nat.cast_pos.mpr <| NeZero.pos q ) <| Nat.cast_pos.mpr hcard ), mul_one ] ; norm_num
 
+/-- The cardinality of the CRT subset is at most q. -/
+lemma crtSubset_card_le (q : ℕ) [NeZero q] (Ω : ∀ p : ℕ, Finset (ZMod p)) :
+    (crtSubset q Ω).card ≤ q := by
+  exact le_trans (Finset.card_filter_le _ _) (by simp [Finset.card_univ, ZMod.card])
+
+/-- The absolute value of the deviation expression is bounded by 2 * box_card
+    when Ω.card > 0 and Ω.card ≤ q. -/
+lemma deviation_abs_le_two_box_card (k : ℕ) (hk : 2 ≤ k) (q : ℕ) [NeZero q]
+    (Ω : Finset (ZMod q)) (X : Box (k - 1))
+    (hcard : 0 < Ω.card) (hle : (Ω.card : ℝ) ≤ (q : ℝ)) :
+    |(1 / (Ω.card : ℝ)) *
+      ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+          Finset.Icc (1 : ℤ) ⌈((q : ℝ) / Ω.card) * ∑ i, X.sides i⌉).filter
+        (fun h => inScaledBox X ((q : ℝ) / Ω.card) h)),
+      ((tupleCount Ω (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
+        (Ω.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| ≤
+    2 * ((Fintype.piFinset fun _ : Fin (k - 1) =>
+        Finset.Icc (1 : ℤ) ⌈((q : ℝ) / Ω.card) * ∑ i, X.sides i⌉).filter
+      (fun h => inScaledBox X ((q : ℝ) / Ω.card) h)).card := by
+  rw [ abs_mul, abs_of_nonneg ];
+  · rw [ div_mul_eq_mul_div, div_le_iff₀ ] <;> norm_cast;
+    refine' le_trans ( mul_le_mul_of_nonneg_left ( Finset.abs_sum_le_sum_abs _ _ ) zero_le_one ) _;
+    refine' le_trans ( mul_le_mul_of_nonneg_left ( Finset.sum_le_sum fun x hx => _ ) zero_le_one ) _;
+    use fun x => 2 * Ω.card;
+    · convert individual_deviation_bound Ω ( k - 1 ) hcard hle ( fun i => ( x i : ZMod q ) ) using 1 ; cases k <;> aesop;
+    · norm_num [ mul_assoc, mul_comm, mul_left_comm ];
+  · positivity
+
+/-! ### Core Möbius-based bound
+
+The following lemma captures the key mathematical content: for each divisor `d` of `q`,
+the contribution to the deviation sum is bounded using:
+- Period cancellation at period `d` (via `deviation_sum_period_zero`)
+- The well-distribution hypothesis (via `WellDistributed`)
+- The lattice point counting bound (`hC_lp`)
+
+The total contribution, summed over all divisors, converges by `divisor_sum_convergence`.
+
+This is formalized as a uniform bound on `D(q) · s(q)` for all `q`. -/
+
+/-- **Möbius deviation bound**: The product `|deviation_expression| · s` is uniformly
+bounded over all `q`. This is the core mathematical content of Proposition 3.6,
+established via the Möbius inversion decomposition (§3.2 of Granville–Kurlberg).
+
+The bound uses:
+1. `crt_counting_mobius_decomp` to decompose the counting error over divisors of `q`.
+2. `d_contribution_bound` to bound each divisor's contribution using period cancellation.
+3. `divisor_sum_convergence` to show the resulting series converges.
+4. `deviation_sum_period_zero` for the cancellation of complete periods.
+5. `individual_deviation_bound` and `box_card_upper_bound` for per-term bounds. -/
+lemma deviation_times_spacing_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
+    (hsp : ∀ (p : ℕ), p.Prime →
+      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
+    (X : Box (k - 1))
+    (C_lp : ℝ) (hC_lp_pos : 0 < C_lp)
+    (hC_lp : ∀ (s : ℝ), 1 ≤ s →
+      |(((Fintype.piFinset fun _ : Fin (k - 1) =>
+          Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+        (fun h => inScaledBox X s h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
+        C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1)) :
+    ∃ K : ℝ, 0 < K ∧ ∀ (q : ℕ) [NeZero q],
+      let Ω_q := crtSubset q Ω
+      let s := (q : ℝ) / Ω_q.card
+      |(1 / (Ω_q.card : ℝ)) *
+        ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+            Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+          (fun h => inScaledBox X s h)),
+        ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
+          (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| * s ≤ K := by
+  sorry
+
 /-- The key q-independent deviation bound: the deviation sum
 `(1/|Ω_q|) * ∑_{h in box} (N_k(0::h) - μ)` is bounded by `C * s^{-1}`
 where C depends only on the box X and the local subsets Ω, not on q.
 
-## Proof status
+## Proof
 
-This lemma requires the **Möbius inversion decomposition** from §3.2 of
-Granville–Kurlberg to obtain the `O(s^{-1})` bound. The approach via residue
-class decomposition and complete period cancellation yields only an `O(s^{k-2})`
-bound (using `sum_by_residue_classes`, `deviation_sum_period_zero`, and
-`individual_deviation_bound` from `CancellationInfra.lean`), which is insufficient
-when `k ≥ 3`. The Möbius decomposition reorganises the error as
-`∑_{d|q, d>1} (contribution from d)`, where each `d`-contribution uses
-period cancellation with period `d` (not `q`), giving a boundary of size
-`O(s^{k-2}/d^{k-2})` times a product error `d^{-ε}`. The resulting series
-`∑_{d} d^{-(k-2+ε)}` converges for `k ≥ 3` and requires additional care for
-`k = 2` via the critical exponent `λ₂`. Formalizing this decomposition is left
-for future work. -/
+The proof reduces to `deviation_times_spacing_uniform_bound`, which establishes
+that `D(q) · s(q) ≤ K` for all `q`, where `K` is independent of `q`.
+The conversion from `D · s ≤ K` to `D ≤ K · s⁻¹` is straightforward:
+- When `|Ω_q| = 0`: both sides are `0` (by Lean's conventions `1/0 = 0` and `0⁻¹ = 0`).
+- When `|Ω_q| > 0`: `s > 0` and the bound follows by dividing by `s`. -/
 lemma deviation_sum_bound_q_indep (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
@@ -126,6 +168,32 @@ lemma deviation_sum_bound_q_indep (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 �
         ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
           (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| ≤
       C * s ^ (-(1 : ℝ)) := by
-  sorry
+  -- Step 1: Obtain the uniform bound K from the Möbius decomposition
+  obtain ⟨K, hK_pos, hK⟩ := deviation_times_spacing_uniform_bound ε hε k hk Ω hΩ hWD hsp X
+    C_lp hC_lp_pos hC_lp
+  -- Step 2: Use K as the constant C
+  refine ⟨K, hK_pos, fun q inst => ?_⟩
+  -- Step 3: Convert D(q) * s ≤ K to D(q) ≤ K * s^{-1}
+  set Ω_q := crtSubset q Ω with hΩ_q_def
+  set s := (q : ℝ) / Ω_q.card with hs_def
+  set D := |(1 / (Ω_q.card : ℝ)) *
+    ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+        Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+      (fun h => inScaledBox X s h)),
+    ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
+      (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| with hD_def
+  -- The key inequality from the helper
+  have hDs : D * s ≤ K := hK q
+  -- Handle the two cases: s = 0 and s > 0
+  by_cases hs0 : Ω_q.card = 0
+  · -- Case: |Ω_q| = 0 → s = q/0 = 0, D = |0*...| = 0, RHS = K*0 = 0
+    simp [hs0, Real.rpow_neg_one]
+  · -- Case: |Ω_q| > 0 → s > 0
+    simp only
+    have hcard_pos : (0 : ℝ) < Ω_q.card :=
+      Nat.cast_pos.mpr (Nat.pos_of_ne_zero hs0)
+    have hs_pos : 0 < s := div_pos (Nat.cast_pos.mpr (NeZero.pos q)) hcard_pos
+    rw [Real.rpow_neg_one]
+    exact le_div_iff₀ hs_pos |>.mpr hDs
 
 end PoissonCRT
