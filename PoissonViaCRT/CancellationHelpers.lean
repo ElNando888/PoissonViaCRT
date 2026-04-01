@@ -21,6 +21,8 @@ import PoissonViaCRT.FluctuationHelpers
 import PoissonViaCRT.LatticePointBound
 import PoissonViaCRT.CancellationInfra
 import PoissonViaCRT.MobiusInfra
+import PoissonViaCRT.CRTMultiplicativity
+import PoissonViaCRT.MobiusSynthesis
 
 /-!
 # Cancellation Helpers for Proposition 3.6
@@ -131,8 +133,8 @@ lemma deviation_times_spacing_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) 
             Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
           (fun h => inScaledBox X s h)),
         ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
-          (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| * s ≤ K := by
-  sorry
+          (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| * s ≤ K :=
+  deviation_final_synthesis ε hε k hk Ω hΩ hWD hsp X C_lp hC_lp_pos hC_lp
 
 /-- The key q-independent deviation bound: the deviation sum
 `(1/|Ω_q|) * ∑_{h in box} (N_k(0::h) - μ)` is bounded by `C * s^{-1}`
