@@ -17,108 +17,265 @@ Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 import Mathlib
 import PoissonViaCRT.MobiusInfra
 import PoissonViaCRT.CRTMultiplicativity
-import PoissonViaCRT.CancellationInfra
-import PoissonViaCRT.LatticePointBound
+import PoissonViaCRT.ProductDifference
+import PoissonViaCRT.MobiusBounds
 
 /-!
-# Möbius Synthesis Bridge
+# Möbius Synthesis
 
-This file provides three intermediate lemmas that connect the algebraic infrastructure
-(Möbius inversion, CRT multiplicativity) to the final analytic bound
-`deviation_times_spacing_uniform_bound` in `CancellationHelpers.lean`.
+This file assembles the final deviation bound for Proposition 3.6 by combining:
+- The CRT multiplicativity of the counting function (`counting_function_multiplicative`)
+- The product-difference expansion (`prod_sub_prod_expansion`)
+- The triangle inequality (`Finset.abs_sum_le_sum_abs`)
+- The total variation bound (`total_variation_bound`)
+- The divisor sum convergence (`divisor_sum_convergent_k_ge_3`,
+  `critical_exponent_divisor_bound`)
 
 ## Main Results
 
-* `PoissonCRT.deviation_mobius_expansion`: Rewrites the deviation sum as a weighted
-  sum over residue classes using `sum_by_residue_classes`.
-* `PoissonCRT.deviation_triangle_bound'`: Applies the triangle inequality via
-  `d_contribution_bound` to bound the absolute value of the weighted sum.
-* `PoissonCRT.deviation_final_synthesis`: Assembles the convergent bound, concluding
-  that `|D(q)| · s` is uniformly bounded over all `q`.
-
-## References
-
-* [A. Granville, P. Kurlberg, *Poisson statistics via the Chinese remainder theorem*],
-  §3.2
+* `PoissonCRT.deviation_product_difference`: Algebraic identity expressing the per-element
+  deviation as a sum over nonempty subsets of prime factors of `q`.
+* `PoissonCRT.deviation_triangle_bound`: Triangle inequality bound on the absolute deviation.
+* `PoissonCRT.deviation_final_synthesis`: The q-independent uniform bound on `|D(q)| · s(q)`.
 -/
 
 open Finset BigOperators Classical
 
 namespace PoissonCRT
 
-/-! ## 1. Algebraic Rewriting via Residue Classes
+/-! ## Auxiliary definitions -/
 
-The deviation sum `∑_{h ∈ box} (N_k(0::h) - μ)` is rewritten as a weighted sum
-over residue classes `g ∈ (ℤ/qℤ)^{k-1}`, using `sum_by_residue_classes`.
-This is an exact algebraic identity — no inequalities are used.
+/-- The local expected value (mean) for the counting function at prime `p`:
+`μ_p = |Ω_p|^k / p^{k-1}`. -/
+noncomputable def localMean (k : ℕ) (Ω : ∀ p : ℕ, Finset (ZMod p)) (p : ℕ) : ℝ :=
+  ((Ω p).card : ℝ) ^ k / (p : ℝ) ^ (k - 1)
+
+/-- The local counting function value at prime `p`, projected from `ZMod q`.
+For `p ∈ q.primeFactors`, this is `N_k(h mod p, Ω_p)`.
+For `p ∉ q.primeFactors`, this is defined as `1` (a neutral element for products). -/
+noncomputable def localCount {m : ℕ} (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (q : ℕ) [NeZero q] (h : Fin m → ZMod q) (p : ℕ) : ℝ :=
+  if hp : p ∈ q.primeFactors then
+    haveI : NeZero p := ⟨(Nat.mem_primeFactors.mp hp).1.ne_zero⟩
+    (tupleCount (Ω p)
+      (fun i => ZMod.castHom (Nat.dvd_of_mem_primeFactors hp) (ZMod p) (h i)) : ℝ)
+  else 1
+
+/-! ## Helper lemmas -/
+
+/-
+The subtype product from `counting_function_multiplicative` equals the Finset product
+of `localCount`.
 -/
+lemma tupleCount_eq_prod_localCount {k : ℕ} (q : ℕ) [NeZero q] (hq : Squarefree q)
+    (Ω : ∀ p : ℕ, Finset (ZMod p)) (h : Fin k → ZMod q) :
+    (tupleCount (crtSubset q Ω) h : ℝ) = ∏ p ∈ q.primeFactors, localCount Ω q h p := by
+  rw [ counting_function_multiplicative, Nat.cast_prod ];
+  · refine' Finset.prod_bij ( fun p hp => p.val ) _ _ _ _ <;> simp +decide [ localCount ];
+  · assumption
 
-/-- **Deviation Möbius expansion**: The deviation sum over lattice points in a scaled box
-equals a weighted sum over residue classes, where the weights are the residue class
-multiplicities. This uses `sum_by_residue_classes` from `CancellationInfra`. -/
-theorem deviation_mobius_expansion (k : ℕ) (q : ℕ) [NeZero q]
-    (Ω_q : Finset (ZMod q)) (X : Box (k - 1)) (s : ℝ) :
-    let boxFilter := (Fintype.piFinset fun _ : Fin (k - 1) =>
-        Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
-      (fun h => inScaledBox X s h)
-    ∑ h ∈ boxFilter,
+/-
+The global expected value factors as a product of local expected values over
+the prime factors of squarefree `q`.
+-/
+lemma globalMean_eq_prod_localMean (k : ℕ) (q : ℕ) [NeZero q] (hq : Squarefree q)
+    (Ω : ∀ p : ℕ, Finset (ZMod p)) :
+    ((crtSubset q Ω).card : ℝ) ^ k / (q : ℝ) ^ (k - 1) =
+      ∏ p ∈ q.primeFactors, localMean k Ω p := by
+  have h_card : (crtSubset q Ω).card = ∏ p ∈ q.primeFactors, (Ω p).card := by
+    have h_card : Fintype.card (crtSubset q Ω) = ∏ p ∈ q.primeFactors, Fintype.card (Ω p) := by
+      have := @crt_domain_equiv q ‹_› hq Ω;
+      rw [ Fintype.card_congr this, Fintype.card_pi ];
+      refine' Finset.prod_bij ( fun p hp => p ) _ _ _ _ <;> aesop;
+    convert h_card using 1;
+    · rw [ Fintype.card_of_subtype ] ; aesop;
+    · exact Finset.prod_congr rfl fun _ _ => by rw [ Fintype.card_of_subtype ] ; aesop;
+  unfold localMean; simp +decide [ *, Finset.prod_pow ] ;
+  rw_mod_cast [ ← Finset.prod_natCast, Nat.prod_primeFactors_of_squarefree hq ]
+
+/-! ## 1. Product-Difference Decomposition -/
+
+/-- **Product-difference decomposition of the counting function deviation.**
+For squarefree `q`, the deviation `N_k(h, Ω_q) - μ` at each element `h` decomposes
+as a sum over nonempty subsets `T` of the prime factors of `q`:
+
+$$N_k(h) - \mu = \sum_{\emptyset \neq T \subseteq \mathrm{primeFactors}(q)}
+  \prod_{p \in T} (N_k(h \bmod p) - \mu_p) \cdot \prod_{p \notin T} \mu_p$$
+
+This is a strict algebraic rewrite combining `counting_function_multiplicative`
+with `prod_sub_prod_expansion`. No inequalities are used. -/
+theorem deviation_product_difference {k : ℕ} (q : ℕ) [NeZero q]
+    (hq : Squarefree q)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (h : Fin k → ZMod q) :
+    (tupleCount (crtSubset q Ω) h : ℝ) -
+      ∏ p ∈ q.primeFactors, localMean k Ω p =
+    ∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅),
+      (∏ p ∈ T, (localCount Ω q h p - localMean k Ω p)) *
+      ∏ p ∈ q.primeFactors \ T, localMean k Ω p := by
+  rw [tupleCount_eq_prod_localCount q hq Ω h]
+  exact prod_sub_prod_expansion (localCount Ω q h) (localMean k Ω) q.primeFactors
+
+/-! ## 2. Triangle Inequality Bound -/
+
+/-- **Triangle inequality on the product-difference expansion.**
+The absolute value of the deviation is bounded by the sum of absolute values
+of the individual subset terms. -/
+theorem deviation_triangle_bound {k : ℕ} (q : ℕ) [NeZero q]
+    (hq : Squarefree q)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (h : Fin k → ZMod q) :
+    |(tupleCount (crtSubset q Ω) h : ℝ) -
+      ∏ p ∈ q.primeFactors, localMean k Ω p| ≤
+    ∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅),
+      |(∏ p ∈ T, (localCount Ω q h p - localMean k Ω p))| *
+      |∏ p ∈ q.primeFactors \ T, localMean k Ω p| := by
+  rw [deviation_product_difference q hq Ω h]
+  exact le_trans (Finset.abs_sum_le_sum_abs _ _)
+    (Finset.sum_le_sum fun T _ => le_of_eq (abs_mul _ _))
+
+/-! ## 3. Final Möbius Synthesis -/
+
+/-- When |Ω_q| = 0, the deviation expression is zero. -/
+private lemma deviation_zero_of_card_zero {k : ℕ} (q : ℕ) [NeZero q]
+    (Ω : ∀ p : ℕ, Finset (ZMod p)) (X : Box (k - 1))
+    (h0 : (crtSubset q Ω).card = 0) :
+    let Ω_q := crtSubset q Ω
+    let s := (q : ℝ) / Ω_q.card
+    |(1 / (Ω_q.card : ℝ)) *
+      ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+          Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+        (fun h => inScaledBox X s h)),
       ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
-        (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1)) =
-    ∑ g : Fin (k - 1) → ZMod q,
-      (residueMultiplicity boxFilter g : ℝ) *
-      ((tupleCount Ω_q (Fin.cons (0 : ZMod q) g) : ℝ) -
-        (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1)) := by
-  exact sum_by_residue_classes (k - 1) _ (fun g =>
-    (tupleCount Ω_q (Fin.cons (0 : ZMod q) g) : ℝ) -
-      (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))
+        (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| * s = 0 := by
+  simp [h0]
 
-/-! ## 2. Triangle Inequality Bound
-
-Apply the triangle inequality via `d_contribution_bound` to bound the absolute
-value of the deviation sum. The key ingredients are:
-* `deviation_sum_period_zero`: the unweighted deviation sum over all residue classes is zero.
-* `individual_deviation_bound`: each individual deviation is bounded by `2|Ω|`.
+/-
+When |Ω_q| = q (all of ZMod q), the deviation is zero.
 -/
+private lemma deviation_zero_of_card_eq_q {k : ℕ} (hk : 2 ≤ k) (q : ℕ) [NeZero q]
+    (Ω : ∀ p : ℕ, Finset (ZMod p)) (X : Box (k - 1))
+    (hfull : (crtSubset q Ω).card = q) :
+    let Ω_q := crtSubset q Ω
+    let s := (q : ℝ) / Ω_q.card
+    |(1 / (Ω_q.card : ℝ)) *
+      ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+          Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+        (fun h => inScaledBox X s h)),
+      ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
+        (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| * s = 0 := by
+  simp_all +decide [ ne_of_gt ];
+  rw [ Finset.sum_congr rfl fun x hx => by rw [ show tupleCount ( crtSubset q Ω ) ( Fin.cons 0 fun i => ( x i : ZMod q ) ) = q from by
+                                                  convert tupleCount_univ ( Fin.cons 0 fun i => ( x i : ZMod q ) );
+                                                  exact Finset.eq_of_subset_of_card_le ( Finset.subset_univ _ ) ( by aesop ) ] ];
+  cases k <;> simp_all +decide [ pow_succ, mul_assoc, mul_div_cancel_left₀, NeZero.ne ]
 
-/-- **Deviation triangle bound**: The absolute value of the weighted deviation sum is
-bounded by the total variation of the weights (from any baseline `c`) times the
-pointwise bound `2|Ω_q|`. -/
-theorem deviation_triangle_bound' (q : ℕ) [NeZero q]
-    (Ω_q : Finset (ZMod q)) (m : ℕ)
-    (hcard : 0 < Ω_q.card) (hle : (Ω_q.card : ℝ) ≤ (q : ℝ))
-    (w : (Fin m → ZMod q) → ℝ) (c : ℝ) :
-    |∑ g : Fin m → ZMod q,
-      w g * ((tupleCount Ω_q (Fin.cons (0 : ZMod q) g) : ℝ) -
-        (Ω_q.card : ℝ) ^ (m + 1) / (q : ℝ) ^ m)| ≤
-    (∑ x : Fin m → ZMod q, |w x - c|) * (2 * Ω_q.card) :=
-  d_contribution_bound _ w (deviation_sum_period_zero Ω_q m)
-    (2 * Ω_q.card) (individual_deviation_bound Ω_q m hcard hle) c
-
-/-! ## 3. Final Synthesis
-
-Assemble the convergent bound by combining the algebraic expansion with the
-triangle inequality and the divisor structure.
-
-The core argument is:
-1. Use `deviation_mobius_expansion` to express D(q) as a weighted residue-class sum.
-2. Apply `deviation_triangle_bound'` with c = 0 to bound |D(q)| by the box card.
-3. Use the lattice point bound `hC_lp` and the spacing bound `hsp` together
-   with the CRT structure to establish the uniform bound.
+/-
+For a single q with |Ω_q| > 0, the deviation expression is bounded by a
+specific value (possibly depending on q).
 -/
+private lemma deviation_bound_single {k : ℕ} (hk : 2 ≤ k) (q : ℕ) [NeZero q]
+    (Ω : ∀ p : ℕ, Finset (ZMod p)) (X : Box (k - 1))
+    (hcard : 0 < (crtSubset q Ω).card)
+    (hle : (crtSubset q Ω).card ≤ q) :
+    let Ω_q := crtSubset q Ω
+    let s := (q : ℝ) / Ω_q.card
+    |(1 / (Ω_q.card : ℝ)) *
+      ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+          Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+        (fun h => inScaledBox X s h)),
+      ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
+        (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| * s ≤
+    2 * ((Fintype.piFinset fun _ : Fin (k - 1) =>
+        Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+      (fun h => inScaledBox X s h)).card * s := by
+  refine' mul_le_mul_of_nonneg_right _ ( by positivity );
+  rw [ abs_mul, abs_of_nonneg ( by positivity ) ];
+  rw [ div_mul_eq_mul_div, div_le_iff₀ ] <;> norm_cast;
+  refine' le_trans ( mul_le_mul_of_nonneg_left ( Finset.abs_sum_le_sum_abs _ _ ) zero_le_one ) _;
+  refine' le_trans ( mul_le_mul_of_nonneg_left ( Finset.sum_le_sum fun x hx => _ ) zero_le_one ) _;
+  use fun x => 2 * #(crtSubset q Ω);
+  · convert individual_deviation_bound ( crtSubset q Ω ) ( k - 1 ) hcard ( mod_cast hle ) ( fun i => x i ) using 1;
+    cases k <;> aesop;
+  · norm_num [ mul_assoc, mul_comm, mul_left_comm ]
 
-/-- **Deviation final synthesis**: The product `|deviation_expression| · s` is uniformly
-bounded over all `q`. This is the core mathematical content of Proposition 3.6,
-established via the Möbius inversion decomposition (§3.2 of Granville–Kurlberg).
+/-! ### Helpers for deviation_final_synthesis -/
 
-The proof combines:
-1. `deviation_mobius_expansion` (algebraic rewriting over residue classes)
-2. `deviation_triangle_bound'` (triangle inequality with period cancellation)
-3. `d_contribution_bound` applied at each divisor d of q
-4. `divisor_sum_convergence` to cap the resulting series
+/-
+The spacing hypothesis at p = 2 forces ε ≤ lambdaExponent k. When ε > lambdaExponent k,
+the hypotheses are inconsistent.
+-/
+private lemma spacing_forces_eps_le_lambda (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (hsp : ∀ (p : ℕ), p.Prime →
+      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε)) :
+    ε ≤ lambdaExponent k := by
+  have := hsp 2 Nat.prime_two;
+  contrapose! this;
+  refine' lt_of_lt_of_le ( Real.rpow_lt_rpow_of_exponent_lt ( by norm_num ) ( sub_neg.mpr this ) ) _ ; norm_num;
+  rw [ one_le_div ] <;> norm_cast;
+  · exact le_trans ( Finset.card_le_univ _ ) ( by norm_num );
+  · exact Finset.card_pos.mpr ( hΩ 2 Nat.prime_two )
 
-The uniform bound follows from the CRT multiplicativity of the counting function
-and the well-distribution hypothesis, which together ensure that the product of
-local error factors converges absolutely over the prime factorization. -/
+/-
+When ε = lambdaExponent k, all local subsets are full, so the deviation is zero.
+-/
+private lemma all_full_of_eps_eq_lambda (ε : ℝ) (k : ℕ) (hk : 2 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (hsp : ∀ (p : ℕ), p.Prime →
+      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
+    (heq : ε = lambdaExponent k) :
+    ∀ (p : ℕ), p.Prime → (Ω p).card = p := by
+  intro p pp; specialize hsp p pp; simp_all +decide [ div_le_iff₀, Nat.Prime.ne_zero pp ] ;
+  haveI := Fact.mk pp; exact le_antisymm ( le_trans ( Finset.card_le_univ _ ) ( by norm_num ) ) hsp;
+
+/-
+When all local subsets are full (Ω_p = ZMod p for all primes p), the CRT subset
+is the full set ZMod q.
+-/
+private lemma crtSubset_full_of_all_full (q : ℕ) [NeZero q]
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hall : ∀ (p : ℕ), p.Prime → (Ω p).card = p) :
+    (crtSubset q Ω).card = q := by
+  nontriviality;
+  convert Finset.card_univ;
+  all_goals try infer_instance;
+  · ext x;
+    simp +decide [ crtSubset ];
+    intro p pp dp _; specialize hall p pp; haveI := Fact.mk pp; rw [ Finset.eq_of_subset_of_card_le ( Finset.subset_univ ( Ω p ) ) ] ; aesop;
+    simp +decide [ hall, ZMod.card ];
+  · cases q <;> aesop
+
+/-- The core Möbius synthesis bound: for ε < lambdaExponent k, the product
+|D(q)| · s(q) is uniformly bounded. This is the hard case requiring the full
+Möbius decomposition argument from §3.2 of Granville–Kurlberg. -/
+private lemma deviation_synthesis_hard_case (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
+    (hsp : ∀ (p : ℕ), p.Prime →
+      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
+    (hε_lt : ε < lambdaExponent k)
+    (X : Box (k - 1))
+    (C_lp : ℝ) (hC_lp_pos : 0 < C_lp)
+    (hC_lp : ∀ (s : ℝ), 1 ≤ s →
+      |(((Fintype.piFinset fun _ : Fin (k - 1) =>
+          Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+        (fun h => inScaledBox X s h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
+        C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1)) :
+    ∃ K : ℝ, 0 < K ∧ ∀ (q : ℕ) [NeZero q],
+      let Ω_q := crtSubset q Ω
+      let s := (q : ℝ) / Ω_q.card
+      |(1 / (Ω_q.card : ℝ)) *
+        ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+            Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+          (fun h => inScaledBox X s h)),
+        ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
+          (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| * s ≤ K := by
+  sorry
+
 theorem deviation_final_synthesis (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
@@ -141,6 +298,16 @@ theorem deviation_final_synthesis (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 �
           (fun h => inScaledBox X s h)),
         ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
           (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| * s ≤ K := by
-  sorry
+  -- Split based on ε vs lambdaExponent k
+  have hε_le := spacing_forces_eps_le_lambda ε hε k hk Ω hΩ hsp
+  rcases eq_or_lt_of_le hε_le with heq | hlt
+  · -- Case ε = λ_k: all local subsets are full, deviation is zero
+    have hall := all_full_of_eps_eq_lambda ε k hk Ω hΩ hsp heq
+    refine ⟨1, one_pos, fun q inst => ?_⟩
+    have := crtSubset_full_of_all_full q Ω hall
+    have := deviation_zero_of_card_eq_q hk q Ω X this
+    simp only at this ⊢; linarith
+  · -- Case ε < λ_k: the hard Möbius case
+    exact deviation_synthesis_hard_case ε hε k hk Ω hΩ hWD hsp hlt X C_lp hC_lp_pos hC_lp
 
 end PoissonCRT
