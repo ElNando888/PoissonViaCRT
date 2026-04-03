@@ -14,8 +14,8 @@ To cite Aristotle, tag @Aristotle-Harmonic on GitHub PRs/issues, and add as co-a
 Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
-import Mathlib
 import PoissonViaCRT.Defs
+import Mathlib.Data.Pi.Interval
 
 /-!
 # Lattice point counting in scaled boxes
@@ -74,11 +74,11 @@ lemma count_inScaledBox_eq_prod_floor (m : ℕ) (X : Box m) (s : ℝ) (hs : 1 �
       · intro i; specialize hh i; split_ifs at hh ⊢ <;> norm_num at hh ⊢;
         · exact ⟨ by norm_num [ * ] ; linarith, by norm_num [ * ] ; exact Int.le_of_lt_add_one <| by rw [ ← @Int.cast_lt ℝ ] ; push_cast; linarith [ Nat.lt_floor_add_one ( s * X.sides i ) ] ⟩;
         · exact ⟨ by split_ifs ; linarith, by split_ifs ; exact Int.le_of_lt_add_one <| by rw [ ← @Int.cast_lt ℝ ] ; push_cast ; linarith [ Nat.lt_floor_add_one ( s * X.sides i ) ] ⟩;
-      · ext i; induction' i with i ih ; simp +decide [ Finset.sum_filter, Finset.sum_range_succ ] ;
-        induction' i with i ih <;> simp +decide [ Finset.sum_ite, Finset.filter_le_eq_Ici ] at *;
+      · ext i; induction' i with i ih ; simp +decide [ Finset.sum_filter ] ;
+        induction' i with i ih <;> simp +decide [ Finset.sum_ite ] at *;
         · rw [ show ( Finset.filter ( fun x : Fin m => x ≤ ⟨ 0, ih ⟩ ) Finset.univ : Finset ( Fin m ) ) = { ⟨ 0, ih ⟩ } from Finset.eq_singleton_iff_unique_mem.mpr ⟨ Finset.mem_filter.mpr ⟨ Finset.mem_univ _, le_rfl ⟩, fun x hx => le_antisymm ( Finset.mem_filter.mp hx |>.2 ) ( Nat.zero_le _ ) ⟩ ] ; aesop;
         · rw [ show ( Finset.filter ( fun x : Fin m => x ≤ ⟨ i + 1, by linarith ⟩ ) Finset.univ : Finset ( Fin m ) ) = Finset.filter ( fun x : Fin m => x ≤ ⟨ i, by linarith ⟩ ) Finset.univ ∪ { ⟨ i + 1, by linarith ⟩ } from ?_, Finset.sum_union ] <;> norm_num [ Finset.sum_singleton, Finset.sum_union, Finset.sum_filter ];
-          · simp_all +decide [ Finset.sum_ite, Finset.filter_le_eq_Ici ];
+          · simp_all +decide [ Finset.sum_ite ];
             linarith [ ih ( Nat.lt_of_succ_lt ‹_› ) ];
           · grind;
     · rintro ⟨ x, hx, rfl ⟩ i; rcases i with ⟨ _ | i, hi ⟩ <;> simp_all +decide [ Finset.sum_filter ] ;
@@ -88,10 +88,10 @@ lemma count_inScaledBox_eq_prod_floor (m : ℕ) (X : Box m) (s : ℝ) (hs : 1 �
         · exact ⟨ hx 0 |>.1, le_trans ( mod_cast hx 0 |>.2 ) ( Nat.floor_le ( mul_nonneg ( by positivity ) ( le_of_lt ( X.sides_pos 0 ) ) ) ) ⟩;
       · constructor <;> rw [ ← Finset.sum_filter, ← Finset.sum_filter ];
         · rw [ show ( Finset.filter ( fun a => a ≤ ⟨ i + 1, hi ⟩ ) Finset.univ : Finset ( Fin m ) ) = Finset.filter ( fun a => a ≤ ⟨ i, by linarith ⟩ ) Finset.univ ∪ { ⟨ i + 1, hi ⟩ } from ?_, Finset.sum_union ] <;> norm_num [ Finset.sum_singleton, Finset.sum_union ] ; linarith [ hx ⟨ i + 1, hi ⟩ ] ;
-          ext ⟨ a, ha ⟩ ; simp +decide [ le_iff_lt_or_eq, Nat.lt_succ_iff ] ; aesop;
+          ext ⟨ a, ha ⟩ ; simp +decide [ le_iff_lt_or_eq ] ; aesop;
         · rw [ show ( Finset.filter ( fun a => a ≤ ⟨ i + 1, hi ⟩ ) Finset.univ : Finset ( Fin m ) ) = Finset.filter ( fun a => a ≤ ⟨ i, by linarith ⟩ ) Finset.univ ∪ { ⟨ i + 1, hi ⟩ } from ?_, Finset.sum_union ] <;> norm_num [ Finset.sum_singleton, hx ];
           · linarith [ show ( x ⟨ i + 1, hi ⟩ : ℝ ) ≤ s * X.sides ⟨ i + 1, hi ⟩ by exact le_trans ( mod_cast hx _ |>.2 ) ( Nat.floor_le ( mul_nonneg ( by positivity ) ( le_of_lt ( X.sides_pos _ ) ) ) ) ];
-          · ext ⟨ a, ha ⟩ ; simp +decide [ le_iff_lt_or_eq, Nat.lt_succ_iff ] ; aesop;
+          · ext ⟨ a, ha ⟩ ; simp +decide [ le_iff_lt_or_eq ] ; aesop;
   -- The set of lattice points in the scaled box is in bijection with the product of the sets of possible values for each coordinate, which has cardinality $\prod_{i} \lfloor s \cdot X.sides i \rfloor$.
   have h_card : Finset.card (Finset.filter (fun h : Fin m → ℤ => inScaledBox X s h) (Fintype.piFinset fun _ : Fin m => Finset.Icc 1 (⌈s * ∑ i, X.sides i⌉₊))) = Finset.card (Finset.image (fun d : Fin m → ℤ => fun i => ∑ j ∈ Finset.univ.filter (fun j => j ≤ i), d j) (Finset.Icc (fun _ => 1) (fun i => ⌊s * X.sides i⌋₊))) := by
     refine' congr_arg Finset.card ( Finset.ext fun x => _ );
@@ -112,14 +112,14 @@ lemma count_inScaledBox_eq_prod_floor (m : ℕ) (X : Box m) (s : ℝ) (hs : 1 �
     exact Int.toNat_of_nonneg <| Int.ceil_nonneg <| mul_nonneg ( by positivity ) <| Finset.sum_nonneg fun _ _ => le_of_lt <| X.sides_pos _;
   · rw [ Finset.card_image_of_injOn ];
     · erw [ Finset.card_map, Finset.card_pi ] ; aesop;
-    · intro d hd d' hd' h_eq; ext i; induction' i with i ih; simp_all +decide [ Finset.sum_filter, Finset.sum_range_succ ] ;
+    · intro d hd d' hd' h_eq; ext i; induction' i with i ih; simp_all +decide [ Finset.sum_filter ] ;
       induction' i with i ih;
       · have := congr_fun h_eq ⟨ 0, ih ⟩ ; simp_all +decide [ Finset.sum_ite ] ;
         rw [ show ( Finset.filter ( fun x => x ≤ ⟨ 0, ih ⟩ ) Finset.univ : Finset ( Fin m ) ) = { ⟨ 0, ih ⟩ } from Finset.eq_singleton_iff_unique_mem.mpr ⟨ Finset.mem_filter.mpr ⟨ Finset.mem_univ _, le_rfl ⟩, fun x hx => le_antisymm ( Finset.mem_filter.mp hx |>.2 ) ( Nat.zero_le _ ) ⟩ ] at this ; aesop;
-      · have := congr_fun h_eq ⟨ i + 1, ih ⟩ ; have := congr_fun h_eq ⟨ i, by linarith ⟩ ; simp_all +decide [ Finset.sum_ite, Finset.filter_le_eq_Ici ] ;
+      · have := congr_fun h_eq ⟨ i + 1, ih ⟩ ; have := congr_fun h_eq ⟨ i, by linarith ⟩ ; simp_all +decide [ Finset.sum_ite ] ;
         rw [ show ( Finset.filter ( fun x => x ≤ ⟨ i + 1, by linarith ⟩ ) Finset.univ : Finset ( Fin m ) ) = Finset.filter ( fun x => x ≤ ⟨ i, by linarith ⟩ ) Finset.univ ∪ { ⟨ i + 1, by linarith ⟩ } from ?_, Finset.sum_union ] at * <;> norm_num at *;
         · linarith;
-        · ext ⟨ j, hj ⟩ ; simp +decide [ le_iff_lt_or_eq, Nat.lt_succ_iff ] ;
+        · ext ⟨ j, hj ⟩ ; simp +decide [ le_iff_lt_or_eq ] ;
           tauto
 
 /-! ### Step 2: Product error bound

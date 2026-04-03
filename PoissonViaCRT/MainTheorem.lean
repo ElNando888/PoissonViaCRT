@@ -14,8 +14,7 @@ To cite Aristotle, tag @Aristotle-Harmonic on GitHub PRs/issues, and add as co-a
 Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
-import Mathlib
-import PoissonViaCRT.Defs
+-- import Mathlib
 import PoissonViaCRT.TupleCount
 import PoissonViaCRT.Combinatorics
 import PoissonViaCRT.FluctuationHelpers
@@ -272,7 +271,7 @@ lemma euler_product_convergence
   · exact fun _ _ _ _ => by positivity;
   · intro p pp dp _; rw [ abs_of_nonneg ( Real.rpow_nonneg ( Nat.cast_nonneg _ ) _ ) ] ; rw [ abs_of_nonneg ] <;> norm_num;
     · exact le_trans ( mul_le_of_le_one_left ( by positivity ) ( sub_le_self _ ( by positivity ) ) ) ( by simpa using Real.rpow_le_rpow_of_exponent_le ( mod_cast pp.one_lt.le ) ( neg_nonpos.mpr hε.le ) );
-    · rw [ div_le_iff₀ ] <;> norm_cast <;> haveI := Fact.mk pp <;> simp_all +decide [ Finset.card_univ ];
+    · rw [ div_le_iff₀ ] <;> norm_cast <;> haveI := Fact.mk pp <;> simp_all;
       · haveI := Fact.mk pp; exact le_trans ( Finset.card_le_univ _ ) ( by norm_num ) ;
       · exact pp.pos
 

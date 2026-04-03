@@ -14,7 +14,13 @@ To cite Aristotle, tag @Aristotle-Harmonic on GitHub PRs/issues, and add as co-a
 Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
-import Mathlib
+import Mathlib.Algebra.BigOperators.Ring.Finset
+import Mathlib.Data.Finset.Powerset
+import Mathlib.Data.Fintype.Pi
+import Mathlib.Data.Nat.PrimeFin
+import Mathlib.Data.ZMod.Basic
+import Mathlib.Tactic
+
 
 /-!
 # Poisson Statistics via the Chinese Remainder Theorem — Definitions

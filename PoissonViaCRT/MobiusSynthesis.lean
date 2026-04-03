@@ -14,7 +14,6 @@ To cite Aristotle, tag @Aristotle-Harmonic on GitHub PRs/issues, and add as co-a
 Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
-import Mathlib
 import PoissonViaCRT.MobiusInfra
 import PoissonViaCRT.CRTMultiplicativity
 import PoissonViaCRT.ProductDifference
@@ -164,11 +163,11 @@ private lemma deviation_zero_of_card_eq_q {k : ℕ} (hk : 2 ≤ k) (q : ℕ) [Ne
         (fun h => inScaledBox X s h)),
       ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
         (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| * s = 0 := by
-  simp_all +decide [ ne_of_gt ];
+  simp_all;
   rw [ Finset.sum_congr rfl fun x hx => by rw [ show tupleCount ( crtSubset q Ω ) ( Fin.cons 0 fun i => ( x i : ZMod q ) ) = q from by
                                                   convert tupleCount_univ ( Fin.cons 0 fun i => ( x i : ZMod q ) );
                                                   exact Finset.eq_of_subset_of_card_le ( Finset.subset_univ _ ) ( by aesop ) ] ];
-  cases k <;> simp_all +decide [ pow_succ, mul_assoc, mul_div_cancel_left₀, NeZero.ne ]
+  cases k <;> simp_all +decide [ pow_succ, mul_div_cancel_left₀, NeZero.ne ]
 
 /-
 For a single q with |Ω_q| > 0, the deviation expression is bounded by a
@@ -228,7 +227,7 @@ private lemma all_full_of_eps_eq_lambda (ε : ℝ) (k : ℕ) (hk : 2 ≤ k)
       (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
     (heq : ε = lambdaExponent k) :
     ∀ (p : ℕ), p.Prime → (Ω p).card = p := by
-  intro p pp; specialize hsp p pp; simp_all +decide [ div_le_iff₀, Nat.Prime.ne_zero pp ] ;
+  intro p pp; specialize hsp p pp; simp_all +decide [ div_le_iff₀ ] ;
   haveI := Fact.mk pp; exact le_antisymm ( le_trans ( Finset.card_le_univ _ ) ( by norm_num ) ) hsp;
 
 /-
