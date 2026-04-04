@@ -22,7 +22,7 @@ import PoissonViaCRT.MobiusInfra
 import PoissonViaCRT.CRTMultiplicativity
 import PoissonViaCRT.ProductDifference
 import PoissonViaCRT.LatticePointBound
-import PoissonViaCRT.MobiusSynthesis
+-- import PoissonViaCRT.MobiusSynthesis
 
 /-!
 # Hard Case Synthesis
@@ -132,7 +132,7 @@ The synthesis proceeds as:
    `∑_{d|q} d^{-α} ≤ ∑' n, n^{-α}`.
 3. Combine via monotonicity of multiplication to conclude the `O(s⁻¹)` bound.
 -/
-theorem deviation_synthesis_hard_case
+theorem deviation_synthesis_harder_case
     (q : ℕ) (_hq : 0 < q)
     (f : ℕ → ℝ)
     (C : ℝ) (hC : 0 ≤ C)

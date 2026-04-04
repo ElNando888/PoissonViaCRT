@@ -18,6 +18,7 @@ import PoissonViaCRT.MobiusInfra
 import PoissonViaCRT.CRTMultiplicativity
 import PoissonViaCRT.ProductDifference
 import PoissonViaCRT.MobiusBounds
+import PoissonViaCRT.HardCaseSynthesis
 
 /-!
 # Möbius Synthesis
@@ -247,9 +248,56 @@ private lemma crtSubset_full_of_all_full (q : ℕ) [NeZero q]
     simp +decide [ hall, ZMod.card ];
   · cases q <;> aesop
 
+/-- **Per-q Möbius decomposition bound.** For each `q`, the deviation `|D(q)| · s`
+is bounded by `|∑_{d | q} f(d)|` for a function `f` satisfying per-divisor bounds
+`|f(d)| ≤ C · d^{-α}` with `C ≥ 0` and `α > 1` independent of `q`.
+
+The function `f` encodes the Möbius decomposition of the deviation: for each
+squarefree divisor `d > 1` of `q`, `f(d)` is the boundary-weighted sum of the
+local deviation product `∏_{p | d} δ_p` over the lattice points in the scaled box,
+scaled by `s / |Ω_q|` and the complementary local means `∏_{p ∤ d} μ_p`.
+
+The per-divisor bound uses:
+- Period cancellation (`divisor_period_cancellation`): complete periods contribute zero.
+- Total variation bound (`total_variation_bound`): boundary terms are controlled.
+- Well-distribution (`WellDistributed`): local deviations decay with `p^{-ε}`.
+- Spacing hypothesis (`hsp`): controls the growth of `s` relative to `q`. -/
+lemma deviation_mobius_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
+    (hsp : ∀ (p : ℕ), p.Prime →
+      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
+    (hε_lt : ε < lambdaExponent k)
+    (X : Box (k - 1))
+    (C_lp : ℝ) (hC_lp_pos : 0 < C_lp)
+    (hC_lp : ∀ (s : ℝ), 1 ≤ s →
+      |(((Fintype.piFinset fun _ : Fin (k - 1) =>
+          Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+        (fun h => inScaledBox X s h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
+        C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1)) :
+    ∃ C : ℝ, 0 ≤ C ∧ ∃ α : ℝ, 1 < α ∧
+      ∀ (q : ℕ) [NeZero q],
+        ∃ f : ℕ → ℝ,
+          (∀ d ∈ q.divisors, |f d| ≤ C * ((d : ℝ) ^ α)⁻¹) ∧
+          (let Ω_q := crtSubset q Ω
+           let s := (q : ℝ) / Ω_q.card
+           |(1 / (Ω_q.card : ℝ)) *
+             ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+                 Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+               (fun h => inScaledBox X s h)),
+             ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
+               (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| * s ≤
+           |∑ d ∈ q.divisors, f d|) := by
+  sorry
+
 /-- The core Möbius synthesis bound: for ε < lambdaExponent k, the product
 |D(q)| · s(q) is uniformly bounded. This is the hard case requiring the full
-Möbius decomposition argument from §3.2 of Granville–Kurlberg. -/
+Möbius decomposition argument from §3.2 of Granville–Kurlberg.
+
+The proof applies `deviation_synthesis_harder_case` to the Möbius decomposition
+obtained from `deviation_mobius_bound`, converting the per-q divisor sum bound
+into a q-independent constant via the convergent p-series. -/
 private lemma deviation_synthesis_hard_case (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
@@ -273,7 +321,28 @@ private lemma deviation_synthesis_hard_case (ε : ℝ) (hε : 0 < ε) (k : ℕ) 
           (fun h => inScaledBox X s h)),
         ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
           (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| * s ≤ K := by
-  sorry
+  -- Step 1: Obtain the Möbius decomposition and per-divisor bounds
+  obtain ⟨C, hC, α, hα, hdecomp⟩ :=
+    deviation_mobius_bound ε hε k hk Ω hΩ hWD hsp hε_lt X C_lp hC_lp_pos hC_lp
+  -- Step 2: Set K = max 1 (C * ∑' n, (n^α)⁻¹)
+  refine ⟨max 1 (C * ∑' n : ℕ, ((n : ℝ) ^ α)⁻¹), lt_max_of_lt_left one_pos, fun q inst => ?_⟩
+  -- Step 3: For each q, obtain the per-divisor function and bounds
+  obtain ⟨f, hfg, hbound⟩ := hdecomp q
+  -- Step 4: Chain the bounds using deviation_synthesis_harder_case
+  calc |(1 / ((crtSubset q Ω).card : ℝ)) *
+        ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+            Finset.Icc (1 : ℤ) ⌈((q : ℝ) / (crtSubset q Ω).card) *
+              ∑ i, X.sides i⌉).filter
+          (fun h => inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) h)),
+        ((tupleCount (crtSubset q Ω)
+            (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
+          ((crtSubset q Ω).card : ℝ) ^ k /
+            (q : ℝ) ^ (k - 1))| *
+        ((q : ℝ) / (crtSubset q Ω).card)
+      _ ≤ |∑ d ∈ q.divisors, f d| := hbound
+      _ ≤ C * ∑' n : ℕ, ((n : ℝ) ^ α)⁻¹ :=
+          deviation_synthesis_harder_case q (NeZero.pos q) f C hC α hα hfg
+      _ ≤ max 1 (C * ∑' n : ℕ, ((n : ℝ) ^ α)⁻¹) := le_max_right _ _
 
 theorem deviation_final_synthesis (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
