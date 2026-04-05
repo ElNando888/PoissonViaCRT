@@ -55,7 +55,8 @@ theorem tupleCount_le_card (Ω : Finset (ZMod q)) (h : Fin (k + 1) → ZMod q) :
 /-- When `k = 0`, `N_0(h, Ω)` counts all elements of `ℤ/qℤ`, i.e., equals `q`. -/
 theorem tupleCount_zero (Ω : Finset (ZMod q)) (h : Fin 0 → ZMod q) :
     tupleCount Ω h = q := by
-  unfold tupleCount; aesop
+  unfold tupleCount
+  simp_all only [IsEmpty.forall_iff, filter_true, card_univ, ZMod.card]
 
 /-- Shifting all offsets by a constant doesn't change `N_k`. -/
 theorem tupleCount_shift (Ω : Finset (ZMod q)) (h : Fin k → ZMod q) (c : ZMod q) :
@@ -64,7 +65,8 @@ theorem tupleCount_shift (Ω : Finset (ZMod q)) (h : Fin k → ZMod q) (c : ZMod
   rw [Finset.card_filter, Finset.card_filter]
   apply Finset.sum_bij (fun i _ => i + c)
   · exact fun _ _ => Finset.mem_univ _
-  · aesop
+  · intro a₁ ha₁ a₂ ha₂ a
+    simp_all only [mem_univ, add_left_inj]
   · exact fun b _ => ⟨b - c, Finset.mem_univ _, sub_add_cancel _ _⟩
   · simp +decide only [add_comm, add_left_comm]
     tauto
@@ -129,7 +131,8 @@ theorem tupleCount_sum_cons_eq (Ω : Finset (ZMod q)) :
     grind
   convert Finset.sum_congr rfl h_inner using 1
   · simp +decide [Fin.forall_fin_succ]
-    rw [← Finset.sum_subset (Finset.subset_univ Ω)]; aesop
+    rw [← Finset.sum_subset (Finset.subset_univ Ω)]
+    simp_all only [sum_boole, Nat.cast_id, true_and, sum_const, smul_eq_mul]
     simp +contextual
   · norm_num [pow_succ']
 
@@ -143,11 +146,13 @@ theorem tupleCount_mono {Ω₁ Ω₂ : Finset (ZMod q)} (h : Fin k → ZMod q)
 /-- `N_k(h, ∅) = 0` for `k ≥ 1`. -/
 theorem tupleCount_empty (h : Fin (k + 1) → ZMod q) :
     tupleCount (∅ : Finset (ZMod q)) h = 0 := by
-  unfold tupleCount; aesop
+  unfold tupleCount
+  simp_all only [notMem_empty, forall_const, filter_false, card_empty]
 
 /-- `N_k(h, univ) = q` for all `h`. -/
 theorem tupleCount_univ (h : Fin k → ZMod q) :
     tupleCount (univ : Finset (ZMod q)) h = q := by
-  unfold tupleCount; aesop
+  unfold tupleCount
+  simp_all only [mem_univ, implies_true, filter_true, card_univ, ZMod.card]
 
 end PoissonCRT
