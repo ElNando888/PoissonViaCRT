@@ -19,6 +19,8 @@ import PoissonViaCRT.CRTMultiplicativity
 import PoissonViaCRT.ProductDifference
 import PoissonViaCRT.MobiusBounds
 import PoissonViaCRT.HardCaseSynthesis
+import PoissonViaCRT.ScaledBoxVariation
+import PoissonViaCRT.MobiusOptimization
 
 /-!
 # Möbius Synthesis
