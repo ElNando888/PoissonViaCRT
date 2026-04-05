@@ -485,8 +485,10 @@ theorem countTuples_bound_prop (Γ : GammaStructure (k + 1)) (H : ℕ) :
       exact h_eq;
   refine le_trans h_card ?_ ; norm_num [ Finset.prod_add ];
   refine Finset.sum_le_sum fun s hs => ?_;
-  rw [ ← Finset.prod_const ];
-  rw [ ← Finset.prod_div_distrib ] ; exact Finset.prod_le_prod ( fun _ _ => by positivity ) fun _ _ => by rw [ le_div_iff₀ ( Nat.cast_pos.mpr <| Nat.pos_of_ne_zero <| by { exact Nat.ne_of_gt <| Nat.pos_of_ne_zero <| by { intro t; have := Γ.gammaRow_squarefree ( Fin.succ ‹_› ) ; simp_all } } ) ] ; norm_cast ; nlinarith [ Nat.div_mul_le_self H ( Γ.gammaRow ( Fin.succ ‹_› ) ) ] ;
+  rw [← Finset.prod_const, ← Finset.prod_div_distrib]
+  exact Finset.prod_le_prod (fun _ _ => by positivity) fun i _ => by
+    rw [le_div_iff₀ (Γ.gammaRow_cast_pos i.succ)]
+    exact_mod_cast Nat.div_mul_le_self H (Γ.gammaRow i.succ)
 
 /-- **Corollary to Proposition 3.2** (weaker but unconditional bound):
 `M_Γ(H) ≤ (2H + 1)^k`. Each coordinate (after fixing `h₀ = 0`) has at most `H + 1`
@@ -537,8 +539,8 @@ theorem countTuples_bound_large_gamma (Γ : GammaStructure (k + 1)) (H : ℕ)
   have h_split : ∏ i : Fin k, ((H : ℝ) / (Γ.gammaRow i.succ) + 1) ≤ ((H : ℝ) / (Γ.gammaRow i₀.succ) + 1) * ∏ i ∈ Finset.univ.erase i₀, ((H : ℝ) + 1) := by
     rw [ ← Finset.mul_prod_erase _ _ ( Finset.mem_univ i₀ ) ];
     gcongr;
-    exact div_le_self ( Nat.cast_nonneg _ ) ( mod_cast Nat.pos_of_ne_zero ( by
-      exact Nat.ne_of_gt <| Nat.pos_of_ne_zero <| by intro h; have := Γ.gammaRow_squarefree ( Fin.succ ‹_› ) ; simp_all ; ) )
+    exact div_le_self (Nat.cast_nonneg _)
+      (mod_cast Nat.pos_of_ne_zero (Γ.gammaRow_ne_zero (Fin.succ ‹_›)))
   generalize_proofs at *; (
   -- For $H \geq 1$, we have $H / \Gamma Ramadan.gammaRow i₀.boost + 1 \leq 2$.
   by_cases hH : H ≥ 1 <;> simp_all;
