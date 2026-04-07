@@ -66,8 +66,28 @@ lemma GammaStructure.prime_dvd_trans (Γ : GammaStructure k)
     {p : ℕ} (hp : Nat.Prime p) {i j l : Fin k}
     (hij : i ≠ j) (hjl : j ≠ l) (hil : i ≠ l)
     (h1 : p ∣ Γ.gamma i j) (h2 : p ∣ Γ.gamma j l) :
-    p ∣ Γ.gamma i l := by
-  exact dvd_trans ( Nat.dvd_gcd h1 h2 ) ( Γ.compat i j l hij hjl hil )
+    p ∣ Γ.gamma i l :=
+      dvd_trans ( Nat.dvd_gcd h1 h2 ) ( Γ.compat i j l hij hjl hil )
+
+/-- The relation `fun i j => p ∣ Γ.gamma (f i) (f j) ∨ i = j` is an equivalence
+relation for any injective `f : Fin k → Fin k`. -/
+private lemma GammaStructure.prime_dvd_or_eq_equiv (Γ : GammaStructure k)
+    (p : ℕ) (hp : Nat.Prime p) (f : Fin k → Fin k) (hf : Function.Injective f) :
+    Equivalence (fun i j => p ∣ Γ.gamma (f i) (f j) ∨ i = j) where
+  refl i := Or.inr rfl
+  symm {i j} hij := by
+    rcases hij with h | rfl
+    · exact Or.inl (by rwa [Γ.symm])
+    · exact Or.inr rfl
+  trans {i j l} hij hjl := by
+    rcases eq_or_ne i j with rfl | hne_ij
+    · exact hjl
+    rcases eq_or_ne j l with rfl | hne_jl
+    · exact hij
+    rcases eq_or_ne i l with rfl | hne_il
+    · exact Or.inr rfl
+    exact Or.inl (Γ.prime_dvd_trans hp (hf.ne hne_ij) (hf.ne hne_jl) (hf.ne hne_il)
+      (hij.resolve_right hne_ij) (hjl.resolve_right hne_jl))
 
 -- Proof sketch: gammaRow j = (Finset. See docs/proof_sketches.md.
 lemma GammaStructure.gammaRow_squarefree (Γ : GammaStructure k) (j : Fin k) :
@@ -111,8 +131,8 @@ lemma GammaStructure.factorization_gammaRow_eq (Γ : GammaStructure k)
       if ∃ i ∈ Finset.Iio j, p ∣ Γ.gamma i j then 1 else 0 := by
   split_ifs with h;
   · -- Since there exists $i < j$ such that $p \mid \gamma_{i,j}$, the lcm of $\gamma_{i,j}$ for $i < j$ must be divisible by $p$.
-    have h_lcm_div : p ∣ Γ.gammaRow j := by
-      exact dvd_trans h.choose_spec.2 ( Finset.dvd_lcm h.choose_spec.1 );
+    have h_lcm_div : p ∣ Γ.gammaRow j :=
+      dvd_trans h.choose_spec.2 ( Finset.dvd_lcm h.choose_spec.1 )
     exact Nat.factorization_eq_one_of_squarefree (gammaRow_squarefree Γ j) hp h_lcm_div;
   · simp_all +decide [ Nat.factorization_eq_zero_iff, GammaStructure.gammaRow ];
     refine' Or.inl _;
@@ -181,16 +201,16 @@ lemma card_image_classMin_eq_of_perm {n : ℕ}
       rw [ Finset.mem_image ] at ha₂; obtain ⟨ j₂, _, rfl ⟩ := ha₂; exact ⟨ j₂, rfl ⟩ ;
     have h_eq_classes : R₂ (σ j₁) (σ j₂) := by
       have h_eq_classes : R₂ (σ a₁) (σ a₂) := by
-        have h_eq_classes : R₂ (Finset.min' (Finset.univ.filter fun i => R₂ i (σ a₁)) ⟨σ a₁, Finset.mem_filter.mpr ⟨Finset.mem_univ _, hrefl₂ _⟩⟩) (σ a₁) ∧ R₂ (Finset.min' (Finset.univ.filter fun i => R₂ i (σ a₂)) ⟨σ a₂, Finset.mem_filter.mpr ⟨Finset.mem_univ _, hrefl₂ _⟩⟩) (σ a₂) := by
-          exact ⟨ Finset.mem_filter.mp ( Finset.min'_mem ( Finset.univ.filter fun i => R₂ i ( σ a₁ ) ) ⟨ σ a₁, Finset.mem_filter.mpr ⟨ Finset.mem_univ _, hrefl₂ _ ⟩ ⟩ ) |>.2, Finset.mem_filter.mp ( Finset.min'_mem ( Finset.univ.filter fun i => R₂ i ( σ a₂ ) ) ⟨ σ a₂, Finset.mem_filter.mpr ⟨ Finset.mem_univ _, hrefl₂ _ ⟩ ⟩ ) |>.2 ⟩;
+        have h_eq_classes : R₂ (Finset.min' (Finset.univ.filter fun i => R₂ i (σ a₁)) ⟨σ a₁, Finset.mem_filter.mpr ⟨Finset.mem_univ _, hrefl₂ _⟩⟩) (σ a₁) ∧ R₂ (Finset.min' (Finset.univ.filter fun i => R₂ i (σ a₂)) ⟨σ a₂, Finset.mem_filter.mpr ⟨Finset.mem_univ _, hrefl₂ _⟩⟩) (σ a₂) :=
+          ⟨ Finset.mem_filter.mp ( Finset.min'_mem ( Finset.univ.filter fun i => R₂ i ( σ a₁ ) ) ⟨ σ a₁, Finset.mem_filter.mpr ⟨ Finset.mem_univ _, hrefl₂ _ ⟩ ⟩ ) |>.2, Finset.mem_filter.mp ( Finset.min'_mem ( Finset.univ.filter fun i => R₂ i ( σ a₂ ) ) ⟨ σ a₂, Finset.mem_filter.mpr ⟨ Finset.mem_univ _, hrefl₂ _ ⟩ ⟩ ) |>.2 ⟩
         grind +ring
       generalize_proofs at *; (
       have h_eq_classes : R₁ a₁ j₁ ∧ R₁ a₂ j₂ := by
         exact ⟨ hj₁.symm ▸ Finset.min'_mem _ _ |> fun x => by simpa using x, hj₂.symm ▸ Finset.min'_mem _ _ |> fun x => by simpa using x ⟩
       generalize_proofs at *; (
       grind +ring))
-    have h_eq_classes' : R₁ j₁ j₂ := by
-      exact hcompat _ _ |>.2 h_eq_classes
+    have h_eq_classes' : R₁ j₁ j₂ :=
+      hcompat _ _ |>.2 h_eq_classes
     have h_eq_classes'' : a₁ = a₂ := by
       have h_eq_classes'' : Finset.filter (fun i => R₁ i j₁) Finset.univ = Finset.filter (fun i => R₁ i j₂) Finset.univ := by
         grind +ring;
@@ -230,31 +250,10 @@ lemma GammaStructure.perm_count_eq (Γ : GammaStructure k)
   set R₁ : Fin k → Fin k → Prop := fun i j => p ∣ Γ.gamma i j ∨ i = j
   set R₂ : Fin k → Fin k → Prop := fun i j => p ∣ Γ.gamma (σ i) (σ j) ∨ i = j;
   -- Show that R₁ and R₂ are equivalence relations.
-  have hR₁_equiv : Equivalence R₁ := by
-    constructor;
-    · aesop;
-    · intro i j hij; cases hij <;> simp_all +decide [ Nat.dvd_iff_mod_eq_zero ] ;
-      · exact Or.inl ( Nat.dvd_of_mod_eq_zero ( by rw [ ← ‹Γ.gamma i j % p = 0›, Γ.symm ] ) );
-      · exact Or.inr rfl;
-    · intro i j l hij hjl; cases eq_or_ne i j <;> cases eq_or_ne j l <;> cases eq_or_ne i l <;> simp_all;
-      · exact Or.inr rfl;
-      · exact Or.inl <| GammaStructure.prime_dvd_trans Γ hp ‹_› ‹_› ‹_› ( hij.resolve_right ‹_› ) ( hjl.resolve_right ‹_› )
-  have hR₂_equiv : Equivalence R₂ := by
-    constructor;
-    · aesop;
-    · simp +zetaDelta at *;
-      exact fun { x y } h => Or.imp ( fun h => by simpa only [ Γ.symm ] using h ) ( fun h => by simpa only [ eq_comm ] using h ) h;
-    · intro i j k hi hj; cases hi <;> cases hj <;> simp_all +decide [ ← ZMod.natCast_eq_zero_iff ] ;
-      · have := Γ.compat ( σ i ) ( σ j ) ( σ k ) ; simp_all +decide [ ZMod.natCast_eq_zero_iff ] ;
-        by_cases hij : i = j <;> by_cases hjk : j = k <;> by_cases hik : i = k <;> simp_all;
-        · exact Or.inr rfl;
-        · exact Or.inl ‹_›;
-        · aesop;
-        · exact Or.inr rfl;
-        · exact Or.inl ( dvd_trans ( Nat.dvd_gcd ‹_› ‹_› ) this );
-      · exact Or.inl <| by rw [ ← ZMod.natCast_eq_zero_iff ] ; aesop;
-      · rw [ ZMod.natCast_eq_zero_iff ] at * ; aesop;
-      · exact Or.inr rfl;
+  have hR₁_equiv : Equivalence R₁ :=
+    Γ.prime_dvd_or_eq_equiv p hp id Function.injective_id
+  have hR₂_equiv : Equivalence R₂ :=
+    Γ.prime_dvd_or_eq_equiv p hp σ σ.injective
   -- Show that R₁ and R₂ have the same equivalence classes.
   have hR₁R₂_classes : ∀ i j, R₁ i j ↔ R₂ (σ.symm i) (σ.symm j) := by
     aesop;
@@ -289,8 +288,8 @@ lemma GammaStructure.gammaRow_cast_ne_zero (Γ : GammaStructure k) (j : Fin k) :
     (Γ.gammaRow j : ℝ) ≠ 0 :=
   (Γ.gammaRow_cast_pos j).ne'
 
-lemma GammaStructure.gammaProd_pos (Γ : GammaStructure k) : 0 < Γ.gammaProd := by
-  exact Finset.prod_pos fun j _ => Γ.gammaRow_pos j
+lemma GammaStructure.gammaProd_pos (Γ : GammaStructure k) : 0 < Γ.gammaProd :=
+  Finset.prod_pos fun j _ => Γ.gammaRow_pos j
 
 -- Proof sketch: Use Nat. See docs/proof_sketches.md.
 theorem GammaStructure.gammaProd_perm_invariant (hk : 0 < k) (Γ : GammaStructure k)
@@ -375,8 +374,8 @@ lemma card_set_pairwise_dvd_le {m : ℕ} (hm : 0 < m) (H : ℕ)
   by_cases hS_empty : S = ∅;
   · aesop;
   · -- Let $x₀$ be the minimum element of $S$.
-    obtain ⟨x₀, hx₀⟩ : ∃ x₀ ∈ S, ∀ x ∈ S, x₀ ≤ x := by
-      exact ⟨ Finset.min' S ( Finset.nonempty_of_ne_empty hS_empty ), Finset.min'_mem _ _, fun x hx => Finset.min'_le _ _ hx ⟩;
+    obtain ⟨x₀, hx₀⟩ : ∃ x₀ ∈ S, ∀ x ∈ S, x₀ ≤ x :=
+      ⟨ Finset.min' S ( Finset.nonempty_of_ne_empty hS_empty ), Finset.min'_mem _ _, fun x hx => Finset.min'_le _ _ hx ⟩
     -- Since $S$ is a subset of $\{x₀, x₀ + m, x₀ + 2m, \ldots\}$, we can map each element $x \in S$ to $(x - x₀) / m$, which is an integer.
     have h_map : S.image (fun x => (x - x₀) / m) ⊆ Finset.Icc 0 (H / m) := by
       exact Finset.image_subset_iff.mpr fun x hx => Finset.mem_Icc.mpr ⟨ Int.ediv_nonneg ( sub_nonneg.mpr ( hx₀.2 x hx ) ) ( Nat.cast_nonneg _ ), Int.ediv_le_ediv ( by positivity ) ( by linarith [ hS x hx, hS x₀ hx₀.1 ] ) ⟩;
@@ -446,8 +445,8 @@ lemma card_filtered_le_prod_of_fiber_dvd (n : ℕ) (H : ℕ) (m : Fin n → ℕ)
     · intro x hx y hy; have := hx.2; have := hy.2; simp_all;
       exact fun h => funext fun i => if hi : i.val < n then by simpa [ Fin.ext_iff ] using congr_fun ‹Fin.init x = g› ⟨ i.val, hi ⟩ |> Eq.trans <| congr_fun ‹Fin.init y = g› ⟨ i.val, hi ⟩ |> Eq.symm else by rw [ show i = Fin.last n from le_antisymm ( Fin.le_last _ ) ( not_lt.mp hi ) ] ; exact h;
   have h_S_card : S.card ≤ I.card * (H / m (Fin.last n) + 1) := by
-    have h_S_card : S.card = ∑ g ∈ I, (S.filter (fun h => Fin.init h = g)).card := by
-      exact Finset.card_eq_sum_card_image _ _
+    have h_S_card : S.card = ∑ g ∈ I, (S.filter (fun h => Fin.init h = g)).card :=
+      Finset.card_eq_sum_card_image _ _
     generalize_proofs at *; (
     exact h_S_card.symm ▸ le_trans ( Finset.sum_le_sum h_fib_card ) ( by simp +decide [ mul_comm ] ) ;)
   exact le_trans h_S_card (by
@@ -512,8 +511,8 @@ theorem countTuples_bound_small_gamma (Γ : GammaStructure (k + 1)) (H : ℕ)
   rw [ le_div_iff₀ ];
   · -- From countTuples_bound_prop, we have:
     have h_bound : (countTuplesWithGamma Γ H : ℝ) * (∏ i : Fin k, Γ.gammaRow i.succ) ≤ (2 * H : ℝ) ^ k := by
-      have h_bound : (countTuplesWithGamma Γ H : ℝ) ≤ ∏ i : Fin k, ((H : ℝ) / (Γ.gammaRow i.succ) + 1) := by
-        exact countTuples_bound_prop Γ H;
+      have h_bound : (countTuplesWithGamma Γ H : ℝ) ≤ ∏ i : Fin k, ((H : ℝ) / (Γ.gammaRow i.succ) + 1) :=
+        countTuples_bound_prop Γ H
       have h_bound : (∏ i : Fin k, ((H : ℝ) / (Γ.gammaRow i.succ) + 1)) * (∏ i : Fin k, Γ.gammaRow i.succ) ≤ (∏ i : Fin k, (2 * H : ℝ)) := by
         rw [ Nat.cast_prod ];
         rw [ ← Finset.prod_mul_distrib ] ; exact Finset.prod_le_prod ( fun _ _ => mul_nonneg ( add_nonneg ( div_nonneg ( Nat.cast_nonneg _ ) ( Nat.cast_nonneg _ ) ) zero_le_one ) ( Nat.cast_nonneg _ ) ) fun i hi => by nlinarith [ show ( Γ.gammaRow i.succ : ℝ ) ≥ 1 from mod_cast Nat.pos_of_ne_zero ( by
@@ -533,8 +532,8 @@ theorem countTuples_bound_large_gamma (Γ : GammaStructure (k + 1)) (H : ℕ)
     (countTuplesWithGamma Γ H : ℝ) ≤ 2 ^ k * (H : ℝ) ^ (k - 1) := by
   -- Let's choose any index $i₀$ for which $H \leq \Gamma رمضان.gammaRow i₀.boost$.
   obtain ⟨i₀, hi₀⟩ := hlarge;
-  have h_bound : (countTuplesWithGamma Γ H) ≤ ∏ i : Fin k, ((H : ℝ) / (Γ.gammaRow i.succ) + 1) := by
-    exact countTuples_bound_prop Γ H;
+  have h_bound : (countTuplesWithGamma Γ H) ≤ ∏ i : Fin k, ((H : ℝ) / (Γ.gammaRow i.succ) + 1) :=
+    countTuples_bound_prop Γ H
   -- Split the product into the term for $i₀$ and the product over the remaining terms.
   have h_split : ∏ i : Fin k, ((H : ℝ) / (Γ.gammaRow i.succ) + 1) ≤ ((H : ℝ) / (Γ.gammaRow i₀.succ) + 1) * ∏ i ∈ Finset.univ.erase i₀, ((H : ℝ) + 1) := by
     rw [ ← Finset.mul_prod_erase _ _ ( Finset.mem_univ i₀ ) ];
