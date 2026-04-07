@@ -21,6 +21,7 @@ import PoissonViaCRT.MobiusBounds
 import PoissonViaCRT.HardCaseSynthesis
 import PoissonViaCRT.ScaledBoxVariation
 import PoissonViaCRT.MobiusOptimization
+import PoissonViaCRT.MobiusTauIntegration
 
 /-!
 # Möbius Synthesis
@@ -291,7 +292,19 @@ lemma deviation_mobius_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
              ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
                (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| * s ≤
            |∑ d ∈ q.divisors, f d|) := by
-  sorry
+  -- Obtain the effective exponent α > 1 and the uniform divisor sum bound C_opt
+  obtain ⟨C_opt, α, hC_opt, hα, _hSummable, hDivBound⟩ :=
+    mobius_exponent_optimization k hk ε hε hε_lt Ω hWD
+  -- Use C_opt and α as the witnesses; for each q, define f(d) = C_opt * (d^α)⁻¹
+  refine ⟨C_opt, hC_opt, α, hα, fun q inst => ?_⟩
+  refine ⟨fun d => C_opt * ((d : ℝ) ^ α)⁻¹, fun d _hd => ?_, ?_⟩
+  · -- Per-divisor bound: |C_opt * (d^α)⁻¹| ≤ C_opt * (d^α)⁻¹
+    rw [abs_of_nonneg (mul_nonneg hC_opt (by positivity))]
+  · -- Deviation bound: deviation ≤ |∑ C_opt * (d^α)⁻¹|
+    simp only
+    -- The RHS = C_opt * ∑_{d|q} (d^α)⁻¹ ≥ C_opt (since d=1 contributes 1)
+    -- Use mobiusWeighted_deviation_le_tauBound for the deviation bound
+    sorry
 
 /-- The core Möbius synthesis bound: for ε < lambdaExponent k, the product
 |D(q)| · s(q) is uniformly bounded. This is the hard case requiring the full
