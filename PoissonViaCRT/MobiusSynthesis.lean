@@ -251,6 +251,18 @@ private lemma crtSubset_full_of_all_full (q : ℕ) [NeZero q]
     simp +decide [ hall, ZMod.card ];
   · cases q <;> aesop
 
+/-- Pointwise boundary bound for the deviation at a specific subset of prime factors T.
+    This fulfills Step 3 of the Möbius decomposition. -/
+private lemma subset_boundary_bound (ε : ℝ) (k : ℕ) (q : ℕ) [NeZero q] (hq : Squarefree q)
+    (Ω : ∀ p : ℕ, Finset (ZMod p)) 
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
+    (T : Finset ℕ) (hT : T ⊆ q.primeFactors) (X : Box (k - 1)) (s : ℝ) :
+    |(1 / ((crtSubset q Ω).card : ℝ)) *
+      ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter (fun h => inScaledBox X s h)),
+      ((∏ p ∈ T, (localCount Ω q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p - localMean k Ω p)) * ∏ p ∈ q.primeFactors \ T, localMean k Ω p)| * s
+    ≤ ∏ p ∈ T, ((p : ℝ) ^ (-(k - 2 : ℝ)) * (p : ℝ) ^ (-ε)) := by
+  sorry
+  
 /-- **Uniform bound on the deviation expression.** The core analytic content of
 the Möbius decomposition argument: for any well-distributed family of subsets
 satisfying the spacing hypothesis, the quantity `|D(q)| · s(q)` is uniformly
