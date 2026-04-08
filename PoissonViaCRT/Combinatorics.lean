@@ -489,7 +489,10 @@ theorem countGammaStructures_le (γ : ℕ) (hγ : 0 < γ) :
             · exact Γ.sqfree _ _ (by aesop)
             · exact Γ.sqfree _ _ (by aesop)
             · exact Γ.sqfree i j hij, by
-            intro i j l hij hjl hil; by_cases hi : i = ⟨ 0, hk ⟩ <;> by_cases hj : j = ⟨ 0, hk ⟩ <;> by_cases hl : l = ⟨ 0, hk ⟩ <;> simp +decide [*] ;
+            intro i j l hij hjl hil;
+            by_cases hi : i = ⟨ 0, hk ⟩ <;>
+              by_cases hj : j = ⟨ 0, hk ⟩ <;>
+                by_cases hl : l = ⟨ 0, hk ⟩ <;> simp +decide [*] ;
             lia;
             simp_all;
             · exact Γ.compat _ _ _
@@ -875,7 +878,8 @@ theorem countTuples_bound_large_gamma
         ∏ i : Fin k,
           ((H : ℝ) / (Γ.gammaRow i.succ) + 1) :=
     countTuples_bound_prop Γ H
-  have h_split : ∏ i : Fin k, ((H : ℝ) / (Γ.gammaRow i.succ) + 1) ≤ ((H : ℝ) / (Γ.gammaRow i₀.succ) + 1) * ∏ i ∈ Finset.univ.erase i₀, ((H : ℝ) + 1) := by
+  have h_split : ∏ i : Fin k, ((H : ℝ) / (Γ.gammaRow i.succ) + 1)
+      ≤ ((H : ℝ) / (Γ.gammaRow i₀.succ) + 1) * ∏ i ∈ Finset.univ.erase i₀, ((H : ℝ) + 1) := by
     rw [← Finset.mul_prod_erase _ _ (Finset.mem_univ i₀)]
     gcongr
     exact div_le_self (Nat.cast_nonneg _) (by norm_cast; exact Γ.gammaRow_pos _)
@@ -889,7 +893,11 @@ theorem countTuples_bound_large_gamma
     rcases k with (_ | k) <;>
       simp_all +decide; ring_nf at *; (
     refine le_trans h_bound <| h_split.trans ?_
-    nlinarith [show (H : ℝ) ≥ 1 by norm_cast, inv_mul_cancel_left₀ (show ((‹GammaStructure (k + 1 + 1)›.gammaRow ‹Fin (k + 1)›.succ) : ℝ) ≠ 0 by norm_cast; exact Nat.ne_of_gt <| Nat.pos_of_ne_zero <| by aesop) <| (1 + H : ℝ) ^ k, show ((‹GammaStructure (k + 1 + 1)›.gammaRow ‹Fin (k + 1)›.succ) : ℝ) ≥ H by exact_mod_cast hi₀]))
+    nlinarith [show (H : ℝ) ≥ 1 by norm_cast,
+        inv_mul_cancel_left₀ (show ((‹GammaStructure (k + 1 + 1)›.gammaRow ‹Fin (k + 1)›.succ) : ℝ) ≠ 0 by
+          norm_cast;
+          exact Nat.ne_of_gt <| Nat.pos_of_ne_zero <| by aesop) <| (1 + H : ℝ) ^ k,
+          show ((‹GammaStructure (k + 1 + 1)›.gammaRow ‹Fin (k + 1)›.succ) : ℝ) ≥ H by exact_mod_cast hi₀]))
   · rcases k with (_ | _ | k) <;>
       norm_num at *; aesop
     refine' le_antisymm _ _ <;>
