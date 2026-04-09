@@ -251,18 +251,6 @@ private lemma crtSubset_full_of_all_full (q : ℕ) [NeZero q]
     simp +decide [ hall, ZMod.card ];
   · cases q <;> aesop
 
-/-- Pointwise boundary bound for the deviation at a specific subset of prime factors T.
-    This fulfills Step 3 of the Möbius decomposition. -/
-private lemma subset_boundary_bound (ε : ℝ) (k : ℕ) (q : ℕ) [NeZero q] (hq : Squarefree q)
-    (Ω : ∀ p : ℕ, Finset (ZMod p)) 
-    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
-    (T : Finset ℕ) (hT : T ⊆ q.primeFactors) (X : Box (k - 1)) (s : ℝ) :
-    |(1 / ((crtSubset q Ω).card : ℝ)) *
-      ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter (fun h => inScaledBox X s h)),
-      ((∏ p ∈ T, (localCount Ω q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p - localMean k Ω p)) * ∏ p ∈ q.primeFactors \ T, localMean k Ω p)| * s
-    ≤ ∏ p ∈ T, ((p : ℝ) ^ (-(k - 2 : ℝ)) * (p : ℝ) ^ (-ε)) := by
-  sorry
-  
 /-- **Uniform bound on the deviation expression.** The core analytic content of
 the Möbius decomposition argument: for any well-distributed family of subsets
 satisfying the spacing hypothesis, the quantity `|D(q)| · s(q)` is uniformly
@@ -278,7 +266,29 @@ The proof combines:
 - The τ-optimization (`mobius_exponent_optimization`) to achieve an effective
   exponent exceeding 1, even in the critical `k = 2` case.
 - The Möbius–τ synthesis (`mobiusWeighted_deviation_le_tauBound`) to bound
-  the resulting divisor sum by a convergent constant independent of `q`. -/
+  the resulting divisor sum by a convergent constant independent of `q`.
+  
+  
+PROVIDED SOLUTION
+**Task: Execute the Native Möbius Synthesis Blueprint**
+
+I have fixed the theorem signature in `MobiusSynthesis.lean` to explicitly include `(hq_sq : Squarefree q)`. This provides the missing hypothesis you need for the powerset-to-divisor bijection. I have also handled the instantiation of the `K` constant.
+
+Your task is to close the final `sorry` by executing your 6-step Möbius Synthesis blueprint natively inside the theorem.
+
+**Execution Steps (Follow Strictly):**
+1. **The Expansion:** Use `deviation_product_difference` to expand the tuple counting deviation into a sum over subsets `T ∈ q.primeFactors.powerset`.
+2. **The Absolute Value:** Apply the triangle inequality (`Finset.abs_sum_le_sum_abs`) to bring the absolute value inside the summation over `T`.
+3. **The Geometric Bound:** For each subset `T`, apply the `hC_lp` hypothesis to bound the geometric counting error. This will introduce the scalar factor.
+4. **The Well-Distribution:** Apply the well-distribution hypothesis `hWD`.
+5. **The Reindexing:** Factor out the scalar. Then, use the newly available `hq_sq` hypothesis to map the summation over subsets `T` to a summation over squarefree divisors `d | q`.
+6. **The Analytic Synthesis:** Apply `mobiusWeighted_deviation_le_tauBound` to the remaining divisor sum to close the goal.
+
+**Constraints:**
+* **Do NOT read or edit any `.md` files.**
+* **Build the logic natively inside the theorem block.** Do not abstract steps into global `private lemma` shims that lose the local variable context.
+  
+-/
 private lemma deviation_expression_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
@@ -293,7 +303,7 @@ private lemma deviation_expression_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : 
           Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
         (fun h => inScaledBox X s h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
         C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1)) :
-    ∃ K : ℝ, 0 ≤ K ∧ ∀ (q : ℕ) [NeZero q],
+    ∃ K : ℝ, 0 ≤ K ∧ ∀ (q : ℕ) [NeZero q] (hq_sq : Squarefree q),
       let Ω_q := crtSubset q Ω
       let s := (q : ℝ) / Ω_q.card
       |(1 / (Ω_q.card : ℝ)) *
@@ -316,6 +326,15 @@ private lemma deviation_expression_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : 
         to boost the effective exponent past 1.
      6. Sum the per-divisor bounds using `mobiusDeviation_le_tauBound` or
         `deviation_synthesis_harder_case` to obtain the q-independent constant. -/
+  -- 1. Assert the non-negativity of the tau constant separately
+  have h_tau_nonneg : 0 ≤ tauBoundConstant ε := by rw [tauBoundConstant]; positivity
+  
+  -- 2. Define K directly. The positivity tactic will now see h_tau_nonneg 
+  --    and hC_lp_pos in the context and automatically close the 0 ≤ K goal.
+  use (C_lp * tauBoundConstant ε)
+  refine ⟨by positivity, ?_⟩
+  intro q hq_ne hq_sq
+
   sorry
 
 /-- **Per-q Möbius decomposition bound.** For each `q`, the deviation `|D(q)| · s`
@@ -341,7 +360,7 @@ lemma deviation_mobius_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
         (fun h => inScaledBox X s h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
         C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1)) :
     ∃ C : ℝ, 0 ≤ C ∧ ∃ α : ℝ, 1 < α ∧
-      ∀ (q : ℕ) [NeZero q],
+      ∀ (q : ℕ) [NeZero q] (hq_sq : Squarefree q),
         ∃ f : ℕ → ℝ,
           (∀ d ∈ q.divisors, |f d| ≤ C * ((d : ℝ) ^ α)⁻¹) ∧
           (let Ω_q := crtSubset q Ω
@@ -371,6 +390,7 @@ lemma deviation_mobius_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
       (fun h => inScaledBox X sq h)),
     ((tupleCount (crtSubset q Ω) (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
       ((crtSubset q Ω).card : ℝ) ^ k / (q : ℝ) ^ (k - 1))
+  intro hq_sq
   refine ⟨fun d => if d = 1 then dv * sq else 0, ?_, ?_⟩
   · -- Per-divisor bound: |f(d)| ≤ K * (d^α)⁻¹
     intro d hd
@@ -378,7 +398,7 @@ lemma deviation_mobius_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     · -- Case d = 1: |f(1)| = |dv · s| = |dv| · s ≤ K = K · (1^α)⁻¹
       simp only [hd1, ↓reduceIte, Nat.cast_one, Real.one_rpow, inv_one, mul_one]
       rw [abs_mul, abs_of_nonneg (show (0 : ℝ) ≤ sq from by positivity)]
-      exact hBound q
+      exact hBound q hq_sq
     · -- Case d ≠ 1: |f(d)| = 0 ≤ K · (d^α)⁻¹
       simp only [hd1, ↓reduceIte, abs_zero]
       exact mul_nonneg hK (by positivity)
@@ -413,7 +433,7 @@ private lemma deviation_synthesis_hard_case (ε : ℝ) (hε : 0 < ε) (k : ℕ) 
           Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
         (fun h => inScaledBox X s h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
         C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1)) :
-    ∃ K : ℝ, 0 < K ∧ ∀ (q : ℕ) [NeZero q],
+    ∃ K : ℝ, 0 < K ∧ ∀ (q : ℕ) [NeZero q] (hq_sq : Squarefree q),
       let Ω_q := crtSubset q Ω
       let s := (q : ℝ) / Ω_q.card
       |(1 / (Ω_q.card : ℝ)) *
@@ -428,7 +448,8 @@ private lemma deviation_synthesis_hard_case (ε : ℝ) (hε : 0 < ε) (k : ℕ) 
   -- Step 2: Set K = max 1 (C * ∑' n, (n^α)⁻¹)
   refine ⟨max 1 (C * ∑' n : ℕ, ((n : ℝ) ^ α)⁻¹), lt_max_of_lt_left one_pos, fun q inst => ?_⟩
   -- Step 3: For each q, obtain the per-divisor function and bounds
-  obtain ⟨f, hfg, hbound⟩ := hdecomp q
+  intro hq_sq
+  obtain ⟨f, hfg, hbound⟩ := hdecomp q hq_sq
   -- Step 4: Chain the bounds using deviation_synthesis_harder_case
   calc |(1 / ((crtSubset q Ω).card : ℝ)) *
         ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
@@ -458,7 +479,7 @@ theorem deviation_final_synthesis (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 �
           Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
         (fun h => inScaledBox X s h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
         C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1)) :
-    ∃ K : ℝ, 0 < K ∧ ∀ (q : ℕ) [NeZero q],
+    ∃ K : ℝ, 0 < K ∧ ∀ (q : ℕ) [NeZero q] (hq_sq : Squarefree q),
       let Ω_q := crtSubset q Ω
       let s := (q : ℝ) / Ω_q.card
       |(1 / (Ω_q.card : ℝ)) *
@@ -472,7 +493,7 @@ theorem deviation_final_synthesis (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 �
   rcases eq_or_lt_of_le hε_le with heq | hlt
   · -- Case ε = λ_k: all local subsets are full, deviation is zero
     have hall := all_full_of_eps_eq_lambda ε k hk Ω hΩ hsp heq
-    refine ⟨1, one_pos, fun q inst => ?_⟩
+    refine ⟨1, one_pos, fun q inst hq_sq => ?_⟩
     have := crtSubset_full_of_all_full q Ω hall
     have := deviation_zero_of_card_eq_q hk q Ω X this
     simp only at this ⊢; linarith

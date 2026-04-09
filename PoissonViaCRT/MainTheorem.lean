@@ -329,7 +329,7 @@ lemma complete_period_cancellation_apply
         |∏ p ∈ d.primeFactors,
           ((1 : ℝ) - (Ω p).card / p) * (p : ℝ) ^ (-ε)| ≤ C) :
     ∀ (X : Box (k - 1)), ∃ C : ℝ, 0 < C ∧
-      ∀ (q : ℕ) [NeZero q],
+      ∀ (q : ℕ) [NeZero q] (_hq_sq : Squarefree q),
         |kCorrelation (crtSubset q Ω) X - X.volume| ≤
           C * ((q : ℝ) / (crtSubset q Ω).card) ^ (-(1 : ℝ)) := by
   intro X
@@ -337,7 +337,7 @@ lemma complete_period_cancellation_apply
   obtain ⟨C_ep, hC_ep_pos, hC_ep⟩ := h_ep
   -- Get q-independent deviation bound
   obtain ⟨C_dev, hC_dev_pos, hC_dev⟩ := deviation_sum_bound_q_indep ε hε k hk Ω hΩ hWD hsp X C_lp hC_lp_pos hC_lp
-  refine ⟨C_lp + C_dev + 1, by positivity, fun q inst => ?_⟩
+  refine ⟨C_lp + C_dev + 1, by positivity, fun q inst hq_sq => ?_⟩
   set Ω_q := crtSubset q Ω with hΩq_def
   set s := (q : ℝ) / Ω_q.card with hs_def
   have hs : 1 ≤ s := spacing_ge_one Ω hΩ q
@@ -346,7 +346,7 @@ lemma complete_period_cancellation_apply
   have hq_pos : (0 : ℝ) < q := Nat.cast_pos.mpr (NeZero.pos q)
   have hs_pos : 0 < s := lt_of_lt_of_le zero_lt_one hs
   -- Instantiate the deviation bound for this q
-  have h_dev_q := hC_dev q
+  have h_dev_q := hC_dev q hq_sq
   -- Instantiate the lattice point bound for this s
   have h_lp_q := hC_lp s hs
   refine' abs_sub_le_iff.mpr ⟨ _, _ ⟩;
@@ -417,7 +417,7 @@ private lemma fluctuation_bound
     (hsp : ∀ (p : ℕ), p.Prime →
       (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε)) :
     ∃ δ : ℝ, 0 < δ ∧ ∀ (X : Box (k - 1)), ∃ C : ℝ, 0 < C ∧
-      ∀ (q : ℕ) [NeZero q],
+      ∀ (q : ℕ) [NeZero q] (_hq_sq : Squarefree q),
         |kCorrelation (crtSubset q Ω) X - X.volume| ≤
           C * ((q : ℝ) / (crtSubset q Ω).card) ^ (-δ) := by
   -- Step 1: Obtain the lattice point box bound
@@ -427,7 +427,7 @@ private lemma fluctuation_bound
   -- Step 3: Apply the complete period cancellation to combine these bounds
   have h_cpc := complete_period_cancellation_apply ε hε k hk Ω hΩ hWD hsp h_lp h_ep
   -- Choose δ = 1 (the decay exponent from the cancellation bound)
-  exact ⟨1, one_pos, fun X => by obtain ⟨C, hC, hbound⟩ := h_cpc X; exact ⟨C, hC, fun q _ => by simpa using hbound q⟩⟩
+  exact ⟨1, one_pos, fun X => by obtain ⟨C, hC, hbound⟩ := h_cpc X; exact ⟨C, hC, fun q _ hq_sq => by simpa using hbound q hq_sq⟩⟩
 
 /-- **Proposition 3.6** (simplified form): Under the well-distribution hypothesis (1) with
 parameter `ε`, the error in the `k`-level correlation is bounded by `C · s_q^{-δ}` for
@@ -445,7 +445,7 @@ theorem error_bound_simplified
     (hsp : ∀ (p : ℕ), p.Prime →
       (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε)) :
     ∃ δ : ℝ, 0 < δ ∧ ∀ (X : Box (k - 1)), ∃ C : ℝ, 0 < C ∧
-      ∀ (q : ℕ) [NeZero q],
+      ∀ (q : ℕ) [NeZero q] (_hq_sq : Squarefree q),
         |kCorrelation (crtSubset q Ω) X - X.volume| ≤
           C * ((q : ℝ) / (crtSubset q Ω).card) ^ (-δ) := by
   exact fluctuation_bound ε hε k hk Ω hΩ hWD hsp
@@ -496,7 +496,7 @@ theorem mainTheorem_precise
     (hsp : ∀ (p : ℕ), p.Prime →
       (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent K - ε)) :
     ∀ (k : ℕ), k ≤ K → ∀ (X : Box (k - 1)),
-      ∃ δ : ℝ, 0 < δ ∧ ∃ C : ℝ, 0 < C ∧ ∀ (q : ℕ) [NeZero q],
+      ∃ δ : ℝ, 0 < δ ∧ ∃ C : ℝ, 0 < C ∧ ∀ (q : ℕ) [NeZero q] (_hq_sq : Squarefree q),
         |kCorrelation (crtSubset q Ω) X - X.volume| ≤
           C * ((q : ℝ) / (crtSubset q Ω).card) ^ (-δ) := by
   intro k hk_le X;

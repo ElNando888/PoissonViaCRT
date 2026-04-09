@@ -123,7 +123,7 @@ lemma deviation_times_spacing_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) 
           Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
         (fun h => inScaledBox X s h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
         C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1)) :
-    ∃ K : ℝ, 0 < K ∧ ∀ (q : ℕ) [NeZero q],
+    ∃ K : ℝ, 0 < K ∧ ∀ (q : ℕ) [NeZero q] (_hq_sq : Squarefree q),
       let Ω_q := crtSubset q Ω
       let s := (q : ℝ) / Ω_q.card
       |(1 / (Ω_q.card : ℝ)) *
@@ -158,7 +158,7 @@ lemma deviation_sum_bound_q_indep (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 �
           Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
         (fun h => inScaledBox X s h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
         C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1)) :
-    ∃ C : ℝ, 0 < C ∧ ∀ (q : ℕ) [NeZero q],
+    ∃ C : ℝ, 0 < C ∧ ∀ (q : ℕ) [NeZero q] (_hq_sq : Squarefree q),
       let Ω_q := crtSubset q Ω
       let s := (q : ℝ) / Ω_q.card
       |(1 / (Ω_q.card : ℝ)) *
@@ -172,7 +172,7 @@ lemma deviation_sum_bound_q_indep (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 �
   obtain ⟨K, hK_pos, hK⟩ := deviation_times_spacing_uniform_bound ε hε k hk Ω hΩ hWD hsp X
     C_lp hC_lp_pos hC_lp
   -- Step 2: Use K as the constant C
-  refine ⟨K, hK_pos, fun q inst => ?_⟩
+  refine ⟨K, hK_pos, fun q inst hq_sq => ?_⟩
   -- Step 3: Convert D(q) * s ≤ K to D(q) ≤ K * s^{-1}
   set Ω_q := crtSubset q Ω with hΩ_q_def
   set s := (q : ℝ) / Ω_q.card with hs_def
@@ -183,7 +183,7 @@ lemma deviation_sum_bound_q_indep (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 �
     ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
       (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| with hD_def
   -- The key inequality from the helper
-  have hDs : D * s ≤ K := hK q
+  have hDs : D * s ≤ K := hK q hq_sq
   -- Handle the two cases: s = 0 and s > 0
   by_cases hs0 : Ω_q.card = 0
   · -- Case: |Ω_q| = 0 → s = q/0 = 0, D = |0*...| = 0, RHS = K*0 = 0
