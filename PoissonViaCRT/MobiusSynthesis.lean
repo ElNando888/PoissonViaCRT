@@ -327,13 +327,70 @@ private lemma deviation_expression_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : 
      6. Sum the per-divisor bounds using `mobiusDeviation_le_tauBound` or
         `deviation_synthesis_harder_case` to obtain the q-independent constant. -/
   -- 1. Assert the non-negativity of the tau constant separately
-  have h_tau_nonneg : 0 ≤ tauBoundConstant ε := by rw [tauBoundConstant]; positivity
-  
-  -- 2. Define K directly. The positivity tactic will now see h_tau_nonneg 
-  --    and hC_lp_pos in the context and automatically close the 0 ≤ K goal.
-  use (C_lp * tauBoundConstant ε)
-  refine ⟨by positivity, ?_⟩
+  have hα : 1 < (k : ℝ) - 1 + ε := by
+    have : (2 : ℝ) ≤ (k : ℝ) := by exact_mod_cast hk
+    linarith
+  use C_lp * tauBoundConstant ((k : ℝ) - 1 + ε)
+  refine ⟨le_of_lt (mul_pos _hC_lp_pos (tauBoundConstant_pos _)), ?_⟩
   intro q hq_ne hq_sq
+  by_cases h0 : (crtSubset q Ω).card = 0
+  · have := deviation_zero_of_card_zero q Ω X h0
+    simp only at this ⊢
+    linarith [mul_nonneg _hC_lp_pos.le (tauBoundConstant_pos ((k : ℝ) - 1 + ε)).le]
+  by_cases hfull : (crtSubset q Ω).card = q
+  · have := deviation_zero_of_card_eq_q hk q Ω X hfull
+    simp only at this ⊢
+    linarith [mul_nonneg _hC_lp_pos.le (tauBoundConstant_pos ((k : ℝ) - 1 + ε)).le]
+  have hcard_pos : 0 < (crtSubset q Ω).card := Nat.pos_of_ne_zero h0
+  have hcard_le : (crtSubset q Ω).card ≤ q :=
+    le_trans (Finset.card_filter_le _ _) (by simp [Finset.card_univ, ZMod.card])
+  have hdev := deviation_bound_single hk q Ω X hcard_pos hcard_le
+  simp only at hdev ⊢
+
+  -- The Stepping Stones:
+  
+  let Ω_q := crtSubset q Ω
+  let s := (q : ℝ) / Ω_q.card
+
+  -- Define the pointwise functions over h to ensure valid binding contexts:
+  let raw_geom (h : Fin (k - 1) → ℤ) : ℝ :=
+    (tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) - ∏ p ∈ q.primeFactors, localMean k Ω p
+    
+  let prod_diff (h : Fin (k - 1) → ℤ) (T : Finset ℕ) : ℝ :=
+    (∏ p ∈ T, (localCount Ω q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p - localMean k Ω p)) * ∏ p ∈ q.primeFactors \ T, localMean k Ω p
+
+  -- Step 1: Expand the raw count
+  have h_expand : ∀ h, raw_geom h = ∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅), prod_diff h T := by
+    sorry
+    
+  -- Step 2: Triangle Inequality
+  have h_triangle : ∀ h, |∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅), prod_diff h T| ≤ ∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅), |prod_diff h T| := by
+    sorry
+
+  -- Step 3: Pointwise Geometric/Arithmetic Bound
+  have h_pointwise : ∀ h T, T ∈ q.primeFactors.powerset.filter (· ≠ ∅) → |prod_diff h T| ≤ C_lp * s^(k-2) * ∏ p ∈ T, (p : ℝ)^(-ε) := by
+    sorry
+
+  -- Step 4: Apply pointwise bound to the sum
+  have h_sum_bound : ∀ h, ∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅), |prod_diff h T| ≤ ∑ T ∈ q.primeFactors.powerset, (C_lp * s^(k-2) * ∏ p ∈ T, (p : ℝ)^(-ε)) := by
+    sorry
+
+  -- Step 5: Factor out the scalar
+  have h_factor : ∑ T ∈ q.primeFactors.powerset, (C_lp * s^(k-2) * ∏ p ∈ T, (p : ℝ)^(-ε)) = C_lp * s^(k-2) * ∑ T ∈ q.primeFactors.powerset, ∏ p ∈ T, (p : ℝ)^(-ε) := by
+    sorry
+
+  -- Step 6: The Bijection (Subsets to Divisors)
+  have h_bijection : ∑ T ∈ q.primeFactors.powerset, ∏ p ∈ T, (p : ℝ)^(-ε) = ∑ d ∈ q.divisors, (d : ℝ)^(-ε) := by
+    sorry
+
+  -- Final Synthesis (This pointwise bound is ready to be summed over h)
+  have h_calc : ∀ h, |raw_geom h| ≤ C_lp * tauBoundConstant ε := fun h => calc
+    |raw_geom h| = |∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅), prod_diff h T| := by rw [h_expand]
+    _ ≤ ∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅), |prod_diff h T| := h_triangle h
+    _ ≤ ∑ T ∈ q.primeFactors.powerset, (C_lp * s^(k-2) * ∏ p ∈ T, (p : ℝ)^(-ε)) := h_sum_bound h
+    _ = C_lp * s^(k-2) * ∑ T ∈ q.primeFactors.powerset, ∏ p ∈ T, (p : ℝ)^(-ε) := h_factor
+    _ = C_lp * s^(k-2) * ∑ d ∈ q.divisors, (d : ℝ)^(-ε) := by rw [h_bijection]
+    _ ≤ C_lp * tauBoundConstant ε := by sorry -- Uses the Tau Optimization theorem
 
   sorry
 
