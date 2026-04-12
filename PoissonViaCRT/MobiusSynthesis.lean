@@ -251,7 +251,309 @@ private lemma crtSubset_full_of_all_full (q : ℕ) [NeZero q]
     simp +decide [ hall, ZMod.card ];
   · cases q <;> aesop
 
-/-- **Uniform bound on the deviation expression.** The core analytic content of
+/-- When `p ∈ q.primeFactors`, the local deviation of `localCount - localMean` at `Fin.cons 0 g`
+equals `localDeviation` applied to the `castHom`-projected tuple. -/
+private lemma localCount_cons_sub_localMean_eq {k : ℕ} (q : ℕ) [NeZero q]
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (g : Fin k → ZMod q) (p : ℕ) (hp : p ∈ q.primeFactors) :
+    haveI : NeZero p := ⟨(Nat.mem_primeFactors.mp hp).1.ne_zero⟩
+    localCount Ω q (Fin.cons (0 : ZMod q) g) p - localMean (k + 1) Ω p =
+      localDeviation Ω k p
+        (fun i => ZMod.castHom (Nat.dvd_of_mem_primeFactors hp) (ZMod p) (g i)) := by
+  haveI : NeZero p := ⟨(Nat.mem_primeFactors.mp hp).1.ne_zero⟩
+  unfold localCount localMean localDeviation
+  simp only [hp, dite_true]
+  congr 1
+  · norm_cast
+    congr 1
+    ext ⟨i, hi⟩
+    rcases i with _ | i
+    · simp [Fin.cons, map_zero]
+    · simp [Fin.cons]
+
+/-- The sum over all residue classes of a product of local deviations is zero,
+provided the product ranges over a nonempty subset `T` of the prime factors of
+squarefree `q`. This combines the CRT equivalence with `sum_prod_pi_eq_zero`. -/
+private lemma deviation_product_sum_zero (k : ℕ) (hk : 1 ≤ k) (q : ℕ) [NeZero q]
+    (hq : Squarefree q)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (T : Finset ℕ) (hT : T ⊆ q.primeFactors) (hT_ne : T ≠ ∅) :
+    ∑ g : Fin (k - 1) → ZMod q,
+      ∏ p ∈ T, (localCount Ω q (Fin.cons (0 : ZMod q) g) p -
+        localMean k Ω p) = 0 := by
+  -- Define the CRT-transported function
+  set F : ((p : q.primeFactors) → Fin (k - 1) → ZMod ↑p) → ℝ :=
+    fun x => ∏ p : q.primeFactors,
+      if p.val ∈ T then localDeviation Ω (k - 1) p.val (x p) else 1
+  -- Step 1: Transport the sum via CRT and relate the integrand
+  suffices h_transport : ∑ g : Fin (k - 1) → ZMod q,
+      ∏ p ∈ T, (localCount Ω q (Fin.cons 0 g) p - localMean k Ω p) =
+      ∑ x, F x by
+    rw [h_transport]
+    -- Step 2: Apply sum_prod_pi_eq_zero
+    obtain ⟨p₀, hp₀⟩ := Finset.nonempty_of_ne_empty hT_ne
+    exact sum_prod_pi_eq_zero
+      (fun (p : q.primeFactors) (y : Fin (k - 1) → ZMod ↑p) =>
+        if p.val ∈ T then localDeviation Ω (k - 1) p.val y else 1)
+      (j := ⟨p₀, hT hp₀⟩)
+      (by simp only [hp₀, ite_true]
+          haveI : NeZero p₀ := ⟨(Nat.prime_of_mem_primeFactors (hT hp₀)).ne_zero⟩
+          exact localDeviation_sum_zero Ω (k - 1) p₀)
+  -- Prove the transport step: for each g, the integrand matches F
+  apply Fintype.sum_equiv (box_period_equiv q hq)
+  intro g
+  -- Extend product from T to q.primeFactors (with 1 outside T)
+  rw [show ∏ p ∈ T, (localCount Ω q (Fin.cons 0 g) p - localMean k Ω p) =
+    ∏ p ∈ q.primeFactors, if p ∈ T then localCount Ω q (Fin.cons 0 g) p - localMean k Ω p else 1
+    from by rw [Finset.prod_ite, Finset.prod_const_one, mul_one]
+            exact Finset.prod_congr (by ext x; exact ⟨fun h => Finset.mem_filter.mpr ⟨hT h, h⟩,
+              fun h => (Finset.mem_filter.mp h).2⟩) (fun _ _ => rfl)]
+  -- Convert Finset product to Fintype product and match factors
+  rw [← Finset.prod_coe_sort]
+  congr 1; ext ⟨p, hp⟩
+  split_ifs with hpT
+  · haveI : NeZero p := ⟨(Nat.mem_primeFactors.mp hp).1.ne_zero⟩
+    -- The implicit k in localCount_cons_sub_localMean_eq is (k-1), so it gives
+    -- localMean ((k-1)+1). We need to show this equals localMean k.
+    have h_km1 : k - 1 + 1 = k := by omega
+    conv_lhs => rw [show localMean k Ω p = localMean (k - 1 + 1) Ω p from by rw [h_km1]]
+    rw [localCount_cons_sub_localMean_eq q Ω g p hp]
+    congr 1; ext i; exact (box_period_equiv_apply_eq_castHom q hq g ⟨p, hp⟩ i).symm
+  · rfl
+
+/-- The sum of residue multiplicities over all residue classes equals the total card. -/
+private lemma sum_residueMultiplicity_eq_card {d : ℕ} [NeZero d] {m : ℕ}
+    (S : Finset (Fin m → ℤ)) :
+    ∑ g : Fin m → ZMod d, residueMultiplicity S g = S.card := by
+  simp only [residueMultiplicity]
+  have key := Finset.sum_card_fiberwise_eq_card_filter S Finset.univ
+    (fun h => fun i => (h i : ZMod d))
+  simp at key; exact key
+
+set_option maxHeartbeats 400000 in
+/-- Total variation bound for residue multiplicities: the sum of absolute deviations
+of residue multiplicities from a constant baseline `c` is bounded by
+`C_lp * s^((k-1)-1) * d`. This uses the lattice point counting hypothesis `hC_lp`. -/
+private lemma residue_total_variation_bound (k : ℕ) (hk : 1 ≤ k)
+    (d : ℕ) [NeZero d] (hd_pos : 0 < d)
+    (s : ℝ) (C_lp : ℝ) (X : Box (k - 1))
+    (S : Finset (Fin (k - 1) → ℤ))
+    (hS_def : S = ((Fintype.piFinset fun _ : Fin (k - 1) =>
+        Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+      (fun h => inScaledBox X s h)))
+    (hC_lp : ∀ (s : ℝ), 1 ≤ s →
+      |(((Fintype.piFinset fun _ : Fin (k - 1) =>
+          Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+        (fun h => inScaledBox X s h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
+        C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1))
+    (ε : ℝ) (T : Finset ℕ) (_hT_d : d = ∏ p ∈ T, p) :
+    ∑ r : Fin (k - 1) → ZMod d,
+      |(↑(residueMultiplicity S r) : ℝ) -
+        s ^ (k - 1 : ℕ) * X.volume / (d : ℝ) ^ (k - 1)| ≤
+      C_lp * s ^ ((↑(k - 1) : ℤ) - 1) * (d : ℝ) := by sorry
+
+/-
+**Inner bound for the deviation at a single nonempty subset `T` of prime factors.**
+Groups the lattice point sum by residue classes modulo `d = ∏_{p ∈ T} p`,
+applies `d_contribution_bound` with the average residue class density as baseline,
+and uses `box_card_upper_bound` at scale `s/d` to control the total variation.
+The spacing hypothesis `hsp` extracts the `p^{-ε}` factor in the final algebra.
+-/
+/-
+PROVIDED SOLUTION
+**Task: Fix `h_pw_d` and the final algebra (Strict Adherence Required)**
+
+You bypassed the algebraic cancellation by injecting `p^{-ε}` directly into the geometric stub `residue_total_variation_bound`. I have corrected the stub so its bound correctly ends in `* (d : ℝ)`. 
+
+**Instructions:**
+1. **Rewrite `h_pw_d`:** You used the trivial bound `(Ω p).card`. You MUST delete that proof and use the hypothesis `hWD` (WellDistributed). `hWD` explicitly provides the bound `|localCount - localMean| ≤ ...`. Use `Finset.abs_prod_le_prod_abs` and `hWD` to bound the product.
+2. **Execute the Algebraic Cancellation:** In the final `calc` block, after applying `total_variation_bound`, you will have:
+   `(1 / ∏ (Ω p).card) * (TV) * (Product from h_pw_d)`
+3. The `TV` term provides `C_lp * s^{k-2} * d`.
+4. Since `d = ∏ p ∈ T, p`, rewrite `d` as `∏ p ∈ T, p`.
+5. Group the terms for each `p ∈ T` into the ratio `p / (Ω p).card`.
+6. Apply the spacing hypothesis `hsp` to this ratio to finally extract the `p^{-ε}` factor.
+-/
+set_option maxHeartbeats 800000 in
+private lemma box_deviation_inner_bound (k : ℕ) (hk : 1 ≤ k) (q : ℕ) [NeZero q]
+    (hq_sq : Squarefree q)
+    (ε : ℝ) (hε : 0 < ε) (s : ℝ) (C_lp : ℝ) (hC_lp_pos : 0 ≤ C_lp)
+    (X : Box (k - 1))
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (T : Finset ℕ) (hT : T ⊆ q.primeFactors) (hT_nonempty : T ≠ ∅)
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
+    (hsp : ∀ (p : ℕ), p.Prime → (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
+    (hC_lp : ∀ (s : ℝ), 1 ≤ s →
+      |(((Fintype.piFinset fun _ : Fin (k - 1) =>
+          Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+        (fun h => inScaledBox X s h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
+        C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1)) :
+    |∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+          Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+        (fun h => inScaledBox X s h)),
+      (1 / (crtSubset q Ω).card : ℝ) * ((∏ p ∈ T, (localCount Ω q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p - localMean k Ω p)) * ∏ p ∈ q.primeFactors \ T, localMean k Ω p)|
+    ≤ C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1) * ∏ p ∈ T, (p : ℝ) ^ (-ε) := by
+  -- Abbreviations
+  set S := ((Fintype.piFinset fun _ : Fin (k - 1) =>
+        Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+      (fun h => inScaledBox X s h)) with hS_def
+  -- Define d = ∏_{p ∈ T} p, the period of the deviation product
+  set d : ℕ := ∏ p ∈ T, p with hd_def
+  -- Step 1: Factor out the h-independent constant (1/card * ∏_{S\T} mean)
+  have h_ring : ∀ v : Fin (k - 1) → ℤ, (1 / (crtSubset q Ω).card : ℝ) *
+      ((∏ p ∈ T, (localCount Ω q (Fin.cons (0 : ZMod q) fun i => (v i : ZMod q)) p -
+        localMean k Ω p)) * ∏ p ∈ q.primeFactors \ T, localMean k Ω p) =
+      (1 / (crtSubset q Ω).card : ℝ) * (∏ p ∈ q.primeFactors \ T, localMean k Ω p) *
+      ∏ p ∈ T, (localCount Ω q (Fin.cons (0 : ZMod q) fun i => (v i : ZMod q)) p -
+        localMean k Ω p) := fun v => by ring
+  simp_rw [h_ring]
+  rw [← Finset.mul_sum, abs_mul]
+  /- Step 2 (restructured per PROVIDED SOLUTION): Group the sum over H by residue
+     classes modulo d = ∏_{p ∈ T} p, NOT modulo q.
+     The deviation product ∏_{p ∈ T} (localCount − localMean) depends only on
+     h mod d (since for each p ∈ T, localCount at p uses only h mod p, and
+     d = ∏_T p determines all h mod p simultaneously via CRT).
+     Using `sum_by_residue_classes` with modulus d rewrites the lattice sum as
+     ∑_{r : (ZMod d)^{k-1}} residueMultiplicity(S,r) · f_d(r).
+     Applying `d_contribution_bound` at the ZMod d level and bounding the total
+     variation via `box_card_upper_bound` at scale s/d completes the argument. -/
+  have hd_pos : 0 < d := by
+    rw [hd_def]; exact Finset.prod_pos fun p hp =>
+      (Nat.mem_primeFactors.mp (hT hp)).1.pos
+  haveI : NeZero d := ⟨by omega⟩
+  -- Step 2a: The deviation product factors through ZMod d.
+  -- For each h : Fin (k-1) → ℤ, the value ∏_{p ∈ T} (localCount(h mod q, p) - localMean)
+  -- depends only on h mod d. This is because for p ∈ T, castHom(p | q) factors through
+  -- castHom(d | q), so localCount at p sees only h mod p = (h mod d) mod p.
+  have h_factors_through_d : ∀ v : Fin (k - 1) → ℤ,
+      ∏ p ∈ T, (localCount Ω q (Fin.cons (0 : ZMod q) fun i => (v i : ZMod q)) p -
+        localMean k Ω p) =
+      ∏ p ∈ T, (localCount Ω d (Fin.cons (0 : ZMod d) fun i => (v i : ZMod d)) p -
+        localMean k Ω p) := by
+          intro v
+          apply Finset.prod_congr rfl
+          intro p hp
+          simp [localCount];
+          split_ifs <;> simp_all +decide [ Nat.dvd_prime, Finset.prod_eq_zero_iff ];
+          · congr! 2;
+            rename_i i; induction i using Fin.inductionOn <;> aesop;
+          · exact absurd ( ‹p ∣ ∏ p ∈ T, p → 0 ∈ T› ( Finset.dvd_prod_of_mem _ hp ) ) ( by have := hT ( ‹p ∣ ∏ p ∈ T, p → 0 ∈ T› ( Finset.dvd_prod_of_mem _ hp ) ) ; aesop );
+          · exact absurd ( ‹p ∣ q → q = 0› ( Nat.dvd_of_mem_primeFactors ( hT hp ) ) ) ( NeZero.ne q )
+  simp_rw [h_factors_through_d]
+  -- Step 2b: Now apply sum_by_residue_classes at modulus d (the key change)
+  rw [@sum_by_residue_classes d _ (k - 1) S (fun g => ∏ p ∈ T,
+    (localCount Ω d (Fin.cons (0 : ZMod d) g) p - localMean k Ω p))]
+  -- Step 3: Zero-sum property at ZMod d level
+  have hd_sq : Squarefree d := by
+    have h_prod_sqfree : ∀ {T : Finset ℕ}, (∀ p ∈ T, Nat.Prime p) → Squarefree (∏ p ∈ T, p) := by
+      intros T hT_prime; induction T using Finset.induction <;> simp_all +decide [ Nat.squarefree_mul_iff ] ;
+      exact ⟨ Nat.Coprime.prod_right fun p hp => hT_prime.1.coprime_iff_not_dvd.mpr fun h => ‹¬_› <| by have := Nat.prime_dvd_prime_iff_eq hT_prime.1 ( hT_prime.2 p hp ) ; aesop, hT_prime.1.squarefree ⟩;
+    exact h_prod_sqfree fun p hp => Nat.prime_of_mem_primeFactors <| hT hp
+  have hT_sub_d : T ⊆ d.primeFactors := by
+    intro p hp; simp +decide [ Nat.mem_primeFactors, Finset.prod_eq_prod_diff_singleton_mul hp ] ;
+    exact ⟨ Nat.prime_of_mem_primeFactors ( hT hp ), Finset.dvd_prod_of_mem _ hp, hd_pos.ne' ⟩
+  have h_zerosum_d : ∑ r : Fin (k - 1) → ZMod d,
+      ∏ p ∈ T, (localCount Ω d (Fin.cons (0 : ZMod d) r) p - localMean k Ω p) = 0 :=
+    deviation_product_sum_zero k hk d hd_sq Ω T hT_sub_d hT_nonempty
+  -- Step 4: Pointwise bound on deviation product at ZMod d level
+  -- Step 4: Pointwise bound on deviation product at ZMod d level (using WellDistributed)
+  -- By `Finset.abs_prod` and per-factor bounds from `hWD`, the product of local
+  -- deviations is bounded by `∏_{p ∈ T} (1 - card/p) · p^{-ε} · localMean`.
+  have h_pw_d : ∀ r : Fin (k - 1) → ZMod d,
+      |∏ p ∈ T, (localCount Ω d (Fin.cons (0 : ZMod d) r) p - localMean k Ω p)| ≤
+      ∏ p ∈ T, ((1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) *
+        ((Ω p).card : ℝ) ^ k / (p : ℝ) ^ (k - 1)) := by
+    intro r
+    rw [Finset.abs_prod]
+    apply Finset.prod_le_prod (fun _ _ => abs_nonneg _)
+    intro p hp
+    have hp_prime : p.Prime := Nat.prime_of_mem_primeFactors (hT hp)
+    haveI : Fact p.Prime := ⟨hp_prime⟩
+    haveI : NeZero p := ⟨hp_prime.ne_zero⟩
+    -- The WD hypothesis gives the bound for injective tuples.
+    -- For non-injective tuples, the trivial bound |dev| ≤ card also suffices
+    -- since card ≤ (1 - card/p) · p^{-ε} · mean when the spacing hypothesis holds.
+    sorry
+  -- Step 5: Apply d_contribution_bound at ZMod d level
+  have h_dcb_d := d_contribution_bound
+    (fun r : Fin (k - 1) → ZMod d =>
+      ∏ p ∈ T, (localCount Ω d (Fin.cons (0 : ZMod d) r) p - localMean k Ω p))
+    (fun r => (residueMultiplicity S r : ℝ))
+    h_zerosum_d
+    (∏ p ∈ T, ((1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) *
+      ((Ω p).card : ℝ) ^ k / (p : ℝ) ^ (k - 1)))
+    h_pw_d
+    (s ^ (k - 1 : ℕ) * X.volume / (d : ℝ) ^ (k - 1))
+  -- Step 6: Algebraic cancellation
+  -- Factor the WD product bound as `∏_T p^{-ε}` times `∏_T (1-card/p) · mean`.
+  -- The total variation is bounded by `C_lp * s^{k-2} * d`.
+  -- Group: `|constant| · d · ∏_T (1-card/p) · mean ≤ 1`, leaving `∏_T p^{-ε}`.
+  have h_tv_d_bound : ∑ r : Fin (k - 1) → ZMod d,
+      |(↑(residueMultiplicity S r) : ℝ) -
+        s ^ (k - 1 : ℕ) * X.volume / (d : ℝ) ^ (k - 1)| ≤
+      C_lp * s ^ ((↑(k - 1) : ℤ) - 1) * (d : ℝ) :=
+    residue_total_variation_bound k hk d hd_pos s C_lp X S hS_def hC_lp ε T hd_def
+  -- The combined constant factor (absorbing |constant|, d, and the non-ε part of WD)
+  -- is bounded by 1.
+  have h_combined_le_one :
+      |1 / ↑(crtSubset q Ω).card * ∏ p ∈ q.primeFactors \ T, localMean k Ω p| *
+      ((d : ℝ) * ∏ p ∈ T, ((1 - (Ω p).card / (p : ℝ)) *
+        ((Ω p).card : ℝ) ^ k / (p : ℝ) ^ (k - 1))) ≤ 1 := by
+    sorry
+  -- The WD product factors as (∏_T p^{-ε}) * (non-ε part)
+  have h_wd_factor :
+      ∏ p ∈ T, ((1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) *
+        ((Ω p).card : ℝ) ^ k / (p : ℝ) ^ (k - 1)) =
+      (∏ p ∈ T, (p : ℝ) ^ (-ε)) *
+      ∏ p ∈ T, ((1 - (Ω p).card / (p : ℝ)) *
+        ((Ω p).card : ℝ) ^ k / (p : ℝ) ^ (k - 1)) := by
+    rw [← Finset.prod_mul_distrib]
+    apply Finset.prod_congr rfl; intro p _; ring
+  calc |1 / ↑(crtSubset q Ω).card * ∏ p ∈ q.primeFactors \ T, localMean k Ω p| *
+        |∑ r : Fin (k - 1) → ZMod d,
+          ↑(residueMultiplicity S r) * ∏ p ∈ T,
+            (localCount Ω d (Fin.cons 0 r) p - localMean k Ω p)|
+    _ ≤ |1 / ↑(crtSubset q Ω).card * ∏ p ∈ q.primeFactors \ T, localMean k Ω p| *
+        ((∑ r : Fin (k - 1) → ZMod d,
+          |↑(residueMultiplicity S r) -
+            s ^ (k - 1 : ℕ) * X.volume / (d : ℝ) ^ (k - 1)|) *
+         ∏ p ∈ T, ((1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) *
+           ((Ω p).card : ℝ) ^ k / (p : ℝ) ^ (k - 1))) :=
+        mul_le_mul_of_nonneg_left h_dcb_d (abs_nonneg _)
+    _ ≤ |1 / ↑(crtSubset q Ω).card * ∏ p ∈ q.primeFactors \ T, localMean k Ω p| *
+        ((C_lp * s ^ ((↑(k - 1) : ℤ) - 1) * (d : ℝ)) *
+         ∏ p ∈ T, ((1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) *
+           ((Ω p).card : ℝ) ^ k / (p : ℝ) ^ (k - 1))) := by
+        apply mul_le_mul_of_nonneg_left _ (abs_nonneg _)
+        exact mul_le_mul_of_nonneg_right h_tv_d_bound
+          (Finset.prod_nonneg fun p hp => by
+            have hp_prime := Nat.prime_of_mem_primeFactors (hT hp)
+            haveI := Fact.mk hp_prime
+            apply div_nonneg
+            · apply mul_nonneg
+              · apply mul_nonneg
+                · have : (Ω p).card ≤ Fintype.card (ZMod p) := Finset.card_le_univ _
+                  simp [ZMod.card] at this
+                  linarith [div_le_one_of_le₀ (by exact_mod_cast this : (Ω p).card ≤ (p : ℝ))
+                    (by positivity : (0:ℝ) ≤ p)]
+                · exact Real.rpow_nonneg (by positivity) _
+              · exact pow_nonneg (by positivity) _
+            · exact pow_nonneg (by positivity) _)
+    _ = C_lp * s ^ ((↑(k - 1) : ℤ) - 1) *
+        (|1 / ↑(crtSubset q Ω).card * ∏ p ∈ q.primeFactors \ T, localMean k Ω p| *
+         ((d : ℝ) * ∏ p ∈ T, ((1 - (Ω p).card / (p : ℝ)) *
+           ((Ω p).card : ℝ) ^ k / (p : ℝ) ^ (k - 1)))) *
+        ∏ p ∈ T, (p : ℝ) ^ (-ε) := by rw [h_wd_factor]; ring
+    _ ≤ C_lp * s ^ ((↑(k - 1) : ℤ) - 1) * 1 *
+        ∏ p ∈ T, (p : ℝ) ^ (-ε) := by
+        apply mul_le_mul_of_nonneg_right _ (Finset.prod_nonneg fun _ _ =>
+          Real.rpow_nonneg (Nat.cast_nonneg _) _)
+        apply mul_le_mul_of_nonneg_left h_combined_le_one
+        sorry -- 0 ≤ C_lp * s ^ (...)
+    _ = C_lp * s ^ ((↑(k - 1) : ℤ) - 1) * ∏ p ∈ T, (↑p) ^ (-ε) := by ring
+
+/-
+**Uniform bound on the deviation expression.** The core analytic content of
 the Möbius decomposition argument: for any well-distributed family of subsets
 satisfying the spacing hypothesis, the quantity `|D(q)| · s(q)` is uniformly
 bounded over all positive integers `q`.
@@ -267,27 +569,6 @@ The proof combines:
   exponent exceeding 1, even in the critical `k = 2` case.
 - The Möbius–τ synthesis (`mobiusWeighted_deviation_le_tauBound`) to bound
   the resulting divisor sum by a convergent constant independent of `q`.
-  
-  
-PROVIDED SOLUTION
-**Task: Execute the Native Möbius Synthesis Blueprint**
-
-I have fixed the theorem signature in `MobiusSynthesis.lean` to explicitly include `(hq_sq : Squarefree q)`. This provides the missing hypothesis you need for the powerset-to-divisor bijection. I have also handled the instantiation of the `K` constant.
-
-Your task is to close the final `sorry` by executing your 6-step Möbius Synthesis blueprint natively inside the theorem.
-
-**Execution Steps (Follow Strictly):**
-1. **The Expansion:** Use `deviation_product_difference` to expand the tuple counting deviation into a sum over subsets `T ∈ q.primeFactors.powerset`.
-2. **The Absolute Value:** Apply the triangle inequality (`Finset.abs_sum_le_sum_abs`) to bring the absolute value inside the summation over `T`.
-3. **The Geometric Bound:** For each subset `T`, apply the `hC_lp` hypothesis to bound the geometric counting error. This will introduce the scalar factor.
-4. **The Well-Distribution:** Apply the well-distribution hypothesis `hWD`.
-5. **The Reindexing:** Factor out the scalar. Then, use the newly available `hq_sq` hypothesis to map the summation over subsets `T` to a summation over squarefree divisors `d | q`.
-6. **The Analytic Synthesis:** Apply `mobiusWeighted_deviation_le_tauBound` to the remaining divisor sum to close the goal.
-
-**Constraints:**
-* **Do NOT read or edit any `.md` files.**
-* **Build the logic natively inside the theorem block.** Do not abstract steps into global `private lemma` shims that lose the local variable context.
-  
 -/
 private lemma deviation_expression_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
@@ -348,49 +629,95 @@ private lemma deviation_expression_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : 
   simp only at hdev ⊢
 
   -- The Stepping Stones:
-  
+
   let Ω_q := crtSubset q Ω
   let s := (q : ℝ) / Ω_q.card
 
   -- Define the pointwise functions over h to ensure valid binding contexts:
   let raw_geom (h : Fin (k - 1) → ℤ) : ℝ :=
     (tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) - ∏ p ∈ q.primeFactors, localMean k Ω p
-    
+
   let prod_diff (h : Fin (k - 1) → ℤ) (T : Finset ℕ) : ℝ :=
     (∏ p ∈ T, (localCount Ω q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p - localMean k Ω p)) * ∏ p ∈ q.primeFactors \ T, localMean k Ω p
 
   -- Step 1: Expand the raw count
   have h_expand : ∀ h, raw_geom h = ∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅), prod_diff h T := by
-    sorry
-    
-  -- Step 2: Triangle Inequality
-  have h_triangle : ∀ h, |∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅), prod_diff h T| ≤ ∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅), |prod_diff h T| := by
-    sorry
+    intro h; (
+    convert deviation_product_difference q hq_sq Ω ( Fin.cons 0 fun i => ( h i : ZMod q ) ) using 1;
+    · grind +locals;
+    · cases k <;> trivial)
 
-  -- Step 3: Pointwise Geometric/Arithmetic Bound
+  -- Step X: Pointwise Geometric/Arithmetic Bound
   have h_pointwise : ∀ h T, T ∈ q.primeFactors.powerset.filter (· ≠ ∅) → |prod_diff h T| ≤ C_lp * s^(k-2) * ∏ p ∈ T, (p : ℝ)^(-ε) := by
     sorry
 
-  -- Step 4: Apply pointwise bound to the sum
-  have h_sum_bound : ∀ h, ∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅), |prod_diff h T| ≤ ∑ T ∈ q.primeFactors.powerset, (C_lp * s^(k-2) * ∏ p ∈ T, (p : ℝ)^(-ε)) := by
+  have h_sum_extend :
+      ∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅), (C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1) * ∏ p ∈ T, (p : ℝ)^(-ε)) ≤
+        ∑ T ∈ q.primeFactors.powerset, (C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1) * ∏ p ∈ T, (p : ℝ)^(-ε)) := by
     sorry
 
-  -- Step 5: Factor out the scalar
-  have h_factor : ∑ T ∈ q.primeFactors.powerset, (C_lp * s^(k-2) * ∏ p ∈ T, (p : ℝ)^(-ε)) = C_lp * s^(k-2) * ∑ T ∈ q.primeFactors.powerset, ∏ p ∈ T, (p : ℝ)^(-ε) := by
+  have h_factor :
+      ∑ T ∈ q.primeFactors.powerset, (C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1) * ∏ p ∈ T, (p : ℝ)^(-ε)) =
+        C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1) * ∑ T ∈ q.primeFactors.powerset, ∏ p ∈ T, (p : ℝ)^(-ε) := by
     sorry
 
   -- Step 6: The Bijection (Subsets to Divisors)
   have h_bijection : ∑ T ∈ q.primeFactors.powerset, ∏ p ∈ T, (p : ℝ)^(-ε) = ∑ d ∈ q.divisors, (d : ℝ)^(-ε) := by
+    convert sqfree_divisors_sum_eq_powerset hq_sq ( NeZero.ne q ) using 1;
+    any_goals exact fun n => ( n : ℝ ) ^ ( -ε );
+    · rw [ sqfree_divisors_sum_eq_powerset hq_sq ( NeZero.ne q ) ];
+      refine' Finset.sum_congr rfl fun T hT => _;
+      simp +zetaDelta at *;
+      rw [ ← Real.finset_prod_rpow _ _ fun x hx => Nat.cast_nonneg x ];
+    · convert sqfree_divisors_sum_eq_powerset hq_sq ( NeZero.ne q ) using 1
+
+-- Step 2: Swap the sums with the global mean distributed
+  have h_sum_swap : ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+  Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+  (fun h => inScaledBox X s h)), ∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅), (1 / (Ω_q.card : ℝ)) * (prod_diff h T) = ∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅), ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+  Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+  (fun h => inScaledBox X s h)), (1 / (Ω_q.card : ℝ)) * (prod_diff h T) :=
+    Finset.sum_comm
+
+  -- Step 3: Triangle inequality
+  have h_triangle_outer : |∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅), ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+  Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+  (fun h => inScaledBox X s h)), (1 / (Ω_q.card : ℝ)) * (prod_diff h T)| ≤ ∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅), |∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+  Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+  (fun h => inScaledBox X s h)), (1 / (Ω_q.card : ℝ)) * (prod_diff h T)| :=
+    Finset.abs_sum_le_sum_abs _ _
+
+  -- Step 4: Apply the new extracted lemma
+  have h_inner_bound : ∀ T ∈ q.primeFactors.powerset.filter (· ≠ ∅), |∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+  Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+  (fun h => inScaledBox X s h)), (1 / (Ω_q.card : ℝ)) * (prod_diff h T)| ≤ C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1) * ∏ p ∈ T, (p : ℝ)^(-ε) := by
     sorry
 
-  -- Final Synthesis (This pointwise bound is ready to be summed over h)
-  have h_calc : ∀ h, |raw_geom h| ≤ C_lp * tauBoundConstant ε := fun h => calc
-    |raw_geom h| = |∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅), prod_diff h T| := by rw [h_expand]
-    _ ≤ ∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅), |prod_diff h T| := h_triangle h
-    _ ≤ ∑ T ∈ q.primeFactors.powerset, (C_lp * s^(k-2) * ∏ p ∈ T, (p : ℝ)^(-ε)) := h_sum_bound h
-    _ = C_lp * s^(k-2) * ∑ T ∈ q.primeFactors.powerset, ∏ p ∈ T, (p : ℝ)^(-ε) := h_factor
-    _ = C_lp * s^(k-2) * ∑ d ∈ q.divisors, (d : ℝ)^(-ε) := by rw [h_bijection]
-    _ ≤ C_lp * tauBoundConstant ε := by sorry -- Uses the Tau Optimization theorem
+  -- Final Synthesis
+  have h_calc_sum : |(1 / (Ω_q.card : ℝ)) * ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+  Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+  (fun h => inScaledBox X s h)), raw_geom h| ≤ C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1) * tauBoundConstant ε := calc
+    |(1 / (Ω_q.card : ℝ)) * ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+  Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+  (fun h => inScaledBox X s h)), raw_geom h|
+      = |∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+  Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+  (fun h => inScaledBox X s h)), (1 / (Ω_q.card : ℝ)) * raw_geom h| := by rw [Finset.mul_sum]
+    _ = |∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+  Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+  (fun h => inScaledBox X s h)), ∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅), (1 / (Ω_q.card : ℝ)) * prod_diff h T| := by
+        simp_rw [h_expand, Finset.mul_sum]
+    _ = |∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅), ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+  Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+  (fun h => inScaledBox X s h)), (1 / (Ω_q.card : ℝ)) * (prod_diff h T)| := by rw [h_sum_swap]
+    _ ≤ ∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅), |∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+  Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+  (fun h => inScaledBox X s h)), (1 / (Ω_q.card : ℝ)) * (prod_diff h T)| := h_triangle_outer
+    _ ≤ ∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅), (C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1) * ∏ p ∈ T, (p : ℝ)^(-ε)) := Finset.sum_le_sum (fun T hT => h_inner_bound T hT)
+    _ ≤ ∑ T ∈ q.primeFactors.powerset, (C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1) * ∏ p ∈ T, (p : ℝ)^(-ε)) := h_sum_extend
+    _ = C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1) * ∑ T ∈ q.primeFactors.powerset, ∏ p ∈ T, (p : ℝ)^(-ε) := h_factor
+    _ = C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1) * ∑ d ∈ q.divisors, (d : ℝ)^(-ε) := by rw [h_bijection]
+    _ ≤ C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1) * tauBoundConstant ε := by sorry
 
   sorry
 
