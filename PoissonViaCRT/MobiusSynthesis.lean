@@ -497,6 +497,61 @@ private lemma residue_class_discrepancy_bound (k : ℕ) (hk : 1 ≤ k)
     have hd_pos : (0 : ℝ) < d := Nat.cast_pos.mpr (NeZero.pos d)
     exact absurd (le_div_iff₀ hd_pos |>.mpr (by linarith)) h_sd
 
+
+/-- The CRT subset cardinality factors as a product over prime factors. -/
+private lemma crt_card_eq_prod (q : ℕ) [NeZero q] (hq_sq : Squarefree q)
+    (Ω : ∀ p : ℕ, Finset (ZMod p)) :
+    ((crtSubset q Ω).card : ℝ) = ∏ p ∈ q.primeFactors, ((Ω p).card : ℝ) := by
+  have h_card : (crtSubset q Ω).card = ∏ p ∈ q.primeFactors, (Ω p).card := by
+    have h_card : Fintype.card (crtSubset q Ω) = ∏ p ∈ q.primeFactors, Fintype.card (Ω p) := by
+      have := @crt_domain_equiv q ‹_› hq_sq Ω;
+      rw [ Fintype.card_congr this, Fintype.card_pi ];
+      refine' Finset.prod_bij ( fun p hp => p ) _ _ _ _ <;> aesop;
+    convert h_card using 1;
+    · rw [ Fintype.card_of_subtype ] ; aesop;
+    · exact Finset.prod_congr rfl fun _ _ => by rw [ Fintype.card_of_subtype ] ; aesop;
+  exact_mod_cast h_card
+
+/-- For p a prime factor of q, (Ω p).card ≤ p. -/
+private lemma omega_card_le_prime (q : ℕ) [NeZero q]
+    (Ω : ∀ p : ℕ, Finset (ZMod p)) (p : ℕ) (hp : p ∈ q.primeFactors) :
+    ((Ω p).card : ℝ) ≤ (p : ℝ) := by
+  haveI : Fact p.Prime := ⟨Nat.prime_of_mem_primeFactors hp⟩
+  exact_mod_cast le_trans (Finset.card_le_univ (Ω p)) (by simp [ZMod.card])
+
+/-- For p a prime factor of q with positive |Ω_p|, (|Ω_p|/p)^{k-1} ≤ 1. -/
+private lemma omega_ratio_pow_le_one (q : ℕ) [NeZero q]
+    (Ω : ∀ p : ℕ, Finset (ZMod p)) (k : ℕ) (p : ℕ) (hp : p ∈ q.primeFactors) :
+    ((Ω p).card / (p : ℝ)) ^ k ≤ 1 := by
+  apply pow_le_one₀ (div_nonneg (Nat.cast_nonneg _) (Nat.cast_nonneg _))
+  exact div_le_one_of_le₀ (omega_card_le_prime q Ω p hp) (Nat.cast_nonneg _)
+
+/-- Auxiliary: the expression factors into a single product of per-prime terms,
+each of which is at most 1. -/
+private lemma combined_mean_spacing_bound_aux (k : ℕ) (q : ℕ) [NeZero q]
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (T : Finset ℕ) (hT : T ⊆ q.primeFactors) :
+    (∏ p ∈ q.primeFactors \ T, ((Ω p).card / (p : ℝ)) ^ (k - 1)) *
+    (∏ p ∈ T, ((1 - (Ω p).card / (p : ℝ)) * ((Ω p).card / (p : ℝ)) ^ (k - 1))) ≤ 1 := by
+  have h1 : ∏ p ∈ q.primeFactors \ T, ((Ω p).card / (p : ℝ)) ^ (k - 1) ≤ 1 :=
+    Finset.prod_le_one (fun p hp => pow_nonneg (div_nonneg (Nat.cast_nonneg _) (Nat.cast_nonneg _)) _)
+      (fun p hp => omega_ratio_pow_le_one q Ω (k - 1) p (Finset.sdiff_subset hp))
+  have h2 : ∏ p ∈ T, ((1 - (Ω p).card / (p : ℝ)) * ((Ω p).card / (p : ℝ)) ^ (k - 1)) ≤ 1 :=
+    Finset.prod_le_one
+      (fun p hp => mul_nonneg (sub_nonneg.mpr (div_le_one_of_le₀
+        (omega_card_le_prime q Ω p (hT hp)) (Nat.cast_nonneg _)))
+        (pow_nonneg (div_nonneg (Nat.cast_nonneg _) (Nat.cast_nonneg _)) _))
+      (fun p hp => le_trans (mul_le_mul_of_nonneg_right
+        (sub_le_self _ (div_nonneg (Nat.cast_nonneg _) (Nat.cast_nonneg _)))
+        (pow_nonneg (div_nonneg (Nat.cast_nonneg _) (Nat.cast_nonneg _)) _))
+        (by simp [omega_ratio_pow_le_one q Ω (k - 1) p (hT hp)]))
+  calc _ ≤ 1 * 1 := mul_le_mul h1 h2
+          (Finset.prod_nonneg fun p hp => mul_nonneg (sub_nonneg.mpr (div_le_one_of_le₀
+            (omega_card_le_prime q Ω p (hT hp)) (Nat.cast_nonneg _)))
+            (pow_nonneg (div_nonneg (Nat.cast_nonneg _) (Nat.cast_nonneg _)) _))
+          zero_le_one
+     _ = 1 := one_mul 1
+
 set_option maxHeartbeats 800000 in
 private lemma box_deviation_inner_bound (k : ℕ) (hk : 1 ≤ k) (q : ℕ) [NeZero q]
     (hq_sq : Squarefree q)
@@ -679,7 +734,9 @@ private lemma box_deviation_inner_bound (k : ℕ) (hk : 1 ≤ k) (q : ℕ) [NeZe
             ((Ω p).card : ℝ) ^ k / (p : ℝ) ^ (k - 1))) := by
         apply mul_le_mul_of_nonneg_left _ (abs_nonneg _)
         apply mul_le_mul_of_nonneg_left h_arith_l1
-        sorry -- 0 ≤ C_lp * (s / d) ^ (↑(k - 1) - 1)
+        apply mul_nonneg hC_lp_pos (zpow_nonneg (div_nonneg
+          (le_trans (Finset.prod_nonneg fun _ _ => Nat.cast_nonneg _) hT_le_s)
+          (Nat.cast_nonneg _)) _)
     -- Extract d^{k-1} from the arithmetic product via Finset.prod_mul_distrib
     _ = |1 / ↑(crtSubset q Ω).card * ∏ p ∈ q.primeFactors \ T, localMean k Ω p| *
         (C_lp * (s / ↑d) ^ ((↑(k - 1) : ℤ) - 1) *
@@ -709,7 +766,8 @@ private lemma box_deviation_inner_bound (k : ℕ) (hk : 1 ≤ k) (q : ℕ) [NeZe
         apply mul_le_mul_of_nonneg_right _ (Finset.prod_nonneg fun _ _ =>
           Real.rpow_nonneg (Nat.cast_nonneg _) _)
         apply mul_le_mul_of_nonneg_left h_combined_le_one
-        sorry -- 0 ≤ C_lp * s ^ ((↑(k - 1) : ℤ) - 1)
+        apply mul_nonneg hC_lp_pos (zpow_nonneg
+          (le_trans (Finset.prod_nonneg fun _ _ => Nat.cast_nonneg _) hT_le_s) _)
     -- Final simplification
     _ = C_lp * s ^ ((↑(k - 1) : ℤ) - 1) * ∏ p ∈ T, (↑p) ^ (-ε) := by
         ring
