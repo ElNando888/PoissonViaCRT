@@ -415,7 +415,37 @@ private lemma residue_class_card_eq_rescaled_card {k : ℕ} (hk : 1 ≤ k)
         Finset.Icc (1 : ℤ) ⌈(s / d) * ∑ i, X.sides i⌉).filter
       (fun x => inScaledBox X (s / d) x)
     residueMultiplicity S r = S_sub.card := by
-  sorry
+  intro r_int S_sub
+  unfold residueMultiplicity
+  apply Finset.card_bij (fun h _ i => (h i - r_int i) / d)
+  · intro a ha
+    sorry
+  · intro a1 ha1 a2 ha2 eq
+    ext i
+    simp only [Finset.mem_filter] at ha1 ha2
+    have h1 := congr_fun eq i
+    have hr1 := congr_fun ha1.2 i
+    have hr2 := congr_fun ha2.2 i
+    have hm1 : r_int i = a1 i % (d : ℤ) := by
+      dsimp [r_int]
+      rw [← hr1, ZMod.val_intCast]
+    have hm2 : r_int i = a2 i % (d : ℤ) := by
+      dsimp [r_int]
+      rw [← hr2, ZMod.val_intCast]
+    have hz_p : (d:ℤ) ≠ 0 := by exact_mod_cast NeZero.ne d
+    have hd1 : a1 i - r_int i = ↑d * (a1 i / ↑d) := by rw [hm1, ← sub_eq_iff_eq_add.mpr (Int.mul_ediv_add_emod (a1 i) ↑d).symm]
+    have hd2 : a2 i - r_int i = ↑d * (a2 i / ↑d) := by rw [hm2, ← sub_eq_iff_eq_add.mpr (Int.mul_ediv_add_emod (a2 i) ↑d).symm]
+    have hd3 : a1 i / ↑d = a2 i / ↑d := by
+      have h1' := h1
+      rw [hd1, hd2] at h1'
+      rw [Int.mul_ediv_cancel_left _ hz_p, Int.mul_ediv_cancel_left _ hz_p] at h1'
+      exact h1'
+    calc
+      a1 i = ↑d * (a1 i / ↑d) + a1 i % ↑d := (Int.mul_ediv_add_emod _ _).symm
+      _ = ↑d * (a2 i / ↑d) + a2 i % ↑d := by rw [hd3, ← hm1, hm2]
+      _ = a2 i := Int.mul_ediv_add_emod _ _
+  · intro b hb
+    sorry
 
 private lemma residue_class_discrepancy_bound (k : ℕ) (hk : 1 ≤ k)
     (s : ℝ) (C_lp : ℝ) (hC_lp_pos : 0 ≤ C_lp)
