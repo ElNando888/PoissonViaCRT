@@ -33,19 +33,19 @@ namespace PoissonCRT
 
 /-! ### Step 1: The count equals a product of floors
 
-We show that the set of integer tuples `h : Fin m → ℤ` satisfying `inScaledBox X s h`
+We show that the set of integer tuples `h : Fin m → ℤ` satisfying `inScaledBox X s (fun _ => 0) h`
 (within the bounding piFinset) has cardinality `∏ i, ⌊s * X.sides i⌋₊`.
 
-The key idea: `inScaledBox X s h` constrains each "increment" `h_i - h_{i-1}` (with h₋₁ = 0)
+The key idea: `inScaledBox X s (fun _ => 0) h` constrains each "increment" `h_i - h_{i-1}` (with h₋₁ = 0)
 to lie in `(0, s · b_i]`. Since the increments are independent positive integers, the count
 is the product of the number of valid values for each increment. -/
 
 /-
 PROVIDED SOLUTION
-The lattice points h satisfying inScaledBox X s h are exactly those where each increment d_i = h_i - h_{i-1} (with h_{-1} = 0) satisfies 1 ≤ d_i and d_i ≤ ⌊s * X.sides i⌋₊.
+The lattice points h satisfying inScaledBox X s (fun _ => 0) h are exactly those where each increment d_i = h_i - h_{i-1} (with h_{-1} = 0) satisfies 1 ≤ d_i and d_i ≤ ⌊s * X.sides i⌋₊.
 
 Key steps:
-1. Show that inScaledBox X s h ↔ ∀ i, 1 ≤ d_i ∧ (d_i : ℝ) ≤ s * X.sides i, where d_i is the i-th increment. The integer condition (d_i : ℝ) ≤ s * b_i is equivalent to d_i ≤ ⌊s * b_i⌋₊ (since d_i is a positive integer).
+1. Show that inScaledBox X s (fun _ => 0) h ↔ ∀ i, 1 ≤ d_i ∧ (d_i : ℝ) ≤ s * X.sides i, where d_i is the i-th increment. The integer condition (d_i : ℝ) ≤ s * b_i is equivalent to d_i ≤ ⌊s * b_i⌋₊ (since d_i is a positive integer).
 
 2. The map h ↦ (d_0, ..., d_{m-1}) is a bijection from lattice points satisfying inScaledBox to ∏_i {1, ..., ⌊s * b_i⌋₊}. The inverse is d ↦ (∑_{j≤i} d_j).
 
@@ -59,10 +59,10 @@ set_option maxHeartbeats 800000 in
 lemma count_inScaledBox_eq_prod_floor (m : ℕ) (X : Box m) (s : ℝ) (hs : 1 ≤ s) :
     ((Fintype.piFinset fun _ : Fin m =>
         Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
-      (fun h => inScaledBox X s h)).card =
+      (fun h => inScaledBox X s (fun _ => 0) h)).card =
     ∏ i : Fin m, ⌊s * X.sides i⌋₊ := by
   -- The set of lattice points in the scaled box is in bijection with the product of the sets of possible values for each coordinate.
-  have h_bij : {h : Fin m → ℤ | inScaledBox X s h} = Set.image (fun d : Fin m → ℤ => fun i => ∑ j ∈ Finset.univ.filter (fun j => j ≤ i), d j) {d : Fin m → ℤ | ∀ i, 1 ≤ d i ∧ d i ≤ ⌊s * X.sides i⌋₊} := by
+  have h_bij : {h : Fin m → ℤ | inScaledBox X s (fun _ => 0) h} = Set.image (fun d : Fin m → ℤ => fun i => ∑ j ∈ Finset.univ.filter (fun j => j ≤ i), d j) {d : Fin m → ℤ | ∀ i, 1 ≤ d i ∧ d i ≤ ⌊s * X.sides i⌋₊} := by
     ext h
     simp [inScaledBox];
     constructor;
@@ -93,7 +93,7 @@ lemma count_inScaledBox_eq_prod_floor (m : ℕ) (X : Box m) (s : ℝ) (hs : 1 �
           · linarith [ show ( x ⟨ i + 1, hi ⟩ : ℝ ) ≤ s * X.sides ⟨ i + 1, hi ⟩ by exact le_trans ( mod_cast hx _ |>.2 ) ( Nat.floor_le ( mul_nonneg ( by positivity ) ( le_of_lt ( X.sides_pos _ ) ) ) ) ];
           · ext ⟨ a, ha ⟩ ; simp +decide [ le_iff_lt_or_eq ] ; aesop;
   -- The set of lattice points in the scaled box is in bijection with the product of the sets of possible values for each coordinate, which has cardinality $\prod_{i} \lfloor s \cdot X.sides i \rfloor$.
-  have h_card : Finset.card (Finset.filter (fun h : Fin m → ℤ => inScaledBox X s h) (Fintype.piFinset fun _ : Fin m => Finset.Icc 1 (⌈s * ∑ i, X.sides i⌉₊))) = Finset.card (Finset.image (fun d : Fin m → ℤ => fun i => ∑ j ∈ Finset.univ.filter (fun j => j ≤ i), d j) (Finset.Icc (fun _ => 1) (fun i => ⌊s * X.sides i⌋₊))) := by
+  have h_card : Finset.card (Finset.filter (fun h : Fin m → ℤ => inScaledBox X s (fun _ => 0) h) (Fintype.piFinset fun _ : Fin m => Finset.Icc 1 (⌈s * ∑ i, X.sides i⌉₊))) = Finset.card (Finset.image (fun d : Fin m → ℤ => fun i => ∑ j ∈ Finset.univ.filter (fun j => j ≤ i), d j) (Finset.Icc (fun _ => 1) (fun i => ⌊s * X.sides i⌋₊))) := by
     refine' congr_arg Finset.card ( Finset.ext fun x => _ );
     simp_all +decide [ Set.ext_iff ];
     constructor;

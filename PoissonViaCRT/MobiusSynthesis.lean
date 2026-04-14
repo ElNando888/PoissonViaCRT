@@ -148,7 +148,7 @@ private lemma deviation_zero_of_card_zero {k : ℕ} (q : ℕ) [NeZero q]
     |(1 / (Ω_q.card : ℝ)) *
       ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
           Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
-        (fun h => inScaledBox X s h)),
+        (fun h => inScaledBox X s (fun _ => 0) h)),
       ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
         (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| * s = 0 := by
   simp [h0]
@@ -164,7 +164,7 @@ private lemma deviation_zero_of_card_eq_q {k : ℕ} (hk : 2 ≤ k) (q : ℕ) [Ne
     |(1 / (Ω_q.card : ℝ)) *
       ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
           Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
-        (fun h => inScaledBox X s h)),
+        (fun h => inScaledBox X s (fun _ => 0) h)),
       ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
         (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| * s = 0 := by
   simp_all;
@@ -186,12 +186,12 @@ private lemma deviation_bound_single {k : ℕ} (hk : 2 ≤ k) (q : ℕ) [NeZero 
     |(1 / (Ω_q.card : ℝ)) *
       ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
           Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
-        (fun h => inScaledBox X s h)),
+        (fun h => inScaledBox X s (fun _ => 0) h)),
       ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
         (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| * s ≤
     2 * ((Fintype.piFinset fun _ : Fin (k - 1) =>
         Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
-      (fun h => inScaledBox X s h)).card * s := by
+      (fun h => inScaledBox X s (fun _ => 0) h)).card * s := by
   refine' mul_le_mul_of_nonneg_right _ ( by positivity );
   rw [ abs_mul, abs_of_nonneg ( by positivity ) ];
   rw [ div_mul_eq_mul_div, div_le_iff₀ ] <;> norm_cast;
@@ -340,11 +340,11 @@ private lemma residue_total_variation_bound (k : ℕ) (hk : 1 ≤ k)
     (S : Finset (Fin (k - 1) → ℤ))
     (hS_def : S = ((Fintype.piFinset fun _ : Fin (k - 1) =>
         Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
-      (fun h => inScaledBox X s h)))
-    (hC_lp : ∀ (s : ℝ), 1 ≤ s →
+      (fun h => inScaledBox X s (fun _ => 0) h)))
+    (hC_lp : ∀ (v : Fin (k - 1) → ℝ) (s : ℝ), 1 ≤ s →
       |(((Fintype.piFinset fun _ : Fin (k - 1) =>
           Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
-        (fun h => inScaledBox X s h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
+        (fun h => inScaledBox X s v h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
         C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1))
     (ε : ℝ) (T : Finset ℕ) (_hT_d : d = ∏ p ∈ T, p) :
     ∑ r : Fin (k - 1) → ZMod d,
@@ -407,13 +407,13 @@ private lemma residue_class_card_eq_rescaled_card {k : ℕ} (hk : 1 ≤ k)
     (S : Finset (Fin (k - 1) → ℤ))
     (hS_def : S = ((Fintype.piFinset fun _ : Fin (k - 1) =>
         Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
-      (fun h => inScaledBox X s h)))
+      (fun h => inScaledBox X s (fun _ => 0) h)))
     (r : Fin (k - 1) → ZMod d) :
     let r_int : Fin (k - 1) → ℤ := fun i => (ZMod.val (r i) : ℤ)
     let S_sub : Finset (Fin (k - 1) → ℤ) :=
       (Fintype.piFinset fun _ : Fin (k - 1) =>
         Finset.Icc (1 : ℤ) ⌈(s / d) * ∑ i, X.sides i⌉).filter
-      (fun x => inScaledBox X (s / d) x)
+      (fun x => inScaledBox X (s / d) (fun i => (r_int i : ℝ) / d) x)
     residueMultiplicity S r = S_sub.card := by
   intro r_int S_sub
   unfold residueMultiplicity
@@ -452,15 +452,15 @@ private lemma residue_class_discrepancy_bound (k : ℕ) (hk : 1 ≤ k)
     (X : Box (k - 1))
     (d : ℕ) [NeZero d]
     (hd_le_s : (d : ℝ) ≤ s)
-    (hC_lp : ∀ (s : ℝ), 1 ≤ s →
+    (hC_lp : ∀ (v : Fin (k - 1) → ℝ) (s : ℝ), 1 ≤ s →
       |(((Fintype.piFinset fun _ : Fin (k - 1) =>
           Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
-        (fun h => inScaledBox X s h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
+        (fun h => inScaledBox X s v h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
         C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1))
     (S : Finset (Fin (k - 1) → ℤ))
     (hS_def : S = ((Fintype.piFinset fun _ : Fin (k - 1) =>
         Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
-      (fun h => inScaledBox X s h)))
+      (fun h => inScaledBox X s (fun _ => 0) h)))
     (r : Fin (k - 1) → ZMod d) :
     |(residueMultiplicity S r : ℝ) -
       s ^ (k - 1 : ℕ) * X.volume / (d : ℝ) ^ (k - 1)| ≤
@@ -472,13 +472,13 @@ private lemma residue_class_discrepancy_bound (k : ℕ) (hk : 1 ≤ k)
   set S_sub : Finset (Fin (k - 1) → ℤ) :=
     (Fintype.piFinset fun _ : Fin (k - 1) =>
       Finset.Icc (1 : ℤ) ⌈(s / d) * ∑ i, X.sides i⌉).filter
-    (fun x => inScaledBox X (s / d) x) with hS_sub_def
+    (fun x => inScaledBox X (s / d) (fun i => (r_int i : ℝ) / d) x) with hS_sub_def
   -- Step 3: Apply the counting hypothesis at the rescaled parameter s / d.
   have h_lp_inst : 1 ≤ s / d →
       |(S_sub.card : ℝ) - (s / d) ^ (k - 1 : ℕ) * X.volume| ≤
         C_lp * (s / d) ^ (((k - 1 : ℕ) : ℤ) - 1) := by
     intro h_sd
-    exact hC_lp (s / d) h_sd
+    exact hC_lp (fun i => (r_int i : ℝ) / d) (s / d) h_sd
   -- Step 4: The cardinality bridge — the residue multiplicity equals S_sub.card.
   have h_card_bridge : (residueMultiplicity S r : ℝ) = (S_sub.card : ℝ) := by
     congr 1
@@ -507,20 +507,20 @@ private lemma box_deviation_inner_bound (k : ℕ) (hk : 1 ≤ k) (q : ℕ) [NeZe
     (hT_le_s : (∏ p ∈ T, (p : ℝ)) ≤ s)
     (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
     (hsp : ∀ (p : ℕ), p.Prime → (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
-    (hC_lp : ∀ (s : ℝ), 1 ≤ s →
+    (hC_lp : ∀ (v : Fin (k - 1) → ℝ) (s : ℝ), 1 ≤ s →
       |(((Fintype.piFinset fun _ : Fin (k - 1) =>
           Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
-        (fun h => inScaledBox X s h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
+        (fun h => inScaledBox X s v h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
         C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1)) :
     |∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
           Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
-        (fun h => inScaledBox X s h)),
+        (fun h => inScaledBox X s (fun _ => 0) h)),
       (1 / (crtSubset q Ω).card : ℝ) * ((∏ p ∈ T, (localCount Ω q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p - localMean k Ω p)) * ∏ p ∈ q.primeFactors \ T, localMean k Ω p)|
     ≤ C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1) * ∏ p ∈ T, (p : ℝ) ^ (-ε) := by
   -- Abbreviations
   set S := ((Fintype.piFinset fun _ : Fin (k - 1) =>
         Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
-      (fun h => inScaledBox X s h)) with hS_def
+      (fun h => inScaledBox X s (fun _ => 0) h)) with hS_def
   -- Define d = ∏_{p ∈ T} p, the period of the deviation product
   set d : ℕ := ∏ p ∈ T, p with hd_def
   -- Step 1: Factor out the h-independent constant (1/card * ∏_{S\T} mean)
@@ -750,10 +750,10 @@ private lemma deviation_expression_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : 
     (hε_lt : ε < lambdaExponent k)
     (X : Box (k - 1))
     (C_lp : ℝ) (_hC_lp_pos : 0 < C_lp)
-    (_hC_lp : ∀ (s : ℝ), 1 ≤ s →
+    (_hC_lp : ∀ (v : Fin (k - 1) → ℝ) (s : ℝ), 1 ≤ s →
       |(((Fintype.piFinset fun _ : Fin (k - 1) =>
           Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
-        (fun h => inScaledBox X s h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
+        (fun h => inScaledBox X s v h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
         C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1)) :
     ∃ K : ℝ, 0 ≤ K ∧ ∀ (q : ℕ) [NeZero q] (hq_sq : Squarefree q),
       let Ω_q := crtSubset q Ω
@@ -761,7 +761,7 @@ private lemma deviation_expression_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : 
       |(1 / (Ω_q.card : ℝ)) *
         ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
             Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
-          (fun h => inScaledBox X s h)),
+          (fun h => inScaledBox X s (fun _ => 0) h)),
         ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
           (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| * s ≤ K := by
   -- Effective exponent exceeds 1
@@ -786,7 +786,7 @@ private lemma deviation_expression_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : 
   set s := (q : ℝ) / Ω_q.card
   set S := ((Fintype.piFinset fun _ : Fin (k - 1) =>
       Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
-    (fun h => inScaledBox X s h))
+    (fun h => inScaledBox X s (fun _ => 0) h))
   -- Mean identity: card^k / q^(k-1) = ∏ localMean
   have h_mean_eq := globalMean_eq_prod_localMean k q hq_sq Ω
   -- Intermediate raw deviation using ∏ localMean
@@ -873,10 +873,10 @@ lemma deviation_mobius_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (hε_lt : ε < lambdaExponent k)
     (X : Box (k - 1))
     (C_lp : ℝ) (hC_lp_pos : 0 < C_lp)
-    (hC_lp : ∀ (s : ℝ), 1 ≤ s →
+    (hC_lp : ∀ (v : Fin (k - 1) → ℝ) (s : ℝ), 1 ≤ s →
       |(((Fintype.piFinset fun _ : Fin (k - 1) =>
           Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
-        (fun h => inScaledBox X s h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
+        (fun h => inScaledBox X s v h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
         C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1)) :
     ∃ C : ℝ, 0 ≤ C ∧ ∃ α : ℝ, 1 < α ∧
       ∀ (q : ℕ) [NeZero q] (hq_sq : Squarefree q),
@@ -887,7 +887,7 @@ lemma deviation_mobius_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
            |(1 / (Ω_q.card : ℝ)) *
              ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
                  Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
-               (fun h => inScaledBox X s h)),
+               (fun h => inScaledBox X s (fun _ => 0) h)),
              ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
                (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| * s ≤
            |∑ d ∈ q.divisors, f d|) := by
@@ -906,7 +906,7 @@ lemma deviation_mobius_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
   set dv := (1 / ((crtSubset q Ω).card : ℝ)) *
     ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
         Finset.Icc (1 : ℤ) ⌈sq * ∑ i, X.sides i⌉).filter
-      (fun h => inScaledBox X sq h)),
+      (fun h => inScaledBox X sq (fun _ => 0) h)),
     ((tupleCount (crtSubset q Ω) (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
       ((crtSubset q Ω).card : ℝ) ^ k / (q : ℝ) ^ (k - 1))
   intro hq_sq
@@ -947,10 +947,10 @@ private lemma deviation_synthesis_hard_case (ε : ℝ) (hε : 0 < ε) (k : ℕ) 
     (hε_lt : ε < lambdaExponent k)
     (X : Box (k - 1))
     (C_lp : ℝ) (hC_lp_pos : 0 < C_lp)
-    (hC_lp : ∀ (s : ℝ), 1 ≤ s →
+    (hC_lp : ∀ (v : Fin (k - 1) → ℝ) (s : ℝ), 1 ≤ s →
       |(((Fintype.piFinset fun _ : Fin (k - 1) =>
           Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
-        (fun h => inScaledBox X s h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
+        (fun h => inScaledBox X s v h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
         C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1)) :
     ∃ K : ℝ, 0 < K ∧ ∀ (q : ℕ) [NeZero q] (hq_sq : Squarefree q),
       let Ω_q := crtSubset q Ω
@@ -958,7 +958,7 @@ private lemma deviation_synthesis_hard_case (ε : ℝ) (hε : 0 < ε) (k : ℕ) 
       |(1 / (Ω_q.card : ℝ)) *
         ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
             Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
-          (fun h => inScaledBox X s h)),
+          (fun h => inScaledBox X s (fun _ => 0) h)),
         ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
           (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| * s ≤ K := by
   -- Step 1: Obtain the Möbius decomposition and per-divisor bounds
@@ -974,7 +974,7 @@ private lemma deviation_synthesis_hard_case (ε : ℝ) (hε : 0 < ε) (k : ℕ) 
         ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
             Finset.Icc (1 : ℤ) ⌈((q : ℝ) / (crtSubset q Ω).card) *
               ∑ i, X.sides i⌉).filter
-          (fun h => inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) h)),
+          (fun h => inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) (fun _ => 0) h)),
         ((tupleCount (crtSubset q Ω)
             (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
           ((crtSubset q Ω).card : ℝ) ^ k /
@@ -993,10 +993,10 @@ theorem deviation_final_synthesis (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 �
       (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
     (X : Box (k - 1))
     (C_lp : ℝ) (hC_lp_pos : 0 < C_lp)
-    (hC_lp : ∀ (s : ℝ), 1 ≤ s →
+    (hC_lp : ∀ (v : Fin (k - 1) → ℝ) (s : ℝ), 1 ≤ s →
       |(((Fintype.piFinset fun _ : Fin (k - 1) =>
           Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
-        (fun h => inScaledBox X s h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
+        (fun h => inScaledBox X s v h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
         C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1)) :
     ∃ K : ℝ, 0 < K ∧ ∀ (q : ℕ) [NeZero q] (hq_sq : Squarefree q),
       let Ω_q := crtSubset q Ω
@@ -1004,7 +1004,7 @@ theorem deviation_final_synthesis (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 �
       |(1 / (Ω_q.card : ℝ)) *
         ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
             Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
-          (fun h => inScaledBox X s h)),
+          (fun h => inScaledBox X s (fun _ => 0) h)),
         ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
           (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| * s ≤ K := by
   -- Split based on ε vs lambdaExponent k

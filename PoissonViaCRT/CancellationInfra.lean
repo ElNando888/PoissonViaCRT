@@ -79,7 +79,7 @@ The filtered set is a subset of the piFinset, so its card is at most card of the
 lemma box_card_upper_bound (m : ℕ) (X : Box m) (s : ℝ) (_hs : 1 ≤ s) :
     ((Fintype.piFinset fun _ : Fin m =>
         Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
-      (fun h => inScaledBox X s h)).card ≤
+      (fun h => inScaledBox X s (fun _ => 0) h)).card ≤
     (⌈s * ∑ i, X.sides i⌉₊) ^ m := by
   refine' le_trans ( Finset.card_filter_le _ _ ) _;
   norm_num [ Fintype.card_pi ];

@@ -115,10 +115,10 @@ We define the correlation using a sum over integer tuples `h` satisfying box con
 
 /-- A lattice point `h ∈ ℤ^{k-1}` belongs to the scaled box `s · X` if
 `0 < h_i - h_{i-1} ≤ s · b_i` for all `i`, where `h₀ = 0`. -/
-def inScaledBox {k : ℕ} (B : Box k) (s : ℝ) (h : Fin k → ℤ) : Prop :=
+def inScaledBox {k : ℕ} (B : Box k) (s : ℝ) (v : Fin k → ℝ) (h : Fin k → ℤ) : Prop :=
   ∀ i : Fin k,
-    let prev : ℤ := if (i : ℕ) = 0 then 0 else h ⟨i - 1, by omega⟩
-    (0 : ℝ) < (h i : ℤ) - prev ∧ ((h i : ℤ) - prev : ℝ) ≤ s * B.sides i
+    let prev : ℝ := if (i : ℕ) = 0 then 0 else (h ⟨i - 1, by omega⟩ : ℝ) - v ⟨i - 1, by omega⟩
+    (0 : ℝ) < (h i : ℝ) - v i - prev ∧ (h i : ℝ) - v i - prev ≤ s * B.sides i
 
 /-- The `k`-level correlation `R_k(X, Ω_q)` for a box `X` and subset `Ω ⊆ ℤ/qℤ` (§2).
 `R_k(X, Ω_q) = (1/|Ω_q|) ∑_{h ∈ s_q X ∩ ℤ^{k-1}} N_{k+1}((0, h₁,…,hₖ), Ω_q)`
@@ -133,7 +133,7 @@ noncomputable def kCorrelation {q : ℕ} [NeZero q]
   let bound := ⌈s * ∑ i, X.sides i⌉₊
   (1 / (Ω.card : ℝ)) *
     ∑ h ∈ (Fintype.piFinset fun _ : Fin k => Finset.Icc 1 (bound : ℤ)).filter
-      (fun h => inScaledBox X s h),
+      (fun h => inScaledBox X s (fun _ => 0) h),
       (tupleCount Ω (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ)
 
 /-! ### Poisson distribution definition (§1, §2)

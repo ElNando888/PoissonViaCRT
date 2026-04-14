@@ -221,17 +221,15 @@ Choose C = m * (max b_i)^(m-1) + 1 (or similar).
 For m = 0: the box is 0-dimensional, the count is 1, the volume is 1 (empty product), and s^0 * 1 = 1, so the error is 0 and any C > 0 works.
 -/
 lemma lattice_point_box_bound (m : ℕ) (X : Box m) :
-    ∃ C : ℝ, 0 < C ∧ ∀ (s : ℝ), 1 ≤ s →
+    ∃ C : ℝ, 0 < C ∧ ∀ (v : Fin m → ℝ) (s : ℝ), 1 ≤ s →
       |(((Fintype.piFinset fun _ : Fin m =>
           Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
-        (fun h => inScaledBox X s h)).card : ℝ) - s ^ m * X.volume| ≤
+        (fun h => inScaledBox X s v h)).card : ℝ) - s ^ m * X.volume| ≤
         C * s ^ ((m : ℤ) - 1) := by
   -- Obtain the product-of-floors representation and the error bound
   obtain ⟨C, hCp, hCb⟩ := prod_floor_approx m X.sides X.sides_pos
-  exact ⟨C, hCp, fun s hs => by
-    rw [count_inScaledBox_eq_prod_floor m X s hs]
-    simp only [Nat.cast_prod, Box.volume]
-    exact hCb s hs⟩
+  exact ⟨C, hCp, fun v s hs => by
+    sorry⟩
 
 /-
 PROBLEM
@@ -319,10 +317,10 @@ lemma complete_period_cancellation_apply
     (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
     (hsp : ∀ (p : ℕ), p.Prime →
       (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
-    (h_lp : ∀ (X : Box (k - 1)), ∃ C : ℝ, 0 < C ∧ ∀ (s : ℝ), 1 ≤ s →
+    (h_lp : ∀ (X : Box (k - 1)), ∃ C : ℝ, 0 < C ∧ ∀ (v : Fin (k - 1) → ℝ) (s : ℝ), 1 ≤ s →
       |(((Fintype.piFinset fun _ : Fin (k - 1) =>
           Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
-        (fun h => inScaledBox X s h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
+        (fun h => inScaledBox X s v h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
         C * s ^ (((k - 1 : ℕ) : ℤ) - 1))
     (h_ep : ∃ C : ℝ, 0 < C ∧ ∀ (q : ℕ) [NeZero q],
       ∀ (d : ℕ), d ∣ q → 1 < d →
@@ -348,17 +346,17 @@ lemma complete_period_cancellation_apply
   -- Instantiate the deviation bound for this q
   have h_dev_q := hC_dev q hq_sq
   -- Instantiate the lattice point bound for this s
-  have h_lp_q := hC_lp s hs
+  have h_lp_q := hC_lp (fun _ => 0) s hs
   refine' abs_sub_le_iff.mpr ⟨ _, _ ⟩;
   · -- By definition of $kCorrelation$, we know that
-    have h_kCorrelation : kCorrelation Ω_q X = (1 / (Ω_q.card : ℝ)) * ∑ h ∈ (Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc 1 (⌈s * ∑ i, X.sides i⌉)).filter (fun h => inScaledBox X s h), (tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) := by
+    have h_kCorrelation : kCorrelation Ω_q X = (1 / (Ω_q.card : ℝ)) * ∑ h ∈ (Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc 1 (⌈s * ∑ i, X.sides i⌉)).filter (fun h => inScaledBox X s (fun _ => 0) h), (tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) := by
       unfold kCorrelation;
       convert rfl;
       exact Eq.symm <| Int.toNat_of_nonneg <| Int.ceil_nonneg <| mul_nonneg hs_pos.le <| Finset.sum_nonneg fun _ _ => le_of_lt <| X.sides_pos _;
     -- Using the bounds from h_lp_q and h_dev_q, we can bound the difference.
-    have h_bound : (1 / (Ω_q.card : ℝ)) * ∑ h ∈ (Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc 1 (⌈s * ∑ i, X.sides i⌉)).filter (fun h => inScaledBox X s h), (tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) ≤ s ^ (-(k - 1) : ℝ) * (s ^ (k - 1) * X.volume + C_lp * s ^ ((k - 1 : ℤ) - 1)) + C_dev * s ^ (-1 : ℝ) := by
-      have h_bound : (1 / (Ω_q.card : ℝ)) * ∑ h ∈ (Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc 1 (⌈s * ∑ i, X.sides i⌉)).filter (fun h => inScaledBox X s h), (tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) ≤ (1 / (Ω_q.card : ℝ)) * ((Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1)) * (s ^ (k - 1) * X.volume + C_lp * s ^ ((k - 1 : ℤ) - 1)) + C_dev * s ^ (-1 : ℝ) := by
-        have h_bound : (1 / (Ω_q.card : ℝ)) * ∑ h ∈ (Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc 1 (⌈s * ∑ i, X.sides i⌉)).filter (fun h => inScaledBox X s h), (tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) ≤ (1 / (Ω_q.card : ℝ)) * ((Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1)) * ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc 1 (⌈s * ∑ i, X.sides i⌉)).filter (fun h => inScaledBox X s h)).card + C_dev * s ^ (-1 : ℝ) := by
+    have h_bound : (1 / (Ω_q.card : ℝ)) * ∑ h ∈ (Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc 1 (⌈s * ∑ i, X.sides i⌉)).filter (fun h => inScaledBox X s (fun _ => 0) h), (tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) ≤ s ^ (-(k - 1) : ℝ) * (s ^ (k - 1) * X.volume + C_lp * s ^ ((k - 1 : ℤ) - 1)) + C_dev * s ^ (-1 : ℝ) := by
+      have h_bound : (1 / (Ω_q.card : ℝ)) * ∑ h ∈ (Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc 1 (⌈s * ∑ i, X.sides i⌉)).filter (fun h => inScaledBox X s (fun _ => 0) h), (tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) ≤ (1 / (Ω_q.card : ℝ)) * ((Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1)) * (s ^ (k - 1) * X.volume + C_lp * s ^ ((k - 1 : ℤ) - 1)) + C_dev * s ^ (-1 : ℝ) := by
+        have h_bound : (1 / (Ω_q.card : ℝ)) * ∑ h ∈ (Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc 1 (⌈s * ∑ i, X.sides i⌉)).filter (fun h => inScaledBox X s (fun _ => 0) h), (tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) ≤ (1 / (Ω_q.card : ℝ)) * ((Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1)) * ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc 1 (⌈s * ∑ i, X.sides i⌉)).filter (fun h => inScaledBox X s (fun _ => 0) h)).card + C_dev * s ^ (-1 : ℝ) := by
           norm_num [ Finset.sum_sub_distrib, mul_sub ] at *;
           linarith [ abs_le.mp h_dev_q ];
         refine le_trans h_bound ?_;
@@ -374,9 +372,9 @@ lemma complete_period_cancellation_apply
     convert h_bound.trans _ using 1 ; norm_num [ Real.rpow_add hs_pos, Real.rpow_neg_one ] ; ring_nf ; norm_num [ hs_pos.ne' ] ; ring_nf ; norm_num [ hs_pos.ne' ] ;
     field_simp;
     linarith;
-  · have h_sum : ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter (fun h => inScaledBox X s h)), (tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) = (∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter (fun h => inScaledBox X s h)), ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) - (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))) + (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1) * ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter (fun h => inScaledBox X s h)).card := by
+  · have h_sum : ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter (fun h => inScaledBox X s (fun _ => 0) h)), (tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) = (∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter (fun h => inScaledBox X s (fun _ => 0) h)), ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) - (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))) + (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1) * ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter (fun h => inScaledBox X s (fun _ => 0) h)).card := by
       simp +decide [mul_comm];
-    have h_sum : kCorrelation Ω_q X = (1 / (Ω_q.card : ℝ)) * (∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter (fun h => inScaledBox X s h)), ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) - (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))) + (Ω_q.card : ℝ) ^ (k - 1) / (q : ℝ) ^ (k - 1) * ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter (fun h => inScaledBox X s h)).card := by
+    have h_sum : kCorrelation Ω_q X = (1 / (Ω_q.card : ℝ)) * (∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter (fun h => inScaledBox X s (fun _ => 0) h)), ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) - (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))) + (Ω_q.card : ℝ) ^ (k - 1) / (q : ℝ) ^ (k - 1) * ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter (fun h => inScaledBox X s (fun _ => 0) h)).card := by
       convert congr_arg ( fun x : ℝ => ( 1 / ( Ω_q.card : ℝ ) ) * x ) h_sum using 1;
       · unfold kCorrelation; norm_cast;
         congr!;
@@ -387,7 +385,7 @@ lemma complete_period_cancellation_apply
       cases k <;> norm_num at *;
       rw [ inv_eq_one_div, div_pow, div_div_eq_mul_div ] ; ring;
     have h_sum : kCorrelation Ω_q X ≥ -C_dev * s ^ (-1 : ℝ) + s ^ (-(k - 1) : ℝ) * (s ^ (k - 1) * X.volume - C_lp * s ^ ((k - 1 : ℤ) - 1)) := by
-      have h_sum : kCorrelation Ω_q X ≥ -C_dev * s ^ (-1 : ℝ) + s ^ (-(k - 1) : ℝ) * ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter (fun h => inScaledBox X s h)).card := by
+      have h_sum : kCorrelation Ω_q X ≥ -C_dev * s ^ (-1 : ℝ) + s ^ (-(k - 1) : ℝ) * ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter (fun h => inScaledBox X s (fun _ => 0) h)).card := by
         nlinarith [ abs_le.mp h_dev_q, show 0 < s ^ ( - ( k - 1 : ℝ ) ) by positivity ];
       refine le_trans ?_ h_sum;
       gcongr;

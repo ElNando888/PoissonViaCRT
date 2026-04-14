@@ -57,7 +57,7 @@ namespace PoissonCRT
 /-! ### 1. Basic Lattice Point Count Approximation -/
 
 /-- **Lattice point count approximation.** The number of integer points
-`h : Fin m → ℤ` satisfying `inScaledBox X s h` (within the bounding
+`h : Fin m → ℤ` satisfying `inScaledBox X s (fun _ => 0) h` (within the bounding
 `piFinset`) deviates from `s^m · vol(X)` by at most `C · s^{m-1}`.
 
 This composes `count_inScaledBox_eq_prod_floor` (which rewrites the count
@@ -67,7 +67,7 @@ theorem scaled_box_count_approx (m : ℕ) (X : Box m) :
     ∃ C : ℝ, 0 < C ∧ ∀ (s : ℝ), 1 ≤ s →
       |(((Fintype.piFinset fun _ : Fin m =>
           Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
-        (fun h => inScaledBox X s h)).card : ℝ) - s ^ m * X.volume| ≤
+        (fun h => inScaledBox X s (fun _ => 0) h)).card : ℝ) - s ^ m * X.volume| ≤
         C * s ^ ((m : ℤ) - 1) := by
   obtain ⟨C, hC, hbound⟩ := prod_floor_approx m X.sides X.sides_pos
   exact ⟨C, hC, fun s hs => by
