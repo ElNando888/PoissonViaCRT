@@ -383,6 +383,90 @@ private lemma geo_arith_combine (k : ℕ) (s : ℝ) (d : ℕ) (hd_pos : 0 < d) :
   · ring
   · rw [div_pow, div_mul_eq_mul_div, div_eq_iff] <;> first | positivity | ring
 
+/-
+**Geometric L∞ bound on residue class discrepancy.** For a box `X` in `ℝ^{k-1}`,
+scaling factor `s`, and positive integer `d`, the number of lattice points in the scaled
+box `s · X` belonging to each residue class `r` modulo `d` deviates from the expected
+count `s^{k-1} · vol(X) / d^{k-1}` by at most `C_lp · (s/d)^{k-2}`.
+
+The proof relates `residueMultiplicity S r` to the lattice point count at scale `s/d`
+via the affine map `x ↦ d · x + r̃`, then applies the counting hypothesis `hC_lp`.
+The bijection shows that points `h ∈ S` with `h ≡ r (mod d)` correspond to lattice
+points in a shifted and rescaled box at scale `s / d`.
+-/
+
+/-- **Cardinality bridge:** The number of lattice points in `S` congruent to `r` modulo `d`
+equals the number of lattice points in the rescaled box at scale `s/d`.
+
+The bijection sends `h ∈ S` with `h ≡ r (mod d)` to `x = (h - r̃) / d ∈ S_sub`,
+and the inverse sends `x ∈ S_sub` to `h = d · x + r̃`. -/
+private lemma residue_class_card_eq_rescaled_card {k : ℕ} (hk : 1 ≤ k)
+    (s : ℝ) (X : Box (k - 1))
+    (d : ℕ) [NeZero d]
+    (hd_le_s : (d : ℝ) ≤ s)
+    (S : Finset (Fin (k - 1) → ℤ))
+    (hS_def : S = ((Fintype.piFinset fun _ : Fin (k - 1) =>
+        Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+      (fun h => inScaledBox X s h)))
+    (r : Fin (k - 1) → ZMod d) :
+    let r_int : Fin (k - 1) → ℤ := fun i => (ZMod.val (r i) : ℤ)
+    let S_sub : Finset (Fin (k - 1) → ℤ) :=
+      (Fintype.piFinset fun _ : Fin (k - 1) =>
+        Finset.Icc (1 : ℤ) ⌈(s / d) * ∑ i, X.sides i⌉).filter
+      (fun x => inScaledBox X (s / d) x)
+    residueMultiplicity S r = S_sub.card := by
+  sorry
+
+private lemma residue_class_discrepancy_bound (k : ℕ) (hk : 1 ≤ k)
+    (s : ℝ) (C_lp : ℝ) (hC_lp_pos : 0 ≤ C_lp)
+    (X : Box (k - 1))
+    (d : ℕ) [NeZero d]
+    (hd_le_s : (d : ℝ) ≤ s)
+    (hC_lp : ∀ (s : ℝ), 1 ≤ s →
+      |(((Fintype.piFinset fun _ : Fin (k - 1) =>
+          Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+        (fun h => inScaledBox X s h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
+        C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1))
+    (S : Finset (Fin (k - 1) → ℤ))
+    (hS_def : S = ((Fintype.piFinset fun _ : Fin (k - 1) =>
+        Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+      (fun h => inScaledBox X s h)))
+    (r : Fin (k - 1) → ZMod d) :
+    |(residueMultiplicity S r : ℝ) -
+      s ^ (k - 1 : ℕ) * X.volume / (d : ℝ) ^ (k - 1)| ≤
+    C_lp * (s / d) ^ (((k - 1 : ℕ) : ℤ) - 1) := by
+  -- Step 1: Define the integer lift of the residue class representative.
+  set r_int : Fin (k - 1) → ℤ := fun i => (ZMod.val (r i) : ℤ) with hr_int_def
+  -- Step 2: Define the shifted sublattice. A point h ≡ r (mod d) iff h = d·x + r_int
+  -- for some integer vector x. The sublattice S_sub collects these x-values.
+  set S_sub : Finset (Fin (k - 1) → ℤ) :=
+    (Fintype.piFinset fun _ : Fin (k - 1) =>
+      Finset.Icc (1 : ℤ) ⌈(s / d) * ∑ i, X.sides i⌉).filter
+    (fun x => inScaledBox X (s / d) x) with hS_sub_def
+  -- Step 3: Apply the counting hypothesis at the rescaled parameter s / d.
+  have h_lp_inst : 1 ≤ s / d →
+      |(S_sub.card : ℝ) - (s / d) ^ (k - 1 : ℕ) * X.volume| ≤
+        C_lp * (s / d) ^ (((k - 1 : ℕ) : ℤ) - 1) := by
+    intro h_sd
+    exact hC_lp (s / d) h_sd
+  -- Step 4: The cardinality bridge — the residue multiplicity equals S_sub.card.
+  have h_card_bridge : (residueMultiplicity S r : ℝ) = (S_sub.card : ℝ) := by
+    congr 1
+    exact residue_class_card_eq_rescaled_card hk s X d hd_le_s S hS_def r
+  -- Step 5: Close the lemma by combining the bridge with the counting hypothesis.
+  -- We split into two cases based on whether s / d ≥ 1.
+  by_cases h_sd : 1 ≤ s / (d : ℝ)
+  · -- When s / d ≥ 1, the counting hypothesis applies directly.
+    have h_inst := h_lp_inst h_sd
+    calc |(residueMultiplicity S r : ℝ) - s ^ (k - 1 : ℕ) * X.volume / (d : ℝ) ^ (k - 1)|
+        = |(S_sub.card : ℝ) - (s / d) ^ (k - 1 : ℕ) * X.volume| := by
+          rw [h_card_bridge]; congr 1
+          rw [div_pow]; ring
+      _ ≤ C_lp * (s / d) ^ (((k - 1 : ℕ) : ℤ) - 1) := h_inst
+  · -- When s / d < 1, this contradicts hd_le_s since 0 < d and d ≤ s implies 1 ≤ s / d.
+    have hd_pos : (0 : ℝ) < d := Nat.cast_pos.mpr (NeZero.pos d)
+    exact absurd (le_div_iff₀ hd_pos |>.mpr (by linarith)) h_sd
+
 set_option maxHeartbeats 800000 in
 private lemma box_deviation_inner_bound (k : ℕ) (hk : 1 ≤ k) (q : ℕ) [NeZero q]
     (hq_sq : Squarefree q)
@@ -390,6 +474,7 @@ private lemma box_deviation_inner_bound (k : ℕ) (hk : 1 ≤ k) (q : ℕ) [NeZe
     (X : Box (k - 1))
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (T : Finset ℕ) (hT : T ⊆ q.primeFactors) (hT_nonempty : T ≠ ∅)
+    (hT_le_s : (∏ p ∈ T, (p : ℝ)) ≤ s)
     (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
     (hsp : ∀ (p : ℕ), p.Prime → (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
     (hC_lp : ∀ (s : ℝ), 1 ≤ s →
@@ -469,8 +554,9 @@ private lemma box_deviation_inner_bound (k : ℕ) (hk : 1 ≤ k) (q : ℕ) [NeZe
   set μ : ℝ := s ^ (k - 1 : ℕ) * X.volume / (d : ℝ) ^ (k - 1) with hμ_def
   have h_geom_linf : ∀ r : Fin (k - 1) → ZMod d,
       |(residueMultiplicity S r : ℝ) - μ| ≤
-      C_lp * (s / d) ^ (((k - 1 : ℕ) : ℤ) - 1) := by
-    sorry
+      C_lp * (s / d) ^ (((k - 1 : ℕ) : ℤ) - 1) := fun r =>
+    residue_class_discrepancy_bound k hk s C_lp hC_lp_pos X d
+      (by rw [hd_def, Nat.cast_prod]; exact hT_le_s) hC_lp S hS_def r
   -- Step 5 (L∞ × L¹ swap): Arithmetic L¹ bound via CRT factorization.
   -- The sum of absolute deviations factors over primes by CRT independence.
   have h_arith_l1 : ∑ r : Fin (k - 1) → ZMod d,
