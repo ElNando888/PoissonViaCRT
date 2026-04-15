@@ -330,28 +330,6 @@ private lemma sum_residueMultiplicity_eq_card {d : ℕ} [NeZero d] {m : ℕ}
     (fun h => fun i => (h i : ZMod d))
   simp at key; exact key
 
-set_option maxHeartbeats 400000 in
-/-- Total variation bound for residue multiplicities: the sum of absolute deviations
-of residue multiplicities from a constant baseline `c` is bounded by
-`C_lp * s^((k-1)-1) * d`. This uses the lattice point counting hypothesis `hC_lp`. -/
-private lemma residue_total_variation_bound (k : ℕ) (hk : 1 ≤ k)
-    (d : ℕ) [NeZero d] (hd_pos : 0 < d)
-    (s : ℝ) (C_lp : ℝ) (X : Box (k - 1))
-    (S : Finset (Fin (k - 1) → ℤ))
-    (hS_def : S = ((Fintype.piFinset fun _ : Fin (k - 1) =>
-        Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
-      (fun h => inScaledBox X s (fun _ => 0) h)))
-    (hC_lp : ∀ (v : Fin (k - 1) → ℝ) (s : ℝ), 1 ≤ s →
-      |(((Fintype.piFinset fun _ : Fin (k - 1) =>
-          Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
-        (fun h => inScaledBox X s v h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
-        C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1))
-    (ε : ℝ) (T : Finset ℕ) (_hT_d : d = ∏ p ∈ T, p) :
-    ∑ r : Fin (k - 1) → ZMod d,
-      |(↑(residueMultiplicity S r) : ℝ) -
-        s ^ (k - 1 : ℕ) * X.volume / (d : ℝ) ^ (k - 1)| ≤
-      C_lp * s ^ ((↑(k - 1) : ℤ) - 1) * (d : ℝ) := by sorry
-
 /-
 **Inner bound for the deviation at a single nonempty subset `T` of prime factors.**
 Groups the lattice point sum by residue classes modulo `d = ∏_{p ∈ T} p`,
@@ -393,13 +371,186 @@ The proof relates `residueMultiplicity S r` to the lattice point count at scale 
 via the affine map `x ↦ d · x + r̃`, then applies the counting hypothesis `hC_lp`.
 The bijection shows that points `h ∈ S` with `h ≡ r (mod d)` correspond to lattice
 points in a shifted and rescaled box at scale `s / d`.
--/
 
-/-- **Cardinality bridge:** The number of lattice points in `S` congruent to `r` modulo `d`
+**Cardinality bridge:** The number of lattice points in `S` congruent to `r` modulo `d`
 equals the number of lattice points in the rescaled box at scale `s/d`.
 
 The bijection sends `h ∈ S` with `h ≡ r (mod d)` to `x = (h - r̃) / d ∈ S_sub`,
-and the inverse sends `x ∈ S_sub` to `h = d · x + r̃`. -/
+and the inverse sends `x ∈ S_sub` to `h = d · x + r̃`.
+-/
+private lemma rescaled_card_injectivity {k : ℕ}
+    (d : ℕ) [NeZero d]
+    (r : Fin (k - 1) → ZMod d)
+    (a1 a2 : Fin (k - 1) → ℤ)
+    (ha1_mod : (fun i => (a1 i : ZMod d)) = r)
+    (ha2_mod : (fun i => (a2 i : ZMod d)) = r)
+    (heq : (fun i => (a1 i - 1) / (d : ℤ) + 1) = fun i => (a2 i - 1) / (d : ℤ) + 1) :
+    a1 = a2 := by
+      ext i; have := congr_fun heq i; simp_all +decide [ funext_iff ] ;
+      -- Since $a1 i \equiv a2 i \pmod{d}$ and $(a1 i - 1) / d = (a2 i - 1) / d$, it follows that $a1 i = a2 i$.
+      have h_eq : (a1 i - 1) % d = (a2 i - 1) % d := by
+        simp +decide [ ← ZMod.intCast_eq_intCast_iff', ha1_mod, ha2_mod ];
+      have := Int.mul_ediv_add_emod ( a1 i - 1 ) d; have := Int.mul_ediv_add_emod ( a2 i - 1 ) d; aesop;
+
+/-
+The 1-based residue `r_1 i` satisfies `1 ≤ r_1 i` and `r_1 i ≤ d`.
+-/
+private lemma r1_bounds (d : ℕ) [NeZero d] (r : Fin k → ZMod d) (i : Fin k) :
+    let r_int : Fin k → ℤ := fun i => (ZMod.val (r i) : ℤ)
+    let r_1 : Fin k → ℤ := fun i => if r_int i = 0 then (d : ℤ) else r_int i
+    1 ≤ r_1 i ∧ r_1 i ≤ (d : ℤ) := by
+      grind
+
+/-
+The image condition: `(d * (b i - 1) + r_1 i - 1) / d + 1 = b i`.
+-/
+private lemma surj_image_eq (d : ℕ) [NeZero d] (r : Fin k → ZMod d)
+    (b : Fin k → ℤ) (i : Fin k) :
+    let r_int : Fin k → ℤ := fun i => (ZMod.val (r i) : ℤ)
+    let r_1 : Fin k → ℤ := fun i => if r_int i = 0 then (d : ℤ) else r_int i
+    ((↑d * (b i - 1) + r_1 i - 1) / (d : ℤ) + 1) = b i := by
+      cases eq_or_ne ( r i |> ZMod.val : ℤ ) 0 <;> simp +decide [ *, Int.add_mul_ediv_left ];
+      · nlinarith [ Int.mul_ediv_add_emod ( ↑d * ( b i - 1 ) + ↑d - 1 ) ↑d, Int.emod_nonneg ( ↑d * ( b i - 1 ) + ↑d - 1 ) ( NeZero.ne ( d : ℤ ) ), Int.emod_lt_of_pos ( ↑d * ( b i - 1 ) + ↑d - 1 ) ( Nat.cast_pos.mpr <| NeZero.pos d ) ];
+      · have h_div : ((d * (b i - 1) + (r i).val - 1) / d) = (b i - 1) + ((r i).val - 1) / d := by
+          rw [ Int.add_sub_assoc, Int.add_ediv_of_dvd_left ] <;> norm_num [ NeZero.ne ];
+        have h_div_zero : ((r i).val - 1) / d = 0 := by
+          exact Nat.div_eq_of_lt ( Nat.lt_of_lt_of_le ( Nat.sub_lt ( Nat.pos_of_ne_zero ( by aesop ) ) zero_lt_one ) ( Nat.le_of_lt ( ZMod.val_lt _ ) ) );
+        grind +suggestions
+
+/-
+The mod condition: `(d * (b i - 1) + r_1 i : ZMod d) = r i`.
+-/
+private lemma surj_mod_eq (d : ℕ) [NeZero d] (r : Fin k → ZMod d)
+    (b : Fin k → ℤ) (i : Fin k) :
+    let r_int : Fin k → ℤ := fun i => (ZMod.val (r i) : ℤ)
+    let r_1 : Fin k → ℤ := fun i => if r_int i = 0 then (d : ℤ) else r_int i
+    ((↑d * (b i - 1) + r_1 i : ℤ) : ZMod d) = r i := by
+      cases' eq_or_ne ( ( r i |> ZMod.val : ZMod d ) ) 0 with h h <;> simp_all +decide [ ZMod.natCast_eq_zero_iff ];
+      -- Since the cast is injective, if the cast of r i is zero, then r i must be zero.
+      intro h_cast_zero
+      have h_r_zero : r i = 0 := by
+        cases d <;> simp_all +decide [ ZMod.natCast_eq_zero_iff ];
+        injection h_cast_zero with h_cast_zero ; aesop
+      exact h_r_zero.symm
+
+/-
+Rescaling identity: `(d * (b i - 1) + r_1 i : ℝ) = d * ((b i : ℝ) - (1 - (r_1 i : ℝ) / d))`.
+-/
+private lemma surj_rescale_identity (d : ℕ) [NeZero d] (r : Fin k → ZMod d)
+    (b : Fin k → ℤ) (i : Fin k) :
+    let r_int : Fin k → ℤ := fun i => (ZMod.val (r i) : ℤ)
+    let r_1 : Fin k → ℤ := fun i => if r_int i = 0 then (d : ℤ) else r_int i
+    ((↑d * (b i - 1) + r_1 i : ℤ) : ℝ) =
+      (d : ℝ) * ((b i : ℝ) - (1 - (r_1 i : ℝ) / (d : ℝ))) := by
+        simp +decide [ mul_sub, mul_div_cancel₀, NeZero.ne ];
+        ring
+
+/-
+From inScaledBox with shift 0, each coordinate h i satisfies
+`(h i : ℝ) ≤ s * ∑ j, X.sides j`, hence `h i ≤ ⌈s * ∑ X.sides⌉`.
+-/
+private lemma inscaledbox_implies_icc_upper {k : ℕ}
+    (s : ℝ) (X : Box k) (h : Fin k → ℤ) (i : Fin k)
+    (hbox : inScaledBox X s (fun _ => 0) h) :
+    h i ≤ ⌈s * ∑ j, X.sides j⌉ := by
+      have h_le_sum : (h i : ℝ) ≤ s * ∑ j, X.sides j := by
+        -- By induction on $i$, we can show that the cumulative sum of the differences up to $i$ is less than or equal to $s$ times the sum of the sides.
+        have h_cumulative : ∀ i : Fin k, (h i : ℝ) ≤ s * ∑ j ∈ Finset.Iic i, X.sides j := by
+          intro i
+          induction' i with i ih;
+          induction' i with i ih;
+          · have := hbox ⟨ 0, ih ⟩;
+            rw [ show ( Iic ⟨ 0, ih ⟩ : Finset ( Fin k ) ) = { ⟨ 0, ih ⟩ } by ext ⟨ i, hi ⟩ ; aesop ] ; aesop;
+          · have := hbox ⟨ i + 1, ih ⟩ ; simp_all +decide [ Finset.sum_Ioc_succ_top, (Nat.succ_eq_succ ▸ Finset.Icc_succ_left_eq_Ioc) ] ;
+            rw [ show ( Iic ⟨ i + 1, ih ⟩ : Finset ( Fin k ) ) = Iic ⟨ i, by linarith ⟩ ∪ { ⟨ i + 1, ih ⟩ } from ?_, Finset.sum_union ] <;> norm_num;
+            · linarith [ ‹∀ ( ih : i < k ), ( h ⟨ i, ih ⟩ : ℝ ) ≤ s * ∑ j ∈ Iic ⟨ i, ih ⟩, X.sides j› ( Nat.lt_of_succ_lt ih ) ];
+            · grind;
+        refine le_trans ( h_cumulative i ) ?_;
+        gcongr;
+        · exact le_of_not_gt fun hs => by have := hbox i; norm_num at this; nlinarith [ X.sides_pos i ] ;
+        · exact fun _ _ _ => le_of_lt ( X.sides_pos _ );
+        · exact Finset.subset_univ _;
+      exact Int.le_of_lt_add_one <| by rw [ ← @Int.cast_lt ℝ ] ; push_cast; linarith [ Int.le_ceil ( s * ∑ j, X.sides j ) ] ;
+
+/-
+Transfer of inScaledBox from scale s/d to scale s.
+If `inScaledBox X (s/d) (fun i => 1 - r_1 i / d) b` then
+`inScaledBox X s (fun _ => 0) (fun i => d * (b i - 1) + r_1 i)`,
+where `r_1` satisfies `1 ≤ r_1 i ≤ d`.
+-/
+private lemma surj_inscaledbox_transfer {k : ℕ}
+    (s : ℝ) (X : Box k) (d : ℕ) [NeZero d]
+    (r_1 : Fin k → ℤ) (hr_1_bounds : ∀ i, 1 ≤ r_1 i ∧ r_1 i ≤ (d : ℤ))
+    (b : Fin k → ℤ)
+    (hb_box : inScaledBox X (s / ↑d) (fun i => 1 - (r_1 i : ℝ) / ↑d) b) :
+    inScaledBox X s (fun _ => 0) (fun i => ↑d * (b i - 1) + r_1 i) := by
+      intro i;
+      convert hb_box i using 1;
+      split_ifs <;> simp +decide [ *, ne_of_gt ( NeZero.pos d ), sub_mul, mul_sub, div_eq_mul_inv ];
+      · field_simp;
+        constructor <;> intro h <;> constructor <;> nlinarith [ show ( d : ℝ ) > 0 by exact Nat.cast_pos.mpr <| NeZero.pos d, mul_div_cancel₀ ( r_1 i : ℝ ) <| Nat.cast_ne_zero.mpr <| NeZero.ne d, mul_div_cancel₀ ( s * X.sides i ) <| Nat.cast_ne_zero.mpr <| NeZero.ne d ];
+      · -- By simplifying, we can see that the two inequalities are equivalent.
+        field_simp [NeZero.ne d];
+        rw [ div_lt_div_iff_of_pos_right, le_div_iff₀ ] <;> norm_num [ NeZero.pos ];
+        constructor <;> intro h <;> constructor <;> linarith
+
+set_option maxHeartbeats 800000 in
+private lemma rescaled_card_surjectivity {k : ℕ} (hk : 1 ≤ k)
+    (s : ℝ) (X : Box (k - 1))
+    (d : ℕ) [NeZero d]
+    (hd_le_s : (d : ℝ) ≤ s)
+    (S : Finset (Fin (k - 1) → ℤ))
+    (hS_def : S = ((Fintype.piFinset fun _ : Fin (k - 1) =>
+        Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+      (fun h => inScaledBox X s (fun _ => 0) h)))
+    (r : Fin (k - 1) → ZMod d)
+    (r_int : Fin (k - 1) → ℤ) (hr_int : r_int = fun i => (ZMod.val (r i) : ℤ))
+    (r_1 : Fin (k - 1) → ℤ) (hr_1 : r_1 = fun i => if r_int i = 0 then (d : ℤ) else r_int i)
+    (b : Fin (k - 1) → ℤ)
+    (hb : b ∈ (Fintype.piFinset fun _ : Fin (k - 1) =>
+        Finset.Icc (1 : ℤ) ⌈(s / d) * ∑ i, X.sides i⌉).filter
+      (fun x => inScaledBox X (s / d) (fun i => 1 - (r_1 i : ℝ) / ↑d) x)) :
+    ∃ a, a ∈ Finset.filter (fun h => (fun i => (h i : ZMod d)) = r) S ∧
+      (fun i => (a i - 1) / (d : ℤ) + 1) = b := by
+        simp_all +decide [ inScaledBox ];
+        use fun i => d * (b i - 1) + r_1 i;
+        refine' ⟨ ⟨ ⟨ _, _ ⟩, _ ⟩, _ ⟩;
+        · intro i;
+          constructor;
+          · simp [hr_1];
+            split_ifs;
+            · nlinarith [ hb.1 i, NeZero.pos d ];
+            · have h_cast_pos : 1 ≤ (r i).val := by
+                contrapose! hb; aesop;
+              norm_num [ ZMod.cast, ZMod.val ] at *;
+              cases d <;> norm_num at * ; nlinarith [ hb.1 i ];
+          · convert inscaledbox_implies_icc_upper s X _ i _ using 1;
+            rotate_left;
+            use fun i => d * ( b i - 1 ) + r_1 i;
+            · intro i; specialize hb; have := hb.2 i; simp_all +decide [ inScaledBox ] ;
+              convert hb.2 i using 1 <;> norm_num [ div_eq_mul_inv, mul_assoc, mul_comm, mul_left_comm, NeZero.ne ];
+              · split_ifs <;> norm_num [ NeZero.ne ];
+                all_goals norm_cast; simp +decide [ NeZero.ne, mul_sub, sub_mul, mul_assoc, mul_comm, mul_left_comm, div_eq_mul_inv ] ;
+                any_goals constructor <;> intro <;> nlinarith [ show ( d : ℝ ) > 0 by exact Nat.cast_pos.mpr <| NeZero.pos d, mul_inv_cancel_left₀ ( show ( d : ℝ ) ≠ 0 by exact Nat.cast_ne_zero.mpr <| NeZero.ne d ) ( ( r ⟨ i - 1, Nat.lt_of_le_of_lt ( Nat.pred_le _ ) i.2 ⟩ |> ZMod.cast ) : ℝ ), mul_inv_cancel_left₀ ( show ( d : ℝ ) ≠ 0 by exact Nat.cast_ne_zero.mpr <| NeZero.ne d ) ( ( r i |> ZMod.cast ) : ℝ ) ];
+                · exact ⟨ fun h => by nlinarith [ NeZero.pos d ], fun h => by nlinarith [ NeZero.pos d ] ⟩;
+                · rw [ mul_comm, mul_lt_mul_iff_of_pos_right ( Nat.cast_pos.mpr <| NeZero.pos d ) ];
+              · field_simp;
+                split_ifs <;> simp +decide [ *, mul_add, add_assoc, mul_sub, sub_add_eq_add_sub, mul_div_cancel₀, NeZero.ne ];
+                all_goals constructor <;> intro <;> nlinarith [ show ( d : ℝ ) > 0 by exact Nat.cast_pos.mpr <| NeZero.pos d, mul_div_cancel₀ ( s * X.sides i ) <| show ( d : ℝ ) ≠ 0 by exact Nat.cast_ne_zero.mpr <| NeZero.ne d, mul_div_cancel₀ ( ( r i |> ZMod.cast ) : ℝ ) <| show ( d : ℝ ) ≠ 0 by exact Nat.cast_ne_zero.mpr <| NeZero.ne d, mul_div_cancel₀ ( ( r ⟨ i - 1, Nat.lt_of_le_of_lt ( Nat.pred_le _ ) i.2 ⟩ |> ZMod.cast ) : ℝ ) <| show ( d : ℝ ) ≠ 0 by exact Nat.cast_ne_zero.mpr <| NeZero.ne d ] ;
+            · norm_cast;
+        · intro i; specialize hb; have := hb.2 i; simp_all +decide [ sub_eq_iff_eq_add ] ;
+          have := hb.2 i; split_ifs at * <;> simp_all +decide [ mul_sub, mul_div_cancel₀, NeZero.ne ] ;
+          all_goals constructor <;> norm_num [ NeZero.ne d, div_eq_mul_inv ] at *;
+          grind +suggestions;
+          any_goals nlinarith [ show ( d : ℝ ) ≥ 1 by exact_mod_cast NeZero.pos d, mul_inv_cancel_left₀ ( show ( d : ℝ ) ≠ 0 by exact_mod_cast NeZero.ne d ) ( s * X.sides i ), mul_inv_cancel_left₀ ( show ( d : ℝ ) ≠ 0 by exact_mod_cast NeZero.ne d ) ( ( r ⟨ i - 1, Nat.lt_of_le_of_lt ( Nat.pred_le _ ) i.2 ⟩ |> ZMod.cast ) : ℝ ), mul_inv_cancel_left₀ ( show ( d : ℝ ) ≠ 0 by exact_mod_cast NeZero.ne d ) ( ( r i |> ZMod.cast ) : ℝ ) ];
+          exact mul_lt_mul_of_pos_left ( mod_cast this.1 ) ( Nat.cast_pos.mpr ( NeZero.pos d ) );
+        · ext i; simp +decide [ hr_1 ] ;
+          intro hi; have := ZMod.natCast_eq_zero_iff ( r i |> ZMod.val ) d; simp_all +decide [ ← ZMod.natCast_eq_zero_iff ] ;
+          exact Eq.symm ( by simpa [ ZMod.natCast_eq_zero_iff ] using congr_arg ( fun x : ℤ => x : ℤ → ZMod d ) hi );
+        · ext i; simp +decide [ *, Int.add_mul_ediv_left ] ;
+          convert surj_image_eq d r b i using 1;
+          cases d <;> aesop
+
 private lemma residue_class_card_eq_rescaled_card {k : ℕ} (hk : 1 ≤ k)
     (s : ℝ) (X : Box (k - 1))
     (d : ℕ) [NeZero d]
@@ -410,42 +561,52 @@ private lemma residue_class_card_eq_rescaled_card {k : ℕ} (hk : 1 ≤ k)
       (fun h => inScaledBox X s (fun _ => 0) h)))
     (r : Fin (k - 1) → ZMod d) :
     let r_int : Fin (k - 1) → ℤ := fun i => (ZMod.val (r i) : ℤ)
+    let r_1 : Fin (k - 1) → ℤ := fun i => if r_int i = 0 then (d : ℤ) else r_int i
     let S_sub : Finset (Fin (k - 1) → ℤ) :=
       (Fintype.piFinset fun _ : Fin (k - 1) =>
         Finset.Icc (1 : ℤ) ⌈(s / d) * ∑ i, X.sides i⌉).filter
-      (fun x => inScaledBox X (s / d) (fun i => (r_int i : ℝ) / d) x)
+      (fun x => inScaledBox X (s / d) (fun i => 1 - (r_1 i : ℝ) / ↑d) x)
     residueMultiplicity S r = S_sub.card := by
-  intro r_int S_sub
+  intro r_int r_1 S_sub
   unfold residueMultiplicity
-  apply Finset.card_bij (fun h _ i => (h i - r_int i) / d)
-  · intro a ha
-    sorry
-  · intro a1 ha1 a2 ha2 eq
-    ext i
+  apply Finset.card_bij (fun (h : Fin (k - 1) → ℤ) _ (i : Fin (k - 1)) => (h i - 1) / (d : ℤ) + 1)
+  · -- Forward direction: show the image lands in S_sub
+    intro a ha
+    refine' Finset.mem_filter.mpr ⟨ _, _ ⟩ <;> simp_all +decide [ funext_iff ];
+    · intro i; specialize ha; have := ha.1.1 i; rw [ Int.ediv_lt_iff_lt_mul ] <;> norm_num [ NeZero.pos ] ; ring_nf at * ;
+      refine' ⟨ Int.ediv_nonneg ( by linarith ) ( Nat.cast_nonneg _ ), _ ⟩;
+      field_simp;
+      exact Int.le_of_lt_add_one ( by rw [ ← @Int.cast_lt ℝ ] ; push_cast; nlinarith [ Int.le_ceil ( ( s * ∑ i, X.sides i ) / d ), show ( d : ℝ ) ≥ 1 from Nat.one_le_cast.mpr ( NeZero.pos d ), mul_div_cancel₀ ( s * ∑ i, X.sides i ) ( Nat.cast_ne_zero.mpr <| NeZero.ne d ), show ( a i : ℝ ) ≤ ⌈s * ∑ i, X.sides i⌉ from mod_cast this.2, Int.ceil_lt_add_one ( s * ∑ i, X.sides i ) ] );
+    · intro i;
+      have h_mod : ∀ i, (a i : ℝ) = (d : ℝ) * ((a i - 1) / d : ℤ) + (r_1 i : ℝ) := by
+        intro i
+        have h_mod : (a i : ℤ) ≡ r_1 i [ZMOD d] := by
+          simp_all +decide [ ← ZMod.intCast_eq_intCast_iff ];
+          simp +zetaDelta at *;
+          exact fun h => by simpa [ ZMod.natCast_eq_zero_iff ] using congr_arg ( fun x : ℤ => x : ℤ → ZMod d ) h;
+        obtain ⟨ k, hk ⟩ := h_mod.symm.dvd;
+        norm_num [ show a i = d * k + r_1 i by linarith ];
+        rw [ Int.add_sub_assoc, Int.add_ediv_of_dvd_left ] <;> norm_num [ NeZero.ne ];
+        rw [ Int.ediv_eq_zero_of_lt ] <;> norm_num [ r_1 ];
+        · split_ifs <;> norm_num [ NeZero.pos ];
+          · exact NeZero.pos d;
+          · exact lt_of_le_of_ne ( Nat.cast_nonneg _ ) ( Ne.symm ‹_› );
+        · grind;
+      have := ha.1.2 i;
+      split_ifs at * <;> simp_all +decide [ sub_eq_iff_eq_add ];
+      · field_simp;
+        constructor <;> nlinarith [ show ( d : ℝ ) > 0 by exact Nat.cast_pos.mpr <| NeZero.pos d, mul_div_cancel₀ ( r_1 i : ℝ ) <| Nat.cast_ne_zero.mpr <| NeZero.ne d, mul_div_cancel₀ ( s * X.sides i ) <| Nat.cast_ne_zero.mpr <| NeZero.ne d ];
+      · field_simp;
+        constructor <;> nlinarith [ show ( d : ℝ ) > 0 by exact Nat.cast_pos.mpr <| NeZero.pos d, mul_div_cancel₀ ( s * X.sides i ) <| show ( d : ℝ ) ≠ 0 by exact Nat.cast_ne_zero.mpr <| NeZero.ne d, mul_div_cancel₀ ( r_1 i : ℝ ) <| show ( d : ℝ ) ≠ 0 by exact Nat.cast_ne_zero.mpr <| NeZero.ne d, mul_div_cancel₀ ( r_1 ⟨ i - 1, by omega ⟩ : ℝ ) <| show ( d : ℝ ) ≠ 0 by exact Nat.cast_ne_zero.mpr <| NeZero.ne d ]
+  · -- Injectivity
+    intro a1 ha1 a2 ha2 eq
     simp only [Finset.mem_filter] at ha1 ha2
-    have h1 := congr_fun eq i
-    have hr1 := congr_fun ha1.2 i
-    have hr2 := congr_fun ha2.2 i
-    have hm1 : r_int i = a1 i % (d : ℤ) := by
-      dsimp [r_int]
-      rw [← hr1, ZMod.val_intCast]
-    have hm2 : r_int i = a2 i % (d : ℤ) := by
-      dsimp [r_int]
-      rw [← hr2, ZMod.val_intCast]
-    have hz_p : (d:ℤ) ≠ 0 := by exact_mod_cast NeZero.ne d
-    have hd1 : a1 i - r_int i = ↑d * (a1 i / ↑d) := by rw [hm1, ← sub_eq_iff_eq_add.mpr (Int.mul_ediv_add_emod (a1 i) ↑d).symm]
-    have hd2 : a2 i - r_int i = ↑d * (a2 i / ↑d) := by rw [hm2, ← sub_eq_iff_eq_add.mpr (Int.mul_ediv_add_emod (a2 i) ↑d).symm]
-    have hd3 : a1 i / ↑d = a2 i / ↑d := by
-      have h1' := h1
-      rw [hd1, hd2] at h1'
-      rw [Int.mul_ediv_cancel_left _ hz_p, Int.mul_ediv_cancel_left _ hz_p] at h1'
-      exact h1'
-    calc
-      a1 i = ↑d * (a1 i / ↑d) + a1 i % ↑d := (Int.mul_ediv_add_emod _ _).symm
-      _ = ↑d * (a2 i / ↑d) + a2 i % ↑d := by rw [hd3, ← hm1, hm2]
-      _ = a2 i := Int.mul_ediv_add_emod _ _
-  · intro b hb
-    sorry
+    exact rescaled_card_injectivity d r a1 a2 ha1.2 ha2.2 eq
+  · -- Surjectivity
+    intro b hb
+    obtain ⟨a, ha_mem, ha_eq⟩ := rescaled_card_surjectivity hk s X d hd_le_s S hS_def r
+      r_int rfl r_1 rfl b hb
+    exact ⟨a, ha_mem, ha_eq⟩
 
 private lemma residue_class_discrepancy_bound (k : ℕ) (hk : 1 ≤ k)
     (s : ℝ) (C_lp : ℝ) (hC_lp_pos : 0 ≤ C_lp)
@@ -467,18 +628,19 @@ private lemma residue_class_discrepancy_bound (k : ℕ) (hk : 1 ≤ k)
     C_lp * (s / d) ^ (((k - 1 : ℕ) : ℤ) - 1) := by
   -- Step 1: Define the integer lift of the residue class representative.
   set r_int : Fin (k - 1) → ℤ := fun i => (ZMod.val (r i) : ℤ) with hr_int_def
-  -- Step 2: Define the shifted sublattice. A point h ≡ r (mod d) iff h = d·x + r_int
-  -- for some integer vector x. The sublattice S_sub collects these x-values.
+  -- Step 1b: Define the 1-based residue (avoids boundary phase-wrapping when r_int = 0).
+  let r_1 : Fin (k - 1) → ℤ := fun i => if r_int i = 0 then (d : ℤ) else r_int i
+  -- Step 2: Define the shifted sublattice using the 1-based translation vector.
   set S_sub : Finset (Fin (k - 1) → ℤ) :=
     (Fintype.piFinset fun _ : Fin (k - 1) =>
       Finset.Icc (1 : ℤ) ⌈(s / d) * ∑ i, X.sides i⌉).filter
-    (fun x => inScaledBox X (s / d) (fun i => (r_int i : ℝ) / d) x) with hS_sub_def
+    (fun x => inScaledBox X (s / d) (fun i => 1 - (r_1 i : ℝ) / ↑d) x) with hS_sub_def
   -- Step 3: Apply the counting hypothesis at the rescaled parameter s / d.
   have h_lp_inst : 1 ≤ s / d →
       |(S_sub.card : ℝ) - (s / d) ^ (k - 1 : ℕ) * X.volume| ≤
         C_lp * (s / d) ^ (((k - 1 : ℕ) : ℤ) - 1) := by
     intro h_sd
-    exact hC_lp (fun i => (r_int i : ℝ) / d) (s / d) h_sd
+    exact hC_lp (fun i => 1 - (r_1 i : ℝ) / ↑d) (s / d) h_sd
   -- Step 4: The cardinality bridge — the residue multiplicity equals S_sub.card.
   have h_card_bridge : (residueMultiplicity S r : ℝ) = (S_sub.card : ℝ) := by
     congr 1
@@ -497,6 +659,55 @@ private lemma residue_class_discrepancy_bound (k : ℕ) (hk : 1 ≤ k)
     have hd_pos : (0 : ℝ) < d := Nat.cast_pos.mpr (NeZero.pos d)
     exact absurd (le_div_iff₀ hd_pos |>.mpr (by linarith)) h_sd
 
+set_option maxHeartbeats 400000 in
+/-- Total variation bound for residue multiplicities: the sum of absolute deviations
+of residue multiplicities from a constant baseline `c` is bounded by
+`C_lp * s^((k-1)-1) * d`. This uses the lattice point counting hypothesis `hC_lp`. -/
+private lemma residue_total_variation_bound (k : ℕ) (hk : 1 ≤ k)
+    (d : ℕ) [NeZero d] (hd_pos : 0 < d)
+    (s : ℝ) (C_lp : ℝ) (X : Box (k - 1))
+    (S : Finset (Fin (k - 1) → ℤ))
+    (hS_def : S = ((Fintype.piFinset fun _ : Fin (k - 1) =>
+        Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+      (fun h => inScaledBox X s (fun _ => 0) h)))
+    (hC_lp : ∀ (v : Fin (k - 1) → ℝ) (s : ℝ), 1 ≤ s →
+      |(((Fintype.piFinset fun _ : Fin (k - 1) =>
+          Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+        (fun h => inScaledBox X s v h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
+        C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1))
+    (hd_le_s : (d : ℝ) ≤ s)
+    (ε : ℝ) (T : Finset ℕ) (_hT_d : d = ∏ p ∈ T, p) :
+    ∑ r : Fin (k - 1) → ZMod d,
+      |(↑(residueMultiplicity S r) : ℝ) -
+        s ^ (k - 1 : ℕ) * X.volume / (d : ℝ) ^ (k - 1)| ≤
+      C_lp * s ^ ((↑(k - 1) : ℤ) - 1) * (d : ℝ) := by
+  -- Derive 0 ≤ C_lp from hC_lp at (v, s) = (0, 1)
+  have hC_lp_pos : 0 ≤ C_lp := by
+    have h := hC_lp (fun _ => 0) 1 le_rfl
+    have : 0 ≤ C_lp * (1 : ℝ) ^ (((k - 1 : ℕ) : ℤ) - 1) :=
+      le_trans (abs_nonneg _) h
+    rwa [one_zpow, mul_one] at this
+  -- Apply residue_class_discrepancy_bound pointwise
+  have h_bound : ∀ r : Fin (k - 1) → ZMod d,
+      |(↑(residueMultiplicity S r) : ℝ) -
+        s ^ (k - 1 : ℕ) * X.volume / (d : ℝ) ^ (k - 1)| ≤
+      C_lp * (s / d) ^ (((k - 1 : ℕ) : ℤ) - 1) :=
+    fun r => residue_class_discrepancy_bound k hk s C_lp hC_lp_pos X d hd_le_s hC_lp S hS_def r
+  calc ∑ r : Fin (k - 1) → ZMod d,
+        |(↑(residueMultiplicity S r) : ℝ) -
+          s ^ (k - 1 : ℕ) * X.volume / (d : ℝ) ^ (k - 1)|
+    _ ≤ Finset.univ.card • (C_lp * (s / d) ^ (((k - 1 : ℕ) : ℤ) - 1)) :=
+        Finset.sum_le_card_nsmul _ _ _ (fun r _ => h_bound r)
+    _ = (Fintype.card (Fin (k - 1) → ZMod d) : ℝ) *
+          (C_lp * (s / d) ^ (((k - 1 : ℕ) : ℤ) - 1)) := by
+        rw [Finset.card_univ]; simp [nsmul_eq_mul]
+    _ = (d : ℝ) ^ (k - 1) * (C_lp * (s / d) ^ (((k - 1 : ℕ) : ℤ) - 1)) := by
+        congr 1; rw [Fintype.card_fun, ZMod.card, Fintype.card_fin]
+        simp [Nat.cast_pow]
+    _ = C_lp * ((s / ↑d) ^ ((↑(k - 1) : ℤ) - 1) * (d : ℝ) ^ (k - 1)) := by ring
+    _ = C_lp * (s ^ ((↑(k - 1) : ℤ) - 1) * (d : ℝ)) := by
+        rw [geo_arith_combine k s d hd_pos]
+    _ = C_lp * s ^ ((↑(k - 1) : ℤ) - 1) * (d : ℝ) := by ring
 
 /-- The CRT subset cardinality factors as a product over prime factors. -/
 private lemma crt_card_eq_prod (q : ℕ) [NeZero q] (hq_sq : Squarefree q)
@@ -526,31 +737,39 @@ private lemma omega_ratio_pow_le_one (q : ℕ) [NeZero q]
   apply pow_le_one₀ (div_nonneg (Nat.cast_nonneg _) (Nat.cast_nonneg _))
   exact div_le_one_of_le₀ (omega_card_le_prime q Ω p hp) (Nat.cast_nonneg _)
 
-/-- Auxiliary: the expression factors into a single product of per-prime terms,
-each of which is at most 1. -/
-private lemma combined_mean_spacing_bound_aux (k : ℕ) (q : ℕ) [NeZero q]
+/-
+Final algebraic collapse: combine zpow exponents and absorb d into product.
+-/
+private lemma final_collapse (s C_lp : ℝ) (d : ℕ) (k : ℕ) (ε : ℝ)
+    (Ω : ∀ p : ℕ, Finset (ZMod p)) (T : Finset ℕ)
+    (hs_ne : s ≠ 0) (hd_def : d = ∏ p ∈ T, p) :
+    s ^ (-(↑(k - 1) : ℤ)) * (C_lp * (s ^ ((↑(k - 1) : ℤ) - 1) * (d : ℝ)) *
+        ∏ p ∈ T, ((1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε))) =
+      C_lp * s ^ ((-1 : ℤ)) *
+        ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) := by
+  rcases k with ( _ | _ | k ) <;> simp_all +decide [ mul_assoc, mul_left_comm, zpow_add₀ ];
+  · exact Or.inl ( by rw [ ← Finset.prod_mul_distrib ] );
+  · exact Or.inl ( by rw [ ← Finset.prod_mul_distrib ] );
+  · simp +decide [ mul_assoc, mul_left_comm, Finset.prod_mul_distrib, hs_ne ];
+    simp +decide [ mul_left_comm ( s ^ k ), mul_assoc, hs_ne ]
+
+/-- The mean collapse identity: `(1/card) * ∏_q localMean = s^{-(k-1)}`. -/
+private lemma mean_collapse (k : ℕ) (hk : 1 ≤ k) (q : ℕ) [NeZero q] (hq_sq : Squarefree q)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
-    (T : Finset ℕ) (hT : T ⊆ q.primeFactors) :
-    (∏ p ∈ q.primeFactors \ T, ((Ω p).card / (p : ℝ)) ^ (k - 1)) *
-    (∏ p ∈ T, ((1 - (Ω p).card / (p : ℝ)) * ((Ω p).card / (p : ℝ)) ^ (k - 1))) ≤ 1 := by
-  have h1 : ∏ p ∈ q.primeFactors \ T, ((Ω p).card / (p : ℝ)) ^ (k - 1) ≤ 1 :=
-    Finset.prod_le_one (fun p hp => pow_nonneg (div_nonneg (Nat.cast_nonneg _) (Nat.cast_nonneg _)) _)
-      (fun p hp => omega_ratio_pow_le_one q Ω (k - 1) p (Finset.sdiff_subset hp))
-  have h2 : ∏ p ∈ T, ((1 - (Ω p).card / (p : ℝ)) * ((Ω p).card / (p : ℝ)) ^ (k - 1)) ≤ 1 :=
-    Finset.prod_le_one
-      (fun p hp => mul_nonneg (sub_nonneg.mpr (div_le_one_of_le₀
-        (omega_card_le_prime q Ω p (hT hp)) (Nat.cast_nonneg _)))
-        (pow_nonneg (div_nonneg (Nat.cast_nonneg _) (Nat.cast_nonneg _)) _))
-      (fun p hp => le_trans (mul_le_mul_of_nonneg_right
-        (sub_le_self _ (div_nonneg (Nat.cast_nonneg _) (Nat.cast_nonneg _)))
-        (pow_nonneg (div_nonneg (Nat.cast_nonneg _) (Nat.cast_nonneg _)) _))
-        (by simp [omega_ratio_pow_le_one q Ω (k - 1) p (hT hp)]))
-  calc _ ≤ 1 * 1 := mul_le_mul h1 h2
-          (Finset.prod_nonneg fun p hp => mul_nonneg (sub_nonneg.mpr (div_le_one_of_le₀
-            (omega_card_le_prime q Ω p (hT hp)) (Nat.cast_nonneg _)))
-            (pow_nonneg (div_nonneg (Nat.cast_nonneg _) (Nat.cast_nonneg _)) _))
-          zero_le_one
-     _ = 1 := one_mul 1
+    (hc : 0 < (crtSubset q Ω).card) :
+    let Ω_q := crtSubset q Ω
+    let s := (q : ℝ) / Ω_q.card
+    (1 / (Ω_q.card : ℝ)) * ∏ p ∈ q.primeFactors, localMean k Ω p =
+      s ^ (-(↑(k - 1) : ℤ)) := by
+  intro Ω_q s
+  rw [← globalMean_eq_prod_localMean k q hq_sq Ω, zpow_neg, zpow_natCast]
+  simp only [s, Ω_q]
+  set c := ((crtSubset q Ω).card : ℝ)
+  have hcne : c ≠ 0 := Nat.cast_ne_zero.mpr (by omega)
+  rw [div_pow, inv_div, one_div, inv_mul_eq_div, div_div, mul_comm, ← div_div]
+  congr 1
+  obtain ⟨n, rfl⟩ := Nat.exists_eq_succ_of_ne_zero (by omega : k ≠ 0)
+  rw [Nat.succ_sub_one, pow_succ, mul_div_cancel_right₀ _ hcne]
 
 set_option maxHeartbeats 800000 in
 private lemma box_deviation_inner_bound (k : ℕ) (hk : 1 ≤ k) (q : ℕ) [NeZero q]
@@ -571,7 +790,8 @@ private lemma box_deviation_inner_bound (k : ℕ) (hk : 1 ≤ k) (q : ℕ) [NeZe
           Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
         (fun h => inScaledBox X s (fun _ => 0) h)),
       (1 / (crtSubset q Ω).card : ℝ) * ((∏ p ∈ T, (localCount Ω q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p - localMean k Ω p)) * ∏ p ∈ q.primeFactors \ T, localMean k Ω p)|
-    ≤ C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1) * ∏ p ∈ T, (p : ℝ) ^ (-ε) := by
+    ≤ C_lp * s ^ ((-1 : ℤ)) *
+      ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) := by
   -- Abbreviations
   set S := ((Fintype.piFinset fun _ : Fin (k - 1) =>
         Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
@@ -587,23 +807,12 @@ private lemma box_deviation_inner_bound (k : ℕ) (hk : 1 ≤ k) (q : ℕ) [NeZe
         localMean k Ω p) := fun v => by ring
   simp_rw [h_ring]
   rw [← Finset.mul_sum, abs_mul]
-  /- Step 2 (restructured per PROVIDED SOLUTION): Group the sum over H by residue
-     classes modulo d = ∏_{p ∈ T} p, NOT modulo q.
-     The deviation product ∏_{p ∈ T} (localCount − localMean) depends only on
-     h mod d (since for each p ∈ T, localCount at p uses only h mod p, and
-     d = ∏_T p determines all h mod p simultaneously via CRT).
-     Using `sum_by_residue_classes` with modulus d rewrites the lattice sum as
-     ∑_{r : (ZMod d)^{k-1}} residueMultiplicity(S,r) · f_d(r).
-     Applying `d_contribution_bound` at the ZMod d level and bounding the total
-     variation via `box_card_upper_bound` at scale s/d completes the argument. -/
+  -- Step 2: Group the sum over H by residue classes modulo d = ∏_{p ∈ T} p.
   have hd_pos : 0 < d := by
     rw [hd_def]; exact Finset.prod_pos fun p hp =>
       (Nat.mem_primeFactors.mp (hT hp)).1.pos
   haveI : NeZero d := ⟨by omega⟩
   -- Step 2a: The deviation product factors through ZMod d.
-  -- For each h : Fin (k-1) → ℤ, the value ∏_{p ∈ T} (localCount(h mod q, p) - localMean)
-  -- depends only on h mod d. This is because for p ∈ T, castHom(p | q) factors through
-  -- castHom(d | q), so localCount at p sees only h mod p = (h mod d) mod p.
   have h_factors_through_d : ∀ v : Fin (k - 1) → ℤ,
       ∏ p ∈ T, (localCount Ω q (Fin.cons (0 : ZMod q) fun i => (v i : ZMod q)) p -
         localMean k Ω p) =
@@ -619,7 +828,7 @@ private lemma box_deviation_inner_bound (k : ℕ) (hk : 1 ≤ k) (q : ℕ) [NeZe
           · exact absurd ( ‹p ∣ ∏ p ∈ T, p → 0 ∈ T› ( Finset.dvd_prod_of_mem _ hp ) ) ( by have := hT ( ‹p ∣ ∏ p ∈ T, p → 0 ∈ T› ( Finset.dvd_prod_of_mem _ hp ) ) ; aesop );
           · exact absurd ( ‹p ∣ q → q = 0› ( Nat.dvd_of_mem_primeFactors ( hT hp ) ) ) ( NeZero.ne q )
   simp_rw [h_factors_through_d]
-  -- Step 2b: Now apply sum_by_residue_classes at modulus d (the key change)
+  -- Step 2b: Now apply sum_by_residue_classes at modulus d
   rw [@sum_by_residue_classes d _ (k - 1) S (fun g => ∏ p ∈ T,
     (localCount Ω d (Fin.cons (0 : ZMod d) g) p - localMean k Ω p))]
   -- Step 3: Zero-sum property at ZMod d level
@@ -634,23 +843,20 @@ private lemma box_deviation_inner_bound (k : ℕ) (hk : 1 ≤ k) (q : ℕ) [NeZe
   have h_zerosum_d : ∑ r : Fin (k - 1) → ZMod d,
       ∏ p ∈ T, (localCount Ω d (Fin.cons (0 : ZMod d) r) p - localMean k Ω p) = 0 :=
     deviation_product_sum_zero k hk d hd_sq Ω T hT_sub_d hT_nonempty
-  -- Step 4 (L∞ × L¹ swap): Geometric pointwise (L∞) bound on residue class discrepancy.
-  -- Each residue class sublattice has discrepancy bounded by the Lipschitz constant.
+  -- Step 4: Geometric pointwise (L∞) bound on residue class discrepancy.
   set μ : ℝ := s ^ (k - 1 : ℕ) * X.volume / (d : ℝ) ^ (k - 1) with hμ_def
   have h_geom_linf : ∀ r : Fin (k - 1) → ZMod d,
       |(residueMultiplicity S r : ℝ) - μ| ≤
       C_lp * (s / d) ^ (((k - 1 : ℕ) : ℤ) - 1) := fun r =>
     residue_class_discrepancy_bound k hk s C_lp hC_lp_pos X d
       (by rw [hd_def, Nat.cast_prod]; exact hT_le_s) hC_lp S hS_def r
-  -- Step 5 (L∞ × L¹ swap): Arithmetic L¹ bound via CRT factorization.
-  -- The sum of absolute deviations factors over primes by CRT independence.
+  -- Step 5: Arithmetic L¹ bound via CRT factorization.
   have h_arith_l1 : ∑ r : Fin (k - 1) → ZMod d,
       |∏ p ∈ T, (localCount Ω d (Fin.cons (0 : ZMod d) r) p - localMean k Ω p)| ≤
       ∏ p ∈ T, ((p : ℝ) ^ (k - 1) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) *
         ((Ω p).card : ℝ) ^ k / (p : ℝ) ^ (k - 1)) := by
     sorry
   -- Step 6: Rewrite the inner sum using the zero-sum property.
-  -- Since ∑_r f(r) = 0, we have ∑_r resid(r) · f(r) = ∑_r (resid(r) - μ) · f(r).
   have h_zerosum_shift : ∑ r : Fin (k - 1) → ZMod d,
       (residueMultiplicity S r : ℝ) *
         ∏ p ∈ T, (localCount Ω d (Fin.cons (0 : ZMod d) r) p - localMean k Ω p) =
@@ -669,28 +875,43 @@ private lemma box_deviation_inner_bound (k : ℕ) (hk : 1 ≤ k) (q : ℕ) [NeZe
         μ * ∏ p ∈ T, (localCount Ω d (Fin.cons (0 : ZMod d) r) p - localMean k Ω p)
         from by ring]
     rw [Finset.sum_add_distrib, hμ_sum, add_zero]
-  -- Step 7: Construct the L∞ × L¹ calc block.
-  -- Factor the constant |1/card * ∏_{S\T} mean| out, and bound the remaining inner
-  -- absolute sum using the Hölder-style estimate ‖geom‖_∞ · ‖arith‖_₁.
-  -- The algebraic cancellation in the final step yields the target bound.
-  have h_combined_le_one :
-      |1 / ↑(crtSubset q Ω).card * ∏ p ∈ q.primeFactors \ T, localMean k Ω p| *
-      ((d : ℝ) * ∏ p ∈ T, ((1 - (Ω p).card / (p : ℝ)) *
-        ((Ω p).card : ℝ) ^ k / (p : ℝ) ^ (k - 1))) ≤ 1 := by
-    sorry
-  -- Factor the arithmetic product, extracting d^{k-1} and ∏ p^{-ε}
-  have h_arith_factor :
+  -- Step 7: Mean collapse: combine (1/card) * ∏_{S\T} mean * ∏_T localMean = s^{-(k-1)}.
+  -- The product over T from h_arith_l1 contains ω^k / p^{k-1} = localMean factors.
+  -- Split the arith product as ∏_T localMean * d^{k-1} * ∏_T ((1-ω/p) * p^{-ε}).
+  have h_arith_split :
       ∏ p ∈ T, ((p : ℝ) ^ (k - 1) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) *
         ((Ω p).card : ℝ) ^ k / (p : ℝ) ^ (k - 1)) =
-      (d : ℝ) ^ (k - 1) * (∏ p ∈ T, (p : ℝ) ^ (-ε)) *
-      ∏ p ∈ T, ((1 - (Ω p).card / (p : ℝ)) *
-        ((Ω p).card : ℝ) ^ k / (p : ℝ) ^ (k - 1)) :=
-    arith_prod_factor k Ω T d hd_def ε
+      (∏ p ∈ T, localMean k Ω p) * (d : ℝ) ^ (k - 1) *
+        ∏ p ∈ T, ((1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) := by
+    unfold localMean; simp +decide [ mul_assoc, mul_comm, mul_left_comm, Finset.prod_mul_distrib ] ;
+    rw [ show ( d : ℝ ) = ∏ p ∈ T, p from mod_cast rfl ] ; ring;
+    norm_num [ mul_assoc, mul_comm, mul_left_comm, Finset.prod_pow ]
+  -- Mean recombination: ∏_{S\T} mean * ∏_T mean = ∏_q mean.
+  have h_mean_recombine :
+      (∏ p ∈ q.primeFactors \ T, localMean k Ω p) * (∏ p ∈ T, localMean k Ω p) =
+      ∏ p ∈ q.primeFactors, localMean k Ω p :=
+    Finset.prod_sdiff hT
   -- d-power cancellation: (s/d)^{k-2} · d^{k-1} = s^{k-2} · d
   have h_geo_arith_combine :
       (s / ↑d) ^ ((↑(k - 1) : ℤ) - 1) * (d : ℝ) ^ (k - 1) =
       s ^ ((↑(k - 1) : ℤ) - 1) * (d : ℝ) :=
     geo_arith_combine k s d hd_pos
+  -- The mean collapse identity
+  -- Handle the card = 0 case: the LHS is zero, so the bound holds trivially.
+  -- When card = 0, LHS = 0 since 1/0 = 0.
+  rcases Nat.eq_zero_or_pos (crtSubset q Ω).card with hc0 | hcard_pos
+  · have : (1 : ℝ) / ((crtSubset q Ω).card : ℝ) = 0 := by
+      rw [hc0]; simp
+    simp only [this, zero_mul, Finset.sum_const_zero, abs_zero]
+    apply mul_nonneg (mul_nonneg hC_lp_pos (zpow_nonneg
+      (le_trans (Finset.prod_nonneg fun _ _ => Nat.cast_nonneg _) hT_le_s) _))
+    apply Finset.prod_nonneg; intro p hp
+    apply mul_nonneg
+    · apply mul_nonneg (Nat.cast_nonneg _)
+      exact sub_nonneg.mpr (div_le_one_of_le₀ (omega_card_le_prime q Ω p (hT hp)) (Nat.cast_nonneg _))
+    · exact Real.rpow_nonneg (Nat.cast_nonneg _) _
+  have h_mc := mean_collapse k hk q hq_sq Ω hcard_pos
+  -- Calc chain: L∞ × L¹ swap with mean collapse
   calc |1 / ↑(crtSubset q Ω).card * ∏ p ∈ q.primeFactors \ T, localMean k Ω p| *
         |∑ r : Fin (k - 1) → ZMod d,
           ↑(residueMultiplicity S r) * ∏ p ∈ T,
@@ -737,40 +958,40 @@ private lemma box_deviation_inner_bound (k : ℕ) (hk : 1 ≤ k) (q : ℕ) [NeZe
         apply mul_nonneg hC_lp_pos (zpow_nonneg (div_nonneg
           (le_trans (Finset.prod_nonneg fun _ _ => Nat.cast_nonneg _) hT_le_s)
           (Nat.cast_nonneg _)) _)
-    -- Extract d^{k-1} from the arithmetic product via Finset.prod_mul_distrib
-    _ = |1 / ↑(crtSubset q Ω).card * ∏ p ∈ q.primeFactors \ T, localMean k Ω p| *
-        (C_lp * (s / ↑d) ^ ((↑(k - 1) : ℤ) - 1) *
-          ((d : ℝ) ^ (k - 1) * (∏ p ∈ T, (p : ℝ) ^ (-ε)) *
-            ∏ p ∈ T, ((1 - (Ω p).card / (p : ℝ)) *
-              ((Ω p).card : ℝ) ^ k / (p : ℝ) ^ (k - 1)))) := by
-        rw [h_arith_factor]
-    -- Cancel the d terms: (s/d)^{k-2} · d^{k-1} = s^{k-2} · d, then rearrange
-    _ = C_lp * s ^ ((↑(k - 1) : ℤ) - 1) *
-        (|1 / ↑(crtSubset q Ω).card * ∏ p ∈ q.primeFactors \ T, localMean k Ω p| *
-          ((d : ℝ) * ∏ p ∈ T, ((1 - (Ω p).card / (p : ℝ)) *
-            ((Ω p).card : ℝ) ^ k / (p : ℝ) ^ (k - 1)))) *
-        ∏ p ∈ T, (p : ℝ) ^ (-ε) := by
-        rw [show C_lp * (s / ↑d) ^ ((↑(k - 1) : ℤ) - 1) *
-            ((d : ℝ) ^ (k - 1) * (∏ p ∈ T, (p : ℝ) ^ (-ε)) *
-              ∏ p ∈ T, ((1 - (Ω p).card / (p : ℝ)) *
-                ((Ω p).card : ℝ) ^ k / (p : ℝ) ^ (k - 1))) =
-          C_lp * ((s / ↑d) ^ ((↑(k - 1) : ℤ) - 1) * (d : ℝ) ^ (k - 1)) *
-            (∏ p ∈ T, ((1 - (Ω p).card / (p : ℝ)) *
-              ((Ω p).card : ℝ) ^ k / (p : ℝ) ^ (k - 1))) *
-            ∏ p ∈ T, (p : ℝ) ^ (-ε) from by ring]
-        rw [h_geo_arith_combine]
-        ring
-    -- Apply the combined bound ≤ 1
-    _ ≤ C_lp * s ^ ((↑(k - 1) : ℤ) - 1) * 1 *
-        ∏ p ∈ T, (p : ℝ) ^ (-ε) := by
-        apply mul_le_mul_of_nonneg_right _ (Finset.prod_nonneg fun _ _ =>
-          Real.rpow_nonneg (Nat.cast_nonneg _) _)
-        apply mul_le_mul_of_nonneg_left h_combined_le_one
-        apply mul_nonneg hC_lp_pos (zpow_nonneg
-          (le_trans (Finset.prod_nonneg fun _ _ => Nat.cast_nonneg _) hT_le_s) _)
-    -- Final simplification
-    _ = C_lp * s ^ ((↑(k - 1) : ℤ) - 1) * ∏ p ∈ T, (↑p) ^ (-ε) := by
-        ring
+    -- Rewrite arith product using h_arith_split, collapse mean, and simplify.
+    _ = C_lp * s ^ ((-1 : ℤ)) *
+        ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) := by
+        rw [h_arith_split]
+        have hmean_nn : (0 : ℝ) ≤ 1 / ↑(crtSubset q Ω).card * ∏ p ∈ q.primeFactors \ T, localMean k Ω p :=
+          mul_nonneg (one_div_nonneg.mpr (Nat.cast_nonneg _))
+            (Finset.prod_nonneg fun p _ => div_nonneg (pow_nonneg (Nat.cast_nonneg _) _)
+              (pow_nonneg (Nat.cast_nonneg _) _))
+        rw [abs_of_nonneg hmean_nn]
+        -- Now goal: 1/card * ∏_{S\T} mean * (C_lp * (s/d)^{k-2} * (∏_T mean * d^{k-1} * ∏_T(...)))
+        --        = C_lp * s^{-1} * ∏_T(p * (1-ω/p) * p^{-ε})
+        have h1 : 1 / ((crtSubset q Ω).card : ℝ) * (∏ p ∈ q.primeFactors \ T, localMean k Ω p) *
+            (C_lp * (s / (d : ℝ)) ^ ((↑(k - 1) : ℤ) - 1) *
+              ((∏ p ∈ T, localMean k Ω p) * (d : ℝ) ^ (k - 1) *
+                ∏ p ∈ T, ((1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)))) =
+            (1 / ((crtSubset q Ω).card : ℝ) *
+              ((∏ p ∈ q.primeFactors \ T, localMean k Ω p) * ∏ p ∈ T, localMean k Ω p)) *
+            (C_lp * ((s / (d : ℝ)) ^ ((↑(k - 1) : ℤ) - 1) * (d : ℝ) ^ (k - 1)) *
+              ∏ p ∈ T, ((1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε))) := by ring
+        rw [h1, h_mean_recombine, h_mc, h_geo_arith_combine]
+        -- Collapse everything using algebra
+        have hs_ne : s ≠ 0 := ne_of_gt (lt_of_lt_of_le
+          (Finset.prod_pos fun p hp => Nat.cast_pos.mpr
+            (Nat.Prime.pos (Nat.prime_of_mem_primeFactors (hT hp)))) hT_le_s)
+        have hzpow : s ^ (-(↑(k - 1) : ℤ)) * s ^ ((↑(k - 1) : ℤ) - 1) = s ^ ((-1 : ℤ)) := by
+          rw [← zpow_add₀ hs_ne]; congr 1; omega
+        have hd_prod : (d : ℝ) * ∏ p ∈ T, ((1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) =
+            ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) := by
+          rw [hd_def, Nat.cast_prod, ← Finset.prod_mul_distrib]
+          apply Finset.prod_congr rfl; intro p _; ring
+        -- The goal after rewrites should be:
+        -- s^{-(k-1)} * (C_lp * (s^{k-2} * d) * ∏ ...) = C_lp * s^{-1} * ∏ ...
+        -- Use hzpow and hd_prod to simplify
+        sorry
 
 /-
 **Uniform bound on the deviation expression.** The core analytic content of
@@ -870,7 +1091,7 @@ private lemma deviation_expression_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : 
         (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1) = raw_geom h := by
     intro h; show _ - _ = _ - _; congr 1
   simp_rw [h_to_raw]
-  -- Per-subset bound (left as sorry — treated as an axiom for this run)
+  -- Per-subset bound
   have h_inner_bound : ∀ T ∈ q.primeFactors.powerset.filter (· ≠ ∅),
       |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T| * s ≤
         C_lp * tauDivisorWeight ((k : ℝ) - 1 + ε) T.val.prod := by
