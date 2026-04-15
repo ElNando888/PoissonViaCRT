@@ -291,7 +291,7 @@ private lemma euler_factor_wd_savings (p : ℕ) [_hp : Fact p.Prime] (ε : ℝ)
       |(tupleCount Ω h : ℝ) - (Ω.card : ℝ) ^ k / (p : ℝ) ^ (k - 1)| ≤
         (1 - Ω.card / p : ℝ) * (p : ℝ) ^ (-ε) *
           ((Ω.card : ℝ) ^ k / (p : ℝ) ^ (k - 1)) :=
-  hWD
+  hWD.1
 
 /-- **Accumulated WD savings via the Euler product.** For a squarefree positive
 integer `d`, the product of per-prime savings `p^{-ε}` over `d`'s prime factors

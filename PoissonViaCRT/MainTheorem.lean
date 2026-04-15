@@ -451,7 +451,6 @@ theorem error_bound_simplified
 /-! ### Theorem 3.7 (= Theorem 1.1, precise version) -/
 
 /-
-PROBLEM
 **Theorem 3.7** (Theorem 1.1, precise version): Fix `ε > 0` and integer `K`.
 Suppose subsets `Ω_p ⊆ ℤ/pℤ` satisfy:
 1. `s_p ≤ p^{λ_K - ε}` for all primes `p`,
@@ -461,29 +460,6 @@ Then for `k ≤ K` and any box `X`, the `k`-level correlation satisfies
 `R_k(X, Ω_q) = vol(X) + o_{X,k}(1)` as `s_q → ∞`.
 
 This follows from Proposition 3.6 and the lemma below.
-
-PROVIDED SOLUTION
-This follows directly from error_bound_simplified. For each k ≤ K, we have:
-- hWD gives WellDistributed ε p (Ω p) k for all primes p (by applying hWD at k)
-- hsp gives the spacing bound
-- We need: λ_k ≥ λ_K for k ≤ K (since lambdaExponent is decreasing in k, so the spacing bound for K implies it for k)
-
-Actually, looking more carefully: error_bound_simplified needs WellDistributed ε p (Ω p) k and spacing bound with lambdaExponent k. We have the WD for all k ≤ K, and the spacing for lambdaExponent K.
-
-Since lambdaExponent is defined as 1/(k-1) for k ≥ 4, it's decreasing. So lambdaExponent K ≤ lambdaExponent k for k ≤ K (smaller k gives larger λ). Thus p^(λ_K - ε) ≤ p^(λ_k - ε) for p ≥ 1, so the spacing bound for K implies it for k ≤ K.
-
-Wait, actually: hsp says p / |Ω_p| ≤ p^(λ_K - ε). We need p / |Ω_p| ≤ p^(λ_k - ε). Since k ≤ K and lambdaExponent is decreasing, λ_k ≥ λ_K, so λ_k - ε ≥ λ_K - ε, so p^(λ_k - ε) ≥ p^(λ_K - ε). So the bound holds.
-
-Proof:
-intro k hk_le X
-have hWD_k : ∀ p [Fact p.Prime], WellDistributed ε p (Ω p) k := fun p _ => hWD p k hk_le
-have hsp_k : ∀ p, p.Prime → (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε) := by
-  intro p hp
-  exact le_trans (hsp p hp) (Real.rpow_le_rpow_of_exponent_le (by exact_mod_cast hp.one_le) (by linarith [lambdaExponent_mono_of_le hk_le]))
-  -- Or: since λ_K ≤ λ_k, we have p^(λ_K - ε) ≤ p^(λ_k - ε)
-obtain ⟨δ, hδ, hX⟩ := error_bound_simplified ε hε k (by omega) Ω hΩ hWD_k hsp_k
-obtain ⟨C, hC, hq⟩ := hX X
-exact ⟨δ, hδ, C, hC, hq⟩
 -/
 theorem mainTheorem_precise
     (ε : ℝ) (hε : 0 < ε) (K : ℕ) (hK : 2 ≤ K)
@@ -493,33 +469,28 @@ theorem mainTheorem_precise
       WellDistributed ε p (Ω p) k)
     (hsp : ∀ (p : ℕ), p.Prime →
       (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent K - ε)) :
-    ∀ (k : ℕ), k ≤ K → ∀ (X : Box (k - 1)),
+    ∀ (k : ℕ), 2 ≤ k → k ≤ K → ∀ (X : Box (k - 1)),
       ∃ δ : ℝ, 0 < δ ∧ ∃ C : ℝ, 0 < C ∧ ∀ (q : ℕ) [NeZero q] (_hq_sq : Squarefree q),
         |kCorrelation (crtSubset q Ω) X - X.volume| ≤
           C * ((q : ℝ) / (crtSubset q Ω).card) ^ (-δ) := by
-  intro k hk_le X;
-  -- Apply the error_bound_simplified theorem with the given conditions.
-  have := error_bound_simplified ε hε k (by
-  contrapose! hWD; interval_cases k <;> simp_all +decide ;
-  · use 2, ⟨ Nat.prime_two ⟩, 0 ; simp_all +decide [ WellDistributed ];
-    rw [ tupleCount_zero ] ; norm_num [ abs_of_nonneg ];
-    exact lt_of_le_of_lt ( mul_le_mul_of_nonneg_right ( sub_le_self _ <| by positivity ) <| by positivity ) <| by linarith [ Real.rpow_lt_rpow_of_exponent_lt ( by norm_num : ( 1 : ℝ ) < 2 ) <| show -ε < 0 by linarith ] ;
-  · refine' ⟨ 2, ⟨ Nat.prime_two ⟩, 0, _, _ ⟩ <;> norm_num [ WellDistributed ];
-    rw [ tupleCount_zero ] ; norm_num [ hΩ ];
-    exact ⟨ by decide, by nlinarith [ show ( 2 : ℝ ) ^ ( -ε ) > 0 by positivity, show ( 2 : ℝ ) ^ ( -ε ) < 1 by rw [ Real.rpow_lt_one_iff ] <;> norm_num ; linarith, show ( Finset.card ( Ω 2 ) : ℝ ) ≥ 1 by exact_mod_cast Finset.card_pos.mpr ( hΩ 2 Nat.prime_two ) ] ⟩) Ω hΩ (fun p _ => hWD p k hk_le) (fun p hp => hsp p hp |> le_trans <| Real.rpow_le_rpow_of_exponent_le (by exact_mod_cast hp.one_le) <| by
-    unfold lambdaExponent; rcases k with ( _ | _ | k ) <;> rcases K with ( _ | _ | K ) <;> norm_num at *;
-    · split_ifs <;> norm_num ; nlinarith [ Real.sqrt_nonneg 17, Real.sq_sqrt ( show 0 ≤ 17 by norm_num ), inv_mul_cancel₀ ( by linarith : ( K : ℝ ) + 1 ≠ 0 ) ] ;
-      exact inv_le_one_of_one_le₀ <| by linarith;
-    · split_ifs <;> norm_num ; nlinarith [ Real.sqrt_nonneg 17, Real.sq_sqrt ( show 0 ≤ 17 by norm_num ), inv_mul_cancel₀ ( by linarith : ( K : ℝ ) + 1 ≠ 0 ) ] ;
-      exact inv_le_one_of_one_le₀ <| by linarith;
-    · split_ifs <;> try linarith;
-      any_goals nlinarith [ Real.sqrt_nonneg 17, Real.sq_sqrt ( show 0 ≤ 17 by norm_num ), inv_mul_cancel₀ ( show ( k : ℝ ) + 1 ≠ 0 by positivity ) ];
-      · grind;
-      · rcases k with ( _ | _ | k ) <;> norm_num at * ; linarith;
-      · rw [ inv_eq_one_div, div_le_div_iff₀ ] <;> nlinarith [ Real.sqrt_nonneg 17, Real.sq_sqrt ( show 0 ≤ 17 by norm_num ), show ( K : ℝ ) ≥ 2 by norm_cast; omega ];
-      · rw [ inv_eq_one_div, div_le_div_iff₀ ] <;> norm_cast <;> linarith [ show K ≥ 2 by omega ];
-      · exact inv_anti₀ ( by positivity ) ( by norm_cast; linarith ));
-  exact ⟨ this.choose, this.choose_spec.1, this.choose_spec.2 X ⟩
+  intro k hk2 hk_le X
+  have h_lam : lambdaExponent K ≤ lambdaExponent k := by
+    unfold lambdaExponent; split_ifs ;
+    any_goals linarith;
+    any_goals rw [ div_le_div_iff₀ ] <;> nlinarith [ Real.sqrt_nonneg 17, Real.sq_sqrt ( show 0 ≤ 17 by norm_num ), show ( k : ℝ ) ≥ 2 by norm_cast, show ( K : ℝ ) ≥ k by norm_cast ];
+    · omega;
+    · omega;
+    · rw [ div_le_div_iff₀ ] <;> nlinarith [ Real.sqrt_nonneg 17, Real.sq_sqrt ( show 0 ≤ 17 by norm_num ), show ( K : ℝ ) ≥ 4 by norm_cast; omega ];
+    · rw [ div_le_div_iff₀ ] <;> linarith [ show ( K : ℝ ) ≥ 4 by norm_cast; omega ]
+  have hsp_k : ∀ (p : ℕ), p.Prime → (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε) := by
+    intro p hp
+    have h_base := hsp p hp
+    have h_pow : (p : ℝ) ^ (lambdaExponent K - ε) ≤ (p : ℝ) ^ (lambdaExponent k - ε) := by
+      apply Real.rpow_le_rpow_of_exponent_le (by exact_mod_cast hp.one_le)
+      linarith
+    exact le_trans h_base h_pow
+  have := error_bound_simplified ε hε k hk2 Ω hΩ (fun p _ => hWD p k hk_le) hsp_k
+  exact ⟨this.choose, this.choose_spec.1, this.choose_spec.2 X⟩
 
 /-
 PROBLEM
@@ -557,7 +528,7 @@ theorem error_from_euler_products
   simp +decide;
   split_ifs <;> simp_all +decide [ WellDistributed ];
   · positivity;
-  · convert div_le_div_of_nonneg_right ( hWD h hInj ) ( show 0 ≤ ( ( Ω.card : ℝ ) ^ k / p ^ ( k - 1 ) ) by positivity ) using 1;
+  · convert div_le_div_of_nonneg_right ( hWD.1 h hInj ) ( show 0 ≤ ( ( Ω.card : ℝ ) ^ k / p ^ ( k - 1 ) ) by positivity ) using 1;
     · rw [ div_sub_one, abs_div ] <;> norm_num [ show ( Ω.card : ℝ ) ≠ 0 by exact Nat.cast_ne_zero.mpr <| ne_of_gt <| Finset.card_pos.mpr <| Finset.nonempty_iff_ne_empty.mpr ‹_› ];
       · rw [ abs_of_nonneg ( by positivity : 0 ≤ ( Ω.card : ℝ ) ^ k / p ^ ( k - 1 ) ) ];
       · exact fun h => absurd h hp.1.ne_zero;

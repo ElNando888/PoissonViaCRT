@@ -779,6 +779,7 @@ private lemma box_deviation_inner_bound (k : ℕ) (hk : 1 ≤ k) (q : ℕ) [NeZe
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (T : Finset ℕ) (hT : T ⊆ q.primeFactors) (hT_nonempty : T ≠ ∅)
     (hT_le_s : (∏ p ∈ T, (p : ℝ)) ≤ s)
+    (hs_eq : s = (q : ℝ) / (crtSubset q Ω).card)
     (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
     (hsp : ∀ (p : ℕ), p.Prime → (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
     (hC_lp : ∀ (v : Fin (k - 1) → ℝ) (s : ℝ), 1 ≤ s →
@@ -855,7 +856,40 @@ private lemma box_deviation_inner_bound (k : ℕ) (hk : 1 ≤ k) (q : ℕ) [NeZe
       |∏ p ∈ T, (localCount Ω d (Fin.cons (0 : ZMod d) r) p - localMean k Ω p)| ≤
       ∏ p ∈ T, ((p : ℝ) ^ (k - 1) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) *
         ((Ω p).card : ℝ) ^ k / (p : ℝ) ^ (k - 1)) := by
-    sorry
+    have h_arith_l1 : ∀ (p : ℕ) [Fact p.Prime], ∑ r : Fin (k - 1) → ZMod p, |localCount Ω p (Fin.cons 0 r) p - localMean k Ω p| ≤ p ^ (k - 1 : ℕ) * (1 - (Ω p).card / p : ℝ) * (p : ℝ) ^ (-ε) * ((Ω p).card : ℝ) ^ k / p ^ (k - 1 : ℕ) := by
+      intros p hp; exact (by
+      convert hWD p |>.2 using 1;
+      · unfold localCount localMean; simp +decide [ Finset.prod_ite, Finset.filter_ne', Finset.filter_eq' ] ;
+        simp +decide [ hp.1.ne_zero, hp.1 ];
+      · ring);
+    have h_arith_l1 : ∑ r : (p : d.primeFactors) → Fin (k - 1) → ZMod p, ∏ p : d.primeFactors, |localCount Ω p (Fin.cons 0 (fun i => r p i)) p - localMean k Ω p| ≤ ∏ p : d.primeFactors, ∑ r : Fin (k - 1) → ZMod p, |localCount Ω p (Fin.cons 0 r) p - localMean k Ω p| := by
+      rw [ Finset.prod_sum ];
+      refine' le_of_eq _;
+      refine' Finset.sum_bij ( fun r hr => fun p hp => r p ) _ _ _ _ <;> simp +decide;
+      · simp +decide [ funext_iff ];
+      · exact fun b => ⟨ fun p => b p ( Finset.mem_attach _ _ ), rfl ⟩;
+      · intro a; rw [ ← Finset.prod_attach ] ;
+    convert h_arith_l1.trans ( Finset.prod_le_prod _ fun p hp => ‹∀ ( p : ℕ ) [ Fact ( Nat.Prime p ) ], ∑ r : Fin ( k - 1 ) → ZMod p, |localCount Ω p ( Fin.cons 0 r ) p - localMean k Ω p| ≤ ( p : ℝ ) ^ ( k - 1 ) * ( 1 - ( Ω p |> Finset.card ) / p ) * ( p : ℝ ) ^ ( -ε ) * ( Ω p |> Finset.card ) ^ k / p ^ ( k - 1 ) › p ) using 1;
+    · refine' Finset.sum_bij ( fun r hr => box_period_equiv d hd_sq r ) _ _ _ _ <;> norm_num;
+      · exact fun b => ⟨ _, Equiv.apply_symm_apply _ _ ⟩;
+      · intro a; rw [ Finset.abs_prod ] ;
+        refine' Finset.prod_bij ( fun p hp => ⟨ p, _ ⟩ ) _ _ _ _ <;> norm_num;
+        exact Nat.mem_primeFactors.mp (hT_sub_d hp);
+        · intro p pp dp _; have := Nat.dvd_trans ( dvd_refl p ) dp; simp_all +decide [ Nat.Prime.dvd_iff_not_coprime pp ] ;
+          exact Classical.not_not.1 fun h => dp <| Nat.Coprime.prod_right fun q hq => pp.coprime_iff_not_dvd.2 fun hq' => h <| by have := Nat.prime_dvd_prime_iff_eq pp ( Nat.prime_of_mem_primeFactors <| hT hq ) ; aesop;
+        · intro p hp; simp +decide [ localCount, localMean, box_period_equiv_apply_eq_castHom ] ;
+          split_ifs <;> norm_num;
+          · congr! 2;
+            congr! 2;
+            ext i; induction i using Fin.inductionOn <;> simp +decide [ * ] ;
+          · exact False.elim <| ‹¬ ( Nat.Prime p ∧ ¬p = 0 ) › ⟨ by tauto, by linarith [ Nat.Prime.pos ( by tauto : Nat.Prime p ) ] ⟩;
+          · exact False.elim <| ‹¬ ( Nat.Prime p ∧ p ∣ d ∧ ¬d = 0 ) › ⟨ by tauto, Nat.dvd_of_mem_primeFactors <| hT_sub_d hp, by positivity ⟩;
+    · refine' Finset.prod_bij ( fun p hp => ⟨ p, _ ⟩ ) _ _ _ _ <;> simp +decide [ * ];
+      · exact ⟨ Nat.prime_of_mem_primeFactors ( hT hp ), Finset.dvd_prod_of_mem _ hp, Finset.prod_ne_zero_iff.mpr fun p hp => Nat.ne_of_gt ( Nat.pos_of_mem_primeFactors ( hT hp ) ) ⟩;
+      · intro p pp dp _; contrapose! dp; simp_all +decide [ Nat.Prime.dvd_iff_not_coprime ] ;
+        exact Nat.Coprime.prod_right fun q hq => pp.coprime_iff_not_dvd.mpr fun hq' => dp <| by have := Nat.prime_dvd_prime_iff_eq pp ( Nat.prime_of_mem_primeFactors <| hT hq ) ; aesop;
+    · exact fun _ _ => Finset.sum_nonneg fun _ _ => abs_nonneg _;
+    · exact fun p _ => ⟨ Nat.prime_of_mem_primeFactors p.2 ⟩
   -- Step 6: Rewrite the inner sum using the zero-sum property.
   have h_zerosum_shift : ∑ r : Fin (k - 1) → ZMod d,
       (residueMultiplicity S r : ℝ) *
@@ -977,21 +1011,14 @@ private lemma box_deviation_inner_bound (k : ℕ) (hk : 1 ≤ k) (q : ℕ) [NeZe
               ((∏ p ∈ q.primeFactors \ T, localMean k Ω p) * ∏ p ∈ T, localMean k Ω p)) *
             (C_lp * ((s / (d : ℝ)) ^ ((↑(k - 1) : ℤ) - 1) * (d : ℝ) ^ (k - 1)) *
               ∏ p ∈ T, ((1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε))) := by ring
-        rw [h1, h_mean_recombine, h_mc, h_geo_arith_combine]
-        -- Collapse everything using algebra
+        have h_mc' : 1 / ((crtSubset q Ω).card : ℝ) * ∏ p ∈ q.primeFactors, localMean k Ω p =
+            s ^ (-((↑(k - 1) : ℤ))) := by
+          have := h_mc; simp only at this; rw [hs_eq]; exact this
+        rw [h1, h_mean_recombine, h_mc', h_geo_arith_combine]
         have hs_ne : s ≠ 0 := ne_of_gt (lt_of_lt_of_le
           (Finset.prod_pos fun p hp => Nat.cast_pos.mpr
             (Nat.Prime.pos (Nat.prime_of_mem_primeFactors (hT hp)))) hT_le_s)
-        have hzpow : s ^ (-(↑(k - 1) : ℤ)) * s ^ ((↑(k - 1) : ℤ) - 1) = s ^ ((-1 : ℤ)) := by
-          rw [← zpow_add₀ hs_ne]; congr 1; omega
-        have hd_prod : (d : ℝ) * ∏ p ∈ T, ((1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) =
-            ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) := by
-          rw [hd_def, Nat.cast_prod, ← Finset.prod_mul_distrib]
-          apply Finset.prod_congr rfl; intro p _; ring
-        -- The goal after rewrites should be:
-        -- s^{-(k-1)} * (C_lp * (s^{k-2} * d) * ∏ ...) = C_lp * s^{-1} * ∏ ...
-        -- Use hzpow and hd_prod to simplify
-        sorry
+        exact final_collapse s C_lp d k ε Ω T hs_ne hd_def
 
 /-
 **Uniform bound on the deviation expression.** The core analytic content of

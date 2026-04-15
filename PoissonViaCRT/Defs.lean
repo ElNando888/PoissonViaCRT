@@ -249,12 +249,13 @@ satisfies `N_k(h, Ω_p) = r_p^k · p · (1 + O_k((1-r_p) · p^{-ε}))` provided 
 
 Formally: `|N_k(h, Ω_p) - |Ω_p|^k / p^{k-1}| ≤ C_k · (1 - |Ω_p|/p) · p^{-ε} ·
 |Ω_p|^k / p^{k-1}` for all injective `h`. -/
-def WellDistributed (ε : ℝ) (p : ℕ) [Fact p.Prime] (Ω : Finset (ZMod p))
-    (k : ℕ) : Prop :=
-  ∀ (h : Fin k → ZMod p), Function.Injective h →
-    |(tupleCount Ω h : ℝ) - (Ω.card : ℝ) ^ k / (p : ℝ) ^ (k - 1)| ≤
-      (1 - Ω.card / p : ℝ) * (p : ℝ) ^ (-ε) *
-        ((Ω.card : ℝ) ^ k / (p : ℝ) ^ (k - 1))
+def WellDistributed (ε : ℝ) (p : ℕ) [Fact p.Prime] (Ω : Finset (ZMod p)) (k : ℕ) : Prop :=
+  (∀ (h : Fin k → ZMod p), Function.Injective h →
+    |(tupleCount Ω h : ℝ) - (Ω.card : ℝ) ^ k / (p : ℝ) ^ (k - 1)|
+    ≤ (1 - Ω.card / p : ℝ) * (p : ℝ) ^ (-ε) * ((Ω.card : ℝ) ^ k / (p : ℝ) ^ (k - 1))) ∧
+  (∑ r : Fin (k - 1) → ZMod p,
+    |(tupleCount Ω (Fin.cons 0 r) : ℝ) - (Ω.card : ℝ) ^ k / (p : ℝ) ^ (k - 1)|
+    ≤ (p : ℝ) ^ (k - 1) * (1 - Ω.card / p : ℝ) * (p : ℝ) ^ (-ε) * ((Ω.card : ℝ) ^ k / (p : ℝ) ^ (k - 1)))
 
 /-! ### Functions from §3.2 -/
 
