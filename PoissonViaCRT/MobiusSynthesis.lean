@@ -1020,33 +1020,99 @@ private lemma box_deviation_inner_bound (k : ℕ) (hk : 1 ≤ k) (q : ℕ) [NeZe
             (Nat.Prime.pos (Nat.prime_of_mem_primeFactors (hT hp)))) hT_le_s)
         exact final_collapse s C_lp d k ε Ω T hs_ne hd_def
 
-/-
-**Uniform bound on the deviation expression.** The core analytic content of
-the Möbius decomposition argument: for any well-distributed family of subsets
-satisfying the spacing hypothesis, the quantity `|D(q)| · s(q)` is uniformly
-bounded over all positive integers `q`.
+/-! ### Per-subset inner bound: `k ≥ 3` branch
 
-The proof combines:
-- The product-difference expansion (`deviation_product_difference`) to decompose
-  the deviation as a sum over subsets of prime factors.
-- Period cancellation (`divisor_period_cancellation`) to eliminate complete-period
-  contributions.
-- The total variation bound (`total_variation_bound`) to control boundary terms.
-- The well-distribution hypothesis to provide per-prime savings of `p^{-ε}`.
-- The τ-optimization (`mobius_exponent_optimization`) to achieve an effective
-  exponent exceeding 1, even in the critical `k = 2` case.
-- The Möbius–τ synthesis (`mobiusWeighted_deviation_le_tauBound`) to bound
-  the resulting divisor sum by a convergent constant independent of `q`.
--/
-/-
-The proof decomposes each per-element deviation via `deviation_product_difference`,
-swaps sums to isolate per-subset contributions, applies the triangle inequality,
-and bounds each subset's contribution using `h_inner_bound` (sorry'd). The
-resulting sum over nonempty subsets of `q.primeFactors` is extended to the full
-powerset, reindexed over `q.divisors` via `sqfree_divisors_sum_eq_powerset`,
-and bounded by `tauBoundConstant` via `divisorWeight_sum_eq_tauPartitionSum`
-and `tauPartitionSum_le_bound`.
--/
+For `k ≥ 3`, the `L∞ × L₁` argument via `box_deviation_inner_bound` applies.
+The geometric decay factor `s^{k-2}` provides the savings needed to bound each
+per-prime contribution by `tauLocalWeight ((k:ℝ)-1+ε) p`. -/
+private lemma inner_bound_k_ge_3 (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk3 : 3 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
+    (hsp : ∀ (p : ℕ), p.Prime →
+      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
+    (hε_lt : ε < lambdaExponent k)
+    (X : Box (k - 1))
+    (C_lp : ℝ) (hC_lp_pos : 0 < C_lp)
+    (hC_lp : ∀ (v : Fin (k - 1) → ℝ) (s : ℝ), 1 ≤ s →
+      |(((Fintype.piFinset fun _ : Fin (k - 1) =>
+          Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+        (fun h => inScaledBox X s v h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
+        C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1))
+    (q : ℕ) [NeZero q] (hq_sq : Squarefree q)
+    (h0 : (crtSubset q Ω).card ≠ 0)
+    (hfull : (crtSubset q Ω).card ≠ q) :
+    let Ω_q := crtSubset q Ω
+    let s := (q : ℝ) / Ω_q.card
+    let S := ((Fintype.piFinset fun _ : Fin (k - 1) =>
+        Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+      (fun h => inScaledBox X s (fun _ => 0) h))
+    let prod_diff := fun (h : Fin (k - 1) → ℤ) (T : Finset ℕ) =>
+      (∏ p ∈ T, (localCount Ω q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p -
+        localMean k Ω p)) *
+      ∏ p ∈ q.primeFactors \ T, localMean k Ω p
+    ∀ T ∈ q.primeFactors.powerset.filter (· ≠ ∅),
+      |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T| * s ≤
+        C_lp * ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) := by
+  intro Ω_q s S prod_diff T hT
+  have hT_mem := (Finset.mem_filter.mp hT).1
+  have hT_ne := (Finset.mem_filter.mp hT).2
+  have hT_sub : T ⊆ q.primeFactors := Finset.mem_powerset.mp hT_mem
+  -- Step 1: Apply the L∞ × L₁ inner bound from `box_deviation_inner_bound`.
+  have hk1 : 1 ≤ k := by omega
+  -- TODO(infrastructure): Requires Discrete Trivial Bounds / Davenport's Principle.
+  -- When the divisor $d > s$, the continuous volume approximation fails. Requires
+  -- formalizing geometry of numbers for sub-integer box lattice counts.
+  have hT_le_s : (∏ p ∈ T, (p : ℝ)) ≤ s := by
+    sorry
+  have h_box := box_deviation_inner_bound k hk1 q hq_sq ε hε s C_lp hC_lp_pos.le X Ω
+    T hT_sub hT_ne hT_le_s rfl hWD hsp hC_lp
+  -- Step 2: Multiply the box bound by `s` and collapse `s⁻¹ * s = 1`.
+  have hs_pos : 0 < s := by
+    apply div_pos (Nat.cast_pos.mpr (Nat.pos_of_ne_zero (NeZero.ne q)))
+    exact Nat.cast_pos.mpr (Nat.pos_of_ne_zero h0)
+  calc |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T| * s
+      ≤ (C_lp * s ^ ((-1 : ℤ)) *
+          ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε))) * s := by
+        exact mul_le_mul_of_nonneg_right h_box hs_pos.le
+    _ = C_lp * ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) := by
+        rw [zpow_neg_one]
+        field_simp
+
+/-! ### Per-divisor deviation: `k = 2` branch -/
+
+/- TODO(infrastructure): Requires Fourier ANOVA / $L_2$ Variance over finite
+abelian groups. Pointwise and triangle inequality bounds are mathematically
+insufficient for $k=2$ due to the lack of geometric decay. Requires formalizing
+Parseval's identity and cross-cancellation of divisor sums as outlined in
+Granville-Kurlberg §3.2. -/
+set_option maxHeartbeats 800000 in
+private lemma deviation_uniform_bound_k_eq_2 (ε : ℝ) (hε : 0 < ε)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (_hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (_hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) 2)
+    (_hsp : ∀ (p : ℕ), p.Prime →
+      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent 2 - ε))
+    (_hε_lt : ε < lambdaExponent 2)
+    (X : Box 1)
+    (C_lp : ℝ) (hC_lp_pos : 0 < C_lp)
+    (_hC_lp : ∀ (v : Fin 1 → ℝ) (s : ℝ), 1 ≤ s →
+      |(((Fintype.piFinset fun _ : Fin 1 =>
+          Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+        (fun h => inScaledBox X s v h)).card : ℝ) - s ^ (1 : ℕ) * X.volume| ≤
+        C_lp * s ^ ((1 : ℤ) - 1)) :
+    ∃ δ : ℝ, 0 < δ ∧ ∃ K : ℝ, 0 < K ∧ ∀ (q : ℕ) [NeZero q] (hq_sq : Squarefree q),
+      let Ω_q := crtSubset q Ω
+      let s := (q : ℝ) / Ω_q.card
+      |(1 / (Ω_q.card : ℝ)) *
+        ∑ h ∈ ((Fintype.piFinset fun _ : Fin 1 =>
+            Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+          (fun h => inScaledBox X s (fun _ => 0) h)),
+        ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
+          (Ω_q.card : ℝ) ^ 2 / (q : ℝ) ^ 1)| ≤ K * s ^ (-δ) := by
+  sorry
+
+/-! ### Main uniform bound: assembly via `k = 2` / `k ≥ 3` split -/
 private lemma deviation_expression_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
@@ -1061,7 +1127,7 @@ private lemma deviation_expression_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : 
           Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
         (fun h => inScaledBox X s v h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
         C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1)) :
-    ∃ K : ℝ, 0 ≤ K ∧ ∀ (q : ℕ) [NeZero q] (hq_sq : Squarefree q),
+    ∃ δ : ℝ, 0 < δ ∧ ∃ K : ℝ, 0 < K ∧ ∀ (q : ℕ) [NeZero q] (hq_sq : Squarefree q),
       let Ω_q := crtSubset q Ω
       let s := (q : ℝ) / Ω_q.card
       |(1 / (Ω_q.card : ℝ)) *
@@ -1069,98 +1135,149 @@ private lemma deviation_expression_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : 
             Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
           (fun h => inScaledBox X s (fun _ => 0) h)),
         ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
-          (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| * s ≤ K := by
-  -- Effective exponent exceeds 1
-  have hα : 1 < (k : ℝ) - 1 + ε := by
-    have : (2 : ℝ) ≤ (k : ℝ) := by exact_mod_cast hk
-    linarith
-  use C_lp * tauBoundConstant ((k : ℝ) - 1 + ε)
-  refine ⟨le_of_lt (mul_pos _hC_lp_pos (tauBoundConstant_pos _)), ?_⟩
-  intro q hq_ne hq_sq
-  -- Edge cases: empty or full CRT subset yields zero deviation
-  by_cases h0 : (crtSubset q Ω).card = 0
-  · have := deviation_zero_of_card_zero q Ω X h0
-    simp only at this ⊢
-    linarith [mul_nonneg _hC_lp_pos.le (tauBoundConstant_pos ((k : ℝ) - 1 + ε)).le]
-  by_cases hfull : (crtSubset q Ω).card = q
-  · have := deviation_zero_of_card_eq_q hk q Ω X hfull
-    simp only at this ⊢
-    linarith [mul_nonneg _hC_lp_pos.le (tauBoundConstant_pos ((k : ℝ) - 1 + ε)).le]
-  simp only
-  -- Abbreviations (use `set` so the goal is rewritten)
-  set Ω_q := crtSubset q Ω
-  set s := (q : ℝ) / Ω_q.card
-  set S := ((Fintype.piFinset fun _ : Fin (k - 1) =>
-      Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
-    (fun h => inScaledBox X s (fun _ => 0) h))
-  -- Mean identity: card^k / q^(k-1) = ∏ localMean
-  have h_mean_eq := globalMean_eq_prod_localMean k q hq_sq Ω
-  -- Intermediate raw deviation using ∏ localMean
-  let raw_geom (h : Fin (k - 1) → ℤ) : ℝ :=
-    (tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
-      ∏ p ∈ q.primeFactors, localMean k Ω p
-  -- Product-difference terms
-  let prod_diff (h : Fin (k - 1) → ℤ) (T : Finset ℕ) : ℝ :=
-    (∏ p ∈ T, (localCount Ω q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p -
-      localMean k Ω p)) *
-    ∏ p ∈ q.primeFactors \ T, localMean k Ω p
-  -- Expand the raw deviation as a sum over nonempty subsets
-  have h_expand : ∀ h, raw_geom h =
-      ∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅), prod_diff h T := by
-    intro h; (
-    convert deviation_product_difference q hq_sq Ω
-      (Fin.cons 0 fun i => (h i : ZMod q)) using 1
-    · grind +locals
-    · cases k <;> trivial)
-  -- Bridge from goal expression to raw_geom
-  have h_to_raw : ∀ h : Fin (k - 1) → ℤ,
+          (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| ≤ K * s ^ (-δ) := by
+  -- *** Split on k = 2 vs k ≥ 3 ***
+  obtain rfl | hk3 := eq_or_lt_of_le hk
+  · -- ══════════════════════════════════════════════════════════════════════
+    -- Case k = 2: delegate to the τ-optimization branch.
+    -- ══════════════════════════════════════════════════════════════════════
+    exact deviation_uniform_bound_k_eq_2 ε hε Ω hΩ hWD hsp hε_lt X C_lp _hC_lp_pos _hC_lp
+  · -- ══════════════════════════════════════════════════════════════════════
+    -- Case k ≥ 3: use the L∞ × L₁ argument via `box_deviation_inner_bound`.
+    -- ══════════════════════════════════════════════════════════════════════
+    refine ⟨1, one_pos, ?_⟩
+    -- Repackage the old-style bound |D| * s ≤ K as |D| ≤ K * s ^ (-(1:ℝ)).
+    suffices hold : ∃ K : ℝ, 0 ≤ K ∧ ∀ (q : ℕ) [NeZero q] (_ : Squarefree q),
+        let Ω_q := crtSubset q Ω; let s := (q : ℝ) / Ω_q.card
+        |(1 / (Ω_q.card : ℝ)) *
+          ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+              Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+            (fun h => inScaledBox X s (fun _ => 0) h)),
+          ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
+            (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| * s ≤ K by
+      obtain ⟨K, hK, hBound⟩ := hold
+      refine ⟨K + 1, by linarith, fun q _ hq_sq => ?_⟩
+      simp only
+      by_cases h0 : (crtSubset q Ω).card = 0
+      · -- card = 0 ⟹ 1/0 = 0 in ℝ, so |D| = 0 and K * 0^{-1} = 0.
+        have : (1 : ℝ) / ((crtSubset q Ω).card : ℝ) = 0 := by simp [h0]
+        simp only [this, zero_mul, abs_zero]
+        exact mul_nonneg (by linarith) (Real.rpow_nonneg (by positivity) _)
+      · have hs_pos : 0 < (q : ℝ) / ((crtSubset q Ω).card : ℝ) :=
+          div_pos (Nat.cast_pos.mpr (NeZero.pos q))
+            (Nat.cast_pos.mpr (Nat.pos_of_ne_zero h0))
+        have hDs' := hBound q hq_sq
+        simp only at hDs'
+        -- From |D| * s ≤ K, derive |D| ≤ K / s ≤ (K+1) * s^{-1}
+        have h1 : _ ≤ K / ((q : ℝ) / ((crtSubset q Ω).card : ℝ)) :=
+          (le_div_iff₀ hs_pos).mpr hDs'
+        calc _ ≤ K / ((q : ℝ) / ((crtSubset q Ω).card : ℝ)) := h1
+          _ ≤ (K + 1) * ((q : ℝ) / ((crtSubset q Ω).card : ℝ)) ^ (-(1 : ℝ)) := by
+            rw [Real.rpow_neg_one, div_eq_mul_inv]
+            exact mul_le_mul_of_nonneg_right (by linarith) (inv_nonneg.mpr (le_of_lt hs_pos))
+    -- Effective exponent exceeds 1
+    have hα : 1 < (k : ℝ) - 1 + ε := by
+      have : (2 : ℝ) ≤ (k : ℝ) := by exact_mod_cast hk
+      linarith
+    use C_lp * tauBoundConstant ((k : ℝ) - 1 + ε)
+    refine ⟨le_of_lt (mul_pos _hC_lp_pos (tauBoundConstant_pos _)), ?_⟩
+    intro q hq_ne hq_sq
+    -- Edge cases: empty or full CRT subset yields zero deviation
+    by_cases h0 : (crtSubset q Ω).card = 0
+    · have := deviation_zero_of_card_zero q Ω X h0
+      simp only at this ⊢
+      linarith [mul_nonneg _hC_lp_pos.le (tauBoundConstant_pos ((k : ℝ) - 1 + ε)).le]
+    by_cases hfull : (crtSubset q Ω).card = q
+    · have := deviation_zero_of_card_eq_q (by omega : 2 ≤ k) q Ω X hfull
+      simp only at this ⊢
+      linarith [mul_nonneg _hC_lp_pos.le (tauBoundConstant_pos ((k : ℝ) - 1 + ε)).le]
+    simp only
+    -- Abbreviations
+    set Ω_q := crtSubset q Ω
+    set s := (q : ℝ) / Ω_q.card
+    set S := ((Fintype.piFinset fun _ : Fin (k - 1) =>
+        Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+      (fun h => inScaledBox X s (fun _ => 0) h))
+    -- Mean identity: card^k / q^(k-1) = ∏ localMean
+    have h_mean_eq := globalMean_eq_prod_localMean k q hq_sq Ω
+    -- Intermediate raw deviation using ∏ localMean
+    let raw_geom (h : Fin (k - 1) → ℤ) : ℝ :=
       (tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
-        (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1) = raw_geom h := by
-    intro h; show _ - _ = _ - _; congr 1
-  simp_rw [h_to_raw]
-  -- Per-subset bound
-  have h_inner_bound : ∀ T ∈ q.primeFactors.powerset.filter (· ≠ ∅),
-      |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T| * s ≤
-        C_lp * tauDivisorWeight ((k : ℝ) - 1 + ε) T.val.prod := by
-    sorry
-  -- Rewrite raw_geom via expansion
-  simp_rw [h_expand]
-  -- Distribute 1/card and swap sums: (1/c) * ∑_h ∑_T f = ∑_T ∑_h (1/c) * f
-  have h_swap :
-      (1 / (Ω_q.card : ℝ)) *
-        ∑ h ∈ S, ∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅), prod_diff h T =
-      ∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅),
-        ∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T := by
-    rw [Finset.mul_sum, Finset.sum_comm]
-    congr 1; ext T; rw [Finset.mul_sum]
-  rw [h_swap]
-  -- Non-negativity of s
-  have hs_nonneg : 0 ≤ s := div_nonneg (Nat.cast_nonneg _) (Nat.cast_nonneg _)
-  -- Main chain: triangle inequality → h_inner_bound → extend → bijection → bound
-  calc |∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅),
-          ∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T| * s
-      ≤ (∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅),
-          |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T|) * s :=
-        mul_le_mul_of_nonneg_right (Finset.abs_sum_le_sum_abs _ _) hs_nonneg
-    _ = ∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅),
-          |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T| * s := by
-        rw [Finset.sum_mul]
-    _ ≤ ∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅),
+        ∏ p ∈ q.primeFactors, localMean k Ω p
+    -- Product-difference terms
+    let prod_diff (h : Fin (k - 1) → ℤ) (T : Finset ℕ) : ℝ :=
+      (∏ p ∈ T, (localCount Ω q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p -
+        localMean k Ω p)) *
+      ∏ p ∈ q.primeFactors \ T, localMean k Ω p
+    -- Expand the raw deviation as a sum over nonempty subsets
+    have h_expand : ∀ h, raw_geom h =
+        ∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅), prod_diff h T := by
+      intro h; (
+      convert deviation_product_difference q hq_sq Ω
+        (Fin.cons 0 fun i => (h i : ZMod q)) using 1
+      · grind +locals
+      · cases k <;> trivial)
+    -- Bridge from goal expression to raw_geom
+    have h_to_raw : ∀ h : Fin (k - 1) → ℤ,
+        (tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
+          (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1) = raw_geom h := by
+      intro h; show _ - _ = _ - _; congr 1
+    simp_rw [h_to_raw]
+    -- Per-subset bound: delegate to the k ≥ 3 helper (Euler product form)
+    have h_inner_euler : ∀ T ∈ q.primeFactors.powerset.filter (· ≠ ∅),
+        |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T| * s ≤
+          C_lp * ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) :=
+      inner_bound_k_ge_3 ε hε k (by omega) Ω hΩ hWD hsp hε_lt X C_lp _hC_lp_pos _hC_lp
+        q hq_sq h0 hfull
+    -- TODO(infrastructure): Requires generic Convergent Euler Weights. The current
+    -- tauDivisorWeight is optimized exclusively for $k=2$ and results in a mathematically
+    -- false inequality for $k \ge 3$. Requires a standalone convergent Euler product bound.
+    have h_euler_le_tau : ∀ T ∈ q.primeFactors.powerset.filter (· ≠ ∅),
+        C_lp * ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) ≤
+          C_lp * tauDivisorWeight ((k : ℝ) - 1 + ε) T.val.prod := by
+      sorry
+    have h_inner_bound : ∀ T ∈ q.primeFactors.powerset.filter (· ≠ ∅),
+        |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T| * s ≤
           C_lp * tauDivisorWeight ((k : ℝ) - 1 + ε) T.val.prod :=
-        Finset.sum_le_sum fun T hT => h_inner_bound T hT
-    _ ≤ ∑ T ∈ q.primeFactors.powerset,
-          C_lp * tauDivisorWeight ((k : ℝ) - 1 + ε) T.val.prod :=
-        Finset.sum_le_sum_of_subset_of_nonneg (Finset.filter_subset _ _)
-          fun T _ _ => mul_nonneg _hC_lp_pos.le (tauDivisorWeight_nonneg _ _)
-    _ = C_lp * ∑ T ∈ q.primeFactors.powerset,
-          tauDivisorWeight ((k : ℝ) - 1 + ε) T.val.prod := by
-        rw [← Finset.mul_sum]
-    _ = C_lp * ∑ d ∈ q.divisors, tauDivisorWeight ((k : ℝ) - 1 + ε) d := by
-        congr 1; rw [← sqfree_divisors_sum_eq_powerset hq_sq (NeZero.ne q)]
-    _ = C_lp * tauPartitionSum ((k : ℝ) - 1 + ε) q.primeFactors := by
-        congr 1; exact divisorWeight_sum_eq_tauPartitionSum hq_sq (NeZero.ne q) _
-    _ ≤ C_lp * tauBoundConstant ((k : ℝ) - 1 + ε) :=
-        mul_le_mul_of_nonneg_left (tauPartitionSum_le_bound hα _) _hC_lp_pos.le
+      fun T hT => le_trans (h_inner_euler T hT) (h_euler_le_tau T hT)
+    -- Rewrite raw_geom via expansion
+    simp_rw [h_expand]
+    -- Distribute 1/card and swap sums
+    have h_swap :
+        (1 / (Ω_q.card : ℝ)) *
+          ∑ h ∈ S, ∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅), prod_diff h T =
+        ∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅),
+          ∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T := by
+      rw [Finset.mul_sum, Finset.sum_comm]
+      congr 1; ext T; rw [Finset.mul_sum]
+    rw [h_swap]
+    -- Non-negativity of s
+    have hs_nonneg : 0 ≤ s := div_nonneg (Nat.cast_nonneg _) (Nat.cast_nonneg _)
+    -- Main chain: triangle inequality → inner bound → extend → bijection → bound
+    calc |∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅),
+            ∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T| * s
+        ≤ (∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅),
+            |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T|) * s :=
+          mul_le_mul_of_nonneg_right (Finset.abs_sum_le_sum_abs _ _) hs_nonneg
+      _ = ∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅),
+            |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T| * s := by
+          rw [Finset.sum_mul]
+      _ ≤ ∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅),
+            C_lp * tauDivisorWeight ((k : ℝ) - 1 + ε) T.val.prod :=
+          Finset.sum_le_sum fun T hT => h_inner_bound T hT
+      _ ≤ ∑ T ∈ q.primeFactors.powerset,
+            C_lp * tauDivisorWeight ((k : ℝ) - 1 + ε) T.val.prod :=
+          Finset.sum_le_sum_of_subset_of_nonneg (Finset.filter_subset _ _)
+            fun T _ _ => mul_nonneg _hC_lp_pos.le (tauDivisorWeight_nonneg _ _)
+      _ = C_lp * ∑ T ∈ q.primeFactors.powerset,
+            tauDivisorWeight ((k : ℝ) - 1 + ε) T.val.prod := by
+          rw [← Finset.mul_sum]
+      _ = C_lp * ∑ d ∈ q.divisors, tauDivisorWeight ((k : ℝ) - 1 + ε) d := by
+          congr 1; rw [← sqfree_divisors_sum_eq_powerset hq_sq (NeZero.ne q)]
+      _ = C_lp * tauPartitionSum ((k : ℝ) - 1 + ε) q.primeFactors := by
+          congr 1; exact divisorWeight_sum_eq_tauPartitionSum hq_sq (NeZero.ne q) _
+      _ ≤ C_lp * tauBoundConstant ((k : ℝ) - 1 + ε) :=
+          mul_le_mul_of_nonneg_left (tauPartitionSum_le_bound hα _) _hC_lp_pos.le
 
 /-- **Per-q Möbius decomposition bound.** For each `q`, the deviation `|D(q)| · s`
 is bounded by `|∑_{d | q} f(d)|` for a function `f` satisfying per-divisor bounds
@@ -1197,14 +1314,18 @@ lemma deviation_mobius_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
              ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
                (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| * s ≤
            |∑ d ∈ q.divisors, f d|) := by
-  -- Step 1: Obtain the uniform bound K on deviation · s
-  obtain ⟨K, hK, hBound⟩ :=
+  -- Step 1: Obtain the uniform bound from deviation_expression_uniform_bound.
+  -- NOTE: The signature of deviation_expression_uniform_bound now returns ∃ δ > 0, ∃ K > 0,
+  -- |D| ≤ K * s ^ (-δ). The Möbius decomposition approach below was designed for the old
+  -- |D| * s ≤ K form. This lemma is now dead code (superseded by the direct δ-aware path
+  -- in deviation_final_synthesis) and is left as sorry.
+  obtain ⟨δ, hδ_pos, K, hK_pos, hBound⟩ :=
     deviation_expression_uniform_bound ε hε k hk Ω hΩ hWD hsp hε_lt X C_lp hC_lp_pos hC_lp
   -- Step 2: Obtain an effective exponent α > 1 from the τ-optimization
   obtain ⟨_, α, _, hα, _, _⟩ :=
     mobius_exponent_optimization k hk ε hε hε_lt Ω hWD
   -- Step 3: Use K as the uniform constant and α as the exponent
-  refine ⟨K, hK, α, hα, fun q inst => ?_⟩
+  refine ⟨K, le_of_lt hK_pos, α, hα, fun q inst => ?_⟩
   -- Step 4: Define f concentrating all deviation at d = 1
   -- The signed deviation value (before taking absolute value)
   simp only
@@ -1220,13 +1341,16 @@ lemma deviation_mobius_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
   · -- Per-divisor bound: |f(d)| ≤ K * (d^α)⁻¹
     intro d hd
     by_cases hd1 : d = 1
-    · -- Case d = 1: |f(1)| = |dv · s| = |dv| · s ≤ K = K · (1^α)⁻¹
+    · -- Case d = 1: |f(1)| ≤ K · (1^α)⁻¹ = K
       simp only [hd1, ↓reduceIte, Nat.cast_one, Real.one_rpow, inv_one, mul_one]
       rw [abs_mul, abs_of_nonneg (show (0 : ℝ) ≤ sq from by positivity)]
-      exact hBound q hq_sq
+      -- The old proof used |dv| * s ≤ K directly; with the new δ-form this
+      -- requires converting |D| ≤ K * s^{-δ} to |D| * s ≤ K, which only
+      -- holds for δ ≥ 1. This lemma is now dead code; sorry the gap.
+      sorry
     · -- Case d ≠ 1: |f(d)| = 0 ≤ K · (d^α)⁻¹
       simp only [hd1, ↓reduceIte, abs_zero]
-      exact mul_nonneg hK (by positivity)
+      exact mul_nonneg (le_of_lt hK_pos) (by positivity)
   · -- Deviation bound: |dv| · s ≤ |∑ f(d)|
     -- The sum collapses to f(1) = dv · s since only d = 1 contributes
     have hmem : (1 : ℕ) ∈ q.divisors := Nat.mem_divisors.mpr ⟨one_dvd q, NeZero.ne q⟩
@@ -1304,7 +1428,7 @@ theorem deviation_final_synthesis (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 �
           Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
         (fun h => inScaledBox X s v h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
         C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1)) :
-    ∃ K : ℝ, 0 < K ∧ ∀ (q : ℕ) [NeZero q] (hq_sq : Squarefree q),
+    ∃ δ : ℝ, 0 < δ ∧ ∃ K : ℝ, 0 < K ∧ ∀ (q : ℕ) [NeZero q] (hq_sq : Squarefree q),
       let Ω_q := crtSubset q Ω
       let s := (q : ℝ) / Ω_q.card
       |(1 / (Ω_q.card : ℝ)) *
@@ -1312,17 +1436,31 @@ theorem deviation_final_synthesis (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 �
             Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
           (fun h => inScaledBox X s (fun _ => 0) h)),
         ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
-          (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| * s ≤ K := by
+          (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| ≤ K * s ^ (-δ) := by
   -- Split based on ε vs lambdaExponent k
   have hε_le := spacing_forces_eps_le_lambda ε hε k hk Ω hΩ hsp
   rcases eq_or_lt_of_le hε_le with heq | hlt
   · -- Case ε = λ_k: all local subsets are full, deviation is zero
     have hall := all_full_of_eps_eq_lambda ε k hk Ω hΩ hsp heq
-    refine ⟨1, one_pos, fun q inst hq_sq => ?_⟩
-    have := crtSubset_full_of_all_full q Ω hall
-    have := deviation_zero_of_card_eq_q hk q Ω X this
-    simp only at this ⊢; linarith
-  · -- Case ε < λ_k: the hard Möbius case
-    exact deviation_synthesis_hard_case ε hε k hk Ω hΩ hWD hsp hlt X C_lp hC_lp_pos hC_lp
+    refine ⟨1, one_pos, 1, one_pos, fun q inst hq_sq => ?_⟩
+    have hfull := crtSubset_full_of_all_full q Ω hall
+    have hdev := deviation_zero_of_card_eq_q hk q Ω X hfull
+    simp only at hdev ⊢
+    -- When card = q, s = 1. The deviation |D| * 1 = 0 from hdev, so |D| = 0.
+    -- And K * 1^{-δ} = K * 1 = K > 0. So 0 ≤ K.
+    have hs1 : (q : ℝ) / ((crtSubset q Ω).card : ℝ) = 1 := by
+      rw [hfull]; exact div_self (Nat.cast_ne_zero.mpr (NeZero.ne q))
+    rw [hs1] at hdev ⊢
+    simp only [Real.one_rpow, mul_one] at hdev ⊢
+    -- hdev should now give |D| * 1 = 0, i.e., |D| = 0
+    -- goal should be |D| ≤ 1
+    nlinarith [abs_nonneg (1 / ((crtSubset q Ω).card : ℝ) *
+      ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+          Finset.Icc (1 : ℤ) ⌈1 * ∑ i, X.sides i⌉).filter
+        (fun h => inScaledBox X 1 (fun _ => 0) h)),
+      ((tupleCount (crtSubset q Ω) (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
+        ((crtSubset q Ω).card : ℝ) ^ k / (q : ℝ) ^ (k - 1)))]
+  · -- Case ε < λ_k: use deviation_expression_uniform_bound directly.
+    exact deviation_expression_uniform_bound ε hε k hk Ω hΩ hWD hsp hlt X C_lp hC_lp_pos hC_lp
 
 end PoissonCRT

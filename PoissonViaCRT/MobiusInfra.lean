@@ -62,11 +62,9 @@ splits into the main term from `b = 1` and the error sum from `b > 1`.
 -/
 
 /-
-PROBLEM
 In the divisors antidiagonal of a positive integer `n`, the only pair `(a, b)` with
 `b ≤ 1` is `(n, 1)`, since `a * b = n > 0` forces `b ≥ 1`.
 
-PROVIDED SOLUTION
 In n.divisorsAntidiagonal, elements (a,b) satisfy a * b = n and n ≠ 0. If ¬(1 < b), then b ≤ 1. Since a * b = n > 0, we need b > 0, so b ≥ 1. Combined: b = 1, hence a = n. Conversely (n,1) ∈ divisorsAntidiagonal since n * 1 = n and n ≠ 0. Use ext to show equality of Finsets, then unfold mem_filter and mem_divisorsAntidiagonal.
 -/
 lemma divisorsAntidiagonal_filter_snd_le_one {n : ℕ} (hn : 0 < n) :
@@ -79,7 +77,6 @@ lemma divisorsAntidiagonal_filter_snd_le_one {n : ℕ} (hn : 0 < n) :
   · aesop
 
 /-
-PROBLEM
 **Möbius decomposition (crt_counting_mobius_decomp)**: The Möbius inversion sum
 over `n.divisorsAntidiagonal` decomposes into the main term `μ(n) · f(1)` plus the
 error sum over pairs `(a, b)` with `b > 1` (i.e., proper divisors of `n`).
@@ -88,7 +85,6 @@ This formulates the counting function over the CRT lattice as a Möbius sum,
 isolating the main term and reorganising the error term exactly into the form
 `∑_{d|q, d>1}`.
 
-PROVIDED SOLUTION
 Use Finset.sum_filter_add_sum_filter_not to split n.divisorsAntidiagonal into filter(1 < x.2) and filter(¬(1 < x.2)). The latter equals {(n,1)} by divisorsAntidiagonal_filter_snd_le_one. Then rearrange with add_comm.
 -/
 theorem crt_counting_mobius_decomp {n : ℕ} (hn : 0 < n) (f : ℕ → ℝ) :
@@ -118,7 +114,6 @@ multiplicities from their average is exactly the boundary contribution, bounded 
 -/
 
 /-
-PROBLEM
 **Divisor contribution bound (d_contribution_bound)**: When a function `f`
 sums to zero and is pointwise bounded by `M`, any weighted sum `∑ w(x) · f(x)` is
 controlled by the total variation of the weights from an arbitrary baseline `c`.
@@ -132,7 +127,6 @@ and `w(g)` is the multiplicity of residue class `g` in the box. The total variat
 The constant `M` and the total variation are both `q`-independent, ensuring the
 overall bound `O(s^{k-2} / d^{k-2})` is `q`-independent.
 
-PROVIDED SOLUTION
 Step 1: Show ∑ w * f = ∑ (w - c) * f. Since ∑ f = 0, we have c * ∑ f = 0, so ∑ w*f = ∑ (w-c)*f + c*∑f = ∑ (w-c)*f. Use simp_rw [sub_mul] and Finset.sum_sub_distrib.
 
 Step 2: |∑ (w-c)*f| ≤ ∑ |w-c|*|f| by triangle inequality (Finset.abs_sum_le_sum_abs). Then ∑ |w-c|*|f| ≤ ∑ |w-c|*M by pointwise bound hM and abs_nonneg. Finally ∑ |w-c|*M = (∑ |w-c|)*M by Finset.sum_mul.
@@ -156,11 +150,9 @@ of the exponent `λ₂ = (√17 - 3)/2` and standard bounds on the divisor funct
 -/
 
 /-
-PROBLEM
 **Convergence for k ≥ 3**: The p-series `∑ d^{-(k-2+ε)}` converges when
 `k ≥ 3` and `ε > 0`, as the exponent `k - 2 + ε ≥ 1 + ε > 1`.
 
-PROVIDED SOLUTION
 Apply Real.summable_nat_rpow_inv.mpr. Need to show 1 < (k : ℝ) - 2 + ε. Since k ≥ 3 (cast to ℝ), we have (k:ℝ) - 2 ≥ 1, so (k:ℝ) - 2 + ε ≥ 1 + ε > 1. Use linarith with the cast.
 -/
 theorem divisor_sum_convergence_k_ge_3 {k : ℕ} (hk : 3 ≤ k) (ε : ℝ) (hε : 0 < ε) :
@@ -168,7 +160,6 @@ theorem divisor_sum_convergence_k_ge_3 {k : ℕ} (hk : 3 ≤ k) (ε : ℝ) (hε 
   exact Real.summable_nat_rpow_inv.mpr ( by linarith [ show ( k : ℝ ) ≥ 3 by norm_cast ] )
 
 /-
-PROBLEM
 **Convergence for k = 2 (critical exponent)**: For `k = 2`, the divisor sum
 convergence requires the exponent `α` to exceed 1. The paper's critical exponent
 `λ₂ = (√17 - 3)/2 ≈ 0.56` combined with the spacing bound `s ≤ p^{λ₂ - ε}`
@@ -177,7 +168,6 @@ ensures an effective exponent `> 1` after accounting for the divisor function bo
 This lemma captures the general summability criterion used in both the `k = 2`
 and `k ≥ 3` regimes.
 
-PROVIDED SOLUTION
 Directly apply Real.summable_nat_rpow_inv.mpr hα.
 -/
 theorem divisor_sum_convergence_k_eq_2 (α : ℝ) (hα : 1 < α) :
@@ -185,14 +175,12 @@ theorem divisor_sum_convergence_k_eq_2 (α : ℝ) (hα : 1 < α) :
   exact Real.summable_nat_rpow_inv.2 hα
 
 /-
-PROBLEM
 **Unified convergence (divisor_sum_convergence)**: The divisor power series
 `∑ d^{-(k-2+ε)}` converges whenever the exponent `(k : ℝ) - 2 + ε` exceeds 1.
 For `k ≥ 3`, this holds automatically for any `ε > 0`.
 For `k = 2`, the hypothesis `1 < ε` is needed, which follows from the paper's
 analysis of the critical exponent `λ₂` and the well-distribution hypothesis.
 
-PROVIDED SOLUTION
 Directly apply Real.summable_nat_rpow_inv.mpr hexp.
 -/
 theorem divisor_sum_convergence (k : ℕ) (_hk : 2 ≤ k) (ε : ℝ) (_hε : 0 < ε)

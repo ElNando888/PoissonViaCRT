@@ -48,14 +48,12 @@ noncomputable def residueMultiplicity
   (S.filter fun h => (fun i => (h i : ZMod q)) = g).card
 
 /-
-PROBLEM
 **Sum by residue classes**: A sum of a function that depends only on `h mod q`
 over a set of lattice points equals a weighted sum over residue classes.
 
 Specifically, if `f(h)` depends only on the reduction of `h` modulo `q`, then
 `∑_{h ∈ S} f(h) = ∑_{g : (ZMod q)^m} (multiplicity of g in S) * f(g)`.
 
-PROVIDED SOLUTION
 We partition S by residue class. Each h ∈ S maps to g = (h i mod q)_i, and the filter S.filter (cond = g) gives exactly the elements with that residue. Use Finset.sum_fiberwise or Finset.sum_partition to rewrite the sum. The key is that S = ⊔_{g} (S.filter (residue = g)), and on each fiber the function value is f(g). So the sum over the fiber is (fiber.card) * f(g) = residueMultiplicity S g * f(g).
 -/
 lemma sum_by_residue_classes
@@ -68,12 +66,10 @@ lemma sum_by_residue_classes
   rw [ Finset.sum_comm, Finset.sum_congr rfl ] ; aesop
 
 /-
-PROBLEM
 **Box multiplicity bound**: For a scaled box with scaling factor `s`, the total
 number of lattice points in the box is bounded by `(s * B + 1) ^ m` where `B = ∑ X.sides`.
 This provides a crude but effective upper bound on the cardinality of the box.
 
-PROVIDED SOLUTION
 The filtered set is a subset of the piFinset, so its card is at most card of the piFinset. The piFinset has each coordinate ranging over Icc 1 ⌈s * ∑ X.sides⌉, which has ⌈s * ∑ X.sides⌉ elements (for positive ceiling). The piFinset card is thus ⌈s * ∑ X.sides⌉^m. Use Finset.card_filter_le_card for the subset bound, then Finset.card_piFinset for the product. Convert Int.toNat to Nat.ceil using the fact that s * ∑ sides ≥ 0.
 -/
 lemma box_card_upper_bound (m : ℕ) (X : Box m) (s : ℝ) (_hs : 1 ≤ s) :
@@ -95,12 +91,10 @@ lemma deviation_sum_period_zero (Ω : Finset (ZMod q)) (m : ℕ) :
   tupleCount_cons_deviation_sum_zero Ω m
 
 /-
-PROBLEM
 Each individual deviation `|N_k(0::g) - μ|` is bounded by `2 * |Ω|`.
 This uses `tupleCount_le_card` (i.e., `N_k ≤ |Ω|`) and the fact that `μ ≤ |Ω|`
 when the spacing `s = q/|Ω| ≥ 1`.
 
-PROVIDED SOLUTION
 We need |N_k(0::g) - μ| ≤ 2*|Ω| where N_k = tupleCount Ω (Fin.cons 0 g) and μ = |Ω|^{m+1}/q^m.
 
 First, 0 ≤ N_k ≤ |Ω| by tupleCount_le_card.

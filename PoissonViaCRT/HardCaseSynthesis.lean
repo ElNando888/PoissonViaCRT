@@ -145,4 +145,17 @@ theorem deviation_synthesis_harder_case
         exact mul_le_mul_of_nonneg_left
           (critical_exponent_divisor_bound α hα q (by omega)) hC
 
+/-! ## 5. L2 Cauchy-Schwarz Bounds (k=2) -/
+
+/-- **Cauchy-Schwarz for Divisor Sums.**
+Bounds the L1 norm of a deviation function over divisors by its L2 variance multiplied
+by the number of divisors (τ(q)). This allows us to bypass the lack of geometric decay
+in the k=2 case by exploiting the orthogonality of the variance. -/
+theorem divisor_sum_cauchy_schwarz (q : ℕ) (f : ℕ → ℝ) :
+    (∑ d ∈ q.divisors, |f d|) ^ 2 ≤
+      (∑ d ∈ q.divisors, (f d) ^ 2) * (q.divisors.card : ℝ) := by
+  have h := Finset.sum_mul_sq_le_sq_mul_sq q.divisors (fun d => |f d|) (fun _ => (1 : ℝ))
+  simp only [mul_one, one_pow, sq_abs, Finset.sum_const, nsmul_eq_mul] at h
+  exact h
+
 end PoissonCRT

@@ -41,7 +41,6 @@ to lie in `(0, s · b_i]`. Since the increments are independent positive integer
 is the product of the number of valid values for each increment. -/
 
 /-
-PROVIDED SOLUTION
 The lattice points h satisfying inScaledBox X s (fun _ => 0) h are exactly those where each increment d_i = h_i - h_{i-1} (with h_{-1} = 0) satisfies 1 ≤ d_i and d_i ≤ ⌊s * X.sides i⌋₊.
 
 Key steps:
@@ -127,10 +126,8 @@ lemma count_inScaledBox_eq_prod_floor (m : ℕ) (X : Box m) (s : ℝ) (hs : 1 �
 We bound `|∏_i ⌊s * b_i⌋ - s^m * ∏_i b_i|` by `C * s^{m-1}`. -/
 
 /-
-PROBLEM
 Auxiliary bound: `|∏ ⌊s*b_i⌋₊ - s^m * ∏ b_i| ≤ C * s^{m-1}` for suitable C.
 
-PROVIDED SOLUTION
 Use induction on m.
 
 Base case m = 0: Both products are empty (= 1), so the difference is |1 - s^0 * 1| = 0. Choose C = 1. Then 0 ≤ 1 * s^(-1) for s ≥ 1.

@@ -123,7 +123,7 @@ lemma deviation_times_spacing_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) 
           Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
         (fun h => inScaledBox X s v h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
         C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1)) :
-    ∃ K : ℝ, 0 < K ∧ ∀ (q : ℕ) [NeZero q] (_hq_sq : Squarefree q),
+    ∃ δ : ℝ, 0 < δ ∧ ∃ K : ℝ, 0 < K ∧ ∀ (q : ℕ) [NeZero q] (_hq_sq : Squarefree q),
       let Ω_q := crtSubset q Ω
       let s := (q : ℝ) / Ω_q.card
       |(1 / (Ω_q.card : ℝ)) *
@@ -131,7 +131,7 @@ lemma deviation_times_spacing_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) 
             Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
           (fun h => inScaledBox X s (fun _ => 0) h)),
         ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
-          (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| * s ≤ K :=
+          (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| ≤ K * s ^ (-δ) :=
   deviation_final_synthesis ε hε k hk Ω hΩ hWD hsp X C_lp hC_lp_pos hC_lp
 
 /-- The key q-independent deviation bound: the deviation sum
@@ -158,7 +158,7 @@ lemma deviation_sum_bound_q_indep (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 �
           Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
         (fun h => inScaledBox X s v h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
         C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1)) :
-    ∃ C : ℝ, 0 < C ∧ ∀ (q : ℕ) [NeZero q] (_hq_sq : Squarefree q),
+    ∃ δ : ℝ, 0 < δ ∧ ∃ C : ℝ, 0 < C ∧ ∀ (q : ℕ) [NeZero q] (_hq_sq : Squarefree q),
       let Ω_q := crtSubset q Ω
       let s := (q : ℝ) / Ω_q.card
       |(1 / (Ω_q.card : ℝ)) *
@@ -167,33 +167,11 @@ lemma deviation_sum_bound_q_indep (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 �
           (fun h => inScaledBox X s (fun _ => 0) h)),
         ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
           (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| ≤
-      C * s ^ (-(1 : ℝ)) := by
-  -- Step 1: Obtain the uniform bound K from the Möbius decomposition
-  obtain ⟨K, hK_pos, hK⟩ := deviation_times_spacing_uniform_bound ε hε k hk Ω hΩ hWD hsp X
-    C_lp hC_lp_pos hC_lp
-  -- Step 2: Use K as the constant C
-  refine ⟨K, hK_pos, fun q inst hq_sq => ?_⟩
-  -- Step 3: Convert D(q) * s ≤ K to D(q) ≤ K * s^{-1}
-  set Ω_q := crtSubset q Ω with hΩ_q_def
-  set s := (q : ℝ) / Ω_q.card with hs_def
-  set D := |(1 / (Ω_q.card : ℝ)) *
-    ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
-        Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
-      (fun h => inScaledBox X s (fun _ => 0) h)),
-    ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
-      (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| with hD_def
-  -- The key inequality from the helper
-  have hDs : D * s ≤ K := hK q hq_sq
-  -- Handle the two cases: s = 0 and s > 0
-  by_cases hs0 : Ω_q.card = 0
-  · -- Case: |Ω_q| = 0 → s = q/0 = 0, D = |0*...| = 0, RHS = K*0 = 0
-    simp [hs0, Real.rpow_neg_one]
-  · -- Case: |Ω_q| > 0 → s > 0
-    simp only
-    have hcard_pos : (0 : ℝ) < Ω_q.card :=
-      Nat.cast_pos.mpr (Nat.pos_of_ne_zero hs0)
-    have hs_pos : 0 < s := div_pos (Nat.cast_pos.mpr (NeZero.pos q)) hcard_pos
-    rw [Real.rpow_neg_one]
-    exact le_div_iff₀ hs_pos |>.mpr hDs
+      C * s ^ (-δ) := by
+  -- Step 1: Obtain the uniform bound from the δ-aware deviation synthesis
+  obtain ⟨δ, hδ_pos, K, hK_pos, hK⟩ := deviation_times_spacing_uniform_bound ε hε k hk Ω hΩ
+    hWD hsp X C_lp hC_lp_pos hC_lp
+  -- Step 2: Pass through the δ and K directly
+  exact ⟨δ, hδ_pos, K, hK_pos, hK⟩
 
 end PoissonCRT
