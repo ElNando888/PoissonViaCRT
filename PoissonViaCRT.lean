@@ -1,5 +1,2 @@
-import PoissonViaCRT.Defs
-import PoissonViaCRT.TupleCount
-import PoissonViaCRT.Combinatorics
 import PoissonViaCRT.PoissonPrimer
 import PoissonViaCRT.MainTheorem
