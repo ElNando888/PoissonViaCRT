@@ -409,7 +409,7 @@ private lemma surj_image_eq (d : ℕ) [NeZero d] (r : Fin k → ZMod d)
     let r_int : Fin k → ℤ := fun i => (ZMod.val (r i) : ℤ)
     let r_1 : Fin k → ℤ := fun i => if r_int i = 0 then (d : ℤ) else r_int i
     ((↑d * (b i - 1) + r_1 i - 1) / (d : ℤ) + 1) = b i := by
-      cases eq_or_ne ( r i |> ZMod.val : ℤ ) 0 <;> simp +decide [ *, Int.add_mul_ediv_left ];
+      cases eq_or_ne ( r i |> ZMod.val : ℤ ) 0 <;> simp +decide [ * ];
       · nlinarith [ Int.mul_ediv_add_emod ( ↑d * ( b i - 1 ) + ↑d - 1 ) ↑d, Int.emod_nonneg ( ↑d * ( b i - 1 ) + ↑d - 1 ) ( NeZero.ne ( d : ℤ ) ), Int.emod_lt_of_pos ( ↑d * ( b i - 1 ) + ↑d - 1 ) ( Nat.cast_pos.mpr <| NeZero.pos d ) ];
       · have h_div : ((d * (b i - 1) + (r i).val - 1) / d) = (b i - 1) + ((r i).val - 1) / d := by
           rw [ Int.add_sub_assoc, Int.add_ediv_of_dvd_left ] <;> norm_num [ NeZero.ne ];
@@ -425,11 +425,11 @@ private lemma surj_mod_eq (d : ℕ) [NeZero d] (r : Fin k → ZMod d)
     let r_int : Fin k → ℤ := fun i => (ZMod.val (r i) : ℤ)
     let r_1 : Fin k → ℤ := fun i => if r_int i = 0 then (d : ℤ) else r_int i
     ((↑d * (b i - 1) + r_1 i : ℤ) : ZMod d) = r i := by
-      cases' eq_or_ne ( ( r i |> ZMod.val : ZMod d ) ) 0 with h h <;> simp_all +decide [ ZMod.natCast_eq_zero_iff ];
+      cases' eq_or_ne ( ( r i |> ZMod.val : ZMod d ) ) 0 with h h <;> simp_all +decide;
       -- Since the cast is injective, if the cast of r i is zero, then r i must be zero.
       intro h_cast_zero
       have h_r_zero : r i = 0 := by
-        cases d <;> simp_all +decide [ ZMod.natCast_eq_zero_iff ];
+        cases d <;> simp_all +decide only [neZero_zero_iff_false];
         injection h_cast_zero with h_cast_zero ; aesop
       exact h_r_zero.symm
 
@@ -461,7 +461,8 @@ private lemma inscaledbox_implies_icc_upper {k : ℕ}
           induction' i with i ih;
           · have := hbox ⟨ 0, ih ⟩;
             rw [ show ( Iic ⟨ 0, ih ⟩ : Finset ( Fin k ) ) = { ⟨ 0, ih ⟩ } by ext ⟨ i, hi ⟩ ; aesop ] ; aesop;
-          · have := hbox ⟨ i + 1, ih ⟩ ; simp_all +decide [ Finset.sum_Ioc_succ_top, (Nat.succ_eq_succ ▸ Finset.Icc_succ_left_eq_Ioc) ] ;
+          · have := hbox ⟨ i + 1, ih ⟩ ; simp_all +decide only [sub_zero, Nat.add_eq_zero_iff, and_false,
+            ↓reduceIte, add_tsub_cancel_right, sub_pos, Int.cast_lt, tsub_le_iff_right, ge_iff_le];
             rw [ show ( Iic ⟨ i + 1, ih ⟩ : Finset ( Fin k ) ) = Iic ⟨ i, by linarith ⟩ ∪ { ⟨ i + 1, ih ⟩ } from ?_, Finset.sum_union ] <;> norm_num;
             · linarith [ ‹∀ ( ih : i < k ), ( h ⟨ i, ih ⟩ : ℝ ) ≤ s * ∑ j ∈ Iic ⟨ i, ih ⟩, X.sides j› ( Nat.lt_of_succ_lt ih ) ];
             · grind;
@@ -486,7 +487,7 @@ private lemma surj_inscaledbox_transfer {k : ℕ}
     inScaledBox X s (fun _ => 0) (fun i => ↑d * (b i - 1) + r_1 i) := by
       intro i;
       convert hb_box i using 1;
-      split_ifs <;> simp +decide [ *, ne_of_gt ( NeZero.pos d ), sub_mul, mul_sub, div_eq_mul_inv ];
+      split_ifs <;> simp +decide [ *, mul_sub, div_eq_mul_inv ];
       · field_simp;
         constructor <;> intro h <;> constructor <;> nlinarith [ show ( d : ℝ ) > 0 by exact Nat.cast_pos.mpr <| NeZero.pos d, mul_div_cancel₀ ( r_1 i : ℝ ) <| Nat.cast_ne_zero.mpr <| NeZero.ne d, mul_div_cancel₀ ( s * X.sides i ) <| Nat.cast_ne_zero.mpr <| NeZero.ne d ];
       · -- By simplifying, we can see that the two inequalities are equivalent.
@@ -527,19 +528,24 @@ private lemma rescaled_card_surjectivity {k : ℕ} (hk : 1 ≤ k)
           · convert inscaledbox_implies_icc_upper s X _ i _ using 1;
             rotate_left;
             use fun i => d * ( b i - 1 ) + r_1 i;
-            · intro i; specialize hb; have := hb.2 i; simp_all +decide [ inScaledBox ] ;
+            · intro i; specialize hb; have := hb.2 i; simp_all +decide only [and_self,
+              Int.cast_add, Int.cast_mul, Int.cast_natCast, Int.cast_sub, Int.cast_one,
+              Int.cast_ite, ZMod.intCast_cast, sub_zero, sub_pos, tsub_le_iff_right];
               convert hb.2 i using 1 <;> norm_num [ div_eq_mul_inv, mul_assoc, mul_comm, mul_left_comm, NeZero.ne ];
               · split_ifs <;> norm_num [ NeZero.ne ];
-                all_goals norm_cast; simp +decide [ NeZero.ne, mul_sub, sub_mul, mul_assoc, mul_comm, mul_left_comm, div_eq_mul_inv ] ;
+                all_goals norm_cast; simp +decide [ mul_sub, mul_comm ] ;
                 any_goals constructor <;> intro <;> nlinarith [ show ( d : ℝ ) > 0 by exact Nat.cast_pos.mpr <| NeZero.pos d, mul_inv_cancel_left₀ ( show ( d : ℝ ) ≠ 0 by exact Nat.cast_ne_zero.mpr <| NeZero.ne d ) ( ( r ⟨ i - 1, Nat.lt_of_le_of_lt ( Nat.pred_le _ ) i.2 ⟩ |> ZMod.cast ) : ℝ ), mul_inv_cancel_left₀ ( show ( d : ℝ ) ≠ 0 by exact Nat.cast_ne_zero.mpr <| NeZero.ne d ) ( ( r i |> ZMod.cast ) : ℝ ) ];
                 · exact ⟨ fun h => by nlinarith [ NeZero.pos d ], fun h => by nlinarith [ NeZero.pos d ] ⟩;
                 · rw [ mul_comm, mul_lt_mul_iff_of_pos_right ( Nat.cast_pos.mpr <| NeZero.pos d ) ];
               · field_simp;
-                split_ifs <;> simp +decide [ *, mul_add, add_assoc, mul_sub, sub_add_eq_add_sub, mul_div_cancel₀, NeZero.ne ];
+                split_ifs <;> simp +decide only [mul_sub, mul_one, sub_add_cancel, add_zero, sub_self];
                 all_goals constructor <;> intro <;> nlinarith [ show ( d : ℝ ) > 0 by exact Nat.cast_pos.mpr <| NeZero.pos d, mul_div_cancel₀ ( s * X.sides i ) <| show ( d : ℝ ) ≠ 0 by exact Nat.cast_ne_zero.mpr <| NeZero.ne d, mul_div_cancel₀ ( ( r i |> ZMod.cast ) : ℝ ) <| show ( d : ℝ ) ≠ 0 by exact Nat.cast_ne_zero.mpr <| NeZero.ne d, mul_div_cancel₀ ( ( r ⟨ i - 1, Nat.lt_of_le_of_lt ( Nat.pred_le _ ) i.2 ⟩ |> ZMod.cast ) : ℝ ) <| show ( d : ℝ ) ≠ 0 by exact Nat.cast_ne_zero.mpr <| NeZero.ne d ] ;
             · norm_cast;
-        · intro i; specialize hb; have := hb.2 i; simp_all +decide [ sub_eq_iff_eq_add ] ;
-          have := hb.2 i; split_ifs at * <;> simp_all +decide [ mul_sub, mul_div_cancel₀, NeZero.ne ] ;
+        · intro i; specialize hb; have := hb.2 i; simp_all +decide only [and_self, Int.cast_add,
+          Int.cast_mul, Int.cast_natCast, Int.cast_sub, Int.cast_one, Int.cast_ite, ZMod.intCast_cast];
+          have := hb.2 i; split_ifs at * <;> simp_all +decide only [ne_eq, NeZero.ne,
+            not_false_eq_true, div_self, sub_self, sub_zero, Int.cast_pos, add_zero, mul_sub,
+            mul_one, sub_add_cancel, mul_pos_iff_of_pos_right, Nat.cast_pos] ;
           all_goals constructor <;> norm_num [ NeZero.ne d, div_eq_mul_inv ] at *;
           grind +suggestions;
           any_goals nlinarith [ show ( d : ℝ ) ≥ 1 by exact_mod_cast NeZero.pos d, mul_inv_cancel_left₀ ( show ( d : ℝ ) ≠ 0 by exact_mod_cast NeZero.ne d ) ( s * X.sides i ), mul_inv_cancel_left₀ ( show ( d : ℝ ) ≠ 0 by exact_mod_cast NeZero.ne d ) ( ( r ⟨ i - 1, Nat.lt_of_le_of_lt ( Nat.pred_le _ ) i.2 ⟩ |> ZMod.cast ) : ℝ ), mul_inv_cancel_left₀ ( show ( d : ℝ ) ≠ 0 by exact_mod_cast NeZero.ne d ) ( ( r i |> ZMod.cast ) : ℝ ) ];
@@ -547,7 +553,7 @@ private lemma rescaled_card_surjectivity {k : ℕ} (hk : 1 ≤ k)
         · ext i; simp +decide [ hr_1 ] ;
           intro hi; have := ZMod.natCast_eq_zero_iff ( r i |> ZMod.val ) d; simp_all +decide [ ← ZMod.natCast_eq_zero_iff ] ;
           exact Eq.symm ( by simpa [ ZMod.natCast_eq_zero_iff ] using congr_arg ( fun x : ℤ => x : ℤ → ZMod d ) hi );
-        · ext i; simp +decide [ *, Int.add_mul_ediv_left ] ;
+        · ext i; simp +decide [ * ] ;
           convert surj_image_eq d r b i using 1;
           cases d <;> aesop
 
@@ -593,7 +599,7 @@ private lemma residue_class_card_eq_rescaled_card {k : ℕ} (hk : 1 ≤ k)
           · exact lt_of_le_of_ne ( Nat.cast_nonneg _ ) ( Ne.symm ‹_› );
         · grind;
       have := ha.1.2 i;
-      split_ifs at * <;> simp_all +decide [ sub_eq_iff_eq_add ];
+      split_ifs at * <;> simp_all +decide only [sub_zero, Int.cast_add, Int.cast_one, sub_pos, tsub_le_iff_right];
       · field_simp;
         constructor <;> nlinarith [ show ( d : ℝ ) > 0 by exact Nat.cast_pos.mpr <| NeZero.pos d, mul_div_cancel₀ ( r_1 i : ℝ ) <| Nat.cast_ne_zero.mpr <| NeZero.ne d, mul_div_cancel₀ ( s * X.sides i ) <| Nat.cast_ne_zero.mpr <| NeZero.ne d ];
       · field_simp;
@@ -750,8 +756,8 @@ private lemma final_collapse (s C_lp : ℝ) (d : ℕ) (k : ℕ) (ε : ℝ)
   rcases k with ( _ | _ | k ) <;> simp_all +decide [ mul_assoc, mul_left_comm, zpow_add₀ ];
   · exact Or.inl ( by rw [ ← Finset.prod_mul_distrib ] );
   · exact Or.inl ( by rw [ ← Finset.prod_mul_distrib ] );
-  · simp +decide [ mul_assoc, mul_left_comm, Finset.prod_mul_distrib, hs_ne ];
-    simp +decide [ mul_left_comm ( s ^ k ), mul_assoc, hs_ne ]
+  · simp +decide [ Finset.prod_mul_distrib ];
+    simp +decide [ mul_left_comm ( s ^ k ), hs_ne ]
 
 /-- The mean collapse identity: `(1/card) * ∏_q localMean = s^{-(k-1)}`. -/
 private lemma mean_collapse (k : ℕ) (hk : 1 ≤ k) (q : ℕ) [NeZero q] (hq_sq : Squarefree q)
@@ -823,7 +829,7 @@ private lemma box_deviation_inner_bound (k : ℕ) (hk : 1 ≤ k) (q : ℕ) [NeZe
           apply Finset.prod_congr rfl
           intro p hp
           simp [localCount];
-          split_ifs <;> simp_all +decide [ Nat.dvd_prime, Finset.prod_eq_zero_iff ];
+          split_ifs <;> simp_all +decide [ Finset.prod_eq_zero_iff ];
           · congr! 2;
             rename_i i; induction i using Fin.inductionOn <;> aesop;
           · exact absurd ( ‹p ∣ ∏ p ∈ T, p → 0 ∈ T› ( Finset.dvd_prod_of_mem _ hp ) ) ( by have := hT ( ‹p ∣ ∏ p ∈ T, p → 0 ∈ T› ( Finset.dvd_prod_of_mem _ hp ) ) ; aesop );
@@ -839,7 +845,7 @@ private lemma box_deviation_inner_bound (k : ℕ) (hk : 1 ≤ k) (q : ℕ) [NeZe
       exact ⟨ Nat.Coprime.prod_right fun p hp => hT_prime.1.coprime_iff_not_dvd.mpr fun h => ‹¬_› <| by have := Nat.prime_dvd_prime_iff_eq hT_prime.1 ( hT_prime.2 p hp ) ; aesop, hT_prime.1.squarefree ⟩;
     exact h_prod_sqfree fun p hp => Nat.prime_of_mem_primeFactors <| hT hp
   have hT_sub_d : T ⊆ d.primeFactors := by
-    intro p hp; simp +decide [ Nat.mem_primeFactors, Finset.prod_eq_prod_diff_singleton_mul hp ] ;
+    intro p hp; simp +decide only [Nat.mem_primeFactors, ne_eq] ;
     exact ⟨ Nat.prime_of_mem_primeFactors ( hT hp ), Finset.dvd_prod_of_mem _ hp, hd_pos.ne' ⟩
   have h_zerosum_d : ∑ r : Fin (k - 1) → ZMod d,
       ∏ p ∈ T, (localCount Ω d (Fin.cons (0 : ZMod d) r) p - localMean k Ω p) = 0 :=
@@ -859,7 +865,8 @@ private lemma box_deviation_inner_bound (k : ℕ) (hk : 1 ≤ k) (q : ℕ) [NeZe
     have h_arith_l1 : ∀ (p : ℕ) [Fact p.Prime], ∑ r : Fin (k - 1) → ZMod p, |localCount Ω p (Fin.cons 0 r) p - localMean k Ω p| ≤ p ^ (k - 1 : ℕ) * (1 - (Ω p).card / p : ℝ) * (p : ℝ) ^ (-ε) * ((Ω p).card : ℝ) ^ k / p ^ (k - 1 : ℕ) := by
       intros p hp; exact (by
       convert hWD p |>.2 using 1;
-      · unfold localCount localMean; simp +decide [ Finset.prod_ite, Finset.filter_ne', Finset.filter_eq' ] ;
+      · unfold localCount localMean; simp +decide only [Nat.mem_primeFactors, dvd_refl, ne_eq,
+        true_and, ZMod.castHom_self, RingHom.id_apply];
         simp +decide [ hp.1.ne_zero, hp.1 ];
       · ring);
     have h_arith_l1 : ∑ r : (p : d.primeFactors) → Fin (k - 1) → ZMod p, ∏ p : d.primeFactors, |localCount Ω p (Fin.cons 0 (fun i => r p i)) p - localMean k Ω p| ≤ ∏ p : d.primeFactors, ∑ r : Fin (k - 1) → ZMod p, |localCount Ω p (Fin.cons 0 r) p - localMean k Ω p| := by
@@ -875,7 +882,9 @@ private lemma box_deviation_inner_bound (k : ℕ) (hk : 1 ≤ k) (q : ℕ) [NeZe
       · intro a; rw [ Finset.abs_prod ] ;
         refine' Finset.prod_bij ( fun p hp => ⟨ p, _ ⟩ ) _ _ _ _ <;> norm_num;
         exact Nat.mem_primeFactors.mp (hT_sub_d hp);
-        · intro p pp dp _; have := Nat.dvd_trans ( dvd_refl p ) dp; simp_all +decide [ Nat.Prime.dvd_iff_not_coprime pp ] ;
+        · intro p pp dp _; have := Nat.dvd_trans ( dvd_refl p ) dp; simp_all +decide only [ne_eq,
+          Nat.cast_sub, Nat.cast_one, one_div, CanonicallyOrderedAdd.prod_pos, Nat.cast_prod,
+          univ_eq_attach, Nat.Prime.dvd_iff_not_coprime pp, not_false_eq_true] ;
           exact Classical.not_not.1 fun h => dp <| Nat.Coprime.prod_right fun q hq => pp.coprime_iff_not_dvd.2 fun hq' => h <| by have := Nat.prime_dvd_prime_iff_eq pp ( Nat.prime_of_mem_primeFactors <| hT hq ) ; aesop;
         · intro p hp; simp +decide [ localCount, localMean, box_period_equiv_apply_eq_castHom ] ;
           split_ifs <;> norm_num;
@@ -918,7 +927,7 @@ private lemma box_deviation_inner_bound (k : ℕ) (hk : 1 ≤ k) (q : ℕ) [NeZe
       (∏ p ∈ T, localMean k Ω p) * (d : ℝ) ^ (k - 1) *
         ∏ p ∈ T, ((1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) := by
     unfold localMean; simp +decide [ mul_assoc, mul_comm, mul_left_comm, Finset.prod_mul_distrib ] ;
-    rw [ show ( d : ℝ ) = ∏ p ∈ T, p from mod_cast rfl ] ; ring;
+    rw [ show ( d : ℝ ) = ∏ p ∈ T, p from mod_cast rfl ] ; ring_nf;
     norm_num [ mul_assoc, mul_comm, mul_left_comm, Finset.prod_pow ]
   -- Mean recombination: ∏_{S\T} mean * ∏_T mean = ∏_q mean.
   have h_mean_recombine :
@@ -936,7 +945,7 @@ private lemma box_deviation_inner_bound (k : ℕ) (hk : 1 ≤ k) (q : ℕ) [NeZe
   rcases Nat.eq_zero_or_pos (crtSubset q Ω).card with hc0 | hcard_pos
   · have : (1 : ℝ) / ((crtSubset q Ω).card : ℝ) = 0 := by
       rw [hc0]; simp
-    simp only [this, zero_mul, Finset.sum_const_zero, abs_zero]
+    simp only [this, zero_mul, abs_zero]
     apply mul_nonneg (mul_nonneg hC_lp_pos (zpow_nonneg
       (le_trans (Finset.prod_nonneg fun _ _ => Nat.cast_nonneg _) hT_le_s) _))
     apply Finset.prod_nonneg; intro p hp
