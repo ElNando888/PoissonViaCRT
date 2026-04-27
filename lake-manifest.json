@@ -5,7 +5,7 @@
    "type": "git",
    "subDir": null,
    "scope": "",
-   "rev": "44b426bd3b63b2b4c12506b16e3961ce55ad8db9",
+   "rev": "7f24b0d4658eec65e03331925054974a618a8806",
    "name": "RiemannHypothesisCurves",
    "manifestFile": "lake-manifest.json",
    "inputRev": "refactor",

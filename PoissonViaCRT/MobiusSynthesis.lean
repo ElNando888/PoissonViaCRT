@@ -23,6 +23,8 @@ import PoissonViaCRT.ScaledBoxVariation
 import PoissonViaCRT.MobiusOptimization
 import PoissonViaCRT.MobiusTauIntegration
 
+set_option linter.unusedVariables false
+
 /-!
 # Möbius Synthesis
 

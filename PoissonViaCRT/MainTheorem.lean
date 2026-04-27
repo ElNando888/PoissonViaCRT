@@ -22,6 +22,8 @@ import PoissonViaCRT.LatticePointBound
 import PoissonViaCRT.CancellationHelpers
 import RiemannHypothesisCurves.RiemannHypothesisHEC
 
+set_option linter.unusedVariables false
+
 /-!
 # Main Theorems (§1, §3.2)
 
