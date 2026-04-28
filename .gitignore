@@ -1,5 +1,6 @@
 .agents/
 .lake/
 _RHC/
+tmp/
 instructions.md
 lean_mcp_wrapper.sh

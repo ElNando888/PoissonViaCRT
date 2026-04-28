@@ -204,7 +204,7 @@ private lemma spacing_ge_one (Ω : ∀ p : ℕ, Finset (ZMod p))
   · exact crtSubset_card_pos Ω hΩ q
 
 
-/-! ### Intermediate lemmas for Proposition 3.6 (salami-sliced) -/
+/-! ### Intermediate lemmas for Proposition 3.6 -/
 
 /-
 **Lattice point box bound**: The number of lattice points in a scaled box `sX`
@@ -217,16 +217,63 @@ The error |∏_i ⌊s * b_i⌋ - ∏_i (s * b_i)| is bounded by C * s^(m-1) usin
 Choose C = m * (max b_i)^(m-1) + 1 (or similar).
 For m = 0: the box is 0-dimensional, the count is 1, the volume is 1 (empty product), and s^0 * 1 = 1, so the error is 0 and any C > 0 works.
 -/
+/-
+PROVIDED SOLUTION
+
+The goal is to bound the error between the number of lattice points in a scaled box `sX` and the continuous volume `s^m * vol(X)`.
+*   **Context:** The box is defined as a Cartesian product of intervals.
+*   **Approach:** 
+    *   The continuous volume is $s^m \prod b_i$.
+    *   The lattice point count is bounded by the product of 1D counts $\prod \lfloor s \cdot b_i \rfloor$.
+    *   Use a telescoping identity to bound the difference $\left| \prod A_i - \prod B_i \right|$ where $A_i$ and $B_i$ differ by at most 1.
+    *   This is purely algebraic/combinatorial.
+*   **Crucial Constraint on $v$**: Do **not** remove the offset parameter `v : Fin m → ℝ` entirely. While a universally
+    quantified `v` is unsound (as large shifts fall outside the discrete `piFinset` bounds), fixing `v = 0` is too
+    restrictive. `MobiusSynthesis.lean` relies on fractional phase shifts ($v_i = 1 - r_1/d$) to partition lattice points
+    into residue classes. You must retain `v` but add the bounded hypothesis `(hv : ∀ i, 0 ≤ v i ∧ v i ≤ 1)`. You will
+    also need to propagate this hypothesis change to the `h_lp` / `hC_lp` signatures across `MainTheorem.lean` and
+    `MobiusSynthesis.lean`.
+-/
 lemma lattice_point_box_bound (m : ℕ) (X : Box m) :
-    ∃ C : ℝ, 0 < C ∧ ∀ (v : Fin m → ℝ) (s : ℝ), 1 ≤ s →
+    ∃ C : ℝ, 0 < C ∧ ∀ (v : Fin m → ℝ), (∀ i, 0 ≤ v i ∧ v i ≤ 1) → ∀ (s : ℝ), 1 ≤ s →
       |(((Fintype.piFinset fun _ : Fin m =>
           Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
         (fun h => inScaledBox X s v h)).card : ℝ) - s ^ m * X.volume| ≤
         C * s ^ ((m : ℤ) - 1) := by
-  -- Obtain the product-of-floors representation and the error bound
-  obtain ⟨C, hCp, hCb⟩ := prod_floor_approx m X.sides X.sides_pos
-  exact ⟨C, hCp, fun v s hs => by
-    sorry⟩
+  -- Step 1: Obtain the product-of-floors bound for v = 0
+  obtain ⟨C₁, hC₁_pos, hC₁_bound⟩ := prod_floor_approx m X.sides X.sides_pos
+  -- Step 2: Obtain the offset difference bound
+  obtain ⟨D, hD_nn, hD_bound⟩ := inScaledBox_offset_card_diff m X
+  -- Step 3: Use C = C₁ + D + 1, which is positive
+  refine ⟨C₁ + D + 1, by linarith, fun v hv s hs => ?_⟩
+  -- Triangle inequality: |card(v) - vol| ≤ |card(v) - card(0)| + |card(0) - vol|
+  have h_v0 : |(((Fintype.piFinset fun _ : Fin m =>
+      Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+    (fun h => inScaledBox X s (fun _ => 0) h)).card : ℝ) - s ^ m * X.volume| ≤
+      C₁ * s ^ ((m : ℤ) - 1) := by
+    rw [count_inScaledBox_eq_prod_floor m X s hs, Box.volume]
+    convert hC₁_bound s hs using 2
+    push_cast
+    rfl
+  have h_diff := hD_bound v hv s hs
+  -- Abbreviate the two cardinalities
+  set cv := ((Fintype.piFinset fun _ : Fin m =>
+      Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+    (fun h => inScaledBox X s v h)).card with hcv_def
+  set c0 := ((Fintype.piFinset fun _ : Fin m =>
+      Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+    (fun h => inScaledBox X s (fun _ => 0) h)).card with hc0_def
+  have h_tri : |(cv : ℝ) - s ^ m * X.volume| ≤
+      |(cv : ℝ) - (c0 : ℝ)| + |(c0 : ℝ) - s ^ m * X.volume| := by
+    calc |(cv : ℝ) - s ^ m * X.volume|
+        = |((cv : ℝ) - c0) + ((c0 : ℝ) - s ^ m * X.volume)| := by ring_nf
+      _ ≤ |(cv : ℝ) - c0| + |(c0 : ℝ) - s ^ m * X.volume| := abs_add_le _ _
+  calc |(cv : ℝ) - s ^ m * X.volume|
+    _ ≤ |(cv : ℝ) - c0| + |(c0 : ℝ) - s ^ m * X.volume| := h_tri
+    _ ≤ D * s ^ ((m : ℤ) - 1) + C₁ * s ^ ((m : ℤ) - 1) := add_le_add h_diff h_v0
+    _ ≤ (C₁ + D + 1) * s ^ ((m : ℤ) - 1) := by
+        have : 0 ≤ s ^ ((m : ℤ) - 1) := zpow_nonneg (by linarith) _
+        nlinarith
 
 /-
 **Euler product convergence**: Under the WD hypothesis with parameter `ε`,
@@ -310,7 +357,8 @@ lemma complete_period_cancellation_apply
     (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
     (hsp : ∀ (p : ℕ), p.Prime →
       (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
-    (h_lp : ∀ (X : Box (k - 1)), ∃ C : ℝ, 0 < C ∧ ∀ (v : Fin (k - 1) → ℝ) (s : ℝ), 1 ≤ s →
+    (h_lp : ∀ (X : Box (k - 1)), ∃ C : ℝ, 0 < C ∧ ∀ (v : Fin (k - 1) → ℝ), (∀ i, 0 ≤ v i ∧ v i ≤ 1) →
+      ∀ (s : ℝ), 1 ≤ s →
       |(((Fintype.piFinset fun _ : Fin (k - 1) =>
           Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
         (fun h => inScaledBox X s v h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤

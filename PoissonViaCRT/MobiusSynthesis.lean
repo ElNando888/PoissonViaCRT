@@ -621,7 +621,7 @@ private lemma residue_class_discrepancy_bound (k : ℕ) (hk : 1 ≤ k)
     (X : Box (k - 1))
     (d : ℕ) [NeZero d]
     (hd_le_s : (d : ℝ) ≤ s)
-    (hC_lp : ∀ (v : Fin (k - 1) → ℝ) (s : ℝ), 1 ≤ s →
+    (hC_lp : ∀ (v : Fin (k - 1) → ℝ), (∀ i, 0 ≤ v i ∧ v i ≤ 1) → ∀ (s : ℝ), 1 ≤ s →
       |(((Fintype.piFinset fun _ : Fin (k - 1) =>
           Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
         (fun h => inScaledBox X s v h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
@@ -648,7 +648,24 @@ private lemma residue_class_discrepancy_bound (k : ℕ) (hk : 1 ≤ k)
       |(S_sub.card : ℝ) - (s / d) ^ (k - 1 : ℕ) * X.volume| ≤
         C_lp * (s / d) ^ (((k - 1 : ℕ) : ℤ) - 1) := by
     intro h_sd
-    exact hC_lp (fun i => 1 - (r_1 i : ℝ) / ↑d) (s / d) h_sd
+    have hv_bound : ∀ i, 0 ≤ (1 : ℝ) - (r_1 i : ℝ) / ↑d ∧ (1 : ℝ) - (r_1 i : ℝ) / ↑d ≤ 1 := by
+      intro i
+      have hd_pos : (0 : ℝ) < (d : ℝ) := Nat.cast_pos.mpr (NeZero.pos d)
+      constructor
+      · rw [sub_nonneg]
+        simp only [r_1]
+        split_ifs with h0
+        · rw [Int.cast_natCast]; exact le_of_eq (div_self (ne_of_gt hd_pos))
+        · rw [div_le_one hd_pos]
+          simp only [hr_int_def]
+          exact_mod_cast le_of_lt (ZMod.val_lt (r i))
+      · apply sub_le_self
+        apply div_nonneg _ (le_of_lt hd_pos)
+        simp only [r_1]
+        split_ifs with h0
+        · exact_mod_cast Nat.zero_le d
+        · simp only [hr_int_def]; exact_mod_cast Nat.zero_le (ZMod.val (r i))
+    exact hC_lp (fun i => 1 - (r_1 i : ℝ) / ↑d) hv_bound (s / d) h_sd
   -- Step 4: The cardinality bridge — the residue multiplicity equals S_sub.card.
   have h_card_bridge : (residueMultiplicity S r : ℝ) = (S_sub.card : ℝ) := by
     congr 1
@@ -678,7 +695,7 @@ private lemma residue_total_variation_bound (k : ℕ) (hk : 1 ≤ k)
     (hS_def : S = ((Fintype.piFinset fun _ : Fin (k - 1) =>
         Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
       (fun h => inScaledBox X s (fun _ => 0) h)))
-    (hC_lp : ∀ (v : Fin (k - 1) → ℝ) (s : ℝ), 1 ≤ s →
+    (hC_lp : ∀ (v : Fin (k - 1) → ℝ), (∀ i, 0 ≤ v i ∧ v i ≤ 1) → ∀ (s : ℝ), 1 ≤ s →
       |(((Fintype.piFinset fun _ : Fin (k - 1) =>
           Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
         (fun h => inScaledBox X s v h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
@@ -691,7 +708,7 @@ private lemma residue_total_variation_bound (k : ℕ) (hk : 1 ≤ k)
       C_lp * s ^ ((↑(k - 1) : ℤ) - 1) * (d : ℝ) := by
   -- Derive 0 ≤ C_lp from hC_lp at (v, s) = (0, 1)
   have hC_lp_pos : 0 ≤ C_lp := by
-    have h := hC_lp (fun _ => 0) 1 le_rfl
+    have h := hC_lp (fun _ => 0) (fun _ => ⟨le_refl _, zero_le_one⟩) 1 le_rfl
     have : 0 ≤ C_lp * (1 : ℝ) ^ (((k - 1 : ℕ) : ℤ) - 1) :=
       le_trans (abs_nonneg _) h
     rwa [one_zpow, mul_one] at this
@@ -790,7 +807,7 @@ private lemma box_deviation_inner_bound (k : ℕ) (hk : 1 ≤ k) (q : ℕ) [NeZe
     (hs_eq : s = (q : ℝ) / (crtSubset q Ω).card)
     (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
     (hsp : ∀ (p : ℕ), p.Prime → (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
-    (hC_lp : ∀ (v : Fin (k - 1) → ℝ) (s : ℝ), 1 ≤ s →
+    (hC_lp : ∀ (v : Fin (k - 1) → ℝ), (∀ i, 0 ≤ v i ∧ v i ≤ 1) → ∀ (s : ℝ), 1 ≤ s →
       |(((Fintype.piFinset fun _ : Fin (k - 1) =>
           Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
         (fun h => inScaledBox X s v h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
@@ -1045,7 +1062,7 @@ private lemma inner_bound_k_ge_3 (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk3 : 3 �
     (hε_lt : ε < lambdaExponent k)
     (X : Box (k - 1))
     (C_lp : ℝ) (hC_lp_pos : 0 < C_lp)
-    (hC_lp : ∀ (v : Fin (k - 1) → ℝ) (s : ℝ), 1 ≤ s →
+    (hC_lp : ∀ (v : Fin (k - 1) → ℝ), (∀ i, 0 ≤ v i ∧ v i ≤ 1) → ∀ (s : ℝ), 1 ≤ s →
       |(((Fintype.piFinset fun _ : Fin (k - 1) =>
           Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
         (fun h => inScaledBox X s v h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
@@ -1107,7 +1124,7 @@ private lemma deviation_uniform_bound_k_eq_2 (ε : ℝ) (hε : 0 < ε)
     (_hε_lt : ε < lambdaExponent 2)
     (X : Box 1)
     (C_lp : ℝ) (hC_lp_pos : 0 < C_lp)
-    (_hC_lp : ∀ (v : Fin 1 → ℝ) (s : ℝ), 1 ≤ s →
+    (_hC_lp : ∀ (v : Fin 1 → ℝ), (∀ i, 0 ≤ v i ∧ v i ≤ 1) → ∀ (s : ℝ), 1 ≤ s →
       |(((Fintype.piFinset fun _ : Fin 1 =>
           Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
         (fun h => inScaledBox X s v h)).card : ℝ) - s ^ (1 : ℕ) * X.volume| ≤
@@ -1133,7 +1150,7 @@ private lemma deviation_expression_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : 
     (hε_lt : ε < lambdaExponent k)
     (X : Box (k - 1))
     (C_lp : ℝ) (_hC_lp_pos : 0 < C_lp)
-    (_hC_lp : ∀ (v : Fin (k - 1) → ℝ) (s : ℝ), 1 ≤ s →
+    (_hC_lp : ∀ (v : Fin (k - 1) → ℝ), (∀ i, 0 ≤ v i ∧ v i ≤ 1) → ∀ (s : ℝ), 1 ≤ s →
       |(((Fintype.piFinset fun _ : Fin (k - 1) =>
           Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
         (fun h => inScaledBox X s v h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
@@ -1298,7 +1315,7 @@ theorem deviation_final_synthesis (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 �
       (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
     (X : Box (k - 1))
     (C_lp : ℝ) (hC_lp_pos : 0 < C_lp)
-    (hC_lp : ∀ (v : Fin (k - 1) → ℝ) (s : ℝ), 1 ≤ s →
+    (hC_lp : ∀ (v : Fin (k - 1) → ℝ), (∀ i, 0 ≤ v i ∧ v i ≤ 1) → ∀ (s : ℝ), 1 ≤ s →
       |(((Fintype.piFinset fun _ : Fin (k - 1) =>
           Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
         (fun h => inScaledBox X s v h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤

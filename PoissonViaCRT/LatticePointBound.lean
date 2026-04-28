@@ -31,36 +31,14 @@ open Finset BigOperators Classical
 
 namespace PoissonCRT
 
-/-! ### Step 1: The count equals a product of floors
+/-! ### Step 1: The count equals a product of floors -/
 
-We show that the set of integer tuples `h : Fin m → ℤ` satisfying `inScaledBox X s (fun _ => 0) h`
-(within the bounding piFinset) has cardinality `∏ i, ⌊s * X.sides i⌋₊`.
-
-The key idea: `inScaledBox X s (fun _ => 0) h` constrains each "increment" `h_i - h_{i-1}` (with h₋₁ = 0)
-to lie in `(0, s · b_i]`. Since the increments are independent positive integers, the count
-is the product of the number of valid values for each increment. -/
-
-/-
-The lattice points h satisfying inScaledBox X s (fun _ => 0) h are exactly those where each increment d_i = h_i - h_{i-1} (with h_{-1} = 0) satisfies 1 ≤ d_i and d_i ≤ ⌊s * X.sides i⌋₊.
-
-Key steps:
-1. Show that inScaledBox X s (fun _ => 0) h ↔ ∀ i, 1 ≤ d_i ∧ (d_i : ℝ) ≤ s * X.sides i, where d_i is the i-th increment. The integer condition (d_i : ℝ) ≤ s * b_i is equivalent to d_i ≤ ⌊s * b_i⌋₊ (since d_i is a positive integer).
-
-2. The map h ↦ (d_0, ..., d_{m-1}) is a bijection from lattice points satisfying inScaledBox to ∏_i {1, ..., ⌊s * b_i⌋₊}. The inverse is d ↦ (∑_{j≤i} d_j).
-
-3. For each h in the piFinset satisfying inScaledBox, the constraint h_i ∈ Icc 1 ⌈s * ∑ b_j⌉ is automatically satisfied: h_i = ∑_{j≤i} d_j ≥ i+1 ≥ 1, and h_i ≤ ∑_j ⌊s*b_j⌋₊ ≤ s * ∑ b_j ≤ ⌈s * ∑ b_j⌉.
-
-4. The cardinality of ∏_i {1, ..., ⌊s * b_i⌋₊} = ∏_i ⌊s * b_i⌋₊.
-
-Alternatively, a simpler approach might work: convert the filter to a product of independent 1D filters using Finset.card_pi or similar.
--/
 set_option maxHeartbeats 800000 in
 lemma count_inScaledBox_eq_prod_floor (m : ℕ) (X : Box m) (s : ℝ) (hs : 1 ≤ s) :
     ((Fintype.piFinset fun _ : Fin m =>
         Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
       (fun h => inScaledBox X s (fun _ => 0) h)).card =
     ∏ i : Fin m, ⌊s * X.sides i⌋₊ := by
-  -- The set of lattice points in the scaled box is in bijection with the product of the sets of possible values for each coordinate.
   have h_bij : {h : Fin m → ℤ | inScaledBox X s (fun _ => 0) h} = Set.image (fun d : Fin m → ℤ => fun i => ∑ j ∈ Finset.univ.filter (fun j => j ≤ i), d j) {d : Fin m → ℤ | ∀ i, 1 ≤ d i ∧ d i ≤ ⌊s * X.sides i⌋₊} := by
     ext h
     simp [inScaledBox];
@@ -91,7 +69,6 @@ lemma count_inScaledBox_eq_prod_floor (m : ℕ) (X : Box m) (s : ℝ) (hs : 1 �
         · rw [ show ( Finset.filter ( fun a => a ≤ ⟨ i + 1, hi ⟩ ) Finset.univ : Finset ( Fin m ) ) = Finset.filter ( fun a => a ≤ ⟨ i, by linarith ⟩ ) Finset.univ ∪ { ⟨ i + 1, hi ⟩ } from ?_, Finset.sum_union ] <;> norm_num [ Finset.sum_singleton, hx ];
           · linarith [ show ( x ⟨ i + 1, hi ⟩ : ℝ ) ≤ s * X.sides ⟨ i + 1, hi ⟩ by exact le_trans ( mod_cast hx _ |>.2 ) ( Nat.floor_le ( mul_nonneg ( by positivity ) ( le_of_lt ( X.sides_pos _ ) ) ) ) ];
           · ext ⟨ a, ha ⟩ ; simp +decide [ le_iff_lt_or_eq ] ; aesop;
-  -- The set of lattice points in the scaled box is in bijection with the product of the sets of possible values for each coordinate, which has cardinality $\prod_{i} \lfloor s \cdot X.sides i \rfloor$.
   have h_card : Finset.card (Finset.filter (fun h : Fin m → ℤ => inScaledBox X s (fun _ => 0) h) (Fintype.piFinset fun _ : Fin m => Finset.Icc 1 (⌈s * ∑ i, X.sides i⌉₊))) = Finset.card (Finset.image (fun d : Fin m → ℤ => fun i => ∑ j ∈ Finset.univ.filter (fun j => j ≤ i), d j) (Finset.Icc (fun _ => 1) (fun i => ⌊s * X.sides i⌋₊))) := by
     refine' congr_arg Finset.card ( Finset.ext fun x => _ );
     simp_all +decide [ Set.ext_iff ];
@@ -121,33 +98,8 @@ lemma count_inScaledBox_eq_prod_floor (m : ℕ) (X : Box m) (s : ℝ) (hs : 1 �
         · ext ⟨ j, hj ⟩ ; simp +decide [ le_iff_lt_or_eq ] ;
           tauto
 
-/-! ### Step 2: Product error bound
+/-! ### Step 2: Product error bound -/
 
-We bound `|∏_i ⌊s * b_i⌋ - s^m * ∏_i b_i|` by `C * s^{m-1}`. -/
-
-/-
-Auxiliary bound: `|∏ ⌊s*b_i⌋₊ - s^m * ∏ b_i| ≤ C * s^{m-1}` for suitable C.
-
-Use induction on m.
-
-Base case m = 0: Both products are empty (= 1), so the difference is |1 - s^0 * 1| = 0. Choose C = 1. Then 0 ≤ 1 * s^(-1) for s ≥ 1.
-
-Inductive step m → m+1: Use Fin.prod_univ_castSucc or similar to split ∏_{i : Fin (m+1)} into (∏_{i : Fin m}) * (last factor).
-
-Write a_last = ⌊s * b_last⌋₊, c_last = s * b_last, A = ∏_{i : Fin m} ⌊s * b(castSucc i)⌋₊, C_prod = s^m * ∏_{i : Fin m} b(castSucc i).
-
-Then |A * a_last - C_prod * c_last| ≤ A * |a_last - c_last| + c_last * |A - C_prod| (triangle inequality on a*b - c*d = a*(b-d) + d*(a-c)).
-
-- A ≤ ∏_{i : Fin m} (s * b(castSucc i)) = s^m * ∏ b(castSucc i) (since floor ≤ value)
-- |a_last - c_last| ≤ 1 (floor property)
-- |A - C_prod| ≤ K * s^(m-1) by induction hypothesis
-- c_last = s * b_last
-
-So: ≤ s^m * (∏ b_init) * 1 + s * b_last * K * s^(m-1) = s^m * (∏ b_init + K * b_last).
-
-Choose new C = ∏ b_init + K * b_last + 1 (the +1 ensures positivity).
-The exponent on the RHS for m+1 dimensions is ((m+1 : ℤ) - 1) = m, and we have s^m above, so this works.
--/
 lemma prod_floor_approx (m : ℕ) (b : Fin m → ℝ) (hb : ∀ i, 0 < b i) :
     ∃ C : ℝ, 0 < C ∧ ∀ (s : ℝ), 1 ≤ s →
       |(∏ i, (⌊s * b i⌋₊ : ℝ)) - s ^ m * ∏ i, b i| ≤
@@ -171,14 +123,27 @@ lemma prod_floor_approx (m : ℕ) (b : Fin m → ℝ) (hb : ∀ i, 0 < b i) :
             norm_num [ abs_le ];
             constructor <;> cases abs_cases ( ∏ i : Fin ( m + 1 ), ( ⌊s * b ( Fin.castSucc i ) ⌋₊ : ℝ ) - s ^ ( m + 1 ) * ∏ i : Fin ( m + 1 ), b ( Fin.castSucc i ) ) <;> cases abs_cases ( ( ⌊s * b ( Fin.last ( m + 1 ) ) ⌋₊ : ℝ ) - s * b ( Fin.last ( m + 1 ) ) ) <;> nlinarith [ show 0 ≤ s ^ ( m + 1 ) * ∏ i : Fin ( m + 1 ), b ( Fin.castSucc i ) by exact mul_nonneg ( pow_nonneg ( by positivity ) _ ) ( Finset.prod_nonneg fun _ _ => le_of_lt ( hb _ ) ), show 0 ≤ ( ⌊s * b ( Fin.last ( m + 1 ) ) ⌋₊ : ℝ ) by positivity ];
           convert h_prod using 1;
-        -- Apply the induction hypothesis to bound the first term.
         have h_ind : |∏ i : Fin (m + 1), ⌊s * b (Fin.castSucc i)⌋₊ - s ^ (m + 1) * ∏ i : Fin (m + 1), b (Fin.castSucc i)| * ⌊s * b (Fin.last _)⌋₊ ≤ C₁ * s ^ m * s * b (Fin.last _) := by
           refine' le_trans ( mul_le_mul_of_nonneg_right ( mod_cast hC₁' s hs ) ( Nat.cast_nonneg _ ) ) _;
           rw [ mul_assoc ];
           rw [ mul_assoc, mul_assoc ] ; gcongr ; nlinarith [ Nat.floor_le ( show 0 ≤ s * b ( Fin.last ( m + 1 ) ) by exact mul_nonneg ( by positivity ) ( le_of_lt ( hb _ ) ) ), hb ( Fin.last ( m + 1 ) ) ] ;
-        -- Apply the induction hypothesis to bound the second term.
         have h_ind2 : s ^ (m + 1) * |⌊s * b (Fin.last _)⌋₊ - s * b (Fin.last _)| * ∏ i : Fin (m + 1), b (Fin.castSucc i) ≤ s ^ (m + 1) * 1 * ∏ i : Fin (m + 1), b (Fin.castSucc i) := by
           exact mul_le_mul_of_nonneg_right ( mul_le_mul_of_nonneg_left ( abs_sub_le_iff.mpr ⟨ by linarith [ Nat.floor_le ( show 0 ≤ s * b ( Fin.last ( m + 1 ) ) by exact mul_nonneg ( by positivity ) ( le_of_lt ( hb _ ) ) ) ], by linarith [ Nat.lt_floor_add_one ( s * b ( Fin.last ( m + 1 ) ) ) ] ⟩ ) ( by positivity ) ) ( Finset.prod_nonneg fun _ _ => le_of_lt ( hb _ ) );
         norm_num [ pow_succ' ] at * ; nlinarith [ pow_pos ( zero_lt_one.trans_le hs ) m ]
+
+/-! ### Step 3: Offset card difference bound -/
+
+/-- The cardinality of the filtered lattice point set with bounded offset `v` differs from
+the `v = 0` count by at most `D · s^{m-1}`, where `D` depends only on the box `X`. -/
+lemma inScaledBox_offset_card_diff (m : ℕ) (X : Box m) :
+    ∃ D : ℝ, 0 ≤ D ∧ ∀ (v : Fin m → ℝ), (∀ i, 0 ≤ v i ∧ v i ≤ 1) → ∀ (s : ℝ), 1 ≤ s →
+      |(((Fintype.piFinset fun _ : Fin m =>
+          Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+        (fun h => inScaledBox X s v h)).card : ℝ) -
+       ((Fintype.piFinset fun _ : Fin m =>
+          Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+        (fun h => inScaledBox X s (fun _ => 0) h)).card| ≤
+        D * s ^ ((m : ℤ) - 1) := by
+  sorry
 
 end PoissonCRT
