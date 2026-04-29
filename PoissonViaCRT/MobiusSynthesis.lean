@@ -1057,11 +1057,59 @@ trivial discrete bound: the sub-box at scale `s/d < 1` contains at most
 `2^{k-1}` lattice points, giving an `O(1)` contribution that is directly
 absorbed by the Euler weight product. -/
 
-/-- **Trivial discrete bound (large divisor case).** When `d = ∏_{p ∈ T} p > s`,
+/-
+**Trivial discrete bound (large divisor case).** When `d = ∏_{p ∈ T} p > s`,
 the scaled box has sub-unit side lengths `s/d < 1`, so each residue class
 contributes at most `2^{k-1}` lattice points. The resulting `O(1)` bound on
 the deviation sum is absorbed by the Euler weight product without requiring
-period cancellation. -/
+period cancellation.
+-/
+private lemma localCount_eq_localMean_of_full (k : ℕ) (hk : 1 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p)) (q : ℕ) [NeZero q]
+    (p₀ : ℕ) (hp₀_pf : p₀ ∈ q.primeFactors) (hp₀_full : (Ω p₀).card = p₀)
+    (g : Fin (k - 1) → ℤ) :
+    localCount Ω q (Fin.cons (0 : ZMod q) fun i => (g i : ZMod q)) p₀ -
+      localMean k Ω p₀ = 0 := by
+  unfold localCount localMean;
+  split_ifs ; simp_all +decide;
+  haveI := Fact.mk ( Nat.prime_of_mem_primeFactors hp₀_pf ) ; simp_all +decide [ tupleCount ] ;
+  rw [ show ( Ω p₀ : Finset ( ZMod p₀ ) ) = Finset.univ from Finset.eq_of_subset_of_card_le ( Finset.subset_univ _ ) ( by simp +decide [ hp₀_full, Finset.card_univ ] ) ] ; simp +decide [ Finset.filter_true_of_mem, Finset.card_univ ] ;
+  rw [ sub_eq_zero, eq_div_iff ] <;> norm_cast <;> cases k <;> simp_all +decide [ pow_succ' ];
+  aesop
+
+private lemma inner_bound_large_divisor_proper (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk3 : 3 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
+    (hsp : ∀ (p : ℕ), p.Prime →
+      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
+    (hε_lt : ε < lambdaExponent k)
+    (X : Box (k - 1))
+    (C_lp : ℝ) (hC_lp_pos : 0 < C_lp)
+    (hC_lp : ∀ (v : Fin (k - 1) → ℝ), (∀ i, 0 ≤ v i ∧ v i ≤ 1) → ∀ (s : ℝ), 1 ≤ s →
+      |(((Fintype.piFinset fun _ : Fin (k - 1) =>
+          Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+        (fun h => inScaledBox X s v h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
+        C_lp * s ^ (((↑(k - 1 : ℕ) : ℤ) - 1)))
+    (q : ℕ) [NeZero q] (hq_sq : Squarefree q)
+    (h0 : (crtSubset q Ω).card ≠ 0)
+    (hfull : (crtSubset q Ω).card ≠ q)
+    (T : Finset ℕ) (hT_sub : T ⊆ q.primeFactors) (hT_ne : T ≠ ∅)
+    (hd_gt_s : ¬ (∏ p ∈ T, (p : ℝ)) ≤ (q : ℝ) / (crtSubset q Ω).card)
+    (h_all_proper : ∀ p ∈ T, (Ω p).card ≠ p) :
+    let Ω_q := crtSubset q Ω
+    let s := (q : ℝ) / Ω_q.card
+    let S := ((Fintype.piFinset fun _ : Fin (k - 1) =>
+        Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+      (fun h => inScaledBox X s (fun _ => 0) h))
+    let prod_diff := fun (h : Fin (k - 1) → ℤ) =>
+      (∏ p ∈ T, (localCount Ω q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p -
+        localMean k Ω p)) *
+      ∏ p ∈ q.primeFactors \ T, localMean k Ω p
+    |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h| * s ≤
+      C_lp * ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) := by
+  sorry
+
 private lemma inner_bound_large_divisor (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk3 : 3 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
@@ -1092,7 +1140,44 @@ private lemma inner_bound_large_divisor (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk3
       ∏ p ∈ q.primeFactors \ T, localMean k Ω p
     |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h| * s ≤
       C_lp * ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) := by
-  sorry
+  intro Ω_q s S prod_diff
+  -- Positivity of s
+  have hs_pos : 0 < s := by
+    apply div_pos (Nat.cast_pos.mpr (Nat.pos_of_ne_zero (NeZero.ne q)))
+    exact Nat.cast_pos.mpr (Nat.pos_of_ne_zero h0)
+  -- d > s (from hypothesis)
+  have hd_gt : s < ∏ p ∈ T, (p : ℝ) := not_le.mp hd_gt_s
+  -- The LHS is nonneg
+  have hLHS_nn : 0 ≤ |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h| * s :=
+    mul_nonneg (abs_nonneg _) hs_pos.le
+  -- Key: if any p ∈ T has Ω p = full set, then both sides are 0
+  by_cases h_all_proper : ∀ p ∈ T, (Ω p).card ≠ p
+  · -- Case: all p ∈ T have |Ω_p| < p (the "hard" case)
+    exact inner_bound_large_divisor_proper ε hε k hk3 Ω hΩ hWD hsp hε_lt X C_lp hC_lp_pos
+      hC_lp q hq_sq h0 hfull T hT_sub hT_ne hd_gt_s h_all_proper
+  · -- Case: some p ∈ T has |Ω_p| = p
+    push_neg at h_all_proper
+    obtain ⟨p₀, hp₀_mem, hp₀_full⟩ := h_all_proper
+    -- The RHS has a factor (1 - card/p) = 0, so the product is 0
+    have hRHS_zero : ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) = 0 := by
+      apply Finset.prod_eq_zero hp₀_mem
+      have hp₀_pos : (0 : ℝ) < p₀ := by
+        exact_mod_cast (Nat.prime_of_mem_primeFactors (hT_sub hp₀_mem)).pos
+      rw [hp₀_full, div_self (ne_of_gt hp₀_pos), sub_self, mul_zero, zero_mul]
+    rw [hRHS_zero, mul_zero]
+    -- The LHS also has prod_diff = 0 because localCount = localMean for p₀
+    suffices hsuff : ∀ g ∈ S, prod_diff g = 0 by
+      have : ∑ g ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff g = 0 := by
+        apply Finset.sum_eq_zero; intro g hg; rw [hsuff g hg, mul_zero]
+      rw [this, abs_zero, zero_mul]
+    intro g hg
+    show ((∏ p ∈ T, (localCount Ω q (Fin.cons (0 : ZMod q) fun i => (↑(g i) : ZMod q)) p -
+        localMean k Ω p)) *
+      ∏ p ∈ q.primeFactors \ T, localMean k Ω p) = 0
+    apply mul_eq_zero_of_left
+    apply Finset.prod_eq_zero hp₀_mem
+    -- Show localCount - localMean = 0 when Ω p₀ is the full set
+    exact localCount_eq_localMean_of_full k (by omega) Ω q p₀ (hT_sub hp₀_mem) hp₀_full g
 
 private lemma inner_bound_k_ge_3 (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk3 : 3 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
