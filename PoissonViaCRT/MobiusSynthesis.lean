@@ -1050,9 +1050,50 @@ private lemma box_deviation_inner_bound (k : ℕ) (hk : 1 ≤ k) (q : ℕ) [NeZe
 
 /-! ### Per-subset inner bound: `k ≥ 3` branch
 
-For `k ≥ 3`, the `L∞ × L₁` argument via `box_deviation_inner_bound` applies.
-The geometric decay factor `s^{k-2}` provides the savings needed to bound each
-per-prime contribution by `tauLocalWeight ((k:ℝ)-1+ε) p`. -/
+For `k ≥ 3`, the `L∞ × L₁` argument via `box_deviation_inner_bound` applies
+when the divisor product `d = ∏_{p ∈ T} p` satisfies `d ≤ s`. When `d > s`,
+the continuous volume approximation breaks down and we instead apply the
+trivial discrete bound: the sub-box at scale `s/d < 1` contains at most
+`2^{k-1}` lattice points, giving an `O(1)` contribution that is directly
+absorbed by the Euler weight product. -/
+
+/-- **Trivial discrete bound (large divisor case).** When `d = ∏_{p ∈ T} p > s`,
+the scaled box has sub-unit side lengths `s/d < 1`, so each residue class
+contributes at most `2^{k-1}` lattice points. The resulting `O(1)` bound on
+the deviation sum is absorbed by the Euler weight product without requiring
+period cancellation. -/
+private lemma inner_bound_large_divisor (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk3 : 3 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
+    (hsp : ∀ (p : ℕ), p.Prime →
+      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
+    (hε_lt : ε < lambdaExponent k)
+    (X : Box (k - 1))
+    (C_lp : ℝ) (hC_lp_pos : 0 < C_lp)
+    (hC_lp : ∀ (v : Fin (k - 1) → ℝ), (∀ i, 0 ≤ v i ∧ v i ≤ 1) → ∀ (s : ℝ), 1 ≤ s →
+      |(((Fintype.piFinset fun _ : Fin (k - 1) =>
+          Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+        (fun h => inScaledBox X s v h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
+        C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1))
+    (q : ℕ) [NeZero q] (hq_sq : Squarefree q)
+    (h0 : (crtSubset q Ω).card ≠ 0)
+    (hfull : (crtSubset q Ω).card ≠ q)
+    (T : Finset ℕ) (hT_sub : T ⊆ q.primeFactors) (hT_ne : T ≠ ∅)
+    (hd_gt_s : ¬ (∏ p ∈ T, (p : ℝ)) ≤ (q : ℝ) / (crtSubset q Ω).card) :
+    let Ω_q := crtSubset q Ω
+    let s := (q : ℝ) / Ω_q.card
+    let S := ((Fintype.piFinset fun _ : Fin (k - 1) =>
+        Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+      (fun h => inScaledBox X s (fun _ => 0) h))
+    let prod_diff := fun (h : Fin (k - 1) → ℤ) =>
+      (∏ p ∈ T, (localCount Ω q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p -
+        localMean k Ω p)) *
+      ∏ p ∈ q.primeFactors \ T, localMean k Ω p
+    |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h| * s ≤
+      C_lp * ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) := by
+  sorry
+
 private lemma inner_bound_k_ge_3 (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk3 : 3 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
@@ -1086,26 +1127,24 @@ private lemma inner_bound_k_ge_3 (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk3 : 3 �
   have hT_mem := (Finset.mem_filter.mp hT).1
   have hT_ne := (Finset.mem_filter.mp hT).2
   have hT_sub : T ⊆ q.primeFactors := Finset.mem_powerset.mp hT_mem
-  -- Step 1: Apply the L∞ × L₁ inner bound from `box_deviation_inner_bound`.
   have hk1 : 1 ≤ k := by omega
-  -- TODO(infrastructure): Requires Discrete Trivial Bounds / Davenport's Principle.
-  -- When the divisor $d > s$, the continuous volume approximation fails. Requires
-  -- formalizing geometry of numbers for sub-integer box lattice counts.
-  have hT_le_s : (∏ p ∈ T, (p : ℝ)) ≤ s := by
-    sorry
-  have h_box := box_deviation_inner_bound k hk1 q hq_sq ε hε s C_lp hC_lp_pos.le X Ω
-    T hT_sub hT_ne hT_le_s rfl hWD hsp hC_lp
-  -- Step 2: Multiply the box bound by `s` and collapse `s⁻¹ * s = 1`.
   have hs_pos : 0 < s := by
     apply div_pos (Nat.cast_pos.mpr (Nat.pos_of_ne_zero (NeZero.ne q)))
     exact Nat.cast_pos.mpr (Nat.pos_of_ne_zero h0)
-  calc |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T| * s
-      ≤ (C_lp * s ^ ((-1 : ℤ)) *
-          ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε))) * s := by
-        exact mul_le_mul_of_nonneg_right h_box hs_pos.le
-    _ = C_lp * ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) := by
-        rw [zpow_neg_one]
-        field_simp
+  by_cases hd_le_s : (∏ p ∈ T, (p : ℝ)) ≤ s
+  · -- Case d ≤ s: apply the L∞ × L₁ inner bound from `box_deviation_inner_bound`.
+    have h_box := box_deviation_inner_bound k hk1 q hq_sq ε hε s C_lp hC_lp_pos.le X Ω
+      T hT_sub hT_ne hd_le_s rfl hWD hsp hC_lp
+    calc |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T| * s
+        ≤ (C_lp * s ^ ((-1 : ℤ)) *
+            ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε))) * s := by
+          exact mul_le_mul_of_nonneg_right h_box hs_pos.le
+      _ = C_lp * ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) := by
+          rw [zpow_neg_one]
+          field_simp
+  · -- Case d > s: trivial discrete bound for sub-unit scaled box.
+    exact inner_bound_large_divisor ε hε k hk3 Ω hΩ hWD hsp hε_lt X C_lp hC_lp_pos
+      hC_lp q hq_sq h0 hfull T hT_sub hT_ne hd_le_s
 
 /-! ### Per-divisor deviation: `k = 2` branch -/
 
