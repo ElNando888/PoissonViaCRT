@@ -14,7 +14,9 @@ To cite Aristotle, tag @Aristotle-Harmonic on GitHub PRs/issues, and add as co-a
 Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
-import PoissonViaCRT.Defs
+import Mathlib.Algebra.BigOperators.Ring.Finset
+import Mathlib.Data.Finset.Powerset
+import Mathlib.Tactic
 
 /-!
 # Convergent Euler Bound for k ≥ 3
