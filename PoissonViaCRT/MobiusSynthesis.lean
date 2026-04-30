@@ -22,6 +22,7 @@ import PoissonViaCRT.HardCaseSynthesis
 import PoissonViaCRT.ScaledBoxVariation
 import PoissonViaCRT.MobiusOptimization
 import PoissonViaCRT.MobiusTauIntegration
+import PoissonViaCRT.ConvergentEulerBound
 
 set_option linter.unusedVariables false
 
@@ -1342,22 +1343,18 @@ private lemma deviation_expression_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : 
           _ ≤ (K + 1) * ((q : ℝ) / ((crtSubset q Ω).card : ℝ)) ^ (-(1 : ℝ)) := by
             rw [Real.rpow_neg_one, div_eq_mul_inv]
             exact mul_le_mul_of_nonneg_right (by linarith) (inv_nonneg.mpr (le_of_lt hs_pos))
-    -- Effective exponent exceeds 1
-    have hα : 1 < (k : ℝ) - 1 + ε := by
-      have : (2 : ℝ) ≤ (k : ℝ) := by exact_mod_cast hk
-      linarith
-    use C_lp * tauBoundConstant ((k : ℝ) - 1 + ε)
-    refine ⟨le_of_lt (mul_pos _hC_lp_pos (tauBoundConstant_pos _)), ?_⟩
+    use C_lp * convergentEulerBoundConstant k ε
+    refine ⟨le_of_lt (mul_pos _hC_lp_pos (convergentEulerBoundConstant_pos k ε)), ?_⟩
     intro q hq_ne hq_sq
     -- Edge cases: empty or full CRT subset yields zero deviation
     by_cases h0 : (crtSubset q Ω).card = 0
     · have := deviation_zero_of_card_zero q Ω X h0
       simp only at this ⊢
-      linarith [mul_nonneg _hC_lp_pos.le (tauBoundConstant_pos ((k : ℝ) - 1 + ε)).le]
+      linarith [mul_nonneg _hC_lp_pos.le (convergentEulerBoundConstant_pos k ε).le]
     by_cases hfull : (crtSubset q Ω).card = q
     · have := deviation_zero_of_card_eq_q (by omega : 2 ≤ k) q Ω X hfull
       simp only at this ⊢
-      linarith [mul_nonneg _hC_lp_pos.le (tauBoundConstant_pos ((k : ℝ) - 1 + ε)).le]
+      linarith [mul_nonneg _hC_lp_pos.le (convergentEulerBoundConstant_pos k ε).le]
     simp only
     -- Abbreviations
     set Ω_q := crtSubset q Ω
@@ -1396,17 +1393,30 @@ private lemma deviation_expression_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : 
           C_lp * ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) :=
       inner_bound_k_ge_3 ε hε k (by omega) Ω hΩ hWD hsp hε_lt X C_lp _hC_lp_pos _hC_lp
         q hq_sq h0 hfull
-    -- TODO(infrastructure): Requires generic Convergent Euler Weights. The current
-    -- tauDivisorWeight is optimized exclusively for $k=2$ and results in a mathematically
-    -- false inequality for $k \ge 3$. Requires a standalone convergent Euler product bound.
-    have h_euler_le_tau : ∀ T ∈ q.primeFactors.powerset.filter (· ≠ ∅),
+    -- Per-prime comparison: the actual Euler factor is bounded by the convergent weight.
+    -- This uses `convergentEuler_comparison` from ConvergentEulerBound.lean.
+    have h_euler_le_conv : ∀ T ∈ q.primeFactors.powerset.filter (· ≠ ∅),
         C_lp * ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) ≤
-          C_lp * tauDivisorWeight ((k : ℝ) - 1 + ε) T.val.prod := by
-      sorry
+          C_lp * ∏ p ∈ T, convergentEulerLocalWeight ε p := by
+      intro T hT
+      apply mul_le_mul_of_nonneg_left _ _hC_lp_pos.le
+      apply Finset.prod_le_prod
+      · intro p hp
+        have hp_pf := (Finset.mem_powerset.mp (Finset.mem_filter.mp hT).1) hp
+        have hp_prime := Nat.prime_of_mem_primeFactors hp_pf
+        exact mul_nonneg (mul_nonneg (Nat.cast_nonneg _)
+          (sub_nonneg.mpr (div_le_one_of_le₀
+            (by exact_mod_cast (by haveI := Fact.mk hp_prime; simpa using Finset.card_le_univ (Ω p)))
+            (Nat.cast_nonneg _))))
+          (Real.rpow_nonneg (Nat.cast_nonneg _) _)
+      · intro p hp
+        have hp_pf := (Finset.mem_powerset.mp (Finset.mem_filter.mp hT).1) hp
+        exact convergentEuler_comparison (Nat.prime_of_mem_primeFactors hp_pf) ε (Ω p)
+          (hΩ _ (Nat.prime_of_mem_primeFactors hp_pf))
     have h_inner_bound : ∀ T ∈ q.primeFactors.powerset.filter (· ≠ ∅),
         |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T| * s ≤
-          C_lp * tauDivisorWeight ((k : ℝ) - 1 + ε) T.val.prod :=
-      fun T hT => le_trans (h_inner_euler T hT) (h_euler_le_tau T hT)
+          C_lp * ∏ p ∈ T, convergentEulerLocalWeight ε p :=
+      fun T hT => le_trans (h_inner_euler T hT) (h_euler_le_conv T hT)
     -- Rewrite raw_geom via expansion
     simp_rw [h_expand]
     -- Distribute 1/card and swap sums
@@ -1420,7 +1430,7 @@ private lemma deviation_expression_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : 
     rw [h_swap]
     -- Non-negativity of s
     have hs_nonneg : 0 ≤ s := div_nonneg (Nat.cast_nonneg _) (Nat.cast_nonneg _)
-    -- Main chain: triangle inequality → inner bound → extend → bijection → bound
+    -- Main chain: triangle inequality → inner bound → Euler product → bound constant
     calc |∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅),
             ∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T| * s
         ≤ (∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅),
@@ -1430,21 +1440,21 @@ private lemma deviation_expression_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : 
             |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T| * s := by
           rw [Finset.sum_mul]
       _ ≤ ∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅),
-            C_lp * tauDivisorWeight ((k : ℝ) - 1 + ε) T.val.prod :=
+            C_lp * ∏ p ∈ T, convergentEulerLocalWeight ε p :=
           Finset.sum_le_sum fun T hT => h_inner_bound T hT
       _ ≤ ∑ T ∈ q.primeFactors.powerset,
-            C_lp * tauDivisorWeight ((k : ℝ) - 1 + ε) T.val.prod :=
+            C_lp * ∏ p ∈ T, convergentEulerLocalWeight ε p :=
           Finset.sum_le_sum_of_subset_of_nonneg (Finset.filter_subset _ _)
-            fun T _ _ => mul_nonneg _hC_lp_pos.le (tauDivisorWeight_nonneg _ _)
+            fun T _ _ => mul_nonneg _hC_lp_pos.le
+              (Finset.prod_nonneg fun p _ => convergentEulerLocalWeight_nonneg ε p)
       _ = C_lp * ∑ T ∈ q.primeFactors.powerset,
-            tauDivisorWeight ((k : ℝ) - 1 + ε) T.val.prod := by
+            ∏ p ∈ T, convergentEulerLocalWeight ε p := by
           rw [← Finset.mul_sum]
-      _ = C_lp * ∑ d ∈ q.divisors, tauDivisorWeight ((k : ℝ) - 1 + ε) d := by
-          congr 1; rw [← sqfree_divisors_sum_eq_powerset hq_sq (NeZero.ne q)]
-      _ = C_lp * tauPartitionSum ((k : ℝ) - 1 + ε) q.primeFactors := by
-          congr 1; exact divisorWeight_sum_eq_tauPartitionSum hq_sq (NeZero.ne q) _
-      _ ≤ C_lp * tauBoundConstant ((k : ℝ) - 1 + ε) :=
-          mul_le_mul_of_nonneg_left (tauPartitionSum_le_bound hα _) _hC_lp_pos.le
+      _ = C_lp * convergentEulerPartitionSum ε q.primeFactors := by
+          congr 1; exact powerset_prod_eq_convergentEulerPartitionSum ε _
+      _ ≤ C_lp * convergentEulerBoundConstant k ε :=
+          mul_le_mul_of_nonneg_left
+            (convergentEulerPartitionSum_le_bound (by omega) hε _) _hC_lp_pos.le
 
 theorem deviation_final_synthesis (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))

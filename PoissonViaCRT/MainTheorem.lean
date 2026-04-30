@@ -332,7 +332,7 @@ So: |kCorrelation - vol| ≤ C_lp * s^{-1} + C_dev * s^{-1} = (C_lp + C_dev) * s
 
 Key steps: unfold kCorrelation, use Finset.sum_sub_distrib to split the sum, convert the main term to s^{-(k-1)} * |box| using algebra, apply the triangle inequality, use h_lp_q and h_dev_q, and combine.
 -/
-set_option maxHeartbeats 800000 in
+-- set_option maxHeartbeats 800000 in
 lemma complete_period_cancellation_apply
     (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
