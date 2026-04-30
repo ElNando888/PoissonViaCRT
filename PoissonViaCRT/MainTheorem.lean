@@ -345,11 +345,7 @@ lemma complete_period_cancellation_apply
       |(((Fintype.piFinset fun _ : Fin (k - 1) =>
           Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
         (fun h => inScaledBox X s v h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
-        C * s ^ (((k - 1 : ℕ) : ℤ) - 1))
-    (h_ep : ∃ C : ℝ, 0 < C ∧ ∀ (q : ℕ) [NeZero q],
-      ∀ (d : ℕ), d ∣ q → 1 < d →
-        |∏ p ∈ d.primeFactors,
-          ((1 : ℝ) - (Ω p).card / p) * (p : ℝ) ^ (-ε)| ≤ C) :
+        C * s ^ (((k - 1 : ℕ) : ℤ) - 1)) :
     ∃ δ : ℝ, 0 < δ ∧ ∀ (X : Box (k - 1)), ∃ C : ℝ, 0 < C ∧
       ∀ (q : ℕ) [NeZero q] (_hq_sq : Squarefree q),
         |kCorrelation (crtSubset q Ω) X - X.volume| ≤
@@ -385,11 +381,9 @@ private lemma fluctuation_bound
           C * ((q : ℝ) / (crtSubset q Ω).card) ^ (-δ) := by
   -- Step 1: Obtain the lattice point box bound
   have h_lp : ∀ (X : Box (k - 1)), _ := fun X => lattice_point_box_bound (k - 1) X
-  -- Step 2: Obtain the Euler product convergence bound
-  have h_ep := euler_product_convergence ε hε k hk Ω hΩ hWD hsp
-  -- Step 3: Apply the complete period cancellation to combine these bounds.
+  -- Step 2: Apply the complete period cancellation to combine these bounds.
   -- The δ now comes from the deviation synthesis, not hardcoded to 1.
-  obtain ⟨δ, hδ_pos, h_cpc⟩ := complete_period_cancellation_apply ε hε k hk Ω hΩ hWD hsp h_lp h_ep
+  obtain ⟨δ, hδ_pos, h_cpc⟩ := complete_period_cancellation_apply ε hε k hk Ω hΩ hWD hsp h_lp
   exact ⟨δ, hδ_pos, h_cpc⟩
 
 /-- **Proposition 3.6** (simplified form): Under the well-distribution hypothesis (1) with
