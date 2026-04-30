@@ -1077,6 +1077,21 @@ private lemma localCount_eq_localMean_of_full (k : ℕ) (hk : 1 ≤ k)
   rw [ sub_eq_zero, eq_div_iff ] <;> norm_cast <;> cases k <;> simp_all +decide [ pow_succ' ];
   aesop
 
+/-
+The Euler weight product is strictly positive when all primes in T have proper subsets.
+-/
+private lemma euler_weight_pos (ε : ℝ) (hε : 0 < ε)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (T : Finset ℕ) (hT_sub : T ⊆ (q : ℕ).primeFactors)
+    (h_all_proper : ∀ p ∈ T, (Ω p).card ≠ p)
+    (q : ℕ) [NeZero q] :
+    0 < ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) := by
+  refine' Finset.prod_pos fun p hp => mul_pos ( mul_pos ( _ ) ( sub_pos.mpr ( _ ) ) ) ( Real.rpow_pos_of_pos ( Nat.cast_pos.mpr ( Nat.pos_of_mem_primeFactors ( hT_sub hp ) ) ) _ );
+  · exact Nat.cast_pos.mpr ( Nat.pos_of_mem_primeFactors ( hT_sub hp ) );
+  · rw [ div_lt_one ] <;> norm_cast;
+    · exact lt_of_le_of_ne ( by haveI := Fact.mk ( Nat.prime_of_mem_primeFactors ( hT_sub hp ) ) ; simpa using Finset.card_le_univ ( Ω p ) ) ( h_all_proper p hp );
+    · exact Nat.pos_of_mem_primeFactors ( hT_sub hp )
+
 private lemma inner_bound_large_divisor_proper (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk3 : 3 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
