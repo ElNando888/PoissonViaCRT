@@ -174,4 +174,32 @@ lemma deviation_sum_bound_q_indep (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 �
   -- Step 2: Pass through the δ and K directly
   exact ⟨δ, hδ_pos, K, hK_pos, hK⟩
 
+/-- Uniform deviation bound: the decay exponent `δ` is chosen independently of
+the box `X` and lattice-point constant `C_lp`. This wraps
+`deviation_uniform_exponent` from `MobiusSynthesis.lean`. -/
+lemma deviation_sum_bound_uniform (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
+    (hsp : ∀ (p : ℕ), p.Prime →
+      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε)) :
+    ∃ δ : ℝ, 0 < δ ∧ ∀ (X : Box (k - 1))
+      (C_lp : ℝ) (_hC_lp_pos : 0 < C_lp)
+      (_hC_lp : ∀ (v : Fin (k - 1) → ℝ), (∀ i, 0 ≤ v i ∧ v i ≤ 1) → ∀ (s : ℝ), 1 ≤ s →
+        |(((Fintype.piFinset fun _ : Fin (k - 1) =>
+            Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+          (fun h => inScaledBox X s v h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
+          C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1)),
+      ∃ K : ℝ, 0 < K ∧ ∀ (q : ℕ) [NeZero q] (_ : Squarefree q),
+        let Ω_q := crtSubset q Ω
+        let s := (q : ℝ) / Ω_q.card
+        |(1 / (Ω_q.card : ℝ)) *
+          ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+              Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+            (fun h => inScaledBox X s (fun _ => 0) h)),
+          ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
+            (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| ≤
+        K * s ^ (-δ) :=
+  deviation_uniform_exponent ε hε k hk Ω hΩ hWD hsp
+
 end PoissonCRT

@@ -350,12 +350,90 @@ lemma complete_period_cancellation_apply
       ∀ (q : ℕ) [NeZero q] (_hq_sq : Squarefree q),
         |kCorrelation (crtSubset q Ω) X - X.volume| ≤
           C * ((q : ℝ) / (crtSubset q Ω).card) ^ (-δ) := by
-  -- The deviation synthesis now returns ∃ δ > 0, and we propagate this δ through
-  -- the cancellation argument. The key change: the old bound was O(s^{-1}), now
-  -- it is O(s^{-δ}) for some δ > 0 that may be < 1 when k = 2.
-  -- TODO: Adapt the algebraic cancellation proof to the general s^{-δ} form.
-  -- For now, this is sorry'd pending the k=2 Cauchy-Schwarz completion.
-  sorry
+  obtain ⟨δ₀, hδ₀_pos, h_dev_unif⟩ := deviation_sum_bound_uniform ε hε k hk Ω hΩ hWD hsp
+  refine ⟨min δ₀ 1, lt_min hδ₀_pos one_pos, fun X => ?_⟩
+  obtain ⟨C_lp, hC_lp_pos, hC_lp_bound⟩ := h_lp X
+  obtain ⟨K, hK_pos, hK_bound⟩ := h_dev_unif X C_lp hC_lp_pos hC_lp_bound
+  exact ⟨C_lp + K, add_pos hC_lp_pos hK_pos, fun q _ hq_sq => by
+    set Ω_q := crtSubset q Ω
+    set s := (q : ℝ) / Ω_q.card
+    set bound := ⌈s * ∑ i, X.sides i⌉
+    set S := (Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) bound).filter
+      (fun h => inScaledBox X s (fun _ => 0) h)
+    
+    have hs_ge : 1 ≤ s := spacing_ge_one Ω hΩ q
+    have h_card_pos : 0 < (Ω_q.card : ℝ) := Nat.cast_pos.mpr (crtSubset_card_pos Ω hΩ q)
+    have hq_pos : 0 < (q : ℝ) := Nat.cast_pos.mpr (NeZero.pos q)
+
+    have h_main_term : |(Ω_q.card : ℝ) ^ (k - 1) / (q : ℝ) ^ (k - 1) * (S.card : ℝ) - X.volume| ≤ C_lp * s ^ (-1 : ℝ) := by
+      have h_lp_spec := hC_lp_bound (fun _ => 0) (fun _ => ⟨by rfl, by norm_num⟩) s hs_ge
+      have h_s_pow : (Ω_q.card : ℝ) ^ (k - 1) / (q : ℝ) ^ (k - 1) = s ^ (-((k : ℝ) - 1)) := by
+        rw [← div_pow]
+        have : ((Ω_q.card : ℝ) / (q : ℝ)) = s⁻¹ := (inv_div (q : ℝ) (Ω_q.card : ℝ)).symm
+        rw [this, inv_pow, ← Real.rpow_natCast, ← Real.rpow_neg (le_of_lt (div_pos hq_pos h_card_pos))]
+        have h_sub : ((k - 1 : ℕ) : ℝ) = (k : ℝ) - (1 : ℕ) := Nat.cast_sub (show 1 ≤ k by linarith)
+        rw [h_sub, Nat.cast_one]
+      rw [h_s_pow]
+      have h_mul := mul_le_mul_of_nonneg_left h_lp_spec (by positivity : 0 ≤ s ^ (-((k : ℝ) - 1)))
+      have h_abs : s ^ (-((k : ℝ) - 1)) * |(S.card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| = |s ^ (-((k : ℝ) - 1)) * (S.card : ℝ) - s ^ (-((k : ℝ) - 1)) * (s ^ (k - 1 : ℕ) * X.volume)| := by
+        calc s ^ (-((k : ℝ) - 1)) * |(S.card : ℝ) - s ^ (k - 1 : ℕ) * X.volume|
+          _ = |s ^ (-((k : ℝ) - 1))| * |(S.card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| := by
+            congr 1
+            exact Eq.symm (abs_of_nonneg (by positivity))
+          _ = |s ^ (-((k : ℝ) - 1)) * ((S.card : ℝ) - s ^ (k - 1 : ℕ) * X.volume)| := by rw [← abs_mul]
+          _ = |s ^ (-((k : ℝ) - 1)) * (S.card : ℝ) - s ^ (-((k : ℝ) - 1)) * (s ^ (k - 1 : ℕ) * X.volume)| := by rw [mul_sub]
+      rw [h_abs] at h_mul
+      have h_cancel : s ^ (-((k : ℝ) - 1)) * (s ^ (k - 1 : ℕ) * X.volume) = X.volume := by
+        rw [← mul_assoc, ← Real.rpow_natCast, ← Real.rpow_add (div_pos hq_pos h_card_pos)]
+        have : -((k : ℝ) - 1) + ((k - 1 : ℕ) : ℝ) = 0 := by
+          have h_sub : ((k - 1 : ℕ) : ℝ) = (k : ℝ) - (1 : ℕ) := Nat.cast_sub (show 1 ≤ k by linarith)
+          rw [h_sub, Nat.cast_one]
+          ring
+        rw [this, Real.rpow_zero, one_mul]
+      rw [h_cancel] at h_mul
+      have h_rhs : s ^ (-((k : ℝ) - 1)) * (C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1)) = C_lp * s ^ (-1 : ℝ) := by
+        rw [← mul_assoc, mul_comm (s ^ _), mul_assoc]
+        congr 1
+        have h_zpow : s ^ (((k - 1 : ℕ) : ℤ) - 1) = s ^ ((((k - 1 : ℕ) : ℤ) - 1 : ℤ) : ℝ) := by
+          exact (Real.rpow_intCast s (((k - 1 : ℕ) : ℤ) - 1)).symm
+        rw [h_zpow]
+        rw [← Real.rpow_add (div_pos hq_pos h_card_pos)]
+        congr 1
+        have hk_cast : ((k - 1 : ℕ) : ℝ) = (k : ℝ) - 1 := by
+          have h_sub : ((k - 1 : ℕ) : ℝ) = (k : ℝ) - (1 : ℕ) := Nat.cast_sub (show 1 ≤ k by linarith)
+          rw [h_sub, Nat.cast_one]
+        have hk_cast2 : ((((k - 1 : ℕ) : ℤ) - 1 : ℤ) : ℝ) = ((k - 1 : ℕ) : ℝ) - 1 := by push_cast; rfl
+        rw [hk_cast2, hk_cast]
+        ring
+      rw [h_rhs] at h_mul
+      exact h_mul
+
+    have h_deviation_term : |(crtSubset q Ω).card ^ (k - 1) / (q : ℝ) ^ (k - 1) * ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈((q : ℝ) / (crtSubset q Ω).card) * ∑ i, X.sides i⌉).filter (fun h => inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) (fun _ => (0 : ℝ)) h)).card - kCorrelation (crtSubset q Ω) X| ≤ K * ((q : ℝ) / (crtSubset q Ω).card) ^ (-δ₀ : ℝ) := by
+      convert hK_bound q hq_sq using 1;
+      unfold kCorrelation; norm_num [ Finset.sum_sub_distrib, mul_sub ] ;
+      rw [ abs_sub_comm ] ; ring_nf;
+      cases k <;> simp +decide [ pow_succ, mul_assoc ] at *;
+      by_cases h : ( # ( crtSubset q Ω ) : ℝ ) = 0 <;> simp +decide [ h ] at *;
+      · exact Or.inl ( by linarith );
+      · convert rfl;
+        exact Eq.symm <| Int.toNat_of_nonneg <| Int.ceil_nonneg <| mul_nonneg ( inv_nonneg.2 <| Nat.cast_nonneg _ ) <| mul_nonneg ( Nat.cast_nonneg _ ) <| Finset.sum_nonneg fun _ _ => le_of_lt <| X.sides_pos _;
+
+    have h_triangle : |kCorrelation Ω_q X - X.volume| ≤ |(Ω_q.card : ℝ) ^ (k - 1) / (q : ℝ) ^ (k - 1) * (S.card : ℝ) - X.volume| + |(Ω_q.card : ℝ) ^ (k - 1) / (q : ℝ) ^ (k - 1) * (S.card : ℝ) - kCorrelation Ω_q X| := by
+      have h := abs_sub_le (kCorrelation Ω_q X) ((Ω_q.card : ℝ) ^ (k - 1) / (q : ℝ) ^ (k - 1) * (S.card : ℝ)) X.volume
+      have h_comm : |kCorrelation Ω_q X - (Ω_q.card : ℝ) ^ (k - 1) / (q : ℝ) ^ (k - 1) * (S.card : ℝ)| = |(Ω_q.card : ℝ) ^ (k - 1) / (q : ℝ) ^ (k - 1) * (S.card : ℝ) - kCorrelation Ω_q X| := abs_sub_comm _ _
+      rw [h_comm] at h
+      rw [add_comm] at h
+      exact h
+
+    have h_final : (C_lp : ℝ) * s ^ (-1 : ℝ) + K * s ^ (-δ₀) ≤ (C_lp + K) * s ^ (-min δ₀ 1) := by
+      have h1 : s ^ (-1 : ℝ) ≤ s ^ (-(min δ₀ 1 : ℝ)) := Real.rpow_le_rpow_of_exponent_le hs_ge (by linarith [min_le_right δ₀ 1])
+      have h2 : s ^ (-δ₀) ≤ s ^ (-(min δ₀ 1 : ℝ)) := Real.rpow_le_rpow_of_exponent_le hs_ge (by linarith [min_le_left δ₀ 1])
+      calc C_lp * s ^ (-1 : ℝ) + K * s ^ (-δ₀)
+        _ ≤ C_lp * s ^ (-(min δ₀ 1 : ℝ)) + K * s ^ (-(min δ₀ 1 : ℝ)) := add_le_add (mul_le_mul_of_nonneg_left h1 hC_lp_pos.le) (mul_le_mul_of_nonneg_left h2 hK_pos.le)
+        _ = (C_lp + K) * s ^ (-(min δ₀ 1 : ℝ)) := by ring
+    
+    exact le_trans (le_trans h_triangle (add_le_add h_main_term h_deviation_term)) h_final
+  ⟩
 
 /-- **Fluctuation bound** (core of Proposition 3.6): Under the well-distribution hypothesis,
 the error `|R_k(X) - vol(X)|` is bounded by `C · s_q^{-δ}` for some `δ > 0`.
