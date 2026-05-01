@@ -15,6 +15,7 @@ Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
 import PoissonViaCRT.Defs
+import PoissonViaCRT.LatticePointBoundHelpers
 import Mathlib.Data.Pi.Interval
 
 /-!
@@ -144,6 +145,17 @@ lemma inScaledBox_offset_card_diff (m : ℕ) (X : Box m) :
           Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
         (fun h => inScaledBox X s (fun _ => 0) h)).card| ≤
         D * s ^ ((m : ℤ) - 1) := by
-  sorry
+  obtain ⟨D₁, hD₁, hD₁'⟩ := inScaledBox_symmDiff_card_le m X
+  refine ⟨D₁, hD₁, fun v hv s hs => ?_⟩
+  set A := (piBox m ⌈s * ∑ i, X.sides i⌉).filter (fun h => inScaledBox X s v h)
+  set B := (piBox m ⌈s * ∑ i, X.sides i⌉).filter (fun h => inScaledBox X s (fun _ => 0) h)
+  have h1 : |(A.card : ℤ) - B.card| ≤ (A \ B).card + (B \ A).card :=
+    abs_card_diff_le_card_sdiff A B
+  have h2 : ((A \ B).card : ℝ) + (B \ A).card ≤ D₁ * s ^ ((↑m : ℤ) - 1) := hD₁' v hv s hs
+  calc |(A.card : ℝ) - B.card|
+      = ↑(|(A.card : ℤ) - B.card|) := by push_cast; rfl
+    _ ≤ ↑((A \ B).card + (B \ A).card) := by exact_mod_cast h1
+    _ = ((A \ B).card : ℝ) + (B \ A).card := by push_cast; ring
+    _ ≤ D₁ * s ^ ((↑m : ℤ) - 1) := h2
 
 end PoissonCRT
