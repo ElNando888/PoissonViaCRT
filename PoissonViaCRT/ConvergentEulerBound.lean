@@ -139,4 +139,58 @@ theorem convergentEulerPartitionSum_le_bound {k : ℕ} (hk : 3 ≤ k) {ε : ℝ}
     convergentEulerPartitionSum ε S ≤ convergentEulerBoundConstant k ε := by
   sorry
 
+/-! ## §5. Large-divisor Euler product -/
+
+/-- The per-prime weight for the large-divisor ($d > s$) summation:
+`largeEulerLocalWeight ε p = p * convergentEulerLocalWeight ε p = p ^ (2 - ε)`.
+
+When `d = ∏_{p ∈ T} p > s`, bounding `s ≤ d` introduces an extra factor of `p`
+per prime, upgrading the local weight from `p ^ (1 - ε)` to `p ^ (2 - ε)`. -/
+noncomputable def largeEulerLocalWeight (ε : ℝ) (p : ℕ) : ℝ :=
+  (p : ℝ) * convergentEulerLocalWeight ε p
+
+theorem largeEulerLocalWeight_nonneg (ε : ℝ) (p : ℕ) :
+    0 ≤ largeEulerLocalWeight ε p :=
+  mul_nonneg (Nat.cast_nonneg p) (convergentEulerLocalWeight_nonneg ε p)
+
+/-- Per-prime comparison for the large-divisor case: the actual factor
+`p * (p * (1 - |Ω|/p) * p ^ (-ε))` is bounded by `largeEulerLocalWeight ε p`. -/
+theorem largeEuler_comparison {p : ℕ} (hp : p.Prime) (ε : ℝ)
+    (Ω : Finset (ZMod p)) (hΩ : Ω.Nonempty) :
+    (p : ℝ) * ((p : ℝ) * (1 - (Ω.card : ℝ) / (p : ℝ)) * (p : ℝ) ^ (-ε)) ≤
+      largeEulerLocalWeight ε p := by
+  unfold largeEulerLocalWeight
+  exact mul_le_mul_of_nonneg_left (convergentEuler_comparison hp ε Ω hΩ) (Nat.cast_nonneg _)
+
+/-- The large-divisor Euler partition sum:
+`largeEulerPartitionSum ε S = ∏_{p ∈ S} (1 + largeEulerLocalWeight ε p)`. -/
+noncomputable def largeEulerPartitionSum (ε : ℝ) (S : Finset ℕ) : ℝ :=
+  ∏ p ∈ S, (1 + largeEulerLocalWeight ε p)
+
+theorem largeEulerPartitionSum_nonneg (ε : ℝ) (S : Finset ℕ) :
+    0 ≤ largeEulerPartitionSum ε S :=
+  Finset.prod_nonneg fun p _ =>
+    add_nonneg one_pos.le (largeEulerLocalWeight_nonneg ε p)
+
+theorem powerset_prod_eq_largeEulerPartitionSum (ε : ℝ) (S : Finset ℕ) :
+    ∑ T ∈ S.powerset, ∏ p ∈ T, largeEulerLocalWeight ε p =
+      largeEulerPartitionSum ε S := by
+  unfold largeEulerPartitionSum
+  simp +decide [add_comm (1 : ℝ), Finset.prod_add]
+
+/-- The `q`-independent bound constant for the large-divisor Euler product. -/
+noncomputable def largeEulerBoundConstant (k : ℕ) (ε : ℝ) : ℝ :=
+  Real.exp (∑' p : ℕ, largeEulerLocalWeight ε p)
+
+theorem largeEulerBoundConstant_pos (k : ℕ) (ε : ℝ) :
+    0 < largeEulerBoundConstant k ε :=
+  Real.exp_pos _
+
+/-- **Large-divisor Euler product bound**: For `k ≥ 3`, the large-divisor
+partition sum over any finset `S` is bounded by `largeEulerBoundConstant k ε`. -/
+theorem largeEulerPartitionSum_le_bound {k : ℕ} (hk : 3 ≤ k) {ε : ℝ} (hε : 0 < ε)
+    (S : Finset ℕ) :
+    largeEulerPartitionSum ε S ≤ largeEulerBoundConstant k ε := by
+  sorry
+
 end PoissonCRT

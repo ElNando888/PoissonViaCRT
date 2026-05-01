@@ -1093,13 +1093,14 @@ private lemma euler_weight_pos (ε : ℝ) (hε : 0 < ε)
     · exact lt_of_le_of_ne ( by haveI := Fact.mk ( Nat.prime_of_mem_primeFactors ( hT_sub hp ) ) ; simpa using Finset.card_le_univ ( Ω p ) ) ( h_all_proper p hp );
     · exact Nat.pos_of_mem_primeFactors ( hT_sub hp )
 
-private lemma inner_bound_large_divisor_proper (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk3 : 3 ≤ k)
+/-- **Small-divisor inner bound**: When `∏_{p ∈ T} p ≤ s`, the L∞ × L₁ argument
+from `box_deviation_inner_bound` gives a bound with coefficient `C_lp`. -/
+private lemma inner_bound_small_divisor (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk1 : 1 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
-    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (_hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
     (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
     (hsp : ∀ (p : ℕ), p.Prime →
       (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
-    (hε_lt : ε < lambdaExponent k)
     (X : Box (k - 1))
     (C_lp : ℝ) (hC_lp_pos : 0 < C_lp)
     (hC_lp : ∀ (v : Fin (k - 1) → ℝ), (∀ i, 0 ≤ v i ∧ v i ≤ 1) → ∀ (s : ℝ), 1 ≤ s →
@@ -1109,10 +1110,8 @@ private lemma inner_bound_large_divisor_proper (ε : ℝ) (hε : 0 < ε) (k : �
         C_lp * s ^ (((↑(k - 1 : ℕ) : ℤ) - 1)))
     (q : ℕ) [NeZero q] (hq_sq : Squarefree q)
     (h0 : (crtSubset q Ω).card ≠ 0)
-    (hfull : (crtSubset q Ω).card ≠ q)
     (T : Finset ℕ) (hT_sub : T ⊆ q.primeFactors) (hT_ne : T ≠ ∅)
-    (hd_gt_s : ¬ (∏ p ∈ T, (p : ℝ)) ≤ (q : ℝ) / (crtSubset q Ω).card)
-    (h_all_proper : ∀ p ∈ T, (Ω p).card ≠ p) :
+    (hd_le_s : ∏ p ∈ T, (p : ℝ) ≤ (q : ℝ) / (crtSubset q Ω).card) :
     let Ω_q := crtSubset q Ω
     let s := (q : ℝ) / Ω_q.card
     let S := ((Fintype.piFinset fun _ : Fin (k - 1) =>
@@ -1124,8 +1123,23 @@ private lemma inner_bound_large_divisor_proper (ε : ℝ) (hε : 0 < ε) (k : �
       ∏ p ∈ q.primeFactors \ T, localMean k Ω p
     |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h| * s ≤
       C_lp * ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) := by
-  sorry
+  intro Ω_q s S prod_diff
+  have hs_pos : 0 < s := by
+    apply div_pos (Nat.cast_pos.mpr (Nat.pos_of_ne_zero (NeZero.ne q)))
+    exact Nat.cast_pos.mpr (Nat.pos_of_ne_zero h0)
+  have h_box := box_deviation_inner_bound k hk1 q hq_sq ε hε s C_lp hC_lp_pos.le X Ω
+    T hT_sub hT_ne hd_le_s rfl hWD hsp hC_lp
+  calc |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h| * s
+      ≤ (C_lp * s ^ ((-1 : ℤ)) *
+          ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε))) * s := by
+        exact mul_le_mul_of_nonneg_right h_box hs_pos.le
+    _ = C_lp * ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) := by
+        rw [zpow_neg_one]
+        field_simp
 
+/-- **Large-divisor inner bound**: When `s < ∏_{p ∈ T} p`, the pointwise bound
+includes the `s · vol(X)` lattice-point term, giving a coefficient of
+`s * X.volume + C_lp` instead of just `C_lp`. -/
 private lemma inner_bound_large_divisor (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk3 : 3 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
@@ -1142,9 +1156,9 @@ private lemma inner_bound_large_divisor (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk3
         C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1))
     (q : ℕ) [NeZero q] (hq_sq : Squarefree q)
     (h0 : (crtSubset q Ω).card ≠ 0)
-    (hfull : (crtSubset q Ω).card ≠ q)
+    (_hfull : (crtSubset q Ω).card ≠ q)
     (T : Finset ℕ) (hT_sub : T ⊆ q.primeFactors) (hT_ne : T ≠ ∅)
-    (hd_gt_s : ¬ (∏ p ∈ T, (p : ℝ)) ≤ (q : ℝ) / (crtSubset q Ω).card) :
+    (hd_gt_s : (q : ℝ) / (crtSubset q Ω).card < ∏ p ∈ T, (p : ℝ)) :
     let Ω_q := crtSubset q Ω
     let s := (q : ℝ) / Ω_q.card
     let S := ((Fintype.piFinset fun _ : Fin (k - 1) =>
@@ -1155,97 +1169,9 @@ private lemma inner_bound_large_divisor (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk3
         localMean k Ω p)) *
       ∏ p ∈ q.primeFactors \ T, localMean k Ω p
     |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h| * s ≤
-      C_lp * ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) := by
-  intro Ω_q s S prod_diff
-  -- Positivity of s
-  have hs_pos : 0 < s := by
-    apply div_pos (Nat.cast_pos.mpr (Nat.pos_of_ne_zero (NeZero.ne q)))
-    exact Nat.cast_pos.mpr (Nat.pos_of_ne_zero h0)
-  -- d > s (from hypothesis)
-  have hd_gt : s < ∏ p ∈ T, (p : ℝ) := not_le.mp hd_gt_s
-  -- The LHS is nonneg
-  have hLHS_nn : 0 ≤ |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h| * s :=
-    mul_nonneg (abs_nonneg _) hs_pos.le
-  -- Key: if any p ∈ T has Ω p = full set, then both sides are 0
-  by_cases h_all_proper : ∀ p ∈ T, (Ω p).card ≠ p
-  · -- Case: all p ∈ T have |Ω_p| < p (the "hard" case)
-    exact inner_bound_large_divisor_proper ε hε k hk3 Ω hΩ hWD hsp hε_lt X C_lp hC_lp_pos
-      hC_lp q hq_sq h0 hfull T hT_sub hT_ne hd_gt_s h_all_proper
-  · -- Case: some p ∈ T has |Ω_p| = p
-    push_neg at h_all_proper
-    obtain ⟨p₀, hp₀_mem, hp₀_full⟩ := h_all_proper
-    -- The RHS has a factor (1 - card/p) = 0, so the product is 0
-    have hRHS_zero : ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) = 0 := by
-      apply Finset.prod_eq_zero hp₀_mem
-      have hp₀_pos : (0 : ℝ) < p₀ := by
-        exact_mod_cast (Nat.prime_of_mem_primeFactors (hT_sub hp₀_mem)).pos
-      rw [hp₀_full, div_self (ne_of_gt hp₀_pos), sub_self, mul_zero, zero_mul]
-    rw [hRHS_zero, mul_zero]
-    -- The LHS also has prod_diff = 0 because localCount = localMean for p₀
-    suffices hsuff : ∀ g ∈ S, prod_diff g = 0 by
-      have : ∑ g ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff g = 0 := by
-        apply Finset.sum_eq_zero; intro g hg; rw [hsuff g hg, mul_zero]
-      rw [this, abs_zero, zero_mul]
-    intro g hg
-    show ((∏ p ∈ T, (localCount Ω q (Fin.cons (0 : ZMod q) fun i => (↑(g i) : ZMod q)) p -
-        localMean k Ω p)) *
-      ∏ p ∈ q.primeFactors \ T, localMean k Ω p) = 0
-    apply mul_eq_zero_of_left
-    apply Finset.prod_eq_zero hp₀_mem
-    -- Show localCount - localMean = 0 when Ω p₀ is the full set
-    exact localCount_eq_localMean_of_full k (by omega) Ω q p₀ (hT_sub hp₀_mem) hp₀_full g
-
-private lemma inner_bound_k_ge_3 (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk3 : 3 ≤ k)
-    (Ω : ∀ p : ℕ, Finset (ZMod p))
-    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
-    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
-    (hsp : ∀ (p : ℕ), p.Prime →
-      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
-    (hε_lt : ε < lambdaExponent k)
-    (X : Box (k - 1))
-    (C_lp : ℝ) (hC_lp_pos : 0 < C_lp)
-    (hC_lp : ∀ (v : Fin (k - 1) → ℝ), (∀ i, 0 ≤ v i ∧ v i ≤ 1) → ∀ (s : ℝ), 1 ≤ s →
-      |(((Fintype.piFinset fun _ : Fin (k - 1) =>
-          Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
-        (fun h => inScaledBox X s v h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
-        C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1))
-    (q : ℕ) [NeZero q] (hq_sq : Squarefree q)
-    (h0 : (crtSubset q Ω).card ≠ 0)
-    (hfull : (crtSubset q Ω).card ≠ q) :
-    let Ω_q := crtSubset q Ω
-    let s := (q : ℝ) / Ω_q.card
-    let S := ((Fintype.piFinset fun _ : Fin (k - 1) =>
-        Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
-      (fun h => inScaledBox X s (fun _ => 0) h))
-    let prod_diff := fun (h : Fin (k - 1) → ℤ) (T : Finset ℕ) =>
-      (∏ p ∈ T, (localCount Ω q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p -
-        localMean k Ω p)) *
-      ∏ p ∈ q.primeFactors \ T, localMean k Ω p
-    ∀ T ∈ q.primeFactors.powerset.filter (· ≠ ∅),
-      |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T| * s ≤
-        C_lp * ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) := by
-  intro Ω_q s S prod_diff T hT
-  have hT_mem := (Finset.mem_filter.mp hT).1
-  have hT_ne := (Finset.mem_filter.mp hT).2
-  have hT_sub : T ⊆ q.primeFactors := Finset.mem_powerset.mp hT_mem
-  have hk1 : 1 ≤ k := by omega
-  have hs_pos : 0 < s := by
-    apply div_pos (Nat.cast_pos.mpr (Nat.pos_of_ne_zero (NeZero.ne q)))
-    exact Nat.cast_pos.mpr (Nat.pos_of_ne_zero h0)
-  by_cases hd_le_s : (∏ p ∈ T, (p : ℝ)) ≤ s
-  · -- Case d ≤ s: apply the L∞ × L₁ inner bound from `box_deviation_inner_bound`.
-    have h_box := box_deviation_inner_bound k hk1 q hq_sq ε hε s C_lp hC_lp_pos.le X Ω
-      T hT_sub hT_ne hd_le_s rfl hWD hsp hC_lp
-    calc |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T| * s
-        ≤ (C_lp * s ^ ((-1 : ℤ)) *
-            ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε))) * s := by
-          exact mul_le_mul_of_nonneg_right h_box hs_pos.le
-      _ = C_lp * ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) := by
-          rw [zpow_neg_one]
-          field_simp
-  · -- Case d > s: trivial discrete bound for sub-unit scaled box.
-    exact inner_bound_large_divisor ε hε k hk3 Ω hΩ hWD hsp hε_lt X C_lp hC_lp_pos
-      hC_lp q hq_sq h0 hfull T hT_sub hT_ne hd_le_s
+      (s * X.volume + C_lp) *
+        ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) := by
+  sorry
 
 /-! ### Per-divisor deviation: `k = 2` branch -/
 
@@ -1336,17 +1262,33 @@ private lemma deviation_bound_k_ge_3 (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk3 : 
         _ ≤ (K + 1) * ((q : ℝ) / ((crtSubset q Ω).card : ℝ)) ^ (-(1 : ℝ)) := by
           rw [Real.rpow_neg_one, div_eq_mul_inv]
           exact mul_le_mul_of_nonneg_right (by linarith) (inv_nonneg.mpr (le_of_lt hs_pos))
-  use C_lp * convergentEulerBoundConstant k ε
-  refine ⟨le_of_lt (mul_pos _hC_lp_pos (convergentEulerBoundConstant_pos k ε)), ?_⟩
+  -- The bound constant includes both small-divisor and large-divisor contributions.
+  set K_bound := C_lp * convergentEulerBoundConstant k ε +
+    (X.volume + C_lp) * largeEulerBoundConstant k ε with hK_bound_def
+  have hX_vol_pos : 0 < X.volume := Finset.prod_pos fun i _ => X.sides_pos i
+  use K_bound
+  have hK_pos : 0 < K_bound := by
+    apply add_pos
+    · exact mul_pos _hC_lp_pos (convergentEulerBoundConstant_pos k ε)
+    · exact mul_pos (by linarith) (largeEulerBoundConstant_pos k ε)
+  refine ⟨hK_pos.le, ?_⟩
   intro q hq_ne hq_sq
   by_cases h0 : (crtSubset q Ω).card = 0
   · have := deviation_zero_of_card_zero q Ω X h0
     simp only at this ⊢
-    linarith [mul_nonneg _hC_lp_pos.le (convergentEulerBoundConstant_pos k ε).le]
+    have : (0 : ℝ) ≤ K_bound := by
+      apply add_nonneg
+      · exact mul_nonneg _hC_lp_pos.le (convergentEulerBoundConstant_pos k ε).le
+      · exact mul_nonneg (by linarith) (largeEulerBoundConstant_pos k ε).le
+    linarith
   by_cases hfull : (crtSubset q Ω).card = q
   · have := deviation_zero_of_card_eq_q (by omega : 2 ≤ k) q Ω X hfull
     simp only at this ⊢
-    linarith [mul_nonneg _hC_lp_pos.le (convergentEulerBoundConstant_pos k ε).le]
+    have : (0 : ℝ) ≤ K_bound := by
+      apply add_nonneg
+      · exact mul_nonneg _hC_lp_pos.le (convergentEulerBoundConstant_pos k ε).le
+      · exact mul_nonneg (by linarith) (largeEulerBoundConstant_pos k ε).le
+    linarith
   simp only
   set Ω_q := crtSubset q Ω
   set s := (q : ℝ) / Ω_q.card
@@ -1373,34 +1315,33 @@ private lemma deviation_bound_k_ge_3 (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk3 : 
         (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1) = raw_geom h := by
     intro h; show _ - _ = _ - _; congr 1
   simp_rw [h_to_raw]
-  have h_inner_euler : ∀ T ∈ q.primeFactors.powerset.filter (· ≠ ∅),
+  -- Per-subset bounds via the two helper lemmas
+  have hs_pos : 0 < s :=
+    div_pos (Nat.cast_pos.mpr (NeZero.pos q)) (Nat.cast_pos.mpr (Nat.pos_of_ne_zero h0))
+  -- Small-divisor per-subset bound: delegate to inner_bound_small_divisor
+  have h_small_bound : ∀ T ∈ q.primeFactors.powerset.filter (· ≠ ∅),
+      (∏ p ∈ T, (p : ℝ)) ≤ s →
       |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T| * s ≤
-        C_lp * ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) :=
-    inner_bound_k_ge_3 ε hε k (by omega) Ω hΩ hWD hsp hε_lt X C_lp _hC_lp_pos _hC_lp
-      q hq_sq h0 hfull
-  have h_euler_le_conv : ∀ T ∈ q.primeFactors.powerset.filter (· ≠ ∅),
-      C_lp * ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) ≤
-        C_lp * ∏ p ∈ T, convergentEulerLocalWeight ε p := by
-    intro T hT
-    apply mul_le_mul_of_nonneg_left _ _hC_lp_pos.le
-    apply Finset.prod_le_prod
-    · intro p hp
-      have hp_pf := (Finset.mem_powerset.mp (Finset.mem_filter.mp hT).1) hp
-      have hp_prime := Nat.prime_of_mem_primeFactors hp_pf
-      exact mul_nonneg (mul_nonneg (Nat.cast_nonneg _)
-        (sub_nonneg.mpr (div_le_one_of_le₀
-          (by exact_mod_cast (by haveI := Fact.mk hp_prime; simpa using Finset.card_le_univ (Ω p)))
-          (Nat.cast_nonneg _))))
-        (Real.rpow_nonneg (Nat.cast_nonneg _) _)
-    · intro p hp
-      have hp_pf := (Finset.mem_powerset.mp (Finset.mem_filter.mp hT).1) hp
-      exact convergentEuler_comparison (Nat.prime_of_mem_primeFactors hp_pf) ε (Ω p)
-        (hΩ _ (Nat.prime_of_mem_primeFactors hp_pf))
-  have h_inner_bound : ∀ T ∈ q.primeFactors.powerset.filter (· ≠ ∅),
+        C_lp * ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) := by
+    intro T hT hd_le
+    have hT_sub : T ⊆ q.primeFactors := Finset.mem_powerset.mp (Finset.mem_filter.mp hT).1
+    have hT_ne := (Finset.mem_filter.mp hT).2
+    exact inner_bound_small_divisor ε hε k (by omega) Ω hΩ hWD hsp X C_lp _hC_lp_pos _hC_lp
+      q hq_sq h0 T hT_sub hT_ne hd_le
+  -- Large-divisor per-subset bound: delegate to inner_bound_large_divisor
+  have h_large_bound : ∀ T ∈ q.primeFactors.powerset.filter (· ≠ ∅),
+      s < ∏ p ∈ T, (p : ℝ) →
       |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T| * s ≤
-        C_lp * ∏ p ∈ T, convergentEulerLocalWeight ε p :=
-    fun T hT => le_trans (h_inner_euler T hT) (h_euler_le_conv T hT)
+        (s * X.volume + C_lp) *
+          ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) := by
+    intro T hT hd_gt
+    have hT_sub : T ⊆ q.primeFactors := Finset.mem_powerset.mp (Finset.mem_filter.mp hT).1
+    have hT_ne := (Finset.mem_filter.mp hT).2
+    exact inner_bound_large_divisor ε hε k hk3 Ω hΩ hWD hsp hε_lt X C_lp _hC_lp_pos _hC_lp
+      q hq_sq h0 hfull T hT_sub hT_ne hd_gt
+  -- Rewrite raw_geom via expansion
   simp_rw [h_expand]
+  -- Distribute 1/card and swap sums
   have h_swap :
       (1 / (Ω_q.card : ℝ)) *
         ∑ h ∈ S, ∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅), prod_diff h T =
@@ -1409,31 +1350,59 @@ private lemma deviation_bound_k_ge_3 (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk3 : 
     rw [Finset.mul_sum, Finset.sum_comm]
     congr 1; ext T; rw [Finset.mul_sum]
   rw [h_swap]
-  have hs_nonneg : 0 ≤ s := div_nonneg (Nat.cast_nonneg _) (Nat.cast_nonneg _)
-  calc |∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅),
+  have hs_nonneg : 0 ≤ s := hs_pos.le
+  -- Split the nonempty subsets into T_small (d ≤ s) and T_large (d > s)
+  set T_ne := q.primeFactors.powerset.filter (· ≠ ∅) with hT_ne_def
+  set T_small := T_ne.filter (fun (T : Finset ℕ) => ∏ p ∈ T, (p : ℝ) ≤ s) with hT_small_def
+  set T_large := T_ne.filter (fun (T : Finset ℕ) => s < ∏ p ∈ T, (p : ℝ)) with hT_large_def
+  -- T_ne = T_small ∪ T_large and they are disjoint
+  have h_union : T_ne = T_small ∪ T_large := by
+    ext T
+    simp only [hT_small_def, hT_large_def, Finset.mem_union, Finset.mem_filter]
+    constructor
+    · intro hT; by_cases hle : ∏ p ∈ T, (p : ℝ) ≤ s
+      · exact Or.inl ⟨hT, hle⟩
+      · exact Or.inr ⟨hT, not_le.mp hle⟩
+    · intro h; rcases h with ⟨hT, _⟩ | ⟨hT, _⟩ <;> exact hT
+  have h_disj : Disjoint T_small T_large := by
+    simp only [hT_small_def, hT_large_def]
+    rw [Finset.disjoint_filter]
+    intro T _ hle hgt; exact absurd hle (not_le.mpr hgt)
+  -- Triangle inequality, distribute s, and split
+  calc |∑ T ∈ T_ne,
           ∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T| * s
-      ≤ (∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅),
+      ≤ (∑ T ∈ T_ne,
           |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T|) * s :=
         mul_le_mul_of_nonneg_right (Finset.abs_sum_le_sum_abs _ _) hs_nonneg
-    _ = ∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅),
+    _ = ∑ T ∈ T_ne,
           |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T| * s := by
         rw [Finset.sum_mul]
-    _ ≤ ∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅),
-          C_lp * ∏ p ∈ T, convergentEulerLocalWeight ε p :=
-        Finset.sum_le_sum fun T hT => h_inner_bound T hT
-    _ ≤ ∑ T ∈ q.primeFactors.powerset,
-          C_lp * ∏ p ∈ T, convergentEulerLocalWeight ε p :=
-        Finset.sum_le_sum_of_subset_of_nonneg (Finset.filter_subset _ _)
-          fun T _ _ => mul_nonneg _hC_lp_pos.le
-            (Finset.prod_nonneg fun p _ => convergentEulerLocalWeight_nonneg ε p)
-    _ = C_lp * ∑ T ∈ q.primeFactors.powerset,
-          ∏ p ∈ T, convergentEulerLocalWeight ε p := by
-        rw [← Finset.mul_sum]
-    _ = C_lp * convergentEulerPartitionSum ε q.primeFactors := by
-        congr 1; exact powerset_prod_eq_convergentEulerPartitionSum ε _
-    _ ≤ C_lp * convergentEulerBoundConstant k ε :=
-        mul_le_mul_of_nonneg_left
-          (convergentEulerPartitionSum_le_bound (by omega) hε _) _hC_lp_pos.le
+    _ = (∑ T ∈ T_small, |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T| * s) +
+        (∑ T ∈ T_large, |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T| * s) := by
+        rw [h_union, Finset.sum_union h_disj]
+    -- Small-divisor sum: bounded by C_lp * convergentEulerBoundConstant
+    _ ≤ (∑ T ∈ T_small,
+          C_lp * ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε))) +
+        (∑ T ∈ T_large, |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T| * s) := by
+        exact add_le_add
+          (Finset.sum_le_sum fun T hT =>
+            h_small_bound T (Finset.mem_of_mem_filter T hT) ((Finset.mem_filter.mp hT).2))
+          (le_refl _)
+    -- Large-divisor sum: bounded by (s * vol + C_lp) * ∏ W_p, then by (vol + C_lp) * ∏ (p * W_p)
+    _ ≤ (∑ T ∈ T_small,
+          C_lp * ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε))) +
+        (∑ T ∈ T_large,
+          (s * X.volume + C_lp) *
+            ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε))) := by
+        exact add_le_add (le_refl _)
+          (Finset.sum_le_sum fun T hT =>
+            h_large_bound T (Finset.mem_of_mem_filter T hT) ((Finset.mem_filter.mp hT).2))
+    -- Upper bound: replace small-divisor coeff C_lp ≤ C_lp, and large-divisor coeff
+    -- (s * vol + C_lp) ≤ (X.volume + C_lp) * ∏ p by using s < ∏ p and 1 ≤ ∏ p.
+    -- Then combine ∏ p * ∏ W_p = ∏ (p * W_p) ≤ ∏ largeEulerLocalWeight.
+    _ ≤ C_lp * convergentEulerBoundConstant k ε +
+        (X.volume + C_lp) * largeEulerBoundConstant k ε := by
+        sorry
 
 private lemma deviation_expression_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
@@ -1465,150 +1434,10 @@ private lemma deviation_expression_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : 
     -- ══════════════════════════════════════════════════════════════════════
     exact deviation_uniform_bound_k_eq_2 ε hε Ω hΩ hWD hsp hε_lt X C_lp _hC_lp_pos _hC_lp
   · -- ══════════════════════════════════════════════════════════════════════
-    -- Case k ≥ 3: use the L∞ × L₁ argument via `box_deviation_inner_bound`.
+    -- Case k ≥ 3: delegate to `deviation_bound_k_ge_3`.
     -- ══════════════════════════════════════════════════════════════════════
-    refine ⟨1, one_pos, ?_⟩
-    -- Repackage the old-style bound |D| * s ≤ K as |D| ≤ K * s ^ (-(1:ℝ)).
-    suffices hold : ∃ K : ℝ, 0 ≤ K ∧ ∀ (q : ℕ) [NeZero q] (_ : Squarefree q),
-        let Ω_q := crtSubset q Ω; let s := (q : ℝ) / Ω_q.card
-        |(1 / (Ω_q.card : ℝ)) *
-          ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
-              Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
-            (fun h => inScaledBox X s (fun _ => 0) h)),
-          ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
-            (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| * s ≤ K by
-      obtain ⟨K, hK, hBound⟩ := hold
-      refine ⟨K + 1, by linarith, fun q _ hq_sq => ?_⟩
-      simp only
-      by_cases h0 : (crtSubset q Ω).card = 0
-      · -- card = 0 ⟹ 1/0 = 0 in ℝ, so |D| = 0 and K * 0^{-1} = 0.
-        have : (1 : ℝ) / ((crtSubset q Ω).card : ℝ) = 0 := by simp [h0]
-        simp only [this, zero_mul, abs_zero]
-        exact mul_nonneg (by linarith) (Real.rpow_nonneg (by positivity) _)
-      · have hs_pos : 0 < (q : ℝ) / ((crtSubset q Ω).card : ℝ) :=
-          div_pos (Nat.cast_pos.mpr (NeZero.pos q))
-            (Nat.cast_pos.mpr (Nat.pos_of_ne_zero h0))
-        have hDs' := hBound q hq_sq
-        simp only at hDs'
-        -- From |D| * s ≤ K, derive |D| ≤ K / s ≤ (K+1) * s^{-1}
-        have h1 : _ ≤ K / ((q : ℝ) / ((crtSubset q Ω).card : ℝ)) :=
-          (le_div_iff₀ hs_pos).mpr hDs'
-        calc _ ≤ K / ((q : ℝ) / ((crtSubset q Ω).card : ℝ)) := h1
-          _ ≤ (K + 1) * ((q : ℝ) / ((crtSubset q Ω).card : ℝ)) ^ (-(1 : ℝ)) := by
-            rw [Real.rpow_neg_one, div_eq_mul_inv]
-            exact mul_le_mul_of_nonneg_right (by linarith) (inv_nonneg.mpr (le_of_lt hs_pos))
-    use C_lp * convergentEulerBoundConstant k ε
-    refine ⟨le_of_lt (mul_pos _hC_lp_pos (convergentEulerBoundConstant_pos k ε)), ?_⟩
-    intro q hq_ne hq_sq
-    -- Edge cases: empty or full CRT subset yields zero deviation
-    by_cases h0 : (crtSubset q Ω).card = 0
-    · have := deviation_zero_of_card_zero q Ω X h0
-      simp only at this ⊢
-      linarith [mul_nonneg _hC_lp_pos.le (convergentEulerBoundConstant_pos k ε).le]
-    by_cases hfull : (crtSubset q Ω).card = q
-    · have := deviation_zero_of_card_eq_q (by omega : 2 ≤ k) q Ω X hfull
-      simp only at this ⊢
-      linarith [mul_nonneg _hC_lp_pos.le (convergentEulerBoundConstant_pos k ε).le]
-    simp only
-    -- Abbreviations
-    set Ω_q := crtSubset q Ω
-    set s := (q : ℝ) / Ω_q.card
-    set S := ((Fintype.piFinset fun _ : Fin (k - 1) =>
-        Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
-      (fun h => inScaledBox X s (fun _ => 0) h))
-    -- Mean identity: card^k / q^(k-1) = ∏ localMean
-    have h_mean_eq := globalMean_eq_prod_localMean k q hq_sq Ω
-    -- Intermediate raw deviation using ∏ localMean
-    let raw_geom (h : Fin (k - 1) → ℤ) : ℝ :=
-      (tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
-        ∏ p ∈ q.primeFactors, localMean k Ω p
-    -- Product-difference terms
-    let prod_diff (h : Fin (k - 1) → ℤ) (T : Finset ℕ) : ℝ :=
-      (∏ p ∈ T, (localCount Ω q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p -
-        localMean k Ω p)) *
-      ∏ p ∈ q.primeFactors \ T, localMean k Ω p
-    -- Expand the raw deviation as a sum over nonempty subsets
-    have h_expand : ∀ h, raw_geom h =
-        ∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅), prod_diff h T := by
-      intro h; (
-      convert deviation_product_difference q hq_sq Ω
-        (Fin.cons 0 fun i => (h i : ZMod q)) using 1
-      · grind +locals
-      · cases k <;> trivial)
-    -- Bridge from goal expression to raw_geom
-    have h_to_raw : ∀ h : Fin (k - 1) → ℤ,
-        (tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
-          (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1) = raw_geom h := by
-      intro h; show _ - _ = _ - _; congr 1
-    simp_rw [h_to_raw]
-    -- Per-subset bound: delegate to the k ≥ 3 helper (Euler product form)
-    have h_inner_euler : ∀ T ∈ q.primeFactors.powerset.filter (· ≠ ∅),
-        |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T| * s ≤
-          C_lp * ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) :=
-      inner_bound_k_ge_3 ε hε k (by omega) Ω hΩ hWD hsp hε_lt X C_lp _hC_lp_pos _hC_lp
-        q hq_sq h0 hfull
-    -- Per-prime comparison: the actual Euler factor is bounded by the convergent weight.
-    -- This uses `convergentEuler_comparison` from ConvergentEulerBound.lean.
-    have h_euler_le_conv : ∀ T ∈ q.primeFactors.powerset.filter (· ≠ ∅),
-        C_lp * ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) ≤
-          C_lp * ∏ p ∈ T, convergentEulerLocalWeight ε p := by
-      intro T hT
-      apply mul_le_mul_of_nonneg_left _ _hC_lp_pos.le
-      apply Finset.prod_le_prod
-      · intro p hp
-        have hp_pf := (Finset.mem_powerset.mp (Finset.mem_filter.mp hT).1) hp
-        have hp_prime := Nat.prime_of_mem_primeFactors hp_pf
-        exact mul_nonneg (mul_nonneg (Nat.cast_nonneg _)
-          (sub_nonneg.mpr (div_le_one_of_le₀
-            (by exact_mod_cast (by haveI := Fact.mk hp_prime; simpa using Finset.card_le_univ (Ω p)))
-            (Nat.cast_nonneg _))))
-          (Real.rpow_nonneg (Nat.cast_nonneg _) _)
-      · intro p hp
-        have hp_pf := (Finset.mem_powerset.mp (Finset.mem_filter.mp hT).1) hp
-        exact convergentEuler_comparison (Nat.prime_of_mem_primeFactors hp_pf) ε (Ω p)
-          (hΩ _ (Nat.prime_of_mem_primeFactors hp_pf))
-    have h_inner_bound : ∀ T ∈ q.primeFactors.powerset.filter (· ≠ ∅),
-        |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T| * s ≤
-          C_lp * ∏ p ∈ T, convergentEulerLocalWeight ε p :=
-      fun T hT => le_trans (h_inner_euler T hT) (h_euler_le_conv T hT)
-    -- Rewrite raw_geom via expansion
-    simp_rw [h_expand]
-    -- Distribute 1/card and swap sums
-    have h_swap :
-        (1 / (Ω_q.card : ℝ)) *
-          ∑ h ∈ S, ∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅), prod_diff h T =
-        ∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅),
-          ∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T := by
-      rw [Finset.mul_sum, Finset.sum_comm]
-      congr 1; ext T; rw [Finset.mul_sum]
-    rw [h_swap]
-    -- Non-negativity of s
-    have hs_nonneg : 0 ≤ s := div_nonneg (Nat.cast_nonneg _) (Nat.cast_nonneg _)
-    -- Main chain: triangle inequality → inner bound → Euler product → bound constant
-    calc |∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅),
-            ∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T| * s
-        ≤ (∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅),
-            |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T|) * s :=
-          mul_le_mul_of_nonneg_right (Finset.abs_sum_le_sum_abs _ _) hs_nonneg
-      _ = ∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅),
-            |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T| * s := by
-          rw [Finset.sum_mul]
-      _ ≤ ∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅),
-            C_lp * ∏ p ∈ T, convergentEulerLocalWeight ε p :=
-          Finset.sum_le_sum fun T hT => h_inner_bound T hT
-      _ ≤ ∑ T ∈ q.primeFactors.powerset,
-            C_lp * ∏ p ∈ T, convergentEulerLocalWeight ε p :=
-          Finset.sum_le_sum_of_subset_of_nonneg (Finset.filter_subset _ _)
-            fun T _ _ => mul_nonneg _hC_lp_pos.le
-              (Finset.prod_nonneg fun p _ => convergentEulerLocalWeight_nonneg ε p)
-      _ = C_lp * ∑ T ∈ q.primeFactors.powerset,
-            ∏ p ∈ T, convergentEulerLocalWeight ε p := by
-          rw [← Finset.mul_sum]
-      _ = C_lp * convergentEulerPartitionSum ε q.primeFactors := by
-          congr 1; exact powerset_prod_eq_convergentEulerPartitionSum ε _
-      _ ≤ C_lp * convergentEulerBoundConstant k ε :=
-          mul_le_mul_of_nonneg_left
-            (convergentEulerPartitionSum_le_bound (by omega) hε _) _hC_lp_pos.le
+    exact ⟨1, one_pos,
+      deviation_bound_k_ge_3 ε hε k (by omega) Ω hΩ hWD hsp hε_lt X C_lp _hC_lp_pos _hC_lp⟩
 
 theorem deviation_final_synthesis (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
