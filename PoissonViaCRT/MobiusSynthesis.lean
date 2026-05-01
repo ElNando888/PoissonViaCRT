@@ -1263,14 +1263,14 @@ private lemma deviation_bound_k_ge_3 (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk3 : 
           rw [Real.rpow_neg_one, div_eq_mul_inv]
           exact mul_le_mul_of_nonneg_right (by linarith) (inv_nonneg.mpr (le_of_lt hs_pos))
   -- The bound constant includes both small-divisor and large-divisor contributions.
-  set K_bound := C_lp * convergentEulerBoundConstant k ε +
-    (X.volume + C_lp) * largeEulerBoundConstant k ε with hK_bound_def
+  set K_bound := C_lp * convergentEulerBoundConstant k ε Ω +
+    (X.volume + C_lp) * largeEulerBoundConstant k ε Ω with hK_bound_def
   have hX_vol_pos : 0 < X.volume := Finset.prod_pos fun i _ => X.sides_pos i
   use K_bound
   have hK_pos : 0 < K_bound := by
     apply add_pos
-    · exact mul_pos _hC_lp_pos (convergentEulerBoundConstant_pos k ε)
-    · exact mul_pos (by linarith) (largeEulerBoundConstant_pos k ε)
+    · exact mul_pos _hC_lp_pos (convergentEulerBoundConstant_pos k ε Ω)
+    · exact mul_pos (by linarith) (largeEulerBoundConstant_pos k ε Ω)
   refine ⟨hK_pos.le, ?_⟩
   intro q hq_ne hq_sq
   by_cases h0 : (crtSubset q Ω).card = 0
@@ -1278,16 +1278,16 @@ private lemma deviation_bound_k_ge_3 (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk3 : 
     simp only at this ⊢
     have : (0 : ℝ) ≤ K_bound := by
       apply add_nonneg
-      · exact mul_nonneg _hC_lp_pos.le (convergentEulerBoundConstant_pos k ε).le
-      · exact mul_nonneg (by linarith) (largeEulerBoundConstant_pos k ε).le
+      · exact mul_nonneg _hC_lp_pos.le (convergentEulerBoundConstant_pos k ε Ω).le
+      · exact mul_nonneg (by linarith) (largeEulerBoundConstant_pos k ε Ω).le
     linarith
   by_cases hfull : (crtSubset q Ω).card = q
   · have := deviation_zero_of_card_eq_q (by omega : 2 ≤ k) q Ω X hfull
     simp only at this ⊢
     have : (0 : ℝ) ≤ K_bound := by
       apply add_nonneg
-      · exact mul_nonneg _hC_lp_pos.le (convergentEulerBoundConstant_pos k ε).le
-      · exact mul_nonneg (by linarith) (largeEulerBoundConstant_pos k ε).le
+      · exact mul_nonneg _hC_lp_pos.le (convergentEulerBoundConstant_pos k ε Ω).le
+      · exact mul_nonneg (by linarith) (largeEulerBoundConstant_pos k ε Ω).le
     linarith
   simp only
   set Ω_q := crtSubset q Ω
@@ -1400,8 +1400,8 @@ private lemma deviation_bound_k_ge_3 (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk3 : 
     -- Upper bound: replace small-divisor coeff C_lp ≤ C_lp, and large-divisor coeff
     -- (s * vol + C_lp) ≤ (X.volume + C_lp) * ∏ p by using s < ∏ p and 1 ≤ ∏ p.
     -- Then combine ∏ p * ∏ W_p = ∏ (p * W_p) ≤ ∏ largeEulerLocalWeight.
-    _ ≤ C_lp * convergentEulerBoundConstant k ε +
-        (X.volume + C_lp) * largeEulerBoundConstant k ε := by
+    _ ≤ C_lp * convergentEulerBoundConstant k ε Ω +
+        (X.volume + C_lp) * largeEulerBoundConstant k ε Ω := by
         sorry
 
 private lemma deviation_expression_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
