@@ -17,6 +17,8 @@ Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 import Mathlib.Algebra.BigOperators.Ring.Finset
 import Mathlib.Data.Finset.Powerset
 import Mathlib.Tactic
+import Mathlib.Analysis.SpecialFunctions.Exp
+import Mathlib.Topology.Algebra.InfiniteSum.Order
 
 /-!
 # Convergent Euler Bound for k ≥ 3
@@ -135,9 +137,22 @@ to `k = 2`. The proof requires establishing that the well-distribution and spaci
 hypotheses together constrain `p - |Ω_p|` sufficiently to make the Euler product
 convergent. -/
 theorem convergentEulerPartitionSum_le_bound {k : ℕ} (hk : 3 ≤ k) {ε : ℝ} (hε : 0 < ε)
-    (Ω : ∀ p : ℕ, Finset (ZMod p)) (S : Finset ℕ) :
+    (Ω : ∀ p : ℕ, Finset (ZMod p)) (S : Finset ℕ)
+    (h_sum : Summable (convergentEulerLocalWeight ε Ω))
+    (hΩ : ∀ p, (Ω p).card ≤ p) :
     convergentEulerPartitionSum ε Ω S ≤ convergentEulerBoundConstant k ε Ω := by
-  sorry
+  unfold convergentEulerPartitionSum convergentEulerBoundConstant
+  have h1 : ∏ p ∈ S, (1 + convergentEulerLocalWeight ε Ω p) ≤ ∏ p ∈ S, Real.exp (convergentEulerLocalWeight ε Ω p) := by
+    apply Finset.prod_le_prod
+    · intro p _
+      exact add_nonneg one_pos.le (convergentEulerLocalWeight_nonneg ε Ω p (hΩ p))
+    · intro p _
+      rw [add_comm]
+      exact Real.add_one_le_exp (convergentEulerLocalWeight ε Ω p)
+  rw [← Real.exp_sum] at h1
+  apply le_trans h1
+  apply Real.exp_le_exp.mpr
+  exact Summable.sum_le_tsum S (fun p _ => convergentEulerLocalWeight_nonneg ε Ω p (hΩ p)) h_sum
 
 /-! ## §5. Large-divisor Euler product -/
 
@@ -194,8 +209,21 @@ theorem largeEulerBoundConstant_pos (k : ℕ) (ε : ℝ) (Ω : ∀ p : ℕ, Fins
 /-- **Large-divisor Euler product bound**: For `k ≥ 3`, the large-divisor
 partition sum over any finset `S` is bounded by `largeEulerBoundConstant k ε Ω`. -/
 theorem largeEulerPartitionSum_le_bound {k : ℕ} (hk : 3 ≤ k) {ε : ℝ} (hε : 0 < ε)
-    (Ω : ∀ p : ℕ, Finset (ZMod p)) (S : Finset ℕ) :
+    (Ω : ∀ p : ℕ, Finset (ZMod p)) (S : Finset ℕ)
+    (h_sum : Summable (largeEulerLocalWeight ε Ω))
+    (hΩ : ∀ p, (Ω p).card ≤ p) :
     largeEulerPartitionSum ε Ω S ≤ largeEulerBoundConstant k ε Ω := by
-  sorry
+  unfold largeEulerPartitionSum largeEulerBoundConstant
+  have h1 : ∏ p ∈ S, (1 + largeEulerLocalWeight ε Ω p) ≤ ∏ p ∈ S, Real.exp (largeEulerLocalWeight ε Ω p) := by
+    apply Finset.prod_le_prod
+    · intro p _
+      exact add_nonneg one_pos.le (largeEulerLocalWeight_nonneg ε Ω p (hΩ p))
+    · intro p _
+      rw [add_comm]
+      exact Real.add_one_le_exp (largeEulerLocalWeight ε Ω p)
+  rw [← Real.exp_sum] at h1
+  apply le_trans h1
+  apply Real.exp_le_exp.mpr
+  exact Summable.sum_le_tsum S (fun p _ => largeEulerLocalWeight_nonneg ε Ω p (hΩ p)) h_sum
 
 end PoissonCRT
