@@ -10,14 +10,18 @@ import PoissonViaCRT.ConvergentEulerBound
 
 Helper lemmas for closing the final `calc` step in `deviation_bound_k_ge_3`.
 
+The partition bounds here bound subset sums by the **finite** Euler product
+`∏_{p ∈ Q} (1 + w(p))` rather than by an infinite constant, aligning with the
+Granville–Kurlberg `s^η`-trick (arXiv:math/0412135v1, §3).
+
 ## Main Results
 
 * `PoissonCRT.small_partition_bound`: The small-divisor partition sum is bounded by
-  `C * convergentEulerBoundConstant k ε Ω`.
+  `C * convergentEulerPartitionSum ε Ω Q`.
 * `PoissonCRT.one_le_prod_primes`: The product of primes in a nonempty set is at least 1.
 * `PoissonCRT.large_divisor_per_term_bound`: Per-term bound for the large-divisor case.
 * `PoissonCRT.large_partition_bound`: The large-divisor partition sum is bounded by
-  `C * largeEulerBoundConstant k ε Ω`.
+  `C * largeEulerPartitionSum ε Ω Q`.
 -/
 
 set_option linter.unusedVariables false
@@ -27,16 +31,15 @@ open Finset BigOperators Classical
 namespace PoissonCRT
 
 /-- The small-divisor partition sum bound: factoring out `C` and bounding a subset sum
-by the full powerset sum, then applying the Euler product bound. -/
-theorem small_partition_bound {k : ℕ} (hk : 3 ≤ k) {ε : ℝ} (hε : 0 < ε)
+by the full powerset sum, then applying the finite Euler product identity. -/
+theorem small_partition_bound {ε : ℝ} (hε : 0 < ε)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (Q : Finset ℕ) (S_sub : Finset (Finset ℕ))
     (hS : S_sub ⊆ Q.powerset)
     (C : ℝ) (hC : 0 ≤ C)
-    (hΩle : ∀ p, (Ω p).card ≤ p)
-    (h_summable : Summable (convergentEulerLocalWeight ε Ω)) :
+    (hΩle : ∀ p, (Ω p).card ≤ p) :
     ∑ T ∈ S_sub, C * ∏ p ∈ T, convergentEulerLocalWeight ε Ω p ≤
-      C * convergentEulerBoundConstant k ε Ω := by
+      C * convergentEulerPartitionSum ε Ω Q := by
   rw [← Finset.mul_sum]
   gcongr
   calc ∑ T ∈ S_sub, ∏ p ∈ T, convergentEulerLocalWeight ε Ω p
@@ -45,8 +48,6 @@ theorem small_partition_bound {k : ℕ} (hk : 3 ≤ k) {ε : ℝ} (hε : 0 < ε)
           Finset.prod_nonneg fun p _ => convergentEulerLocalWeight_nonneg ε Ω p (hΩle p)
     _ = convergentEulerPartitionSum ε Ω Q :=
         powerset_prod_eq_convergentEulerPartitionSum ε Ω Q
-    _ ≤ convergentEulerBoundConstant k ε Ω :=
-        convergentEulerPartitionSum_le_bound hk hε Ω Q h_summable hΩle
 
 /-- For `T` nonempty with all elements prime, `1 ≤ ∏ p ∈ T, (p : ℝ)`. -/
 theorem one_le_prod_primes (T : Finset ℕ) (hT : T.Nonempty)
@@ -72,16 +73,15 @@ theorem large_divisor_per_term_bound (T : Finset ℕ)
     show 0 ≤ ∏ p ∈ T, w p from Finset.prod_nonneg hw]
 
 /-- The large-divisor partition sum bound: bounding a subset sum
-by the full powerset sum, then applying the large Euler product bound. -/
-theorem large_partition_bound {k : ℕ} (hk : 3 ≤ k) {ε : ℝ} (hε : 0 < ε)
+by the full powerset sum, then applying the finite Euler product identity. -/
+theorem large_partition_bound {ε : ℝ} (hε : 0 < ε)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (Q : Finset ℕ) (S_sub : Finset (Finset ℕ))
     (hS : S_sub ⊆ Q.powerset)
     (C : ℝ) (hC : 0 ≤ C)
-    (hΩle : ∀ p, (Ω p).card ≤ p)
-    (h_summable : Summable (largeEulerLocalWeight ε Ω)) :
+    (hΩle : ∀ p, (Ω p).card ≤ p) :
     ∑ T ∈ S_sub, C * ∏ p ∈ T, largeEulerLocalWeight ε Ω p ≤
-      C * largeEulerBoundConstant k ε Ω := by
+      C * largeEulerPartitionSum ε Ω Q := by
   rw [← Finset.mul_sum]
   gcongr
   calc ∑ T ∈ S_sub, ∏ p ∈ T, largeEulerLocalWeight ε Ω p
@@ -90,7 +90,5 @@ theorem large_partition_bound {k : ℕ} (hk : 3 ≤ k) {ε : ℝ} (hε : 0 < ε)
           Finset.prod_nonneg fun _ _ => largeEulerLocalWeight_nonneg ε Ω _ (hΩle _)
     _ = largeEulerPartitionSum ε Ω Q :=
         powerset_prod_eq_largeEulerPartitionSum ε Ω Q
-    _ ≤ largeEulerBoundConstant k ε Ω :=
-        largeEulerPartitionSum_le_bound hk hε Ω Q h_summable hΩle
 
 end PoissonCRT

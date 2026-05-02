@@ -1208,10 +1208,58 @@ private lemma deviation_uniform_bound_k_eq_2 (ε : ℝ) (hε : 0 < ε)
   sorry
 
 /-! ### Main uniform bound: assembly via `k = 2` / `k ≥ 3` split -/
-/-- For `k ≥ 3` and `ε < λ_k`, the deviation is bounded by `K * s^{-1}` with `δ = 1`
-hardcoded. This is the same proof as the `k ≥ 3` case of
-`deviation_expression_uniform_bound`, but returns `∃ K` directly without wrapping in
-`∃ δ`. -/
+
+/-! #### The Granville–Kurlberg `s^η`-ratio bound
+
+The Euler product `∏_{p ∣ q} (1 + W_p)` **diverges** as `q → ∞`, so it cannot be
+bounded by an absolute constant. Instead, following Granville–Kurlberg §3, we bound
+the ratio `∏_{p ∣ q} (1 + W_p) / s_q^η ≤ C_η` for any `η > 0`.
+-/
+
+/-- **GK `s^η`-ratio bound (convergent weights).**
+For any `η > 0` there exists a `q`-independent constant `C_η` such that the finite
+Euler product of convergent weights over `q.primeFactors` satisfies
+`∏_{p ∣ q} (1 + W_p) ≤ C_η · s_q^η`, where `s_q = q / |Ω_q|`.
+
+The proof proceeds by showing that for all primes `p` larger than a threshold
+`p₀(η)`, the ratio `(1 + W_p) / s_p^η ≤ 1`, so the full product is bounded by
+the finite product over `p ≤ p₀` times `s_q^η`. -/
+theorem euler_product_ratio_bound_convergent (η : ℝ) (hη : 0 < η)
+    (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk3 : 3 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
+    (hsp : ∀ (p : ℕ), p.Prime →
+      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
+    (hε_lt : ε < lambdaExponent k) :
+    ∃ C_η : ℝ, 0 < C_η ∧ ∀ (q : ℕ) [NeZero q], Squarefree q →
+      convergentEulerPartitionSum ε Ω q.primeFactors ≤
+        C_η * ((q : ℝ) / (crtSubset q Ω).card) ^ η := by
+  sorry
+
+/-- **GK `s^η`-ratio bound (large-divisor weights).**
+The analogous bound for the large-divisor Euler product
+`∏_{p ∣ q} (1 + p · W_p) ≤ C_η · s_q^η`. -/
+theorem euler_product_ratio_bound_large (η : ℝ) (hη : 0 < η)
+    (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk3 : 3 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
+    (hsp : ∀ (p : ℕ), p.Prime →
+      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
+    (hε_lt : ε < lambdaExponent k) :
+    ∃ C_η : ℝ, 0 < C_η ∧ ∀ (q : ℕ) [NeZero q], Squarefree q →
+      largeEulerPartitionSum ε Ω q.primeFactors ≤
+        C_η * ((q : ℝ) / (crtSubset q Ω).card) ^ η := by
+  sorry
+
+/-- For `k ≥ 3` and `ε < λ_k`, the deviation is bounded by `K · s^{-δ}` for some
+`δ > 0`. This is the `k ≥ 3` branch of `deviation_expression_uniform_bound`.
+
+The proof uses the Granville–Kurlberg `s^η`-trick: the finite Euler products over
+`q.primeFactors` are bounded by `C_η · s^η` (rather than an absolute constant),
+and combining with the `s^{-1}` factor from the deviation gives decay `s^{-(1-η)}`
+for any `η ∈ (0, 1)`. -/
 private lemma deviation_bound_k_ge_3 (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk3 : 3 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
@@ -1235,62 +1283,43 @@ private lemma deviation_bound_k_ge_3 (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk3 : 
           (fun h => inScaledBox X s (fun _ => 0) h)),
         ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
           (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| ≤
-      K * ((q : ℝ) / Ω_q.card) ^ (-(1 : ℝ)) := by
-  -- Repackage the old-style bound |D| * s ≤ K as |D| ≤ K * s ^ (-(1:ℝ)).
-  suffices hold : ∃ K : ℝ, 0 ≤ K ∧ ∀ (q : ℕ) [NeZero q] (_ : Squarefree q),
-      let Ω_q := crtSubset q Ω; let s := (q : ℝ) / Ω_q.card
-      |(1 / (Ω_q.card : ℝ)) *
-        ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
-            Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
-          (fun h => inScaledBox X s (fun _ => 0) h)),
-        ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
-          (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| * s ≤ K by
-    obtain ⟨K, hK, hBound⟩ := hold
-    refine ⟨K + 1, by linarith, fun q _ hq_sq => ?_⟩
-    simp only
-    by_cases h0 : (crtSubset q Ω).card = 0
-    · have : (1 : ℝ) / ((crtSubset q Ω).card : ℝ) = 0 := by simp [h0]
-      simp only [this, zero_mul, abs_zero]
-      exact mul_nonneg (by linarith) (Real.rpow_nonneg (by positivity) _)
-    · have hs_pos : 0 < (q : ℝ) / ((crtSubset q Ω).card : ℝ) :=
-        div_pos (Nat.cast_pos.mpr (NeZero.pos q))
-          (Nat.cast_pos.mpr (Nat.pos_of_ne_zero h0))
-      have hDs' := hBound q hq_sq
-      simp only at hDs'
-      have h1 : _ ≤ K / ((q : ℝ) / ((crtSubset q Ω).card : ℝ)) :=
-        (le_div_iff₀ hs_pos).mpr hDs'
-      calc _ ≤ K / ((q : ℝ) / ((crtSubset q Ω).card : ℝ)) := h1
-        _ ≤ (K + 1) * ((q : ℝ) / ((crtSubset q Ω).card : ℝ)) ^ (-(1 : ℝ)) := by
-          rw [Real.rpow_neg_one, div_eq_mul_inv]
-          exact mul_le_mul_of_nonneg_right (by linarith) (inv_nonneg.mpr (le_of_lt hs_pos))
-  -- The bound constant includes both small-divisor and large-divisor contributions.
-  set K_bound := C_lp * convergentEulerBoundConstant k ε Ω +
-    (X.volume + C_lp) * largeEulerBoundConstant k ε Ω with hK_bound_def
+      K * ((q : ℝ) / Ω_q.card) ^ (-(1 / 2 : ℝ)) := by
+  -- Choose η = 1/2, giving δ = 1 - η = 1/2 > 0.
+  set η : ℝ := 1 / 2 with hη_def
+  have hη_pos : (0 : ℝ) < η := by norm_num
+  -- Obtain the GK ratio bounds for both weight families.
+  obtain ⟨C₁, hC₁_pos, hC₁⟩ :=
+    euler_product_ratio_bound_convergent η hη_pos ε hε k hk3 Ω hΩ hWD hsp hε_lt
+  obtain ⟨C₂, hC₂_pos, hC₂⟩ :=
+    euler_product_ratio_bound_large η hη_pos ε hε k hk3 Ω hΩ hWD hsp hε_lt
+  -- The overall bound constant (q-independent).
+  set K_raw := C_lp * C₁ + (X.volume + C_lp) * C₂ with hK_raw_def
   have hX_vol_pos : 0 < X.volume := Finset.prod_pos fun i _ => X.sides_pos i
-  use K_bound
-  have hK_pos : 0 < K_bound := by
+  have hK_raw_pos : 0 < K_raw := by
     apply add_pos
-    · exact mul_pos _hC_lp_pos (convergentEulerBoundConstant_pos k ε Ω)
-    · exact mul_pos (by linarith) (largeEulerBoundConstant_pos k ε Ω)
-  refine ⟨hK_pos.le, ?_⟩
+    · exact mul_pos _hC_lp_pos hC₁_pos
+    · exact mul_pos (by linarith) hC₂_pos
+  refine ⟨K_raw + 1, by linarith, ?_⟩
   intro q hq_ne hq_sq
-  by_cases h0 : (crtSubset q Ω).card = 0
-  · have := deviation_zero_of_card_zero q Ω X h0
-    simp only at this ⊢
-    have : (0 : ℝ) ≤ K_bound := by
-      apply add_nonneg
-      · exact mul_nonneg _hC_lp_pos.le (convergentEulerBoundConstant_pos k ε Ω).le
-      · exact mul_nonneg (by linarith) (largeEulerBoundConstant_pos k ε Ω).le
-    linarith
-  by_cases hfull : (crtSubset q Ω).card = q
-  · have := deviation_zero_of_card_eq_q (by omega : 2 ≤ k) q Ω X hfull
-    simp only at this ⊢
-    have : (0 : ℝ) ≤ K_bound := by
-      apply add_nonneg
-      · exact mul_nonneg _hC_lp_pos.le (convergentEulerBoundConstant_pos k ε Ω).le
-      · exact mul_nonneg (by linarith) (largeEulerBoundConstant_pos k ε Ω).le
-    linarith
   simp only
+  by_cases h0 : (crtSubset q Ω).card = 0
+  · have : (1 : ℝ) / ((crtSubset q Ω).card : ℝ) = 0 := by simp [h0]
+    simp only [this, zero_mul, abs_zero]
+    exact mul_nonneg (by linarith) (Real.rpow_nonneg (by positivity) _)
+  by_cases hfull : (crtSubset q Ω).card = q
+  · -- When card = q, the deviation is zero.
+    have hdev := deviation_zero_of_card_eq_q (by omega : 2 ≤ k) q Ω X hfull
+    simp only at hdev ⊢
+    -- The deviation |D| * s = 0, and s = q/q = 1 > 0, so |D| = 0.
+    have hs1 : (q : ℝ) / ((crtSubset q Ω).card : ℝ) = 1 := by
+      rw [hfull]; exact div_self (Nat.cast_ne_zero.mpr (NeZero.ne q))
+    simp only [hs1, Real.one_rpow, mul_one] at hdev ⊢
+    linarith [abs_nonneg ((1 : ℝ) / ((crtSubset q Ω).card : ℝ) *
+      ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+        Finset.Icc (1 : ℤ) ⌈1 * ∑ i, X.sides i⌉).filter
+        (fun h => inScaledBox X 1 (fun _ => 0) h)),
+      ((tupleCount (crtSubset q Ω) (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
+        ((crtSubset q Ω).card : ℝ) ^ k / (q : ℝ) ^ (k - 1)))]
   set Ω_q := crtSubset q Ω
   set s := (q : ℝ) / Ω_q.card
   set S := ((Fintype.piFinset fun _ : Fin (k - 1) =>
@@ -1316,10 +1345,9 @@ private lemma deviation_bound_k_ge_3 (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk3 : 
         (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1) = raw_geom h := by
     intro h; show _ - _ = _ - _; congr 1
   simp_rw [h_to_raw]
-  -- Per-subset bounds via the two helper lemmas
   have hs_pos : 0 < s :=
     div_pos (Nat.cast_pos.mpr (NeZero.pos q)) (Nat.cast_pos.mpr (Nat.pos_of_ne_zero h0))
-  -- Small-divisor per-subset bound: delegate to inner_bound_small_divisor
+  -- Small-divisor per-subset bound
   have h_small_bound : ∀ T ∈ q.primeFactors.powerset.filter (· ≠ ∅),
       (∏ p ∈ T, (p : ℝ)) ≤ s →
       |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T| * s ≤
@@ -1329,7 +1357,7 @@ private lemma deviation_bound_k_ge_3 (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk3 : 
     have hT_ne := (Finset.mem_filter.mp hT).2
     exact inner_bound_small_divisor ε hε k (by omega) Ω hΩ hWD hsp X C_lp _hC_lp_pos _hC_lp
       q hq_sq h0 T hT_sub hT_ne hd_le
-  -- Large-divisor per-subset bound: delegate to inner_bound_large_divisor
+  -- Large-divisor per-subset bound
   have h_large_bound : ∀ T ∈ q.primeFactors.powerset.filter (· ≠ ∅),
       s < ∏ p ∈ T, (p : ℝ) →
       |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T| * s ≤
@@ -1352,11 +1380,10 @@ private lemma deviation_bound_k_ge_3 (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk3 : 
     congr 1; ext T; rw [Finset.mul_sum]
   rw [h_swap]
   have hs_nonneg : 0 ≤ s := hs_pos.le
-  -- Split the nonempty subsets into T_small (d ≤ s) and T_large (d > s)
+  -- Split nonempty subsets into T_small (d ≤ s) and T_large (d > s)
   set T_ne := q.primeFactors.powerset.filter (· ≠ ∅) with hT_ne_def
   set T_small := T_ne.filter (fun (T : Finset ℕ) => ∏ p ∈ T, (p : ℝ) ≤ s) with hT_small_def
   set T_large := T_ne.filter (fun (T : Finset ℕ) => s < ∏ p ∈ T, (p : ℝ)) with hT_large_def
-  -- T_ne = T_small ∪ T_large and they are disjoint
   have h_union : T_ne = T_small ∪ T_large := by
     ext T
     simp only [hT_small_def, hT_large_def, Finset.mem_union, Finset.mem_filter]
@@ -1369,7 +1396,38 @@ private lemma deviation_bound_k_ge_3 (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk3 : 
     simp only [hT_small_def, hT_large_def]
     rw [Finset.disjoint_filter]
     intro T _ hle hgt; exact absurd hle (not_le.mpr hgt)
-  -- Triangle inequality, distribute s, and split
+  -- We need (Ω p).card ≤ p for all p.
+  have hΩle : ∀ p, (Ω p).card ≤ p := by sorry
+  -- The product terms are definitionally convergentEulerLocalWeight
+  have h_prod_eq : ∀ T : Finset ℕ,
+      ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) =
+      ∏ p ∈ T, convergentEulerLocalWeight ε Ω p := by
+    intro T; rfl
+  -- T_small ⊆ q.primeFactors.powerset
+  have hTs_sub : T_small ⊆ q.primeFactors.powerset :=
+    (Finset.filter_subset _ _).trans (Finset.filter_subset _ _)
+  -- T_large ⊆ q.primeFactors.powerset
+  have hTl_sub : T_large ⊆ q.primeFactors.powerset :=
+    (Finset.filter_subset _ _).trans (Finset.filter_subset _ _)
+  -- Obtain the GK ratio bounds instantiated at this q.
+  have hC₁_q := hC₁ q hq_sq
+  have hC₂_q := hC₂ q hq_sq
+  -- Combine: |D| * s ≤ (finite Euler products) ≤ K_raw * s^η,
+  -- so |D| ≤ K_raw * s^{η - 1} = K_raw * s^{-(1-η)}.
+  -- We bound |D| * s first, then divide by s.
+  suffices h_Ds : |∑ T ∈ T_ne, ∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T| * s ≤
+      K_raw * s ^ η by
+    have h_rpow_eq : s ^ η / s = s ^ (-(1 / 2 : ℝ)) := by
+      rw [div_eq_mul_inv, ← Real.rpow_neg_one s, ← Real.rpow_add hs_pos]
+      norm_num
+    calc |∑ T ∈ T_ne, ∑ h ∈ S, (1 / ↑(Ω_q.card)) * prod_diff h T|
+        ≤ K_raw * s ^ η / s := (le_div_iff₀ hs_pos).mpr h_Ds
+      _ = K_raw * (s ^ η / s) := mul_div_assoc K_raw _ _
+      _ = K_raw * s ^ (-(1 / 2 : ℝ)) := by rw [h_rpow_eq]
+      _ ≤ (K_raw + 1) * s ^ (-(1 / 2 : ℝ)) := by
+          exact mul_le_mul_of_nonneg_right (by linarith)
+            (Real.rpow_nonneg hs_nonneg _)
+  -- Now prove |D| * s ≤ K_raw * s^η via triangle inequality + Euler product bounds.
   calc |∑ T ∈ T_ne,
           ∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T| * s
       ≤ (∑ T ∈ T_ne,
@@ -1381,7 +1439,6 @@ private lemma deviation_bound_k_ge_3 (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk3 : 
     _ = (∑ T ∈ T_small, |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T| * s) +
         (∑ T ∈ T_large, |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T| * s) := by
         rw [h_union, Finset.sum_union h_disj]
-    -- Small-divisor sum: bounded by C_lp * convergentEulerBoundConstant
     _ ≤ (∑ T ∈ T_small,
           C_lp * ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε))) +
         (∑ T ∈ T_large, |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T| * s) := by
@@ -1389,7 +1446,6 @@ private lemma deviation_bound_k_ge_3 (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk3 : 
           (Finset.sum_le_sum fun T hT =>
             h_small_bound T (Finset.mem_of_mem_filter T hT) ((Finset.mem_filter.mp hT).2))
           (le_refl _)
-    -- Large-divisor sum: bounded by (s * vol + C_lp) * ∏ W_p, then by (vol + C_lp) * ∏ (p * W_p)
     _ ≤ (∑ T ∈ T_small,
           C_lp * ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε))) +
         (∑ T ∈ T_large,
@@ -1398,37 +1454,14 @@ private lemma deviation_bound_k_ge_3 (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk3 : 
         exact add_le_add (le_refl _)
           (Finset.sum_le_sum fun T hT =>
             h_large_bound T (Finset.mem_of_mem_filter T hT) ((Finset.mem_filter.mp hT).2))
-    -- Upper bound: replace small-divisor coeff C_lp ≤ C_lp, and large-divisor coeff
-    -- (s * vol + C_lp) ≤ (X.volume + C_lp) * ∏ p by using s < ∏ p and 1 ≤ ∏ p.
-    -- Then combine ∏ p * ∏ W_p = ∏ (p * W_p) ≤ ∏ largeEulerLocalWeight.
-    _ ≤ C_lp * convergentEulerBoundConstant k ε Ω +
-        (X.volume + C_lp) * largeEulerBoundConstant k ε Ω := by
-        -- We need (Ω p).card ≤ p for all p, and summability of the weights.
-        -- These are sorry'd as permitted by the solution instructions (missing
-        -- infrastructure for the well-distribution → summability bridge).
-        have hΩle : ∀ p, (Ω p).card ≤ p := by sorry
-        have h_sum_conv : Summable (convergentEulerLocalWeight ε Ω) := by sorry
-        have h_sum_large : Summable (largeEulerLocalWeight ε Ω) := by sorry
-        -- T_small ⊆ q.primeFactors.powerset
-        have hTs_sub : T_small ⊆ q.primeFactors.powerset :=
-          (Finset.filter_subset _ _).trans (Finset.filter_subset _ _)
-        -- T_large ⊆ q.primeFactors.powerset
-        have hTl_sub : T_large ⊆ q.primeFactors.powerset :=
-          (Finset.filter_subset _ _).trans (Finset.filter_subset _ _)
-        -- The product terms are definitionally convergentEulerLocalWeight
-        have h_prod_eq : ∀ T : Finset ℕ,
-            ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) =
-            ∏ p ∈ T, convergentEulerLocalWeight ε Ω p := by
-          intro T; rfl
+    -- Bound each sum by the finite Euler product, then apply the ratio bound.
+    _ ≤ C_lp * convergentEulerPartitionSum ε Ω q.primeFactors +
+        (X.volume + C_lp) * largeEulerPartitionSum ε Ω q.primeFactors := by
         simp_rw [h_prod_eq]
         apply add_le_add
-        -- Step 1: T_small bound
-        · exact small_partition_bound hk3 hε Ω q.primeFactors T_small hTs_sub
-            C_lp _hC_lp_pos.le hΩle h_sum_conv
-        -- Step 2: T_large bound
-        · -- Per-term bound: (s * vol + C_lp) * ∏ w ≤ (vol + C_lp) * ∏ (p * w)
-          have hX_vol_nn : 0 ≤ X.volume := hX_vol_pos.le
-          apply le_trans
+        · exact small_partition_bound hε Ω q.primeFactors T_small hTs_sub
+            C_lp _hC_lp_pos.le hΩle
+        · apply le_trans
           · apply Finset.sum_le_sum
             intro T hT
             have hT_ne_mem := Finset.mem_of_mem_filter T hT
@@ -1442,10 +1475,15 @@ private lemma deviation_bound_k_ge_3 (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk3 : 
             have hw_nn : ∀ p ∈ T, 0 ≤ convergentEulerLocalWeight ε Ω p :=
               fun p _ => convergentEulerLocalWeight_nonneg ε Ω p (hΩle p)
             exact large_divisor_per_term_bound T (convergentEulerLocalWeight ε Ω)
-              hw_nn s X.volume C_lp hX_vol_nn _hC_lp_pos.le hd_gt.le h1_le
-          -- Now: ∑ T ∈ T_large, (vol + C_lp) * ∏ largeEulerLocalWeight ≤ bound
-          · exact large_partition_bound hk3 hε Ω q.primeFactors T_large hTl_sub
-              (X.volume + C_lp) (by linarith) hΩle h_sum_large
+              hw_nn s X.volume C_lp hX_vol_pos.le _hC_lp_pos.le hd_gt.le h1_le
+          · exact large_partition_bound hε Ω q.primeFactors T_large hTl_sub
+              (X.volume + C_lp) (by linarith) hΩle
+    -- Apply the GK ratio bounds.
+    _ ≤ C_lp * (C₁ * s ^ η) + (X.volume + C_lp) * (C₂ * s ^ η) := by
+        exact add_le_add
+          (mul_le_mul_of_nonneg_left hC₁_q _hC_lp_pos.le)
+          (mul_le_mul_of_nonneg_left hC₂_q (by linarith))
+    _ = K_raw * s ^ η := by ring
 
 private lemma deviation_expression_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
@@ -1479,7 +1517,7 @@ private lemma deviation_expression_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : 
   · -- ══════════════════════════════════════════════════════════════════════
     -- Case k ≥ 3: delegate to `deviation_bound_k_ge_3`.
     -- ══════════════════════════════════════════════════════════════════════
-    exact ⟨1, one_pos,
+    exact ⟨1 / 2, by norm_num,
       deviation_bound_k_ge_3 ε hε k (by omega) Ω hΩ hWD hsp hε_lt X C_lp _hC_lp_pos _hC_lp⟩
 
 theorem deviation_final_synthesis (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
@@ -1581,8 +1619,8 @@ theorem deviation_uniform_exponent (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 �
       -- The underlying `deviation_uniform_bound_k_eq_2` is sorry'd,
       -- so we sorry this case as well.
       sorry
-    · -- k ≥ 3: use δ = 1, the L∞ × L₁ bound gives |D| * s ≤ K for each X
-      refine ⟨1, one_pos, fun X C_lp hC_lp_pos hC_lp => ?_⟩
+    · -- k ≥ 3: the GK s^η-trick gives δ = 1/2 (independent of X).
+      refine ⟨1 / 2, by norm_num, fun X C_lp hC_lp_pos hC_lp => ?_⟩
       exact deviation_bound_k_ge_3 ε hε k hk3 Ω hΩ hWD hsp hlt X C_lp hC_lp_pos hC_lp
 
 end PoissonCRT

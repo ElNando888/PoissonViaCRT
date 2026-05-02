@@ -114,11 +114,14 @@ theorem powerset_prod_eq_convergentEulerPartitionSum (ε : ℝ) (Ω : ∀ p : �
 /-! ## §4. Uniform bound via well-distribution -/
 
 /-- The `q`-independent bound constant for the convergent Euler product.
-Under the well-distribution and spacing hypotheses for `k ≥ 3`, the partition sum
-`∏_{p ∈ q.primeFactors} (1 + convergentEulerLocalWeight ε Ω p)` is bounded
-independently of `q`.
 
-This is the key standalone bound that replaces `tauBoundConstant` for `k ≥ 3`. -/
+**Deprecated.** The Euler product `∏_{p ∣ q} (1 + W_p)` actually diverges as
+`q → ∞`, so this constant does not provide a valid bound. The correct approach,
+following Granville–Kurlberg §3, bounds the product by `C_η · s_q^η` for
+arbitrarily small `η > 0`; see `euler_product_ratio_bound_convergent` in
+`MobiusSynthesis.lean`. This definition and the associated
+`convergentEulerPartitionSum_le_bound` are retained for reference but should
+not be used in new proofs. -/
 noncomputable def convergentEulerBoundConstant (k : ℕ) (ε : ℝ)
     (Ω : ∀ p : ℕ, Finset (ZMod p)) : ℝ :=
   Real.exp (∑' p : ℕ, convergentEulerLocalWeight ε Ω p)
@@ -197,7 +200,10 @@ theorem powerset_prod_eq_largeEulerPartitionSum (ε : ℝ) (Ω : ∀ p : ℕ, Fi
   unfold largeEulerPartitionSum
   simp +decide [add_comm (1 : ℝ), Finset.prod_add]
 
-/-- The `q`-independent bound constant for the large-divisor Euler product. -/
+/-- The `q`-independent bound constant for the large-divisor Euler product.
+
+**Deprecated.** See the deprecation note on `convergentEulerBoundConstant`.
+Use `euler_product_ratio_bound_large` from `MobiusSynthesis.lean` instead. -/
 noncomputable def largeEulerBoundConstant (k : ℕ) (ε : ℝ)
     (Ω : ∀ p : ℕ, Finset (ZMod p)) : ℝ :=
   Real.exp (∑' p : ℕ, largeEulerLocalWeight ε Ω p)
