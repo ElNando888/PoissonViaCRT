@@ -1212,50 +1212,6 @@ private lemma deviation_uniform_bound_k_eq_2 (ε : ℝ) (hε : 0 < ε)
 hardcoded. This is the same proof as the `k ≥ 3` case of
 `deviation_expression_uniform_bound`, but returns `∃ K` directly without wrapping in
 `∃ δ`. -/
-/-
-PROVIDED SOLUTION
-
-# Formalizing the Final Algebraic Assembly in `deviation_bound_k_ge_3`
-
-**Target File:** `PoissonViaCRT/MobiusSynthesis.lean`
-**Target Lemma:** `deviation_bound_k_ge_3` (specifically the final `calc` block `sorry` on line 1444)
-
-## Context
-The goal is to close the final `sorry` in `deviation_bound_k_ge_3`, which performs the algebraic bounding of the partition sums to match the uniformly bounded Euler constants.
-The inequality to prove is:
-```lean
-  (∑ T ∈ T_small, C_lp * ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε))) +
-  (∑ T ∈ T_large, (s * X.volume + C_lp) * ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)))
-  ≤ C_lp * convergentEulerBoundConstant k ε Ω + (X.volume + C_lp) * largeEulerBoundConstant k ε Ω
-```
-This requires applying the previously established partition sum bounds:
-`convergentEulerPartitionSum_le_bound` and `largeEulerPartitionSum_le_bound`.
-
-## Proof Strategy
-
-Please replace the `sorry` at the end of the `calc` block with a formal derivation. You can split it using `add_le_add`.
-
-### Step 1: Bound the `T_small` sum
-For the `T_small` sum, you can factor out `C_lp` and bound the sum over `T_small` by the sum over the entire powerset `q.primeFactors.powerset`.
-Use `powerset_prod_eq_convergentEulerPartitionSum` to rewrite the powerset sum into the product form `convergentEulerPartitionSum`, and then apply `convergentEulerPartitionSum_le_bound`.
-(Note: You will need to extract the `Summable` hypothesis for the weights, which might require `sorry` if it's not readily available in context, but try to use existing lemmas).
-
-### Step 2: Bound the `T_large` sum
-For the `T_large` sum, use the defining property of `T_large` (which implies `s < ∏_{p \in T} p`) to establish:
-`s * X.volume + C_lp ≤ (∏_{p \in T} (p : ℝ)) * X.volume + C_lp ≤ (X.volume + C_lp) * ∏_{p \in T} (p : ℝ)`.
-(You may use the fact that `1 ≤ ∏_{p \in T} p`).
-
-Distribute `∏_{p \in T} p` into the local weights:
-`∏_{p \in T} p * ∏_{p \in T} W_p = ∏_{p \in T} (p * W_p) = ∏_{p \in T} largeEulerLocalWeight ε Ω p`.
-
-Factor out `(X.volume + C_lp)` and bound the sum over `T_large` by the sum over `q.primeFactors.powerset`.
-Use `powerset_prod_eq_largeEulerPartitionSum` and then apply `largeEulerPartitionSum_le_bound`.
-
-### Note on Missing Hypotheses
-If the application of `convergentEulerPartitionSum_le_bound` requires hypotheses (like `Summable`) that are not present in the local context of `deviation_bound_k_ge_3`, you may introduce them via `have` and close them with `sorry` to isolate the missing dependency, but the primary goal is to successfully perform the algebraic bounding of the sums.
-
-Please provide the exact Lean code to replace the final `_ ≤ ... := by sorry` step.
--/
 private lemma deviation_bound_k_ge_3 (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk3 : 3 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
