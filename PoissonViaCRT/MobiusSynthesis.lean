@@ -1397,7 +1397,9 @@ private lemma deviation_bound_k_ge_3 (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk3 : 
     rw [Finset.disjoint_filter]
     intro T _ hle hgt; exact absurd hle (not_le.mpr hgt)
   -- We need (Ω p).card ≤ p for all p.
-  have hΩle : ∀ p, (Ω p).card ≤ p := by sorry
+  have hΩle : ∀ p, p.Prime → (Ω p).card ≤ p := fun p hp => by
+    haveI : Fact p.Prime := ⟨hp⟩
+    exact le_trans (Finset.card_le_univ (Ω p)) (by simp [ZMod.card])
   -- The product terms are definitionally convergentEulerLocalWeight
   have h_prod_eq : ∀ T : Finset ℕ,
       ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) =
@@ -1460,7 +1462,7 @@ private lemma deviation_bound_k_ge_3 (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk3 : 
         simp_rw [h_prod_eq]
         apply add_le_add
         · exact small_partition_bound hε Ω q.primeFactors T_small hTs_sub
-            C_lp _hC_lp_pos.le hΩle
+            C_lp _hC_lp_pos.le (fun p hp => hΩle p (Nat.prime_of_mem_primeFactors hp))
         · apply le_trans
           · apply Finset.sum_le_sum
             intro T hT
@@ -1473,11 +1475,12 @@ private lemma deviation_bound_k_ge_3 (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk3 : 
               (Nat.mem_primeFactors.mp (hT_sub hp)).1
             have h1_le := one_le_prod_primes T (Finset.nonempty_of_ne_empty hT_ne) hprimes
             have hw_nn : ∀ p ∈ T, 0 ≤ convergentEulerLocalWeight ε Ω p :=
-              fun p _ => convergentEulerLocalWeight_nonneg ε Ω p (hΩle p)
+              fun p hp => convergentEulerLocalWeight_nonneg ε Ω p (hΩle p (hprimes p hp))
             exact large_divisor_per_term_bound T (convergentEulerLocalWeight ε Ω)
               hw_nn s X.volume C_lp hX_vol_pos.le _hC_lp_pos.le hd_gt.le h1_le
           · exact large_partition_bound hε Ω q.primeFactors T_large hTl_sub
-              (X.volume + C_lp) (by linarith) hΩle
+              (X.volume + C_lp) (by linarith)
+                (fun p hp => hΩle p (Nat.prime_of_mem_primeFactors hp))
     -- Apply the GK ratio bounds.
     _ ≤ C_lp * (C₁ * s ^ η) + (X.volume + C_lp) * (C₂ * s ^ η) := by
         exact add_le_add

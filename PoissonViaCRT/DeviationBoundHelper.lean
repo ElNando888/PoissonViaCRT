@@ -37,15 +37,16 @@ theorem small_partition_bound {ε : ℝ} (hε : 0 < ε)
     (Q : Finset ℕ) (S_sub : Finset (Finset ℕ))
     (hS : S_sub ⊆ Q.powerset)
     (C : ℝ) (hC : 0 ≤ C)
-    (hΩle : ∀ p, (Ω p).card ≤ p) :
+    (hΩle : ∀ p ∈ Q, (Ω p).card ≤ p) :
     ∑ T ∈ S_sub, C * ∏ p ∈ T, convergentEulerLocalWeight ε Ω p ≤
       C * convergentEulerPartitionSum ε Ω Q := by
   rw [← Finset.mul_sum]
   gcongr
   calc ∑ T ∈ S_sub, ∏ p ∈ T, convergentEulerLocalWeight ε Ω p
       ≤ ∑ T ∈ Q.powerset, ∏ p ∈ T, convergentEulerLocalWeight ε Ω p :=
-        Finset.sum_le_sum_of_subset_of_nonneg hS fun _ _ _ =>
-          Finset.prod_nonneg fun p _ => convergentEulerLocalWeight_nonneg ε Ω p (hΩle p)
+        Finset.sum_le_sum_of_subset_of_nonneg hS fun T hT _ =>
+          Finset.prod_nonneg fun p hp =>
+            convergentEulerLocalWeight_nonneg ε Ω p (hΩle p (Finset.mem_powerset.mp hT hp))
     _ = convergentEulerPartitionSum ε Ω Q :=
         powerset_prod_eq_convergentEulerPartitionSum ε Ω Q
 
@@ -79,15 +80,16 @@ theorem large_partition_bound {ε : ℝ} (hε : 0 < ε)
     (Q : Finset ℕ) (S_sub : Finset (Finset ℕ))
     (hS : S_sub ⊆ Q.powerset)
     (C : ℝ) (hC : 0 ≤ C)
-    (hΩle : ∀ p, (Ω p).card ≤ p) :
+    (hΩle : ∀ p ∈ Q, (Ω p).card ≤ p) :
     ∑ T ∈ S_sub, C * ∏ p ∈ T, largeEulerLocalWeight ε Ω p ≤
       C * largeEulerPartitionSum ε Ω Q := by
   rw [← Finset.mul_sum]
   gcongr
   calc ∑ T ∈ S_sub, ∏ p ∈ T, largeEulerLocalWeight ε Ω p
       ≤ ∑ T ∈ Q.powerset, ∏ p ∈ T, largeEulerLocalWeight ε Ω p :=
-        Finset.sum_le_sum_of_subset_of_nonneg hS fun _ _ _ =>
-          Finset.prod_nonneg fun _ _ => largeEulerLocalWeight_nonneg ε Ω _ (hΩle _)
+        Finset.sum_le_sum_of_subset_of_nonneg hS fun T hT _ =>
+          Finset.prod_nonneg fun p hp =>
+            largeEulerLocalWeight_nonneg ε Ω p (hΩle p (Finset.mem_powerset.mp hT hp))
     _ = largeEulerPartitionSum ε Ω Q :=
         powerset_prod_eq_largeEulerPartitionSum ε Ω Q
 
