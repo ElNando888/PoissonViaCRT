@@ -1174,6 +1174,44 @@ private lemma inner_bound_large_divisor (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk3
         ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) := by
   sorry
 
+/-- **Large-divisor inner bound for `k = 3`**: When `k = 3` and `s < ∏_{p ∈ T} p`,
+the per-subset deviation bound uses `largeEulerLocalWeight` with a q-independent
+coefficient `X.volume + C_lp`. The proof uses a constant L∞ bound on residue class
+multiplicities when `d > s`, combined with the standard L₁ arithmetic bound and
+mean collapse. -/
+private lemma inner_bound_large_divisor_k3 (ε : ℝ) (hε : 0 < ε)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) 3)
+    (hsp : ∀ (p : ℕ), p.Prime →
+      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent 3 - ε))
+    (hε_lt : ε < lambdaExponent 3)
+    (X : Box 2)
+    (C_lp : ℝ) (hC_lp_pos : 0 < C_lp)
+    (hC_lp : ∀ (v : Fin 2 → ℝ), (∀ i, 0 ≤ v i ∧ v i ≤ 1) → ∀ (s : ℝ), 1 ≤ s →
+      |(((Fintype.piFinset fun _ : Fin 2 =>
+          Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+        (fun h => inScaledBox X s v h)).card : ℝ) - s ^ (2 : ℕ) * X.volume| ≤
+        C_lp * s ^ ((2 : ℤ) - 1))
+    (q : ℕ) [NeZero q] (hq_sq : Squarefree q)
+    (h0 : (crtSubset q Ω).card ≠ 0)
+    (_hfull : (crtSubset q Ω).card ≠ q)
+    (T : Finset ℕ) (hT_sub : T ⊆ q.primeFactors) (hT_ne : T ≠ ∅)
+    (hd_gt_s : (q : ℝ) / (crtSubset q Ω).card < ∏ p ∈ T, (p : ℝ)) :
+    let Ω_q := crtSubset q Ω
+    let s := (q : ℝ) / Ω_q.card
+    let S := ((Fintype.piFinset fun _ : Fin 2 =>
+        Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+      (fun h => inScaledBox X s (fun _ => 0) h))
+    let prod_diff := fun (h : Fin 2 → ℤ) =>
+      (∏ p ∈ T, (localCount Ω q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p -
+        localMean 3 Ω p)) *
+      ∏ p ∈ q.primeFactors \ T, localMean 3 Ω p
+    |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h| * s ≤
+      (X.volume + C_lp) *
+        ∏ p ∈ T, largeEulerLocalWeight ε Ω p := by
+  sorry
+
 /-! ### Per-divisor deviation: `k = 2` branch -/
 
 /- TODO(infrastructure): Requires Fourier ANOVA / $L_2$ Variance over finite
@@ -1357,17 +1395,42 @@ private lemma deviation_bound_k_ge_3 (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk3 : 
     have hT_ne := (Finset.mem_filter.mp hT).2
     exact inner_bound_small_divisor ε hε k (by omega) Ω hΩ hWD hsp X C_lp _hC_lp_pos _hC_lp
       q hq_sq h0 T hT_sub hT_ne hd_le
-  -- Large-divisor per-subset bound
+  -- We need (Ω p).card ≤ p for all p.
+  have hΩle : ∀ p, p.Prime → (Ω p).card ≤ p := fun p hp => by
+    haveI : Fact p.Prime := ⟨hp⟩
+    exact le_trans (Finset.card_le_univ (Ω p)) (by simp [ZMod.card])
+  -- Large-divisor per-subset bound (unified for k=3 and k≥4)
+  -- For k = 3: uses `inner_bound_large_divisor_k3` with `largeEulerLocalWeight`.
+  -- For k ≥ 4: uses `inner_bound_large_divisor` (sorry'd) + `large_divisor_per_term_bound`
+  --   to upgrade from `convergentEulerLocalWeight` to `largeEulerLocalWeight`.
   have h_large_bound : ∀ T ∈ q.primeFactors.powerset.filter (· ≠ ∅),
       s < ∏ p ∈ T, (p : ℝ) →
       |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T| * s ≤
-        (s * X.volume + C_lp) *
-          ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) := by
+        (X.volume + C_lp) *
+          ∏ p ∈ T, largeEulerLocalWeight ε Ω p := by
     intro T hT hd_gt
     have hT_sub : T ⊆ q.primeFactors := Finset.mem_powerset.mp (Finset.mem_filter.mp hT).1
     have hT_ne := (Finset.mem_filter.mp hT).2
-    exact inner_bound_large_divisor ε hε k hk3 Ω hΩ hWD hsp hε_lt X C_lp _hC_lp_pos _hC_lp
-      q hq_sq h0 hfull T hT_sub hT_ne hd_gt
+    obtain rfl | hk4 := eq_or_lt_of_le hk3
+    · -- k = 3: direct large-T bound via `inner_bound_large_divisor_k3`
+      exact inner_bound_large_divisor_k3 ε hε Ω hΩ hWD hsp hε_lt X C_lp _hC_lp_pos _hC_lp
+        q hq_sq h0 hfull T hT_sub hT_ne hd_gt
+    · -- k ≥ 4: via `inner_bound_large_divisor` + `large_divisor_per_term_bound`
+      have hprimes : ∀ p ∈ T, p.Prime := fun p hp =>
+        (Nat.mem_primeFactors.mp (hT_sub hp)).1
+      have h1_le := one_le_prod_primes T (Finset.nonempty_of_ne_empty hT_ne) hprimes
+      have hw_nn : ∀ p ∈ T, 0 ≤ convergentEulerLocalWeight ε Ω p :=
+        fun p hp => convergentEulerLocalWeight_nonneg ε Ω p (hΩle p (hprimes p hp))
+      calc |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T| * s
+          ≤ (s * X.volume + C_lp) *
+              ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) :=
+            inner_bound_large_divisor ε hε k (by omega) Ω hΩ hWD hsp hε_lt X C_lp
+              _hC_lp_pos _hC_lp q hq_sq h0 hfull T hT_sub hT_ne hd_gt
+        _ ≤ (X.volume + C_lp) *
+              ∏ p ∈ T, ((p : ℝ) * ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε))) :=
+            large_divisor_per_term_bound T (convergentEulerLocalWeight ε Ω)
+              hw_nn s X.volume C_lp hX_vol_pos.le _hC_lp_pos.le hd_gt.le h1_le
+        _ = (X.volume + C_lp) * ∏ p ∈ T, largeEulerLocalWeight ε Ω p := by rfl
   -- Rewrite raw_geom via expansion
   simp_rw [h_expand]
   -- Distribute 1/card and swap sums
@@ -1396,10 +1459,6 @@ private lemma deviation_bound_k_ge_3 (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk3 : 
     simp only [hT_small_def, hT_large_def]
     rw [Finset.disjoint_filter]
     intro T _ hle hgt; exact absurd hle (not_le.mpr hgt)
-  -- We need (Ω p).card ≤ p for all p.
-  have hΩle : ∀ p, p.Prime → (Ω p).card ≤ p := fun p hp => by
-    haveI : Fact p.Prime := ⟨hp⟩
-    exact le_trans (Finset.card_le_univ (Ω p)) (by simp [ZMod.card])
   -- The product terms are definitionally convergentEulerLocalWeight
   have h_prod_eq : ∀ T : Finset ℕ,
       ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) =
@@ -1451,36 +1510,20 @@ private lemma deviation_bound_k_ge_3 (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk3 : 
     _ ≤ (∑ T ∈ T_small,
           C_lp * ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε))) +
         (∑ T ∈ T_large,
-          (s * X.volume + C_lp) *
-            ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε))) := by
+          (X.volume + C_lp) * ∏ p ∈ T, largeEulerLocalWeight ε Ω p) := by
         exact add_le_add (le_refl _)
           (Finset.sum_le_sum fun T hT =>
             h_large_bound T (Finset.mem_of_mem_filter T hT) ((Finset.mem_filter.mp hT).2))
     -- Bound each sum by the finite Euler product, then apply the ratio bound.
     _ ≤ C_lp * convergentEulerPartitionSum ε Ω q.primeFactors +
         (X.volume + C_lp) * largeEulerPartitionSum ε Ω q.primeFactors := by
-        simp_rw [h_prod_eq]
         apply add_le_add
-        · exact small_partition_bound hε Ω q.primeFactors T_small hTs_sub
+        · simp_rw [h_prod_eq]
+          exact small_partition_bound hε Ω q.primeFactors T_small hTs_sub
             C_lp _hC_lp_pos.le (fun p hp => hΩle p (Nat.prime_of_mem_primeFactors hp))
-        · apply le_trans
-          · apply Finset.sum_le_sum
-            intro T hT
-            have hT_ne_mem := Finset.mem_of_mem_filter T hT
-            have hT_ne : T ≠ ∅ := (Finset.mem_filter.mp hT_ne_mem).2
-            have hT_sub : T ⊆ q.primeFactors :=
-              Finset.mem_powerset.mp (Finset.mem_filter.mp hT_ne_mem).1
-            have hd_gt : s < ∏ p ∈ T, (p : ℝ) := (Finset.mem_filter.mp hT).2
-            have hprimes : ∀ p ∈ T, p.Prime := fun p hp =>
-              (Nat.mem_primeFactors.mp (hT_sub hp)).1
-            have h1_le := one_le_prod_primes T (Finset.nonempty_of_ne_empty hT_ne) hprimes
-            have hw_nn : ∀ p ∈ T, 0 ≤ convergentEulerLocalWeight ε Ω p :=
-              fun p hp => convergentEulerLocalWeight_nonneg ε Ω p (hΩle p (hprimes p hp))
-            exact large_divisor_per_term_bound T (convergentEulerLocalWeight ε Ω)
-              hw_nn s X.volume C_lp hX_vol_pos.le _hC_lp_pos.le hd_gt.le h1_le
-          · exact large_partition_bound hε Ω q.primeFactors T_large hTl_sub
-              (X.volume + C_lp) (by linarith)
-                (fun p hp => hΩle p (Nat.prime_of_mem_primeFactors hp))
+        · exact large_partition_bound hε Ω q.primeFactors T_large hTl_sub
+            (X.volume + C_lp) (by linarith)
+              (fun p hp => hΩle p (Nat.prime_of_mem_primeFactors hp))
     -- Apply the GK ratio bounds.
     _ ≤ C_lp * (C₁ * s ^ η) + (X.volume + C_lp) * (C₂ * s ^ η) := by
         exact add_le_add
