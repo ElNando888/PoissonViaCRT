@@ -4,13 +4,15 @@ A formalization in Lean 4 of the paper **"Poisson statistics via the Chinese rem
 
 ## Overview
 
-This repository contains the formalization of the main results from the paper [arXiv:math/0412135v2](https://arxiv.org/abs/math/0412135). The project focuses on the $k$-level correlation of subsets of integers constructed via the Chinese Remainder Theorem (CRT) and proving they exhibit Poisson statistics under certain well-distribution hypotheses.
+This repository contains a formalization of the main results from the paper [arXiv:math/0412135v2](https://arxiv.org/abs/math/0412135). The project focuses on the $k$-level correlation of subsets of integers constructed via the Chinese Remainder Theorem (CRT) and proving they exhibit Poisson statistics under certain well-distribution hypotheses.
 
 ### Key Results Formalized
 - **Main Theorem 1.1 (Theorem 3.7):** Precise bound on the $k$-level correlation $R_k(X, \Omega_q)$.
 - **Lemma 3.5:** Average of the error term $\epsilon_k$ is zero.
 - **CRT Multiplicativity:** The counting function $N_k$ behaves multiplicatively over squarefree $q$.
 - **Möbius Synthesis:** The decomposition of the total deviation into local prime contributions.
+
+**Note:** This effort doesn't aspire to be *the* Lean formalization of the paper. It was born of the need to provide supporting evidence to my original work in [BeyondCramer](https://github.com/ElNando888/BeyondCramer). I will keep improving the implementation as far as I can, and hopefully, some of this work will prove useful when someone attempts to formalize the paper in a more comprehensive (and mathlib-compliant) way.
 
 ## Tools and Methodology
 
