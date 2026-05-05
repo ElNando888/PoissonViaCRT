@@ -18,6 +18,7 @@ This repository contains a formalization of the main results from the paper [arX
 
 This formalization was developed using a tandem approach between human mathematicians and AI agents:
 - **Gemini 3.1 Pro:** Utilized for the high-level blueprinting of the formalization strategy and complex prompt design.
+- **Claude Opus 4.6:** Utilized for code review and complex prompt design.
 - **Aristotle:** An AI coding assistant by [Harmonic](https://aristotle.harmonic.fun) that co-authored the Lean source code, assisting with tactic automation, proof synthesis, and infrastructure maintenance.
 
 ## Project Status
