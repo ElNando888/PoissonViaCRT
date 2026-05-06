@@ -501,12 +501,75 @@ theorem GammaStructure.gammaProd_perm_invariant
     · simp +decide [GammaStructure.permute]
     · simp +decide [Finset.mem_Iio]
 
+/-! ### Boundedness of gamma entries -/
+
+/-- Every entry `Γ.gamma i j` is bounded by `Γ.gammaProd`. When `i = j` the entry is zero;
+otherwise it divides `gammaRow (max i j)` which in turn divides `gammaProd`. -/
+lemma GammaStructure.gamma_le_gammaProd
+    (Γ : GammaStructure k) (i j : Fin k) :
+    Γ.gamma i j ≤ Γ.gammaProd := by
+  by_cases hij : i = j;
+  · simp +decide [ hij, Γ.diag ];
+  · -- Since $i \neq j$, we have $Γ.gamma i j \mid Γ.gammaRow (max i j)$ by definition of `gammaRow`.
+    have h_div : Γ.gamma i j ∣ Γ.gammaRow (max i j) := by
+      cases le_total i j <;> simp_all +decide [ GammaStructure.gammaRow ];
+      · exact Finset.dvd_lcm ( Finset.mem_Iio.mpr ( lt_of_le_of_ne ‹_› hij ) );
+      · exact Finset.dvd_lcm ( Finset.mem_Iio.mpr ( lt_of_le_of_ne ‹_› ( Ne.symm hij ) ) ) |> dvd_trans ( by simp +decide [ Γ.symm ] );
+    exact Nat.le_of_dvd ( Γ.gammaProd_pos ) ( dvd_trans h_div ( Finset.dvd_prod_of_mem _ ( Finset.mem_univ _ ) ) )
+
+/-! ### Finset of Gamma structures with fixed product -/
+
+/-- Two `GammaStructure`s are equal iff their `gamma` matrices agree. -/
+theorem GammaStructure.ext_iff {Γ₁ Γ₂ : GammaStructure k} :
+    Γ₁ = Γ₂ ↔ Γ₁.gamma = Γ₂.gamma := by
+  constructor
+  · rintro rfl; rfl
+  · intro h; cases Γ₁; cases Γ₂; simp_all
+
+instance : DecidableEq (GammaStructure k) := fun Γ₁ Γ₂ =>
+  if h : Γ₁.gamma = Γ₂.gamma then
+    .isTrue (GammaStructure.ext_iff.mpr h)
+  else
+    .isFalse (fun heq => h (GammaStructure.ext_iff.mp heq))
+
+/-- The finite set of all `GammaStructure k` with `gammaProd = γ`. Every entry of such
+a structure is bounded by `γ` (by `gamma_le_gammaProd`), so the carrier is a subset
+of the finite set of `k × k` matrices with entries in `Finset.range (γ + 1)`. -/
+noncomputable def finsetGammaStructures (γ : ℕ) : Finset (GammaStructure k) :=
+  let mats := (Fintype.piFinset fun _ : Fin k =>
+      Fintype.piFinset fun _ : Fin k =>
+        Finset.range (γ + 1)).filter fun mat =>
+    (∀ i, mat i i = 0) ∧
+    (∀ i j, mat i j = mat j i) ∧
+    (∀ i j, i ≠ j → 0 < mat i j) ∧
+    (∀ i j, i ≠ j → Squarefree (mat i j)) ∧
+    (∀ i j l, i ≠ j → j ≠ l → i ≠ l → Nat.gcd (mat i j) (mat j l) ∣ mat i l) ∧
+    (∏ j : Fin k, (Finset.Iio j).lcm fun i => mat i j) = γ
+  mats.attach.image fun ⟨mat, hmat⟩ =>
+    have hf := (Finset.mem_filter.mp hmat).2
+    { gamma := mat
+      diag := hf.1
+      symm := hf.2.1
+      pos := hf.2.2.1
+      sqfree := hf.2.2.2.1
+      compat := hf.2.2.2.2.1 }
+
+@[simp]
+theorem mem_finsetGammaStructures {γ : ℕ} {Γ : GammaStructure k} :
+    Γ ∈ finsetGammaStructures γ ↔ Γ.gammaProd = γ := by
+  constructor;
+  · unfold finsetGammaStructures;
+    simp +zetaDelta at *;
+    rintro x hx₁ hx₂ hx₃ hx₄ hx₅ hx₆ hx₇ rfl; exact hx₇;
+  · intro h;
+    simp +decide [ ← h, finsetGammaStructures ];
+    exact ⟨ Γ.gamma, ⟨ fun i j => Γ.gamma_le_gammaProd i j, Γ.diag, Γ.symm, Γ.pos, Γ.sqfree, Γ.compat, rfl ⟩, rfl ⟩
+
 /-! ### Bound on number of Gamma structures
 (Lemma 3.1) -/
 
 theorem countGammaStructures_le (γ : ℕ) (hγ : 0 < γ) :
-    Set.ncard
-      {Γ : GammaStructure k | Γ.gammaProd = γ} ≤
+    (finsetGammaStructures γ : Finset (GammaStructure k)).card ≤
       (k.choose 2) ^ γ.primeFactors.card := by
   sorry
 
