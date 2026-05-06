@@ -182,6 +182,8 @@ Given `k` indices `{0, …, k-1}`, a Gamma structure assigns to each unordered p
 structure GammaStructure (k : ℕ) where
   /-- The values `γᵢⱼ` for `i ≠ j`. We set `γᵢᵢ = 0` by convention. -/
   gamma : Fin k → Fin k → ℕ
+  /-- Diagonal is zero. -/
+  diag : ∀ i, gamma i i = 0
   /-- Symmetry: `γᵢⱼ = γⱼᵢ`. -/
   symm : ∀ i j, gamma i j = gamma j i
   /-- Positivity: `γᵢⱼ > 0` when `i ≠ j`. -/

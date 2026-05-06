@@ -118,6 +118,7 @@ def GammaStructure.permute (Γ : GammaStructure k)
     (fun h => hij (σ.injective h))
     (fun h => hjl (σ.injective h))
     (fun h => hil (σ.injective h))
+  diag i := Γ.diag (σ i)
 
 /-! ### Permutation invariance of `γ(Γ)` -/
 
@@ -503,94 +504,11 @@ theorem GammaStructure.gammaProd_perm_invariant
 /-! ### Bound on number of Gamma structures
 (Lemma 3.1) -/
 
--- See docs/proof_sketches.md for full proof sketch.
 theorem countGammaStructures_le (γ : ℕ) (hγ : 0 < γ) :
     Set.ncard
       {Γ : GammaStructure k | Γ.gammaProd = γ} ≤
       (k.choose 2) ^ γ.primeFactors.card := by
-  by_cases hk : 0 < k
-  · contrapose! hγ
-    rw [Set.ncard_def] at hγ
-    rw [Set.encard_eq_top_iff.mpr] at hγ
-    · aesop
-    · intro h
-      have h_infinite : Set.Infinite
-          {Γ : GammaStructure k |
-            Γ.gammaProd = γ} := by
-        have h_infinite : ∀ n : ℕ,
-            ∃ Γ : GammaStructure k,
-              Γ.gammaProd = γ ∧
-                n < Γ.gamma ⟨0, hk⟩ ⟨0, hk⟩ := by
-          intro n
-          obtain ⟨Γ, hΓ⟩ :
-              ∃ Γ : GammaStructure k,
-                Γ.gammaProd = γ := by
-            contrapose! hγ; aesop
-          use ⟨fun i j =>
-              if i = ⟨0, hk⟩ ∧ j = ⟨0, hk⟩
-              then n + 1 else Γ.gamma i j, by
-            intro i j
-            by_cases hi : i = ⟨0, hk⟩ <;>
-              by_cases hj : j = ⟨0, hk⟩ <;>
-              simp +decide [hi, hj, Γ.symm], by
-            field_simp
-            exact fun i j hij => by
-              rw [if_neg (by aesop)]
-              exact Γ.pos i j hij, by
-            intro i j hij; by_cases hi : i = ⟨ 0, hk ⟩ <;> by_cases hj : j = ⟨ 0, hk ⟩ <;> simp_all;
-            · exact Γ.sqfree _ _ (by aesop)
-            · exact Γ.sqfree _ _ (by aesop)
-            · exact Γ.sqfree i j hij, by
-            intro i j l hij hjl hil;
-            by_cases hi : i = ⟨ 0, hk ⟩ <;>
-              by_cases hj : j = ⟨ 0, hk ⟩ <;>
-                by_cases hl : l = ⟨ 0, hk ⟩ <;> simp +decide [*] ;
-            lia;
-            simp_all;
-            · exact Γ.compat _ _ _
-                (by aesop) (by aesop) (by aesop)
-            · exact Nat.gcd_dvd_left _ _
-            · exact Γ.compat i ⟨0, hk⟩ l
-                (by aesop) (by aesop) (by aesop)
-            · exact Γ.compat i j ⟨0, hk⟩
-                (by tauto) (by tauto) (by tauto)
-            · exact Γ.compat i j l hij hjl hil⟩
-          generalize_proofs at *
-          simp +decide [*, GammaStructure.gammaProd]
-          convert hΓ using 1
-          refine' Finset.prod_congr rfl
-            fun j _ => _
-          refine' Finset.lcm_congr _ _ <;> simp
-          aesop
-        intro H
-        exact absurd
-          (Set.Finite.bddAbove
-            (H.image fun Γ =>
-              Γ.gamma ⟨0, hk⟩ ⟨0, hk⟩))
-          (by
-            rintro ⟨M, hM⟩
-            obtain ⟨Γ, hΓ₁, hΓ₂⟩ := h_infinite M
-            exact not_le_of_gt hΓ₂
-              (hM <| Set.mem_image_of_mem _ hΓ₁))
-      exact h_infinite h
-  · rcases γ with (_ | _ | γ) <;>
-      simp_all +decide
-    · rw [Set.ncard_eq_one.mpr]
-      use ⟨fun _ _ => 1,
-        by aesop,
-        by bv_omega,
-        by aesop,
-        by aesop⟩
-      generalize_proofs at *
-      ext ⟨gamma, symm, pos, sqfree, compat⟩
-      simp [GammaStructure.gammaProd]
-      rcases k with (_ | _ | k) <;>
-        simp_all +decide [funext_iff]
-    · rw [Set.ncard_def]
-      rw [Set.encard_eq_zero.mpr]
-      · rfl
-      · ext Γ; simp [GammaStructure.gammaProd]
-        cases Γ; aesop
+  sorry
 
 /-! ### Helper lemmas for Proposition 3.2 -/
 
