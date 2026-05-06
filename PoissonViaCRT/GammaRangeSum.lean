@@ -15,6 +15,7 @@ Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
 import PoissonViaCRT.Combinatorics
+import Mathlib.Combinatorics.Enumerative.Stirling
 
 /-!
 # Gamma-Range Summation Bounds (§3.1 Integration)
@@ -60,6 +61,57 @@ lemma gammaRow_le_of_gammaProd_le (Γ : GammaStructure (k + 1)) (H : ℕ)
     (h : Γ.gammaProd ≤ H) (i : Fin k) :
     Γ.gammaRow i.succ ≤ H :=
   le_trans (gammaRow_le_gammaProd Γ i.succ) h
+
+/-
+C(n+1, 2) = C(n, 2) + n
+-/
+lemma Nat.choose_two_succ (n : ℕ) : (n + 1).choose 2 = n.choose 2 + n := by
+  simp +arith +decide [ Nat.choose ]
+
+/-
+For n ≥ 2, C(n, 2) ≥ 1
+-/
+lemma Nat.one_le_choose_two (n : ℕ) (hn : 2 ≤ n) : 1 ≤ n.choose 2 := by
+  exact Nat.choose_pos hn
+
+/-
+S(m + d, m) ≤ C(m + d, 2) ^ d for m ≥ 1, d ≥ 1.
+    This is the key bound, proved by induction on d (outer) and m (inner).
+    The proof uses the recurrence S(n+1, p+1) = (p+1) * S(n, p+1) + S(n, p).
+-/
+theorem stirlingSecond_le_choose_pow_aux :
+    ∀ d m : ℕ, 1 ≤ d → 1 ≤ m →
+    stirlingSecond (m + d) m ≤ ((m + d).choose 2) ^ d := by
+  -- We proceed by induction on $d$.
+  intro d m hd hm
+  induction' d with d ih generalizing m;
+  · contradiction;
+  · induction' hm with m hm ih <;> simp_all +decide [ Nat.pow_succ' ];
+    · refine' Nat.recOn d _ _ <;> simp_all +decide [ Nat.stirlingSecond, Nat.choose ];
+      grind +suggestions;
+    · by_cases hd : 1 ≤ d <;> simp_all +decide [ Nat.stirlingSecond_succ_succ, Nat.choose_two_succ ];
+      · have h_combined : (m + 2 + d).choose 2 ^ (d + 1) ≥ (m + 1) * (m + 1 + d).choose 2 ^ d + (m + 1 + d).choose 2 ^ (d + 1) := by
+          have h_combined : (m + 2 + d).choose 2 ^ (d + 1) ≥ ((m + 1 + d).choose 2 + (m + 1)) * (m + 1 + d).choose 2 ^ d := by
+            rw [ show m + 2 + d = m + 1 + d + 1 by ring, Nat.choose_two_succ ];
+            rw [ pow_succ' ];
+            exact Nat.mul_le_mul ( by linarith ) ( Nat.pow_le_pow_left ( by linarith ) _ );
+          grind;
+        have h_combined : (m + 1) * (m + 1 + d).stirlingSecond (m + 1) + (m + 1 + d).stirlingSecond m ≤ (m + 1) * (m + 1 + d).choose 2 ^ d + (m + 1 + d).choose 2 ^ (d + 1) := by
+          apply Nat.add_le_add;
+          · exact Nat.mul_le_mul_left _ ( by simpa only [ add_comm, add_left_comm, add_assoc ] using ‹∀ m : ℕ, 1 ≤ m → ( m + d ).stirlingSecond m ≤ ( m + d ).choose 2 ^ d› ( m + 1 ) ( by linarith ) );
+          · grind;
+        convert h_combined.trans ‹_› using 1;
+        ring;
+      · simp_all +decide [ Nat.stirlingSecond_eq_zero_of_lt ];
+        simp_all +arith +decide [ Nat.stirlingSecond_self ]
+
+/-- For n ≥ 2 and 1 ≤ d ≤ n-1, S(n, n-d) ≤ C(n, 2)^d -/
+theorem stirlingSecond_le_choose_pow (n d : ℕ) (hn : 2 ≤ n) (hd1 : 1 ≤ d) (hd2 : d ≤ n - 1) :
+    stirlingSecond n (n - d) ≤ (n.choose 2) ^ d := by
+  have hdn : d ≤ n := by omega
+  have hm : 1 ≤ n - d := by omega
+  have := stirlingSecond_le_choose_pow_aux d (n - d) hd1 hm
+  rwa [Nat.sub_add_cancel hdn] at this
 
 /-! ### Per-Γ small gamma bound -/
 
