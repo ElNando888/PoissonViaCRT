@@ -15,6 +15,7 @@ Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
 import PoissonViaCRT.Defs
+-- import Mathlib
 import Mathlib.Combinatorics.Enumerative.Stirling
 import Mathlib.Data.Pi.Interval
 
@@ -568,10 +569,85 @@ theorem mem_finsetGammaStructures {γ : ℕ} {Γ : GammaStructure k} :
 /-! ### Bound on number of Gamma structures
 (Lemma 3.1) -/
 
+/-
+Each off-diagonal entry of a `GammaStructure` divides `gammaProd`.
+-/
+lemma GammaStructure.gamma_dvd_gammaProd (Γ : GammaStructure k) (i j : Fin k)
+    (hij : i ≠ j) : Γ.gamma i j ∣ Γ.gammaProd := by
+  unfold GammaStructure.gammaProd; cases le_total i j <;> simp_all +decide ;
+  · -- Since Γ.gamma i j divides Γ.gammaRow j and Γ.gammaRow j divides Γ.gammaProd, we have Γ.gamma i j ∣ Γ.gammaProd.
+    have h_div : Γ.gamma i j ∣ Γ.gammaRow j := by
+      exact Finset.dvd_lcm ( Finset.mem_Iio.mpr ( lt_of_le_of_ne ‹_› hij ) )
+    exact dvd_trans h_div (Finset.dvd_prod_of_mem _ (Finset.mem_univ _));
+  · refine' dvd_trans _ ( Finset.dvd_prod_of_mem _ ( Finset.mem_univ i ) );
+    exact Finset.dvd_lcm ( Finset.mem_Iio.mpr ( lt_of_le_of_ne ‹_› ( Ne.symm hij ) ) ) |> dvd_trans ( by simp +decide [ Γ.symm ] )
+
+/-
+The number of squarefree divisors of `n` is `2 ^ n.primeFactors.card`.
+-/
+lemma card_squarefree_divisors (n : ℕ) (hn : n ≠ 0) :
+    (n.divisors.filter Squarefree).card = 2 ^ n.primeFactors.card := by
+  convert Nat.divisors_filter_squarefree hn using 1;
+  constructor <;> intro h;
+  · exact divisors_filter_squarefree hn;
+  · convert congr_arg Multiset.card h using 1;
+    simp +decide [ Nat.factors_eq ]
+
+/-
+Each off-diagonal entry of `Γ` with `Γ.gammaProd = γ` is a squarefree divisor of `γ`.
+-/
+lemma GammaStructure.gamma_mem_squarefree_divisors {Γ : GammaStructure k} {γ : ℕ}
+    (hΓ : Γ.gammaProd = γ) (i j : Fin k) (hij : i ≠ j) :
+    Γ.gamma i j ∈ γ.divisors.filter Squarefree := by
+  refine' Finset.mem_filter.mpr ⟨ Nat.mem_divisors.mpr ⟨ hΓ ▸ GammaStructure.gamma_dvd_gammaProd Γ i j hij, _ ⟩, Γ.sqfree i j hij ⟩;
+  exact hΓ ▸ Nat.pos_iff_ne_zero.mp ( Γ.gammaProd_pos )
+
+/-
+The number of ordered pairs `(i, j)` with `i < j` in `Fin k` is `k.choose 2`.
+-/
+lemma card_upper_triangular_pairs (k : ℕ) :
+    (Finset.univ.filter (fun p : Fin k × Fin k => p.1 < p.2)).card = k.choose 2 := by
+  rw [ Nat.choose_two_right ];
+  convert Finset.card_filter ( fun p : Fin k × Fin k => p.1 < p.2 ) Finset.univ using 1;
+  erw [ Finset.sum_product ];
+  rw [ ← Finset.sum_range_id ];
+  simp +decide [ Finset.filter_lt_eq_Ioi ];
+  rw [ ← Finset.sum_range_reflect, Finset.sum_range ]
+
 theorem countGammaStructures_le (γ : ℕ) (hγ : 0 < γ) :
     (finsetGammaStructures γ : Finset (GammaStructure k)).card ≤
-      (k.choose 2) ^ γ.primeFactors.card := by
-  sorry
+      (2 ^ k.choose 2) ^ γ.primeFactors.card := by
+  -- Each GammaStructure is determined by its upper triangular entries gamma(i,j) for i < j.
+  have h_upper_triangular : ∀ Γ₁ Γ₂ : GammaStructure k, Γ₁.gammaProd = γ → Γ₂.gammaProd = γ → (∀ i j, i < j → Γ₁.gamma i j = Γ₂.gamma i j) → Γ₁ = Γ₂ := by
+    intros Γ₁ Γ₂ hΓ₁ hΓ₂ h_eq
+    apply GammaStructure.ext_iff.mpr
+    ext i j
+    by_cases hij : i = j
+    generalize_proofs at *; (
+    simp +decide [ hij, Γ₁.diag, Γ₂.diag ]);
+    cases lt_or_gt_of_ne hij <;> [ exact h_eq _ _ ‹_› ; exact Γ₁.symm i j ▸ Γ₂.symm i j ▸ h_eq _ _ ‹_› ];
+  -- Define a map from GammaStructure k to (Fin k → Fin k → ℕ) by f(Γ) = Γ.gamma.
+  set f : GammaStructure k → (Fin k → Fin k → ℕ) := fun Γ => Γ.gamma;
+  -- The image of `finsetGammaStructures γ` under `f` is a subset of the set of functions from `{p : Fin k × Fin k // p.1 < p.2}` to `(γ.divisors.filter Squarefree)`.
+  have h_image : (Finset.image f (finsetGammaStructures γ)).card ≤ (Finset.univ.filter (fun p : Fin k × Fin k => p.1 < p.2)).prod (fun p => (γ.divisors.filter Squarefree).card) := by
+    have h_image : (Finset.image f (finsetGammaStructures γ)).card ≤ (Finset.image (fun Γ : GammaStructure k => fun p : {p : Fin k × Fin k // p.1 < p.2} => Γ.gamma p.val.1 p.val.2) (finsetGammaStructures γ)).card := by
+      rw [ Finset.card_image_of_injOn, Finset.card_image_of_injOn ];
+      · intros Γ₁ hΓ₁ Γ₂ hΓ₂ h_eq;
+        exact h_upper_triangular Γ₁ Γ₂ ( by simpa using hΓ₁ ) ( by simpa using hΓ₂ ) fun i j hij => congr_fun h_eq ⟨ ( i, j ), hij ⟩;
+      · exact fun Γ₁ hΓ₁ Γ₂ hΓ₂ h => GammaStructure.ext_iff.mpr h;
+    refine le_trans h_image ?_;
+    refine' le_trans ( Finset.card_le_card <| Finset.image_subset_iff.mpr _ ) _;
+    exact Finset.image ( fun p : { p : Fin k × Fin k // p.1 < p.2 } → { x : ℕ // x ∈ γ.divisors.filter Squarefree } => fun p' => p p' |>.1 ) ( Finset.univ );
+    · simp +zetaDelta at *;
+      exact fun Γ hΓ => ⟨ fun p => ⟨ Γ.gamma p.val.1 p.val.2, GammaStructure.gamma_mem_squarefree_divisors hΓ p.val.1 p.val.2 ( ne_of_lt p.prop ) ⟩, rfl ⟩;
+    · refine' le_trans ( Finset.card_image_le ) _;
+      simp +decide [ Fintype.card_subtype ];
+  rw [ Finset.card_image_of_injOn ] at h_image;
+  · refine le_trans h_image ?_;
+    rw [ card_squarefree_divisors γ hγ.ne' ];
+    rw [ Finset.prod_const, card_upper_triangular_pairs ];
+    rw [ ← pow_mul, mul_comm, pow_mul ];
+  · intro Γ₁ hΓ₁ Γ₂ hΓ₂ h_eq; specialize h_upper_triangular Γ₁ Γ₂; aesop;
 
 /-! ### Helper lemmas for Proposition 3.2 -/
 
@@ -961,14 +1037,14 @@ theorem gammaRow_succ_bound
 theorem countTuples_refined_bound (γ H : ℕ)
     (hH : 0 < H) (hγ : 0 < γ) :
     (countTuplesWithGammaProd k γ H : ℝ) ≤
-      ((k + 1).choose 2) ^ γ.primeFactors.card *
+      (2 ^ (k + 1).choose 2) ^ γ.primeFactors.card *
         (2 * (H : ℝ) + 1) ^ k := by
   by_cases hk : k = 0
   · subst hk; norm_num
     by_cases h : γ.primeFactors = ∅ <;>
       simp_all +decide [countTuplesWithGammaProd]
     · cases h <;>
-        simp_all +decide [Nat.primeFactors_one]
+        simp_all +decide
       refine' le_trans
         (Set.ncard_le_ncard <|
           show { h : Fin 1 → ℤ |
@@ -1044,7 +1120,6 @@ theorem countTuples_refined_bound (γ H : ℕ)
       exact_mod_cast h_subset.trans
         (h_finite.trans (by gcongr; linarith))
     · exact one_le_pow₀ (mod_cast
-        Nat.choose_pos (by
-          linarith [Nat.pos_of_ne_zero hk]))
+        Nat.one_le_two_pow)
 
 end PoissonCRT

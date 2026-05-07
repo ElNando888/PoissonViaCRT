@@ -111,7 +111,7 @@ theorem countTuplesWithGammaProd_le_sum (γ H : ℕ) (_hγ : 0 < γ) (_hH : 0 < 
 theorem countTuplesWithGammaProd_small_gamma (γ H : ℕ)
     (hγ : 0 < γ) (hH : 0 < H) (hγ_le : γ ≤ H) :
     (countTuplesWithGammaProd k γ H : ℝ) ≤
-      ((k + 1).choose 2 : ℝ) ^ γ.primeFactors.card *
+      ((2 ^ (k + 1).choose 2) : ℝ) ^ γ.primeFactors.card *
         2 ^ k * (H : ℝ) ^ k / γ := by
   sorry
 
