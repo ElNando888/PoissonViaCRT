@@ -108,11 +108,25 @@ theorem countTuplesWithGammaProd_le_sum (γ H : ℕ) (_hγ : 0 < γ) (_hH : 0 < 
 
 /-! ### Small-γ bound on M_γ(H) -/
 
+/-- **Small-γ bound**: `M_γ(H) ≤ (2^C(k+1,2))^{ω(γ)} · 2^k · H^k / γ` when `γ ≤ H`.
+Combines `countTuplesWithGammaProd_le_sum` (decomposition over Gamma structures),
+`countTuplesWithGamma_bound_of_gammaProd_le` (per-structure bound), and
+`countGammaStructures_le` (structure-counting bound). -/
 theorem countTuplesWithGammaProd_small_gamma (γ H : ℕ)
     (hγ : 0 < γ) (hH : 0 < H) (hγ_le : γ ≤ H) :
     (countTuplesWithGammaProd k γ H : ℝ) ≤
       ((2 ^ (k + 1).choose 2) : ℝ) ^ γ.primeFactors.card *
         2 ^ k * (H : ℝ) ^ k / γ := by
-  sorry
+  refine le_trans (countTuplesWithGammaProd_le_sum γ H hγ hH ?_ ?_ ?_) ?_
+  exact finsetGammaStructures γ
+  · exact fun Γ hΓ => by simpa using hΓ
+  · exact fun h hh₁ hh₂ hh₃ hh₄ =>
+      ⟨hh₄.choose, mem_finsetGammaStructures.mpr hh₄.choose_spec.1, hh₄.choose_spec.2⟩
+  · refine le_trans (Finset.sum_le_sum fun Γ hΓ =>
+      show (countTuplesWithGamma Γ H : ℝ) ≤ 2 ^ k * H ^ k / γ from ?_) ?_
+    · convert countTuplesWithGamma_bound_of_gammaProd_le Γ γ H _ _ using 1 <;> aesop
+    · norm_num [mul_assoc, mul_div_assoc]
+      gcongr
+      exact_mod_cast countGammaStructures_le γ hγ
 
 end PoissonCRT

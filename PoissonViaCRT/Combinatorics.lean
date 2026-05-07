@@ -15,7 +15,6 @@ Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
 import PoissonViaCRT.Defs
--- import Mathlib
 import Mathlib.Combinatorics.Enumerative.Stirling
 import Mathlib.Data.Pi.Interval
 
