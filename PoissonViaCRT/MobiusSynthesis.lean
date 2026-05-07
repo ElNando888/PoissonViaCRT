@@ -1185,10 +1185,93 @@ lemma prod_diff_ne_zero_implies_dvd {k : ℕ} (hk : 1 ≤ k) (q : ℕ) [NeZero q
     (localCount_sub_localMean_eq_zero_of_not_dvd hk q p (hT hp) Ω h h_dist h_no_col
       (hΩ_full p hp)))
 
-/-- **Large-divisor inner bound**: When `s < ∏_{p ∈ T} p`, the pointwise bound
-includes the `s · vol(X)` lattice-point term, giving a coefficient of
-`s * X.volume + C_lp` instead of just `C_lp`. -/
-private lemma inner_bound_large_divisor (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk3 : 3 ≤ k)
+/-
+**Large-divisor aggregate bound**: For the large-divisor regime, we sum over
+all subsets `T` where `d = ∏_{p ∈ T} p > s`. By switching the order of summation
+and grouping tuples by their `GammaStructure`, the aggregate contribution of all
+large-divisor subsets is bounded by `K · s^{-1/2}` for a `q`-independent constant `K`.
+
+This replaces the per-subset `inner_bound_large_divisor`, which was false because
+the per-subset sum is bounded by `s^{k-1} d^{k-1}`, much larger than the target
+Euler weight `O(s · d)`. The correct approach, following Granville–Kurlberg
+(Eq 114–115), sums over **all** large divisors together and uses the Gamma
+structure machinery from `GammaRangeSum.lean`. -/
+
+/-- **Pointwise deviation bound (Step 1).**
+The absolute value of the product of deviations over `T` times the mean product over
+the complement is bounded by `d^k · (q/d)`, where `d = ∏ p ∈ T, p`.
+
+Proof: use `abs_mul` to split, then bound each factor:
+- `|∏ p ∈ T, (localCount - localMean)| ≤ ∏ p ∈ T, p^k` via `abs_localCount_sub_localMean_le`
+- `|∏ p ∈ Q\T, localMean| ≤ ∏ p ∈ Q\T, p` via `localMean_le` and `localMean_nonneg` -/
+lemma abs_prod_diff_le {k : ℕ} (hk : 1 ≤ k) (q : ℕ) [NeZero q] (hq_sq : Squarefree q)
+    (T : Finset ℕ) (hT : T ⊆ q.primeFactors)
+    (Ω : ∀ p : ℕ, Finset (ZMod p)) (h : Fin k → ZMod q) :
+    |(∏ p ∈ T, (localCount Ω q h p - localMean k Ω p)) *
+      ∏ p ∈ q.primeFactors \ T, localMean k Ω p| ≤
+    (∏ p ∈ T, (p : ℝ) ^ k) * ∏ p ∈ q.primeFactors \ T, (p : ℝ) := by
+  rw [ abs_mul, Finset.abs_prod ];
+  refine' mul_le_mul _ _ _ _;
+  · exact Finset.prod_le_prod ( fun _ _ => abs_nonneg _ ) fun p hp => abs_localCount_sub_localMean_le hk q p ( hT hp ) Ω h;
+  · rw [ Finset.abs_prod ];
+    gcongr;
+    rw [ abs_of_nonneg ( localMean_nonneg _ _ _ ) ];
+    exact localMean_le k hk Ω _ ( Nat.prime_of_mem_primeFactors ( Finset.mem_sdiff.mp ‹_› |>.1 ) );
+  · positivity;
+  · exact Finset.prod_nonneg fun _ _ => pow_nonneg ( Nat.cast_nonneg _ ) _
+
+-- Step 2: Gamma Divisibility Extraction
+-- Already proved as `prod_diff_ne_zero_implies_dvd` above.
+
+/-- **Large-divisor aggregate bound via Gamma structures (Step 3).**
+The aggregate sum over all large-divisor subsets `T` and tuples `h` is bounded by
+switching the order of summation, grouping tuples by their induced `γ`-product
+(via `GammaStructure.ofTuple`), and applying the `M_γ(H)` bound from
+`GammaRangeSum.lean`. The summation swap and final convergence argument are
+captured in this lemma.
+
+**Details:**
+For `k ≥ 3`, the aggregate contribution of all large-divisor subsets `T` (those with
+`∏ p ∈ T, p > s`) is bounded by a `q`-independent constant times `s^{-1/2}`.
+
+The proof outline (following Granville–Kurlberg §3.1, Eq 114–115):
+1. Apply the triangle inequality to move the absolute value inside.
+2. For each `(T, h)` with nonzero deviation product, `prod_diff_ne_zero_implies_dvd`
+   guarantees that `d = ∏ p ∈ T, p` divides the gamma product `γ(h)`.
+3. Switch the summation order: group tuples by `γ(h)` and use
+   `countTuplesWithGammaProd_small_gamma` to bound `M_γ(H)`.
+4. The resulting series over `γ` with `γ > s` converges by comparison with
+   `∑ γ^{-(k-2)}`, giving the `s^{-(k-3+ε)}` tail bound (which is `≤ s^{-1/2}`
+   for `k ≥ 3`). -/
+private lemma large_divisor_aggregate_gamma_bound
+    (k : ℕ) (hk3 : 3 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (X : Box (k - 1))
+    (C_lp : ℝ) (hC_lp_pos : 0 < C_lp)
+    (hC_lp : ∀ (v : Fin (k - 1) → ℝ), (∀ i, 0 ≤ v i ∧ v i ≤ 1) → ∀ (s : ℝ), 1 ≤ s →
+      |(((Fintype.piFinset fun _ : Fin (k - 1) =>
+          Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+        (fun h => inScaledBox X s v h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
+        C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1)) :
+    ∃ K : ℝ, 0 < K ∧ ∀ (q : ℕ) [NeZero q], Squarefree q →
+      let Ω_q := crtSubset q Ω
+      let s := (q : ℝ) / Ω_q.card
+      let S := ((Fintype.piFinset fun _ : Fin (k - 1) =>
+          Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+        (fun h => inScaledBox X s (fun _ => 0) h))
+      let T_large := q.primeFactors.powerset.filter
+        (fun (T : Finset ℕ) => T ≠ ∅ ∧ s < ∏ p ∈ T, (p : ℝ))
+      (∑ T ∈ T_large, ∑ h ∈ S,
+        (1 / (Ω_q.card : ℝ)) *
+        |(∏ p ∈ T, (localCount Ω q
+          (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p -
+          localMean k Ω p)) *
+        ∏ p ∈ q.primeFactors \ T, localMean k Ω p|) * s ≤
+      K * s ^ (-(1 / 2 : ℝ)) := by
+  sorry
+
+private lemma large_divisors_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk3 : 3 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
     (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
@@ -1196,30 +1279,41 @@ private lemma inner_bound_large_divisor (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk3
       (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
     (hε_lt : ε < lambdaExponent k)
     (X : Box (k - 1))
-    (C_lp : ℝ) (hC_lp_pos : 0 < C_lp)
-    (hC_lp : ∀ (v : Fin (k - 1) → ℝ), (∀ i, 0 ≤ v i ∧ v i ≤ 1) → ∀ (s : ℝ), 1 ≤ s →
+    (C_lp : ℝ) (_hC_lp_pos : 0 < C_lp)
+    (_hC_lp : ∀ (v : Fin (k - 1) → ℝ), (∀ i, 0 ≤ v i ∧ v i ≤ 1) → ∀ (s : ℝ), 1 ≤ s →
       |(((Fintype.piFinset fun _ : Fin (k - 1) =>
           Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
         (fun h => inScaledBox X s v h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
-        C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1))
-    (q : ℕ) [NeZero q] (hq_sq : Squarefree q)
-    (h0 : (crtSubset q Ω).card ≠ 0)
-    (_hfull : (crtSubset q Ω).card ≠ q)
-    (T : Finset ℕ) (hT_sub : T ⊆ q.primeFactors) (hT_ne : T ≠ ∅)
-    (hd_gt_s : (q : ℝ) / (crtSubset q Ω).card < ∏ p ∈ T, (p : ℝ)) :
-    let Ω_q := crtSubset q Ω
-    let s := (q : ℝ) / Ω_q.card
-    let S := ((Fintype.piFinset fun _ : Fin (k - 1) =>
-        Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
-      (fun h => inScaledBox X s (fun _ => 0) h))
-    let prod_diff := fun (h : Fin (k - 1) → ℤ) =>
-      (∏ p ∈ T, (localCount Ω q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p -
-        localMean k Ω p)) *
-      ∏ p ∈ q.primeFactors \ T, localMean k Ω p
-    |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h| * s ≤
-      (s * X.volume + C_lp) *
-        ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) := by
-  sorry
+        C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1)) :
+    ∃ K : ℝ, 0 < K ∧ ∀ (q : ℕ) [NeZero q], Squarefree q →
+      let Ω_q := crtSubset q Ω
+      let s := (q : ℝ) / Ω_q.card
+      let S := ((Fintype.piFinset fun _ : Fin (k - 1) =>
+          Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+        (fun h => inScaledBox X s (fun _ => 0) h))
+      let T_large := q.primeFactors.powerset.filter
+        (fun (T : Finset ℕ) => T ≠ ∅ ∧ s < ∏ p ∈ T, (p : ℝ))
+      |∑ T ∈ T_large, ∑ h ∈ S,
+        (1 / (Ω_q.card : ℝ)) *
+        ((∏ p ∈ T, (localCount Ω q
+          (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p -
+          localMean k Ω p)) *
+        ∏ p ∈ q.primeFactors \ T, localMean k Ω p)| * s ≤
+      K * s ^ (-(1 / 2 : ℝ)) := by
+  -- Obtain the q-independent constant from the gamma-based aggregate bound.
+  obtain ⟨K_agg, hK_agg_pos, hK_agg⟩ :=
+    large_divisor_aggregate_gamma_bound k hk3 Ω hΩ X C_lp _hC_lp_pos _hC_lp
+  refine ⟨K_agg, hK_agg_pos, fun q hq_sq => ?_⟩
+  simp only
+  intro hq_sq_val
+  -- The triangle inequality pushes |·| inside the double sum (replacing the signed
+  -- product by its absolute value).  The aggregate gamma bound then finishes.
+  refine le_trans (mul_le_mul_of_nonneg_right ?_ (by positivity)) (hK_agg q hq_sq_val)
+  refine (Finset.abs_sum_le_sum_abs _ _).trans ?_
+  apply Finset.sum_le_sum; intro T _
+  refine (Finset.abs_sum_le_sum_abs _ _).trans ?_
+  apply Finset.sum_le_sum; intro h _
+  rw [abs_mul, abs_of_nonneg (by positivity : (0 : ℝ) ≤ 1 / ↑(crtSubset q Ω).card)]
 
 /-! ### Per-divisor deviation: `k = 2` branch -/
 
@@ -1334,18 +1428,15 @@ private lemma deviation_bound_k_ge_3 (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk3 : 
   -- Choose η = 1/2, giving δ = 1 - η = 1/2 > 0.
   set η : ℝ := 1 / 2 with hη_def
   have hη_pos : (0 : ℝ) < η := by norm_num
-  -- Obtain the GK ratio bounds for both weight families.
+  -- Obtain the GK ratio bound for convergent weights (small divisors).
   obtain ⟨C₁, hC₁_pos, hC₁⟩ :=
     euler_product_ratio_bound_convergent η hη_pos ε hε k hk3 Ω hΩ hWD hsp hε_lt
-  obtain ⟨C₂, hC₂_pos, hC₂⟩ :=
-    euler_product_ratio_bound_large η hη_pos ε hε k hk3 Ω hΩ hWD hsp hε_lt
+  -- Obtain the large-divisor aggregate bound.
+  obtain ⟨K_large, hK_large_pos, hK_large⟩ :=
+    large_divisors_bound ε hε k hk3 Ω hΩ hWD hsp hε_lt X C_lp _hC_lp_pos _hC_lp
   -- The overall bound constant (q-independent).
-  set K_raw := C_lp * C₁ + (X.volume + C_lp) * C₂ with hK_raw_def
-  have hX_vol_pos : 0 < X.volume := Finset.prod_pos fun i _ => X.sides_pos i
-  have hK_raw_pos : 0 < K_raw := by
-    apply add_pos
-    · exact mul_pos _hC_lp_pos hC₁_pos
-    · exact mul_pos (by linarith) hC₂_pos
+  set K_raw := C_lp * C₁ + K_large with hK_raw_def
+  have hK_raw_pos : 0 < K_raw := by linarith [mul_pos _hC_lp_pos hC₁_pos]
   refine ⟨K_raw + 1, by linarith, ?_⟩
   intro q hq_ne hq_sq
   simp only
@@ -1357,7 +1448,6 @@ private lemma deviation_bound_k_ge_3 (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk3 : 
   · -- When card = q, the deviation is zero.
     have hdev := deviation_zero_of_card_eq_q (by omega : 2 ≤ k) q Ω X hfull
     simp only at hdev ⊢
-    -- The deviation |D| * s = 0, and s = q/q = 1 > 0, so |D| = 0.
     have hs1 : (q : ℝ) / ((crtSubset q Ω).card : ℝ) = 1 := by
       rw [hfull]; exact div_self (Nat.cast_ne_zero.mpr (NeZero.ne q))
     simp only [hs1, Real.one_rpow, mul_one] at hdev ⊢
@@ -1394,6 +1484,12 @@ private lemma deviation_bound_k_ge_3 (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk3 : 
   simp_rw [h_to_raw]
   have hs_pos : 0 < s :=
     div_pos (Nat.cast_pos.mpr (NeZero.pos q)) (Nat.cast_pos.mpr (Nat.pos_of_ne_zero h0))
+  -- s ≥ 1 since card ≤ q (crtSubset is a subset of ZMod q)
+  have hs_ge_one : 1 ≤ s := by
+    rw [le_div_iff₀ (Nat.cast_pos.mpr (Nat.pos_of_ne_zero h0))]
+    simp only [one_mul]
+    exact Nat.cast_le.mpr
+      (le_trans (Finset.card_filter_le _ _) (by simp [Finset.card_univ, ZMod.card]))
   -- Small-divisor per-subset bound
   have h_small_bound : ∀ T ∈ q.primeFactors.powerset.filter (· ≠ ∅),
       (∏ p ∈ T, (p : ℝ)) ≤ s →
@@ -1404,17 +1500,6 @@ private lemma deviation_bound_k_ge_3 (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk3 : 
     have hT_ne := (Finset.mem_filter.mp hT).2
     exact inner_bound_small_divisor ε hε k (by omega) Ω hΩ hWD hsp X C_lp _hC_lp_pos _hC_lp
       q hq_sq h0 T hT_sub hT_ne hd_le
-  -- Large-divisor per-subset bound
-  have h_large_bound : ∀ T ∈ q.primeFactors.powerset.filter (· ≠ ∅),
-      s < ∏ p ∈ T, (p : ℝ) →
-      |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T| * s ≤
-        (s * X.volume + C_lp) *
-          ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) := by
-    intro T hT hd_gt
-    have hT_sub : T ⊆ q.primeFactors := Finset.mem_powerset.mp (Finset.mem_filter.mp hT).1
-    have hT_ne := (Finset.mem_filter.mp hT).2
-    exact inner_bound_large_divisor ε hε k hk3 Ω hΩ hWD hsp hε_lt X C_lp _hC_lp_pos _hC_lp
-      q hq_sq h0 hfull T hT_sub hT_ne hd_gt
   -- Rewrite raw_geom via expansion
   simp_rw [h_expand]
   -- Distribute 1/card and swap sums
@@ -1455,14 +1540,18 @@ private lemma deviation_bound_k_ge_3 (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk3 : 
   -- T_small ⊆ q.primeFactors.powerset
   have hTs_sub : T_small ⊆ q.primeFactors.powerset :=
     (Finset.filter_subset _ _).trans (Finset.filter_subset _ _)
-  -- T_large ⊆ q.primeFactors.powerset
-  have hTl_sub : T_large ⊆ q.primeFactors.powerset :=
-    (Finset.filter_subset _ _).trans (Finset.filter_subset _ _)
-  -- Obtain the GK ratio bounds instantiated at this q.
+  -- Obtain the GK ratio bound instantiated at this q.
   have hC₁_q := hC₁ q hq_sq
-  have hC₂_q := hC₂ q hq_sq
-  -- Combine: |D| * s ≤ (finite Euler products) ≤ K_raw * s^η,
-  -- so |D| ≤ K_raw * s^{η - 1} = K_raw * s^{-(1-η)}.
+  -- Obtain the large-divisor aggregate bound instantiated at this q.
+  -- T_large = q.primeFactors.powerset.filter (fun T => T ≠ ∅ ∧ s < ∏ p ∈ T, (p : ℝ))
+  have hT_large_eq : T_large =
+      q.primeFactors.powerset.filter
+        (fun (T : Finset ℕ) => T ≠ ∅ ∧ s < ∏ p ∈ T, (p : ℝ)) := by
+    simp only [hT_large_def, hT_ne_def]
+    rw [Finset.filter_filter]
+  have hK_large_q := hK_large q hq_sq
+  simp only at hK_large_q
+  -- Combine: |D| * s ≤ K_raw * s^η.
   -- We bound |D| * s first, then divide by s.
   suffices h_Ds : |∑ T ∈ T_ne, ∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T| * s ≤
       K_raw * s ^ η by
@@ -1476,63 +1565,52 @@ private lemma deviation_bound_k_ge_3 (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk3 : 
       _ ≤ (K_raw + 1) * s ^ (-(1 / 2 : ℝ)) := by
           exact mul_le_mul_of_nonneg_right (by linarith)
             (Real.rpow_nonneg hs_nonneg _)
-  -- Now prove |D| * s ≤ K_raw * s^η via triangle inequality + Euler product bounds.
+  -- Now prove |D| * s ≤ K_raw * s^η.
+  -- Split the sum into T_small and T_large, then use triangle inequality.
   calc |∑ T ∈ T_ne,
           ∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T| * s
-      ≤ (∑ T ∈ T_ne,
-          |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T|) * s :=
-        mul_le_mul_of_nonneg_right (Finset.abs_sum_le_sum_abs _ _) hs_nonneg
-    _ = ∑ T ∈ T_ne,
-          |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T| * s := by
-        rw [Finset.sum_mul]
-    _ = (∑ T ∈ T_small, |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T| * s) +
-        (∑ T ∈ T_large, |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T| * s) := by
+      = |∑ T ∈ T_small, ∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T +
+          ∑ T ∈ T_large, ∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T| * s := by
         rw [h_union, Finset.sum_union h_disj]
-    _ ≤ (∑ T ∈ T_small,
-          C_lp * ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε))) +
-        (∑ T ∈ T_large, |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T| * s) := by
-        exact add_le_add
-          (Finset.sum_le_sum fun T hT =>
-            h_small_bound T (Finset.mem_of_mem_filter T hT) ((Finset.mem_filter.mp hT).2))
-          (le_refl _)
-    _ ≤ (∑ T ∈ T_small,
-          C_lp * ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε))) +
-        (∑ T ∈ T_large,
-          (s * X.volume + C_lp) *
-            ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε))) := by
-        exact add_le_add (le_refl _)
-          (Finset.sum_le_sum fun T hT =>
-            h_large_bound T (Finset.mem_of_mem_filter T hT) ((Finset.mem_filter.mp hT).2))
-    -- Bound each sum by the finite Euler product, then apply the ratio bound.
-    _ ≤ C_lp * convergentEulerPartitionSum ε Ω q.primeFactors +
-        (X.volume + C_lp) * largeEulerPartitionSum ε Ω q.primeFactors := by
-        simp_rw [h_prod_eq]
+    _ ≤ (|∑ T ∈ T_small, ∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T| +
+          |∑ T ∈ T_large, ∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T|) * s :=
+        mul_le_mul_of_nonneg_right (abs_add_le _ _) hs_nonneg
+    _ = |∑ T ∈ T_small, ∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T| * s +
+        |∑ T ∈ T_large, ∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T| * s := by
+        ring
+    -- Bound the small-divisor and large-divisor parts separately.
+    _ ≤ C_lp * C₁ * s ^ η + K_large * s ^ (-(1 / 2 : ℝ)) := by
         apply add_le_add
-        · exact small_partition_bound hε Ω q.primeFactors T_small hTs_sub
-            C_lp _hC_lp_pos.le (fun p hp => hΩle p (Nat.prime_of_mem_primeFactors hp))
-        · apply le_trans
-          · apply Finset.sum_le_sum
-            intro T hT
-            have hT_ne_mem := Finset.mem_of_mem_filter T hT
-            have hT_ne : T ≠ ∅ := (Finset.mem_filter.mp hT_ne_mem).2
-            have hT_sub : T ⊆ q.primeFactors :=
-              Finset.mem_powerset.mp (Finset.mem_filter.mp hT_ne_mem).1
-            have hd_gt : s < ∏ p ∈ T, (p : ℝ) := (Finset.mem_filter.mp hT).2
-            have hprimes : ∀ p ∈ T, p.Prime := fun p hp =>
-              (Nat.mem_primeFactors.mp (hT_sub hp)).1
-            have h1_le := one_le_prod_primes T (Finset.nonempty_of_ne_empty hT_ne) hprimes
-            have hw_nn : ∀ p ∈ T, 0 ≤ convergentEulerLocalWeight ε Ω p :=
-              fun p hp => convergentEulerLocalWeight_nonneg ε Ω p (hΩle p (hprimes p hp))
-            exact large_divisor_per_term_bound T (convergentEulerLocalWeight ε Ω)
-              hw_nn s X.volume C_lp hX_vol_pos.le _hC_lp_pos.le hd_gt.le h1_le
-          · exact large_partition_bound hε Ω q.primeFactors T_large hTl_sub
-              (X.volume + C_lp) (by linarith)
-                (fun p hp => hΩle p (Nat.prime_of_mem_primeFactors hp))
-    -- Apply the GK ratio bounds.
-    _ ≤ C_lp * (C₁ * s ^ η) + (X.volume + C_lp) * (C₂ * s ^ η) := by
-        exact add_le_add
-          (mul_le_mul_of_nonneg_left hC₁_q _hC_lp_pos.le)
-          (mul_le_mul_of_nonneg_left hC₂_q (by linarith))
+        -- Small-divisor part: triangle → per-subset bound → Euler product → GK ratio
+        · calc |∑ T ∈ T_small, ∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T| * s
+              ≤ (∑ T ∈ T_small,
+                  |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T|) * s :=
+                mul_le_mul_of_nonneg_right (Finset.abs_sum_le_sum_abs _ _) hs_nonneg
+            _ = ∑ T ∈ T_small,
+                  |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * prod_diff h T| * s := by
+                rw [Finset.sum_mul]
+            _ ≤ ∑ T ∈ T_small,
+                  C_lp * ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) :=
+                Finset.sum_le_sum fun T hT =>
+                  h_small_bound T (Finset.mem_of_mem_filter T hT)
+                    ((Finset.mem_filter.mp hT).2)
+            _ ≤ C_lp * convergentEulerPartitionSum ε Ω q.primeFactors := by
+                simp_rw [h_prod_eq]
+                exact small_partition_bound hε Ω q.primeFactors T_small hTs_sub
+                  C_lp _hC_lp_pos.le
+                  (fun p hp => hΩle p (Nat.prime_of_mem_primeFactors hp))
+            _ ≤ C_lp * (C₁ * s ^ η) :=
+                mul_le_mul_of_nonneg_left hC₁_q _hC_lp_pos.le
+            _ = C_lp * C₁ * s ^ η := by ring
+        -- Large-divisor part: apply the aggregate bound directly.
+        · rw [hT_large_eq]
+          exact hK_large_q
+    -- s^{-1/2} ≤ s^{1/2} since s ≥ 1, so K_large * s^{-1/2} ≤ K_large * s^{1/2}.
+    _ ≤ C_lp * C₁ * s ^ η + K_large * s ^ η :=
+        add_le_add (le_refl _)
+          (mul_le_mul_of_nonneg_left
+            (Real.rpow_le_rpow_of_exponent_le hs_ge_one (by norm_num))
+            hK_large_pos.le)
     _ = K_raw * s ^ η := by ring
 
 private lemma deviation_expression_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
