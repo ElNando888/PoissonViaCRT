@@ -1223,7 +1223,8 @@ lemma abs_prod_diff_le {k : ℕ} (hk : 1 ≤ k) (q : ℕ) [NeZero q] (hq_sq : Sq
 -- Step 2: Gamma Divisibility Extraction
 -- Already proved as `prod_diff_ne_zero_implies_dvd` above.
 
-/-- **Large-divisor aggregate bound via Gamma structures (Step 3).**
+/-
+**Large-divisor aggregate bound via Gamma structures (Step 3).**
 The aggregate sum over all large-divisor subsets `T` and tuples `h` is bounded by
 switching the order of summation, grouping tuples by their induced `γ`-product
 (via `GammaStructure.ofTuple`), and applying the `M_γ(H)` bound from
@@ -1243,6 +1244,44 @@ The proof outline (following Granville–Kurlberg §3.1, Eq 114–115):
 4. The resulting series over `γ` with `γ > s` converges by comparison with
    `∑ γ^{-(k-2)}`, giving the `s^{-(k-3+ε)}` tail bound (which is `≤ s^{-1/2}`
    for `k ≥ 3`). -/
+/-- **Gamma-structure tail bound (Steps 4–6).**
+After applying the pointwise bound `abs_prod_diff_le` (Step 2), the double sum
+over large-divisor subsets `T` and tuples `h` reduces to a sum where each inner
+term is bounded by `(∏ p ∈ T, p ^ k) * (∏ p ∈ Q \ T, p)`, independently of `h`.
+The resulting sum is then bounded by grouping tuples by their induced `γ`-product
+(Step 4), applying `countTuplesWithGammaProd_small_gamma` (Step 5), and bounding
+the analytic tail `∑_{γ > s} γ^{-(k-2)}` (Step 6).
+
+This lemma encapsulates Steps 4–6 of the Granville–Kurlberg large-divisor argument
+(§3.1, Eq 114–115), separating the analytic convergence from the algebraic
+rearrangement in `large_divisor_aggregate_gamma_bound`. -/
+private lemma large_divisor_gamma_tail_bound
+    (k : ℕ) (_hk3 : 3 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (_hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (X : Box (k - 1))
+    (C_lp : ℝ) (_hC_lp_pos : 0 < C_lp)
+    (_hC_lp : ∀ (v : Fin (k - 1) → ℝ), (∀ i, 0 ≤ v i ∧ v i ≤ 1) → ∀ (s : ℝ), 1 ≤ s →
+      |(((Fintype.piFinset fun _ : Fin (k - 1) =>
+          Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+        (fun h => inScaledBox X s v h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
+        C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1)) :
+    ∃ K : ℝ, 0 < K ∧ ∀ (q : ℕ) [NeZero q], Squarefree q →
+      let Ω_q := crtSubset q Ω
+      let s := (q : ℝ) / Ω_q.card
+      let S := ((Fintype.piFinset fun _ : Fin (k - 1) =>
+          Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+        (fun h => inScaledBox X s (fun _ => 0) h))
+      let T_large := q.primeFactors.powerset.filter
+        (fun (T : Finset ℕ) => T ≠ ∅ ∧ s < ∏ p ∈ T, (p : ℝ))
+      (∑ T ∈ T_large,
+        ((S.card : ℝ) / (Ω_q.card : ℝ)) *
+        ((∏ p ∈ T, (p : ℝ) ^ k) *
+          ∏ p ∈ q.primeFactors \ T, (p : ℝ))) * s ≤
+      K * s ^ (-(1 / 2 : ℝ)) := by
+  sorry
+
+set_option maxHeartbeats 800000 in
 private lemma large_divisor_aggregate_gamma_bound
     (k : ℕ) (hk3 : 3 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
@@ -1269,7 +1308,26 @@ private lemma large_divisor_aggregate_gamma_bound
           localMean k Ω p)) *
         ∏ p ∈ q.primeFactors \ T, localMean k Ω p|) * s ≤
       K * s ^ (-(1 / 2 : ℝ)) := by
-  sorry
+  -- Steps 1–2: Apply `abs_prod_diff_le` pointwise to each |…|, collapsing
+  -- the inner sum over h to |S| * const. This reduces to
+  -- `large_divisor_gamma_tail_bound` (Steps 4–6).
+  obtain ⟨K, hK_pos, hK⟩ :=
+    large_divisor_gamma_tail_bound k hk3 Ω hΩ X C_lp hC_lp_pos hC_lp
+  refine ⟨K, hK_pos, fun q hq_sq => ?_⟩
+  simp only; intro hq_sq_val
+  -- The pointwise bound `abs_prod_diff_le` gives each |…| ≤ (∏ p^k) * (∏ p),
+  -- which is independent of h. After summing the constant over S, the
+  -- result follows from `large_divisor_gamma_tail_bound`.
+  refine' mul_le_mul_of_nonneg_right _ ( by positivity ) |> le_trans <| hK q hq_sq_val;
+  refine' Finset.sum_le_sum fun T hT => _;
+  refine' le_trans ( Finset.sum_le_sum fun x hx => _ ) _;
+  use fun x => ( 1 / ( #(crtSubset q Ω) : ℝ ) ) * ( ( ∏ p ∈ T, ( p : ℝ ) ^ k ) * ∏ p ∈ q.primeFactors \ T, ( p : ℝ ) );
+  · nontriviality;
+    gcongr;
+    convert abs_prod_diff_le ( by linarith ) q hq_sq_val T ( Finset.mem_powerset.mp ( Finset.mem_filter.mp hT |>.1 ) ) Ω ( Fin.cons 0 fun i => ( x i : ZMod q ) ) using 1;
+    · grind;
+    · rw [ Nat.sub_add_cancel ( by linarith ) ];
+  · norm_num [ div_eq_mul_inv, mul_assoc, mul_comm, mul_left_comm, Finset.mul_sum _ _ _ ]
 
 private lemma large_divisors_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk3 : 3 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
