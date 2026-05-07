@@ -21,7 +21,6 @@ import Mathlib.Data.Nat.PrimeFin
 import Mathlib.Data.ZMod.Basic
 import Mathlib.Tactic
 
-
 /-!
 # Poisson Statistics via the Chinese Remainder Theorem — Definitions
 
@@ -221,9 +220,53 @@ noncomputable def countTuplesWithGamma (Γ : GammaStructure (k + 1)) (H : ℕ) :
 /-! ### The Gamma structure induced by a tuple (§3.1) -/
 
 /-- Given a squarefree positive integer `c` and distinct integers `h₀ = 0, h₁, …, hₖ₋₁`,
-define `γᵢⱼ(h) := gcd(c, hⱼ - hᵢ)`. -/
+define `γᵢⱼ(h) := gcd(c, |hⱼ - hᵢ|)` for `i ≠ j` and `γᵢᵢ = 0`. -/
 def gammaOfTuple (c : ℕ) (h : Fin k → ℤ) (i j : Fin k) : ℕ :=
-  Nat.gcd c (Int.natAbs (h j - h i))
+  if i = j then 0 else Nat.gcd c (Int.natAbs (h j - h i))
+
+@[simp]
+theorem gammaOfTuple_self (c : ℕ) (h : Fin k → ℤ) (i : Fin k) :
+    gammaOfTuple c h i i = 0 := by
+  simp [gammaOfTuple]
+
+theorem gammaOfTuple_of_ne (c : ℕ) (h : Fin k → ℤ) {i j : Fin k} (hij : i ≠ j) :
+    gammaOfTuple c h i j = Nat.gcd c (Int.natAbs (h j - h i)) := by
+  simp [gammaOfTuple, hij]
+
+/-
+The gamma structure induced by a squarefree integer `c` and a tuple `h` with
+distinct entries. Each off-diagonal entry is `gcd(c, |h j - h i|)`.
+-/
+def GammaStructure.ofTuple (c : ℕ) (hc : Squarefree c) (h : Fin k → ℤ)
+    (h_dist : ∀ i j, i ≠ j → h i ≠ h j) : GammaStructure k where
+  gamma := gammaOfTuple c h
+  diag := gammaOfTuple_self c h
+  symm := fun i j => by
+    simp only [gammaOfTuple]
+    split_ifs with h1 h2 h2
+    · rfl
+    · exact absurd h1.symm h2
+    · exact absurd h2.symm h1
+    · congr 1; rw [show h i - h j = -(h j - h i) from by ring, Int.natAbs_neg]
+  pos := fun i j hij => by
+    rw [gammaOfTuple_of_ne c h hij]
+    exact Nat.pos_of_ne_zero (by
+      intro heq
+      rw [Nat.gcd_eq_zero_iff] at heq
+      exact h_dist i j hij (by have := heq.2; rw [Int.natAbs_eq_zero, sub_eq_zero] at this; exact this.symm))
+  sqfree := fun i j hij => by
+    rw [gammaOfTuple_of_ne c h hij]
+    exact hc.gcd_left _
+  compat := fun i j l hij hjl hil => by
+    simp only [gammaOfTuple_of_ne c h hij, gammaOfTuple_of_ne c h hjl,
+      gammaOfTuple_of_ne c h hil]
+    refine' Nat.dvd_gcd ( Nat.dvd_trans ( Nat.gcd_dvd_left _ _ ) ( Nat.gcd_dvd_left _ _ ) ) _;
+    convert Int.dvd_natAbs.mpr ( Int.dvd_add ( Int.gcd_dvd_right _ _ |> Int.dvd_trans <| Int.natCast_dvd.mpr <| Nat.gcd_dvd_right _ _ ) ( Int.gcd_dvd_right _ _ |> Int.dvd_trans <| Int.natCast_dvd.mpr <| Nat.gcd_dvd_right _ _ ) ) using 1 ; ring_nf;
+    rotate_left;
+    exact 0;
+    exact 0;
+    norm_num [ Int.gcd, Int.natAbs_mul ];
+    rw [ show -h i + h l = ( h j - h i ) + ( -h j + h l ) by ring ] ; exact Int.natAbs_dvd_natAbs.mpr ( dvd_add ( Int.natCast_dvd.mpr ( Nat.dvd_trans ( Nat.gcd_dvd_left _ _ ) ( Nat.gcd_dvd_right _ _ ) ) ) ( Int.natCast_dvd.mpr ( Nat.dvd_trans ( Nat.gcd_dvd_right _ _ ) ( Nat.gcd_dvd_right _ _ ) ) ) ) ;
 
 /-- `M_γ(H)` sums `M_Γ(H)` over all `Γ` with `γ(Γ) = γ` (equation ✱₀ from §3.1). -/
 noncomputable def countTuplesWithGammaProd (k : ℕ) (γ H : ℕ) : ℕ :=

@@ -52,21 +52,7 @@ namespace PoissonCRT
 
 /-! ## Auxiliary definitions -/
 
-/-- The local expected value (mean) for the counting function at prime `p`:
-`μ_p = |Ω_p|^k / p^{k-1}`. -/
-noncomputable def localMean (k : ℕ) (Ω : ∀ p : ℕ, Finset (ZMod p)) (p : ℕ) : ℝ :=
-  ((Ω p).card : ℝ) ^ k / (p : ℝ) ^ (k - 1)
-
-/-- The local counting function value at prime `p`, projected from `ZMod q`.
-For `p ∈ q.primeFactors`, this is `N_k(h mod p, Ω_p)`.
-For `p ∉ q.primeFactors`, this is defined as `1` (a neutral element for products). -/
-noncomputable def localCount {m : ℕ} (Ω : ∀ p : ℕ, Finset (ZMod p))
-    (q : ℕ) [NeZero q] (h : Fin m → ZMod q) (p : ℕ) : ℝ :=
-  if hp : p ∈ q.primeFactors then
-    haveI : NeZero p := ⟨(Nat.mem_primeFactors.mp hp).1.ne_zero⟩
-    (tupleCount (Ω p)
-      (fun i => ZMod.castHom (Nat.dvd_of_mem_primeFactors hp) (ZMod p) (h i)) : ℝ)
-  else 1
+-- `localMean` and `localCount` are defined in `DeviationBoundHelper.lean`.
 
 /-! ## Helper lemmas -/
 
@@ -1135,8 +1121,69 @@ private lemma inner_bound_small_divisor (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk1
           ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε))) * s := by
         exact mul_le_mul_of_nonneg_right h_box hs_pos.le
     _ = C_lp * ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) := by
-        rw [zpow_neg_one]
         field_simp
+
+/-! ### Tuple-Gamma Bridge Lemmas -/
+
+/-
+When `(Ω p).card = p` and `p` is prime, `Ω p = Finset.univ`.
+-/
+private lemma omegaFull_eq_univ {p : ℕ} [Fact p.Prime] (Ω : Finset (ZMod p))
+    (h_full : Ω.card = p) : Ω = Finset.univ := by
+  exact Finset.eq_of_subset_of_card_le ( Finset.subset_univ Ω ) ( by simp +decide [ h_full, Finset.card_univ ] )
+
+/-
+`tupleCount univ g = Fintype.card (ZMod p)` for any `g`.
+-/
+private lemma tupleCount_univ_eq {p : ℕ} [NeZero p] (g : Fin k → ZMod p) :
+    tupleCount (Finset.univ : Finset (ZMod p)) g = Fintype.card (ZMod p) := by
+  unfold tupleCount; aesop;
+
+/-
+`localMean k Ω p = p` when `(Ω p).card = p` and `k ≥ 1`.
+-/
+private lemma localMean_eq_cast_of_full {k : ℕ} (hk : 1 ≤ k) (p : ℕ)
+    (Ω : ∀ p : ℕ, Finset (ZMod p)) (h_full : (Ω p).card = p) :
+    localMean k Ω p = (p : ℝ) := by
+  unfold localMean; by_cases hp : p = 0 <;> simp_all +decide;
+  · exact Or.inl ( by linarith );
+  · rw [ div_eq_iff ( by positivity ), ← pow_succ', Nat.sub_add_cancel hk ]
+
+/-
+When `Ω p` is the full set `ZMod p` (i.e., `(Ω p).card = p`) and `p ∣ q`, the local
+deviation vanishes for any tuple `h`. The hypothesis `h_no_col` (no prime dividing any
+pairwise difference) is included for interface compatibility but is not needed for the proof;
+the result holds for any `h` when `Ω p = univ` and `k ≥ 1`.
+-/
+lemma localCount_sub_localMean_eq_zero_of_not_dvd {k : ℕ} (hk : 1 ≤ k) (q : ℕ) [NeZero q]
+    (p : ℕ) (hp : p ∈ q.primeFactors) (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (h : Fin k → ℤ) (_h_dist : ∀ i j, i ≠ j → h i ≠ h j)
+    (_h_no_col : ∀ i j, i ≠ j → ¬(p ∣ Int.natAbs (h i - h j)))
+    (h_full : (Ω p).card = p) :
+    localCount Ω q (fun i => (h i : ZMod q)) p - localMean k Ω p = 0 := by
+  unfold localCount; simp +decide [ *, localMean_eq_cast_of_full ];
+  haveI : Fact p.Prime := ⟨ Nat.prime_of_mem_primeFactors hp ⟩ ;
+  rw [ show Ω p = Finset.univ from ?_ ];
+  · rw [ sub_eq_zero, tupleCount_univ_eq ] ; norm_num [ ZMod.card ];
+  · exact Finset.eq_of_subset_of_card_le ( Finset.subset_univ _ ) ( by simp +decide [ h_full, Finset.card_univ ] )
+
+/-- If the product of local deviations over `T ⊆ q.primeFactors` is nonzero and each
+`Ω p` for `p ∈ T` is the full set, then every prime `p ∈ T` divides some pairwise
+difference `|h i - h j|` with `i ≠ j`. -/
+lemma prod_diff_ne_zero_implies_dvd {k : ℕ} (hk : 1 ≤ k) (q : ℕ) [NeZero q]
+    (T : Finset ℕ) (hT : T ⊆ q.primeFactors)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩ_full : ∀ p ∈ T, (Ω p).card = p)
+    (h : Fin k → ℤ) (h_dist : ∀ i j, i ≠ j → h i ≠ h j)
+    (h_prod : ∏ p ∈ T, (localCount Ω q (fun i => (h i : ZMod q)) p -
+      localMean k Ω p) ≠ 0) :
+    ∀ p ∈ T, ∃ i j, i ≠ j ∧ p ∣ Int.natAbs (h i - h j) := by
+  intro p hp
+  by_contra h_no_col
+  push_neg at h_no_col
+  exact h_prod (Finset.prod_eq_zero hp
+    (localCount_sub_localMean_eq_zero_of_not_dvd hk q p (hT hp) Ω h h_dist h_no_col
+      (hΩ_full p hp)))
 
 /-- **Large-divisor inner bound**: When `s < ∏_{p ∈ T} p`, the pointwise bound
 includes the `s · vol(X)` lattice-point term, giving a coefficient of
