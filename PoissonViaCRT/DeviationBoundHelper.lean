@@ -157,15 +157,21 @@ in `[0, p]`:
 - `localMean = |Ω_p|^k / p^{k-1} ≤ p^k / p^{k-1} = p`.
 
 Thus `|localCount - localMean| ≤ p ≤ p ^ k` (for `k ≥ 1` and `p ≥ 2`). -/
+lemma abs_localCount_sub_localMean_le_p {k : ℕ} (hk : 1 ≤ k) (q : ℕ) [NeZero q]
+    (p : ℕ) (hp : p ∈ q.primeFactors) (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (h : Fin k → ZMod q) :
+    |localCount Ω q h p - localMean k Ω p| ≤ (p : ℝ) := by
+  refine' abs_sub_le_iff.mpr _
+  constructor
+  · refine' le_trans ( sub_le_self _ <| localMean_nonneg _ _ _ ) _
+    exact localCount_le _ hp _ _
+  · refine' le_trans ( sub_le_self _ ( localCount_nonneg ) ) _
+    exact localMean_le k hk Ω p ( Nat.prime_of_mem_primeFactors hp )
+
 lemma abs_localCount_sub_localMean_le {k : ℕ} (hk : 1 ≤ k) (q : ℕ) [NeZero q]
     (p : ℕ) (hp : p ∈ q.primeFactors) (Ω : ∀ p : ℕ, Finset (ZMod p))
     (h : Fin k → ZMod q) :
     |localCount Ω q h p - localMean k Ω p| ≤ (p : ℝ) ^ k := by
-  refine' abs_sub_le_iff.mpr _;
-  constructor;
-  · refine' le_trans ( sub_le_self _ <| localMean_nonneg _ _ _ ) _;
-    exact le_trans ( localCount_le _ hp _ _ ) ( mod_cast Nat.le_self_pow ( by linarith ) _ );
-  · refine' le_trans ( sub_le_self _ ( localCount_nonneg ) ) _;
-    exact le_trans ( localMean_le k hk Ω p ( Nat.prime_of_mem_primeFactors hp ) ) ( mod_cast Nat.le_self_pow ( by linarith ) _ )
+  exact le_trans ( abs_localCount_sub_localMean_le_p hk q p hp Ω h ) ( mod_cast Nat.le_self_pow ( by linarith ) _ )
 
 end PoissonCRT
