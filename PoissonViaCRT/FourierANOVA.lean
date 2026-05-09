@@ -14,6 +14,41 @@ To cite Aristotle, tag @Aristotle-Harmonic on GitHub PRs/issues, and add as co-a
 Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
+/-
+PROVIDED SOLUTION
+
+# Formalize the Primitive Character Sieve in `FourierANOVA.lean`
+
+Aristotle, excellent work on the DFT basics! The code is clean and perfectly structures our $L^2$ theory. 
+
+For the next step, we need to prove that the **0-th Fourier coefficient of the local deviation function vanishes**. This is a critical component of the Fourier ANOVA strategy because it "sieves out" the trivial character, meaning only non-trivial frequencies contribute to the error bound.
+
+Please formally prove the following two lemmas in `FourierANOVA.lean`:
+1. `localDeviation_sum_zero`
+2. `localDeviation_dft_zero`
+
+### Implementation Guidelines:
+
+1. **`localDeviation_sum_zero`**:
+   The definition is $\operatorname{dev}_p(h) = N_k((0, h), \Omega_p) - \mu_p$.
+   When you sum over $h \in (\mathbb{Z}/p\mathbb{Z})^{k-1}$, the sum distributes over the two terms:
+   - For the constant term $\mu_p = |\Omega_p|^k / p^{k-1}$, summing it $p^{k-1}$ times exactly yields $|\Omega_p|^k$.
+   - For the counting function term $\sum_h N_k((0,h), \Omega_p)$, expand `tupleCount` as a sum over $x \in (\mathbb{Z}/p\mathbb{Z})$. The indicator conditions are $x \in \Omega_p$ and $x + h_i \in \Omega_p$.
+   - Swap the sums over $h$ and $x$! For a fixed $x \in \Omega_p$, the sum over $h_i$ of whether $x + h_i \in \Omega_p$ is exactly $|\Omega_p|$. Since the dimensions of $h$ are independent, the sum over $h$ for a fixed $x \in \Omega_p$ evaluates to $|\Omega_p|^{k-1}$. Summing this over the $|\Omega_p|$ choices for $x \in \Omega_p$ yields exactly $|\Omega_p|^k$. 
+   - Since both terms evaluate to $|\Omega_p|^k$, their difference is $0$.
+   - *Hint:* You might need to prove a small helper lemma to evaluate `∑ h, tupleCount ...`. 
+
+2. **`localDeviation_dft_zero`**:
+   Once `localDeviation_sum_zero` is proved, `localDeviation_dft_zero` is an immediate consequence of the definition of `dft`. When $\xi = 0$, the character $\chi_0(x) = 1$ for all $x$. Thus the DFT formula reduces exactly to the sum of the function values, which you just proved is $0$.
+
+### Constraints:
+- Only modify `PoissonViaCRT/FourierANOVA.lean`.
+- Do not attempt to prove any other `sorry`s outside these two.
+- Make sure typecasting between `ℕ`, `ℝ`, and `ℂ` is handled cleanly (e.g., using `push_cast`).
+
+Have a great run!
+-/
+
 import PoissonViaCRT.Defs
 import PoissonViaCRT.CRTMultiplicativity
 import PoissonViaCRT.DeviationBoundHelper
@@ -279,20 +314,93 @@ noncomputable def localDeviation (k : ℕ) (Ω : ∀ p : ℕ, Finset (ZMod p))
     (p : ℕ) [NeZero p] (h : Fin (k - 1) → ZMod p) : ℂ :=
   (tupleCount (Ω p) (Fin.cons 0 h) : ℂ) - (((Ω p).card : ℝ) ^ k / (p : ℝ) ^ (k - 1) : ℝ)
 
+/-
+For any `t : ZMod p` and `S : Finset (ZMod p)`, the number of `h : ZMod p` with
+`t + h ∈ S` equals `|S|`. This is because `h ↦ t + h` is a bijection on `ZMod p`.
+-/
+lemma card_filter_add_mem (p : ℕ) [NeZero p] (t : ZMod p) (S : Finset (ZMod p)) :
+    (Finset.univ.filter fun h : ZMod p => t + h ∈ S).card = S.card := by
+  -- The function h ↦ t + h is a bijection from ZMod p to ZMod p, so the cardinality of the preimage of S under this function is equal to the cardinality of S.
+  have h_bij : Finset.image (fun h => t + h) (Finset.univ.filter (fun h => t + h ∈ S)) = S := by
+    ext x; aesop;
+  rw [ ← h_bij, Finset.card_image_of_injective _ ( add_right_injective t ) ];
+  aesop
+
+/-
+Summing `tupleCount (Ω p) (Fin.cons 0 h)` over all `h` in `ℕ` form:
+`∑ h, tupleCount (Ω p) (Fin.cons 0 h) = (Ω p).card ^ k`.
+-/
+theorem sum_tupleCount_eq_card_pow_nat (k : ℕ) (hk : 1 ≤ k) (p : ℕ) [NeZero p]
+    (Ω : ∀ p : ℕ, Finset (ZMod p)) :
+    (∑ h : Fin (k - 1) → ZMod p, tupleCount (Ω p) (Fin.cons 0 h)) =
+      (Ω p).card ^ k := by
+  unfold tupleCount;
+  rcases k with ( _ | k ) <;> simp_all +decide [ Fin.forall_fin_succ ];
+  -- For each fixed t ∈ Ω p, the number of h such that ∀ i, t + h i ∈ Ω p is exactly |Ω p|^k.
+  have h_count : ∀ t ∈ Ω p, (Finset.univ.filter fun h : Fin k → ZMod p => ∀ i, t + h i ∈ Ω p).card = (Ω p).card ^ k := by
+    intro t ht
+    have h_count : (Finset.univ.filter fun h : Fin k → ZMod p => ∀ i, t + h i ∈ Ω p).card = (Finset.pi Finset.univ fun _ : Fin k => Finset.univ.filter fun h : ZMod p => t + h ∈ Ω p).card := by
+      refine' Finset.card_bij ( fun h hh => fun i _ => h i ) _ _ _ <;> simp +decide [ funext_iff ];
+      exact fun b hb => ⟨ fun i => b i ( Finset.mem_univ i ), hb, fun i => rfl ⟩;
+    simp_all +decide [ Finset.card_univ ];
+    exact congr_arg ( · ^ k ) ( by rw [ show Finset.filter ( fun h => t + h ∈ Ω p ) Finset.univ = Finset.image ( fun h => h - t ) ( Ω p ) by ext; aesop ] ; rw [ Finset.card_image_of_injective _ ( sub_left_injective ) ] );
+  -- By Fubini's theorem, we can interchange the order of summation.
+  have h_fubini : ∑ x : Fin k → ZMod p, (Finset.univ.filter fun t : ZMod p => t ∈ Ω p ∧ ∀ i, t + x i ∈ Ω p).card = ∑ t ∈ Ω p, (Finset.univ.filter fun x : Fin k → ZMod p => ∀ i, t + x i ∈ Ω p).card := by
+    simp +decide only [card_filter];
+    rw [ Finset.sum_comm ];
+    rw [ ← Finset.sum_subset ( Finset.subset_univ ( Ω p ) ) ] <;> aesop;
+  rw [ h_fubini, Finset.sum_congr rfl h_count, Finset.sum_const, Finset.card_eq_sum_ones, smul_eq_mul, mul_comm ] ; ring
+
+/-- Summing `tupleCount (Ω p) (Fin.cons 0 h)` over all `h : Fin (k-1) → ZMod p`
+yields `(Ω p).card ^ k`. The key idea: swap the sum over `h` and `t`, then for
+each fixed `t ∈ Ω p`, the sum over each coordinate `h_i` of the indicator
+`[t + h_i ∈ Ω p]` equals `|Ω p|` (as `h_i` ranges over all of `ZMod p`). -/
+theorem sum_tupleCount_eq_card_pow (k : ℕ) (hk : 1 ≤ k) (p : ℕ) [NeZero p]
+    (Ω : ∀ p : ℕ, Finset (ZMod p)) :
+    (∑ h : Fin (k - 1) → ZMod p, (tupleCount (Ω p) (Fin.cons 0 h) : ℂ)) =
+      ((Ω p).card : ℂ) ^ k := by
+  exact_mod_cast sum_tupleCount_eq_card_pow_nat k hk p Ω
+
+/- The original statement of `localDeviation_sum_zero` omitted the hypothesis `1 ≤ k`.
+   It is false when `k = 0`: ℕ subtraction gives `k - 1 = 0`, so `Fin.cons 0 h` has type
+   `Fin 1 → ZMod p`, making the tuple count equal to `|Ω p|` while the mean term is
+   `|Ω p|^0 / p^0 = 1`.  The corrected version below adds `(hk : 1 ≤ k)`. -/
+-- theorem localDeviation_sum_zero (k : ℕ) (p : ℕ) [NeZero p]
+--     (Ω : ∀ p : ℕ, Finset (ZMod p)) :
+--     ∑ h : Fin (k - 1) → ZMod p, localDeviation k Ω p h = 0 := by
+--   sorry
+
 /-- The sum of the local deviation over all elements of $(\mathbb{Z}/p\mathbb{Z})^{k-1}$
-is zero (the deviations from the mean cancel). -/
-theorem localDeviation_sum_zero (k : ℕ) (p : ℕ) [NeZero p]
+is zero (the deviations from the mean cancel).
+
+*Corrected*: requires `1 ≤ k`; the original statement is false for `k = 0`. -/
+theorem localDeviation_sum_zero (k : ℕ) (hk : 1 ≤ k) (p : ℕ) [NeZero p]
     (Ω : ∀ p : ℕ, Finset (ZMod p)) :
     ∑ h : Fin (k - 1) → ZMod p, localDeviation k Ω p h = 0 := by
-  sorry
+  unfold localDeviation
+  simp +decide [Finset.sum_sub_distrib]
+  rw [mul_div_cancel₀]
+  · exact sub_eq_zero_of_eq <| mod_cast sum_tupleCount_eq_card_pow k hk p Ω
+  · exact pow_ne_zero _ (Nat.cast_ne_zero.mpr <| NeZero.ne p)
+
+/- The original statement of `localDeviation_dft_zero` omitted `1 ≤ k`; it inherits
+   the same issue from `localDeviation_sum_zero`. -/
+-- theorem localDeviation_dft_zero (k : ℕ) (p : ℕ) [NeZero p]
+--     (Ω : ∀ p : ℕ, Finset (ZMod p)) :
+--     dft p (k - 1) (localDeviation k Ω p) 0 = 0 := by
+--   sorry
 
 /-- The Fourier transform of the local deviation vanishes at the zero frequency:
 $\widehat{\operatorname{dev}}_p(0) = 0$. This is immediate from `localDeviation_sum_zero`
-and the definition of `dft`. -/
-theorem localDeviation_dft_zero (k : ℕ) (p : ℕ) [NeZero p]
+and the definition of `dft`.
+
+*Corrected*: requires `1 ≤ k`; see `localDeviation_sum_zero`. -/
+theorem localDeviation_dft_zero (k : ℕ) (hk : 1 ≤ k) (p : ℕ) [NeZero p]
     (Ω : ∀ p : ℕ, Finset (ZMod p)) :
     dft p (k - 1) (localDeviation k Ω p) 0 = 0 := by
-  sorry
+  unfold dft; simp +decide
+  unfold character; simp +decide [additiveChar_zero]
+  exact Or.inr (localDeviation_sum_zero k hk p Ω)
 
 /-! ### Box indicator function -/
 
