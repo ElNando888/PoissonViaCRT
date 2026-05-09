@@ -107,34 +107,168 @@ noncomputable def dft (q : ℕ) [NeZero q] (m : ℕ)
 
 /-! ### Character properties -/
 
-/-- **Orthogonality of additive characters.** The sum of a non-trivial character over the
+/-
+`additiveChar q a x` can be written as a power of the primitive root
+`exp(2πi·a.val/q)` raised to `x.val`.
+-/
+lemma additiveChar_eq_exp_pow (q : ℕ) [NeZero q] (a x : ZMod q) :
+    additiveChar q a x =
+      Complex.exp (2 * Real.pi * Complex.I * (a.val : ℂ) / (q : ℂ)) ^ x.val := by
+  rw [ ← Complex.exp_nat_mul ] ; ring_nf;
+  convert Complex.exp_eq_exp_iff_exists_int.mpr ?_ using 2 ; ring_nf;
+  use -((a.val * x.val) / q);
+  rw [ ZMod.val_mul ];
+  rw [ Nat.mod_def ] ; ring_nf;
+  rw [ Nat.cast_sub ( Nat.mul_div_le _ _ ) ] ; push_cast ; ring_nf;
+  norm_cast ; simp +decide [ mul_assoc, mul_comm, mul_left_comm, NeZero.ne ]
+
+/-
+The `additiveChar` at `a = 0` is identically `1`.
+-/
+@[simp]
+lemma additiveChar_zero (q : ℕ) [NeZero q] (x : ZMod q) :
+    additiveChar q 0 x = 1 := by
+  -- By definition of additiveChar, we have additiveChar q 0 x = Complex.exp (2 * Real.pi * Complex.I * (0 * x).val / (q : ℂ)).
+  simp [additiveChar]
+
+/-
+The primitive `q`-th root of unity raised to `q` equals `1`.
+-/
+lemma exp_two_pi_I_val_pow_eq_one (q : ℕ) [NeZero q] (a : ZMod q) :
+    Complex.exp (2 * Real.pi * Complex.I * (a.val : ℂ) / (q : ℂ)) ^ q = 1 := by
+  rw [ ← Complex.exp_nat_mul, mul_comm, Complex.exp_eq_one_iff ];
+  exact ⟨ a.val, by rw [ div_mul_cancel₀ _ ( NeZero.ne _ ) ] ; push_cast; ring ⟩
+
+/-
+For `a ≠ 0` in `ZMod q`, the primitive root `exp(2πi·a.val/q) ≠ 1`.
+-/
+lemma exp_two_pi_I_val_ne_one (q : ℕ) [NeZero q] (a : ZMod q) (ha : a ≠ 0) :
+    Complex.exp (2 * Real.pi * Complex.I * (a.val : ℂ) / (q : ℂ)) ≠ 1 := by
+  contrapose! ha;
+  rw [ Complex.exp_eq_one_iff ] at ha;
+  -- By simplifying, we can see that this implies $a.val = nq$ for some integer $n$.
+  obtain ⟨n, hn⟩ := ha
+  have h_eq : a.val = n * q := by
+    rw [ div_eq_iff ] at hn;
+    · exact_mod_cast ( mul_left_cancel₀ ( Complex.two_pi_I_ne_zero ) <| by linear_combination' hn : ( a.val : ℂ ) = n * q );
+    · exact Nat.cast_ne_zero.mpr <| NeZero.ne q;
+  replace h_eq := congr_arg ( ( ↑ ) : ℤ → ZMod q ) h_eq ; simp_all +decide
+
+/-
+**1D orthogonality of additive characters.**
+$$\sum_{x \in \mathbb{Z}/q\mathbb{Z}} \chi_a(x) =
+  \begin{cases} q & \text{if } a = 0, \\ 0 & \text{if } a \neq 0. \end{cases}$$
+-/
+lemma additiveChar_sum_eq_ite (q : ℕ) [NeZero q] (a : ZMod q) :
+    ∑ x : ZMod q, additiveChar q a x = if a = 0 then (q : ℂ) else 0 := by
+  split_ifs with ha;
+  · aesop;
+  · -- Rewrite each term using `additiveChar_eq_exp_pow` to get `∑ x, r^(x.val)` where `r = exp(2πi a.val/q)`.
+    have h_exp : ∑ x : ZMod q, additiveChar q a x = ∑ x ∈ Finset.range q, (Complex.exp (2 * Real.pi * Complex.I * (a.val : ℂ) / (q : ℂ))) ^ x := by
+      refine' Finset.sum_bij ( fun x _ => x.val ) _ _ _ _ <;> simp +decide [ additiveChar_eq_exp_pow ];
+      · exact fun x => ZMod.val_lt x;
+      · exact fun x y h => by simpa [ ZMod.natCast_zmod_val ] using congr_arg ( fun x : ℕ => x : ℕ → ZMod q ) h;
+      · exact fun b hb => ⟨ b, ZMod.val_cast_of_lt hb ⟩;
+    rw [ h_exp, geom_sum_eq ] <;> norm_num [ ha ];
+    · exact Or.inl ( by rw [ sub_eq_zero, ← Complex.exp_nat_mul, mul_comm, Complex.exp_eq_one_iff ] ; use a.val; push_cast; ring_nf; norm_num [ NeZero.ne ] );
+    · convert exp_two_pi_I_val_ne_one q a ha using 1;
+      cases q <;> aesop
+
+/-
+The conjugate of `additiveChar q a x` equals `additiveChar q (-a) x`.
+-/
+lemma starRingEnd_additiveChar (q : ℕ) [NeZero q] (a x : ZMod q) :
+    starRingEnd ℂ (additiveChar q a x) = additiveChar q (-a) x := by
+  -- Apply the property of the conjugate of the exponential.
+  have h_conj_exp : (starRingEnd ℂ) (Complex.exp (2 * Real.pi * Complex.I * ((a * x).val : ℂ) / (q : ℂ))) = Complex.exp (2 * Real.pi * Complex.I * (q - (a * x).val : ℤ) / (q : ℂ)) := by
+    norm_num [ Complex.ext_iff, Complex.exp_re, Complex.exp_im ];
+    norm_num [ sub_div, mul_sub, NeZero.ne ];
+    erw [ ZMod.cast_eq_val ] ; norm_cast ; aesop;
+  unfold additiveChar;
+  cases eq_or_ne ( a * x ) 0 <;> simp_all +decide [ ZMod.neg_val ];
+  rw [ Nat.cast_sub ];
+  · cases q <;> aesop;
+  · exact Nat.le_of_lt ( ZMod.val_lt _ )
+
+/-
+The product of characters satisfies `χ_ξ(x) · conj(χ_η(x)) = χ_{ξ-η}(x)`.
+-/
+lemma character_mul_conj (q : ℕ) [NeZero q] (m : ℕ)
+    (ξ η x : Fin m → ZMod q) :
+    character q m ξ x * starRingEnd ℂ (character q m η x) =
+      character q m (ξ - η) x := by
+  unfold character;
+  rw [ map_prod, ← Finset.prod_mul_distrib ];
+  refine' Finset.prod_congr rfl fun j _ => _;
+  rw [ starRingEnd_additiveChar ];
+  unfold additiveChar;
+  rw [ ← Complex.exp_add ];
+  rw [ Complex.exp_eq_exp_iff_exists_int ];
+  use ((ξ j * x j).val + (-η j * x j).val - ((ξ j - η j) * x j).val) / q;
+  rw [ Int.cast_div ] <;> norm_num;
+  · ring;
+  · simp +decide [ sub_mul, ← ZMod.intCast_zmod_eq_zero_iff_dvd ];
+  · exact NeZero.ne q
+
+/-
+**Orthogonality of additive characters.** The sum of a non-trivial character over the
 full group vanishes, and the sum of the trivial character is the group order:
 
-$$\sum_{x \in G} \chi_\xi(x) \overline{\chi_\eta(x)} = |G| \cdot \delta_{\xi, \eta}.$$ -/
+$$\sum_{x \in G} \chi_\xi(x) \overline{\chi_\eta(x)} = |G| \cdot \delta_{\xi, \eta}.$$
+-/
 theorem character_orthogonality (q : ℕ) [NeZero q] (m : ℕ)
     (ξ η : Fin m → ZMod q) :
     ∑ x : Fin m → ZMod q, character q m ξ x * starRingEnd ℂ (character q m η x) =
       if ξ = η then ((q : ℂ) ^ m) else 0 := by
-  sorry
+  -- By Fubini's theorem, we can interchange the order of summation.
+  have h_fubini : ∑ x : Fin m → ZMod q, character q m (ξ - η) x = ∏ j : Fin m, ∑ x : ZMod q, additiveChar q ((ξ - η) j) x := by
+    rw [ Finset.prod_sum ];
+    refine' Finset.sum_bij ( fun x _ => fun i _ => x i ) _ _ _ _ <;> simp +decide [ character ];
+    · simp +decide [ funext_iff ];
+    · exact fun b => ⟨ fun i => b i ( Finset.mem_univ i ), funext fun i => funext fun _ => rfl ⟩;
+  split_ifs with h <;> simp_all +decide [ character_mul_conj ];
+  exact Finset.prod_eq_zero ( Finset.mem_univ ( Classical.choose ( Function.ne_iff.mp h ) ) ) ( by rw [ additiveChar_sum_eq_ite ] ; simp +decide [ sub_eq_zero, Classical.choose_spec ( Function.ne_iff.mp h ) ] )
 
-/-- **Fourier inversion formula.**
-$f(x) = \sum_{\xi \in G} \widehat{f}(\xi) \cdot \chi_\xi(x)$. -/
+/-
+**Fourier inversion formula.**
+$f(x) = \sum_{\xi \in G} \widehat{f}(\xi) \cdot \chi_\xi(x)$.
+-/
 theorem dft_inversion (q : ℕ) [NeZero q] (m : ℕ)
     (f : (Fin m → ZMod q) → ℂ) (x : Fin m → ZMod q) :
     f x = ∑ ξ : Fin m → ZMod q, dft q m f ξ * character q m ξ x := by
-  sorry
+  simp +decide [ dft, Finset.mul_sum _ _ _, mul_comm, mul_left_comm ];
+  -- By the orthogonality of the characters, the inner sum over ξ is q^m if x = y and 0 otherwise.
+  have h_orthogonality : ∀ y : Fin m → ZMod q, ∑ ξ : Fin m → ZMod q, (character q m ξ x) * (starRingEnd ℂ (character q m ξ y)) = if x = y then (q : ℂ) ^ m else 0 := by
+    convert character_orthogonality q m x using 1;
+    unfold character; ring_nf;
+    unfold additiveChar; simp +decide [ mul_comm ] ;
+  rw [ Finset.sum_comm ];
+  simp_all +decide [ ← Finset.mul_sum _ _ _ ]
 
 /-! ### Plancherel / Parseval identity -/
 
-/-- **Plancherel identity** on $(\mathbb{Z}/q\mathbb{Z})^m$:
+/-
+**Plancherel identity** on $(\mathbb{Z}/q\mathbb{Z})^m$:
 
 $$\frac{1}{q^m} \sum_{x \in G} f(x) \cdot \overline{g(x)}
-  = \sum_{\xi \in G} \widehat{f}(\xi) \cdot \overline{\widehat{g}(\xi)}.$$ -/
+  = \sum_{\xi \in G} \widehat{f}(\xi) \cdot \overline{\widehat{g}(\xi)}.$$
+-/
 theorem plancherel_identity (q : ℕ) [NeZero q] (m : ℕ)
     (f g : (Fin m → ZMod q) → ℂ) :
     (1 / (q : ℂ) ^ m) * ∑ x : Fin m → ZMod q, f x * starRingEnd ℂ (g x) =
       ∑ ξ : Fin m → ZMod q, dft q m f ξ * starRingEnd ℂ (dft q m g ξ) := by
-  sorry
+  unfold dft; simp +decide [ mul_assoc, Finset.mul_sum _ _ _, Finset.sum_mul ] ;
+  -- By the orthogonality of the characters, the inner sum over ξ is zero unless x = y.
+  have h_inner : ∀ x y : Fin m → ZMod q, ∑ ξ : Fin m → ZMod q, character q m ξ x * starRingEnd ℂ (character q m ξ y) = if x = y then (q : ℂ) ^ m else 0 := by
+    intro x y;
+    have := character_orthogonality q m;
+    convert this x y using 1;
+    unfold character; simp +decide
+    unfold additiveChar; simp +decide [ mul_comm ] ;
+  simp +decide only [mul_left_comm];
+  rw [ Finset.sum_comm, Finset.sum_congr rfl ] ; intros ; rw [ Finset.sum_comm ] ; simp +decide [ ← Finset.mul_sum _ _ _ ] ; ring_nf;
+  simp_all +decide [ mul_assoc, mul_comm, mul_left_comm, pow_mul ];
+  simp +decide [ sq, mul_assoc, NeZero.ne ]
 
 /-! ### Local deviation function -/
 
