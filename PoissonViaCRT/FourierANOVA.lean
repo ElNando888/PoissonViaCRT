@@ -60,7 +60,7 @@ via CRT, and bound the resulting sum using exponential-sum estimates from the
 * `PoissonCRT.dft_inversion`: Fourier inversion formula.
 * `PoissonCRT.localDeviation_dft_zero`: The Fourier transform of the local deviation
   vanishes at the zero frequency.
-* `PoissonCRT.local_deviation_fourier_bound`: Bound on the $L^1$-norm of the local
+* `PoissonCRT.local_deviation_fourier_bound`: $L^\infty$ bound on the local
   deviation Fourier coefficients using `WellDistributed`.
 * `PoissonCRT.box_fourier_l1_bound`: The $L^1$-norm of the box indicator Fourier
   transform is $O((\log q)^{k-1})$.
@@ -380,22 +380,36 @@ noncomputable def boxIndicator (q : ℕ) [NeZero q] (m : ℕ)
 
 /-! ### Exponential sum bounds from `WellDistributed` -/
 
-/-- **$L^1$ bound on local deviation Fourier coefficients.** Under the `WellDistributed`
-hypothesis, the sum of norms of the Fourier coefficients of `localDeviation`
-is bounded by the local error weight:
+/-
+**$L^\infty$ bound on local deviation Fourier coefficients.** Under the `WellDistributed`
+hypothesis, each Fourier coefficient of `localDeviation` is bounded by the local error weight:
 
-$$\sum_{\xi \in (\mathbb{Z}/p\mathbb{Z})^{k-1}}
-  \|\widehat{\operatorname{dev}}_p(\xi)\|
-  \leq (1 - r_p) \cdot p^{-\varepsilon} \cdot \mu_p.$$ -/
-theorem local_deviation_fourier_bound (ε : ℝ) (hε : 0 < ε)
+$\|\widehat{\operatorname{dev}}_p(\xi)\|
+  \leq (1 - r_p) \cdot p^{-\varepsilon} \cdot \mu_p.$
+
+This follows from the triangle inequality and `hwd.2`: the $L^1$ norm of a function
+bounds the $L^\infty$ norm of its Fourier transform.
+-/
+theorem local_deviation_fourier_bound (ε : ℝ) (_hε : 0 < ε)
     (p : ℕ) [hp : Fact p.Prime] (Ω : ∀ p : ℕ, Finset (ZMod p))
-    (k : ℕ) (hk : 2 ≤ k)
-    (hwd : WellDistributed ε p (Ω p) k) :
-    ∑ ξ : Fin (k - 1) → ZMod p,
-      ‖dft p (k - 1) (localDeviation k Ω p) ξ‖ ≤
+    (k : ℕ) (_hk : 2 ≤ k)
+    (hwd : WellDistributed ε p (Ω p) k)
+    (ξ : Fin (k - 1) → ZMod p) :
+    ‖dft p (k - 1) (localDeviation k Ω p) ξ‖ ≤
       (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) *
         ((Ω p).card : ℝ) ^ k / (p : ℝ) ^ (k - 1) := by
-  sorry
+  unfold dft; simp +decide [ *, Finset.mul_sum _ _ _, mul_assoc, mul_left_comm, div_eq_mul_inv ] ;
+  refine' le_trans ( norm_sum_le _ _ ) _;
+  refine' le_trans ( Finset.sum_le_sum fun x _ => _ ) _;
+  use fun x => ( ‖localDeviation k Ω p x‖ : ℝ ) * ( ( p : ℝ ) ^ ( k - 1 ) ) ⁻¹;
+  · norm_num [ mul_comm, character ];
+    unfold additiveChar; norm_num [ Complex.norm_exp ] ;
+    norm_num [ ZMod.cast, ZMod.val ];
+    rcases p with ( _ | _ | p ) <;> norm_num at *;
+  · convert mul_le_mul_of_nonneg_right hwd.2 ( inv_nonneg.mpr ( pow_nonneg ( Nat.cast_nonneg p ) ( k - 1 ) ) ) using 1;
+    · rw [ Finset.sum_mul _ _ _ ] ; congr ; ext ; norm_cast;
+      unfold localDeviation; norm_cast;
+    · grind
 
 /-! ### Box Fourier transform decay -/
 
