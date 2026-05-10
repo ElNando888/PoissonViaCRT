@@ -17,17 +17,6 @@ Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 import PoissonViaCRT.Defs
 import PoissonViaCRT.CRTMultiplicativity
 import PoissonViaCRT.DeviationBoundHelper
-import Mathlib.Algebra.Group.Pointwise.Finset.Basic
-import Mathlib.Analysis.Complex.Exponential
-import Mathlib.Analysis.SpecialFunctions.Complex.Log
-import Mathlib.Analysis.SpecialFunctions.Trigonometric.Complex
-import Mathlib.Data.Finset.Sort
-import Mathlib.Data.Nat.Basic
-import Mathlib.Data.Nat.Nth
-import Mathlib.Data.Nat.Prime.Basic
-import Mathlib.Data.Real.Basic
-import Mathlib.Data.ZMod.QuotientRing
-import Mathlib.NumberTheory.ArithmeticFunction.Defs
 
 /-!
 # Fourier ANOVA for the Deviation Bound
@@ -413,20 +402,82 @@ theorem local_deviation_fourier_bound (ε : ℝ) (_hε : 0 < ε)
 
 /-! ### Box Fourier transform decay -/
 
-/-- **$L^1$-norm bound for the box Fourier transform.** The sum of norms
+/-
+The box indicator factors as a product of coordinate-wise 1D indicators:
+`boxIndicator q m B s x = ∏ j, if (x j).val ∈ Icc 1 ⌊s * B.sides j⌋₊ then 1 else 0`.
+This follows from the equivalence of `∀ j, P j` with the product of `if P j then 1 else 0`.
+-/
+lemma boxIndicator_eq_prod (q : ℕ) [NeZero q] (m : ℕ)
+    (B : Box m) (s : ℝ) (x : Fin m → ZMod q) :
+    boxIndicator q m B s x = ∏ j : Fin m,
+      if (x j).val ∈ Finset.Icc 1 ⌊s * B.sides j⌋₊ then (1 : ℂ) else 0 := by
+  unfold boxIndicator; split_ifs <;> simp_all +decide [ Finset.prod_ite ] ;
+
+/-- The 1D analogue of the box Fourier L¹ bound: the sum of norms of 1D DFT
+coefficients of a 1D box indicator is `O(log q)`, with a **universal** constant `C`
+independent of `q` and `N`. Proof deferred (analytic hurdle). -/
+lemma box_fourier_1d_bound :
+    ∃ C : ℝ, 0 < C ∧ ∀ (q : ℕ) [NeZero q] (N : ℕ),
+      ∑ ξ : ZMod q,
+        ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 N then (1 : ℂ) else 0)
+          (fun _ => ξ)‖ ≤
+      C * Real.log q := by
+  sorry
+
+/-
+The DFT of the box indicator factors as a product of 1D DFTs.
+This relies on `boxIndicator_eq_prod` to factor the function and the fact that
+`character q m ξ x = ∏ j, additiveChar q (ξ j) (x j)` factors over coordinates.
+The sum over `x : Fin m → ZMod q` of the product then splits via `Fintype.prod_sum`.
+-/
+lemma dft_boxIndicator_eq_prod (q : ℕ) [NeZero q] (m : ℕ)
+    (B : Box m) (s : ℝ) (ξ : Fin m → ZMod q) :
+    dft q m (boxIndicator q m B s) ξ =
+      ∏ j : Fin m, dft q 1
+        (fun x => if (x 0).val ∈ Finset.Icc 1 ⌊s * B.sides j⌋₊ then (1 : ℂ) else 0)
+        (fun _ => ξ j) := by
+  unfold dft;
+  nontriviality;
+  simp +decide [ boxIndicator_eq_prod, Finset.prod_mul_distrib, Finset.prod_const ];
+  rw [ Finset.prod_sum ];
+  refine' Or.inl ( Finset.sum_bij ( fun x _ => fun i _ => fun _ => x i ) _ _ _ _ ) <;> simp +decide [ character ];
+  · simp +decide [ funext_iff ];
+  · exact fun b => ⟨ fun i => b i ( Finset.mem_univ i ) 0, funext fun i => funext fun _ => funext fun _ => by simp +decide [ Fin.eq_zero ] ⟩;
+  · exact fun a => by rw [ ← Finset.prod_mul_distrib ] ; exact Finset.prod_congr rfl fun _ _ => by split_ifs <;> ring;
+
+/-
+**$L^1$-norm bound for the box Fourier transform.** The sum of norms
 of the Fourier coefficients of the box indicator is $O((\log q)^m)$:
 
-$$\sum_{\xi \in (\mathbb{Z}/q\mathbb{Z})^m} \|\widehat{I}_S(\xi)\|
-  \leq C_{\mathrm{box}} \cdot (\log q)^m,$$
+$\sum_{\xi \in (\mathbb{Z}/q\mathbb{Z})^m} \|\widehat{I}_S(\xi)\|
+  \leq C_{\mathrm{box}} \cdot (\log q)^m,$
 
-where $C_{\mathrm{box}}$ depends only on the box $X$ (not on $q$). -/
-theorem box_fourier_l1_bound (q : ℕ) [NeZero q] (k : ℕ) (hk : 2 ≤ k)
-    (B : Box (k - 1)) (s : ℝ) (hs : 0 < s) :
-    ∃ C : ℝ, 0 < C ∧
+where $C_{\mathrm{box}}$ depends only on the box $X$ (not on $q$).
+-/
+theorem box_fourier_l1_bound (k : ℕ) (_hk : 2 ≤ k) (B : Box (k - 1)) :
+    ∃ C : ℝ, 0 < C ∧ ∀ (q : ℕ) [NeZero q] (s : ℝ) (_hs : 0 < s),
       ∑ ξ : Fin (k - 1) → ZMod q,
         ‖dft q (k - 1) (boxIndicator q (k - 1) B s) ξ‖ ≤
       C * (Real.log q) ^ (k - 1 : ℕ) := by
-  sorry
+  obtain ⟨ C₁D, hC₁D_pos, hC₁D_bound ⟩ := box_fourier_1d_bound;
+  refine' ⟨ C₁D ^ ( k - 1 ), pow_pos hC₁D_pos _, fun q _ s hs => _ ⟩;
+  -- Apply the bound for each component of the product.
+  have h_prod_bound : ∑ ξ : Fin (k - 1) → ZMod q, ∏ j : Fin (k - 1), ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 ⌊s * B.sides j⌋₊ then (1 : ℂ) else 0) (fun _ => ξ j)‖ ≤ (∏ j : Fin (k - 1), C₁D * Real.log q) := by
+    have h_prod_bound : ∀ (f : Fin (k - 1) → ZMod q → ℝ), (∀ j, 0 ≤ f j) → (∑ ξ : Fin (k - 1) → ZMod q, ∏ j, f j (ξ j)) ≤ ∏ j, (∑ ξ : ZMod q, f j ξ) := by
+      intro f hf; rw [ Finset.prod_sum ] ;
+      refine' le_of_eq _;
+      refine' Finset.sum_bij ( fun ξ _ => fun j _ => ξ j ) _ _ _ _ <;> simp +decide;
+      · simp +decide [ funext_iff ];
+      · exact fun b => ⟨ fun j => b j ( Finset.mem_univ j ), funext fun j => funext fun _ => rfl ⟩;
+    refine' le_trans _ ( Finset.prod_le_prod _ fun j _ => hC₁D_bound q ⌊s * B.sides j⌋₊ );
+    · convert h_prod_bound _ _ using 1;
+      · convert rfl;
+      · exact fun _ => fun _ => norm_nonneg _;
+    · exact fun _ _ => Finset.sum_nonneg fun _ _ => norm_nonneg _;
+  refine le_trans ?_ ( h_prod_bound.trans ?_ );
+  · exact Finset.sum_le_sum fun _ _ => by rw [ dft_boxIndicator_eq_prod ] ; norm_num;
+  · norm_num [ Finset.prod_mul_distrib ];
+    rw [ mul_pow ]
 
 /-! ### CRT frequency equivalence -/
 
@@ -597,14 +648,14 @@ box transform decay, we obtain the uniform deviation bound:
 $$\Bigl|\sum_{h \in s_q X} \bigl(N_k(h, \Omega_q) - \mu\bigr)\Bigr|
   \leq C \cdot (\log q)^{k-1} \cdot
     \prod_{p \mid q} \bigl(1 + (1 - r_p)\, p^{-\varepsilon}\bigr),$$ -/
-theorem deviation_fourier_synthesis (ε : ℝ) (hε : 0 < ε) (q : ℕ) [NeZero q]
-    (hq : Squarefree q) (Ω : ∀ p : ℕ, Finset (ZMod p))
-    (k : ℕ) (hk : 2 ≤ k)
-    (hwd : ∀ p, (hp : p ∈ q.primeFactors) → haveI : Fact p.Prime :=
-      ⟨(Nat.mem_primeFactors.mp hp).1⟩;
-      WellDistributed ε p (Ω p) k)
-    (B : Box (k - 1)) (s : ℝ) (hs : 0 < s) :
+theorem deviation_fourier_synthesis (k : ℕ) (hk : 2 ≤ k) (B : Box (k - 1)) :
     ∃ C : ℝ, 0 < C ∧
+      ∀ (ε : ℝ) (_hε : 0 < ε) (q : ℕ) [NeZero q] (hq : Squarefree q)
+      (Ω : ∀ p : ℕ, Finset (ZMod p))
+      (_hwd : ∀ p, (hp : p ∈ q.primeFactors) → haveI : Fact p.Prime :=
+        ⟨(Nat.mem_primeFactors.mp hp).1⟩;
+        WellDistributed ε p (Ω p) k)
+      (s : ℝ) (_hs : 0 < s),
       ‖∑ h : Fin (k - 1) → ZMod q,
         (boxIndicator q (k - 1) B s h) *
         ((tupleCount (crtSubset q Ω) (Fin.cons 0 h) : ℂ) -
