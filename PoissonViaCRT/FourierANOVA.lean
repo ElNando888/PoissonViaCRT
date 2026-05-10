@@ -781,16 +781,18 @@ lemma deviation_dft_linf_bound (k : ℕ) (hk : 2 ≤ k) (ε : ℝ) (_hε : 0 < �
 
 /-! ### Fourier synthesis: the uniform deviation bound -/
 
-/-- **Fourier ANOVA synthesis.** Combining Plancherel, CRT factorization, the primitive
+/-
+**Fourier ANOVA synthesis.** Combining Plancherel, CRT factorization, the primitive
 character sieve ($\widehat{\operatorname{dev}}_p(0) = 0$), exponential sum bounds, and
 box transform decay, we obtain the uniform deviation bound:
 
 $$\Bigl|\sum_{h \in s_q X} \bigl(N_k(h, \Omega_q) - \mu\bigr)\Bigr|
   \leq C \cdot (\log q)^{k-1} \cdot
-    \prod_{p \mid q} \bigl(1 + (1 - r_p)\, p^{-\varepsilon}\bigr),$$ -/
+    \prod_{p \mid q} \bigl(1 + (1 - r_p)\, p^{-\varepsilon}\bigr),$$
+-/
 theorem deviation_fourier_synthesis (k : ℕ) (hk : 2 ≤ k) (B : Box (k - 1)) :
     ∃ C : ℝ, 0 < C ∧
-      ∀ (ε : ℝ) (_hε : 0 < ε) (q : ℕ) [NeZero q] (hq : Squarefree q)
+      ∀ (ε : ℝ) (_hε : 0 < ε) (q : ℕ) [NeZero q] (_hq : Squarefree q)
       (Ω : ∀ p : ℕ, Finset (ZMod p))
       (_hwd : ∀ p, (hp : p ∈ q.primeFactors) → haveI : Fact p.Prime :=
         ⟨(Nat.mem_primeFactors.mp hp).1⟩;
@@ -801,6 +803,7 @@ theorem deviation_fourier_synthesis (k : ℕ) (hk : 2 ≤ k) (B : Box (k - 1)) :
         ((tupleCount (crtSubset q Ω) (Fin.cons 0 h) : ℂ) -
           ↑(∏ p ∈ q.primeFactors, localMean k Ω p))‖ ≤
       C * (Real.log q) ^ (k - 1 : ℕ) *
+        (q : ℝ) ^ (k - 1 : ℕ) *
         (∏ p ∈ q.primeFactors, localMean k Ω p) *
         ∏ p ∈ q.primeFactors,
           (1 + (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) := by
@@ -831,14 +834,21 @@ theorem deviation_fourier_synthesis (k : ℕ) (hk : 2 ≤ k) (B : Box (k - 1)) :
     -- Taking norms and applying triangle inequality + L∞ bound (hlem2):
     --   ‖...‖ ≤ q^(k-1) * M * E * ∑ ξ, ‖dft(I_S)(ξ)‖
     --       ≤ q^(k-1) * M * E * C * (log q)^(k-1)    [by hC_bound]
-    -- The factor q^(k-1) * M = q^(k-1) * ∏ μ_p = ∏ |Ω_p|^k
-    -- (since q = ∏ p and μ_p = |Ω_p|^k / p^{k-1}),
-    -- which absorbs correctly into the RHS.
-    -- TODO: There is a q^(k-1) scaling mismatch in the formal Fourier
-    -- argument; this `have` is left as `sorry` for isolation.
     have hlem3 : ‖∑ h, I_S h * f_dev h‖ ≤
-        C * (Real.log q) ^ (k - 1 : ℕ) * M * E := by
-      sorry
+        C * (Real.log q) ^ (k - 1 : ℕ) * (q : ℝ) ^ (k - 1 : ℕ) * M * E := by
+      rw [ hlem1, ← mul_comm ];
+      refine' le_trans ( norm_sum_le _ _ ) _;
+      simp_all +decide [ mul_assoc, mul_comm, mul_left_comm ];
+      refine' le_trans ( Finset.sum_le_sum fun _ _ => mul_le_mul_of_nonneg_left ( mul_le_mul_of_nonneg_left ( hlem2 _ ) ( norm_nonneg _ ) ) ( by positivity ) ) _;
+      convert mul_le_mul_of_nonneg_left ( mul_le_mul_of_nonneg_right ( hC_bound q s hs ) ( show 0 ≤ ( ∏ p ∈ q.primeFactors, localMean k Ω p ) * ∏ x ∈ q.primeFactors, ( 1 + ( x : ℝ ) ^ ( -ε ) * ( 1 - ( Ω x |> Finset.card : ℝ ) / x ) ) by
+                                                                                            refine' mul_nonneg ( Finset.prod_nonneg fun p hp => _ ) ( Finset.prod_nonneg fun p hp => _ );
+                                                                                            · exact div_nonneg ( pow_nonneg ( Nat.cast_nonneg _ ) _ ) ( pow_nonneg ( Nat.cast_nonneg _ ) _ );
+                                                                                            · refine' add_nonneg zero_le_one ( mul_nonneg ( Real.rpow_nonneg ( Nat.cast_nonneg _ ) _ ) ( sub_nonneg.mpr _ ) );
+                                                                                              rw [ div_le_iff₀ ] <;> norm_cast <;> norm_num [ Nat.Prime.pos ( Nat.prime_of_mem_primeFactors hp ) ];
+                                                                                              haveI := Fact.mk ( Nat.prime_of_mem_primeFactors hp ) ; exact le_trans ( Finset.card_le_univ _ ) ( by norm_num ) ; ) ) ( show 0 ≤ ( q : ℝ ) ^ ( k - 1 ) by positivity ) using 1;
+      · simp +decide only [sum_mul, Finset.mul_sum _ _ _];
+        exact Equiv.sum_comp ( Equiv.neg ( Fin ( k - 1 ) → ZMod q ) ) fun x => ↑q ^ ( k - 1 ) * ( ‖dft q ( k - 1 ) ( boxIndicator q ( k - 1 ) B s ) x‖ * ( ( ∏ p ∈ q.primeFactors, localMean k Ω p ) * ∏ x ∈ q.primeFactors, ( 1 + ( x : ℝ ) ^ ( -ε ) * ( 1 - ( Ω x |> Finset.card : ℝ ) / x ) ) ) );
+      · ring
     exact hlem3⟩
 
 end PoissonCRT
