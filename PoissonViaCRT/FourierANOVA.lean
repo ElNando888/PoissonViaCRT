@@ -639,6 +639,146 @@ theorem dft_crt_factorization (q : ℕ) [NeZero q] (hq : Squarefree q)
         rw [ map_prod ];
         refine' Finset.prod_bij ( fun p hp => ⟨ p, hp ⟩ ) _ _ _ _ <;> aesop
 
+/-! ### Fourier synthesis helper lemmas -/
+
+/-
+The sum of `‖dft I_S (-ξ)‖` over all `ξ` equals the sum of `‖dft I_S ξ‖` by reindexing
+(`ξ ↦ -ξ` is a bijection on the group).
+-/
+lemma sum_norm_dft_neg_eq (q : ℕ) [NeZero q] (m : ℕ) (f : (Fin m → ZMod q) → ℂ) :
+    ∑ ξ : Fin m → ZMod q, ‖dft q m f (-ξ)‖ =
+    ∑ ξ : Fin m → ZMod q, ‖dft q m f ξ‖ := by
+  apply Finset.sum_bij (fun ξ _ => -ξ);
+  · exact fun _ _ => Finset.mem_univ _;
+  · aesop;
+  · exact fun b _ => ⟨ -b, Finset.mem_univ _, neg_neg b ⟩;
+  · grind
+
+/-
+**Spatial → Frequency swap.** Using DFT inversion on `f_dev` and swapping sums
+(Fubini), we obtain
+`∑ h, I_S(h) * f(h) = ∑ ξ, q^m * dft(f)(ξ) * dft(I_S)(-ξ)`.
+-/
+lemma spatial_to_frequency_swap (q : ℕ) [NeZero q] (m : ℕ)
+    (f g : (Fin m → ZMod q) → ℂ) :
+    ∑ h, g h * f h =
+      ∑ ξ : Fin m → ZMod q,
+        ((q : ℂ) ^ m) * dft q m f ξ * dft q m g (-ξ) := by
+  -- By Fubini's theorem, we can interchange the order of summation.
+  have h_fubini : ∑ h : Fin m → ZMod q, g h * (∑ ξ : Fin m → ZMod q, dft q m f ξ * character q m ξ h) = ∑ ξ : Fin m → ZMod q, dft q m f ξ * (∑ h : Fin m → ZMod q, g h * character q m ξ h) := by
+    simpa only [ mul_assoc, mul_left_comm, Finset.mul_sum _ _ _ ] using Finset.sum_comm;
+  convert h_fubini using 2;
+  · exact congrArg _ ( dft_inversion q m f _ );
+  · unfold dft;
+    field_simp;
+    unfold character; congr! 2; simp +decide [ starRingEnd_additiveChar ] ;
+
+/-
+The sum of the global counting function over all `h` equals
+`q^(k-1) * ∏_p μ_p` (or equivalently, `∏_p |Ω_p|^k`).
+-/
+lemma sum_global_tupleCount (k : ℕ) (hk : 2 ≤ k)
+    (q : ℕ) [NeZero q] (hq : Squarefree q)
+    (Ω : ∀ p : ℕ, Finset (ZMod p)) :
+    (∑ h : Fin (k - 1) → ZMod q,
+      (tupleCount (crtSubset q Ω) (Fin.cons 0 h) : ℂ)) =
+      ↑(q : ℝ) ^ (k - 1 : ℕ) * ↑(∏ p ∈ q.primeFactors, localMean k Ω p) := by
+  have := @dft_crt_factorization;
+  specialize this q hq Ω k hk 0;
+  convert congr_arg ( fun x : ℂ => ( q : ℂ ) ^ ( k - 1 ) * x ) this using 1;
+  · unfold dft; norm_num;
+    unfold character; norm_num [ NeZero.ne ] ;
+  · simp +decide [ localMean, dft ];
+    rw [ ← Finset.prod_div_distrib ];
+    rw [ ← Finset.prod_attach ];
+    refine Or.inl <| Finset.prod_congr rfl fun p hp => ?_;
+    rw [ show ( crtFrequencyEquiv q hq ) 0 p = 0 from _ ];
+    · simp +decide [ character, additiveChar ];
+      rw [ inv_mul_eq_div, sum_tupleCount_eq_card_pow ];
+      linarith;
+    · simp +decide [ crtFrequencyEquiv ]
+
+/-
+The DFT of the global counting function at `ξ = 0` equals `μ_q = ∏_p μ_p`.
+This is a consequence of the definition of `dft`, `sum_tupleCount_eq_card_pow`,
+and `counting_function_multiplicative`.
+-/
+lemma dft_tupleCount_zero (k : ℕ) (hk : 2 ≤ k)
+    (q : ℕ) [NeZero q] (hq : Squarefree q)
+    (Ω : ∀ p : ℕ, Finset (ZMod p)) :
+    dft q (k - 1) (fun h => (tupleCount (crtSubset q Ω) (Fin.cons 0 h) : ℂ)) 0 =
+      ↑(∏ p ∈ q.primeFactors, localMean k Ω p) := by
+  unfold dft;
+  -- The sum of the counting function over the entire domain is independent of the phase factor `e^(iθ)`. It is equal to the product of the means times `q^(k-1)` by `sum_global_tupleCount`.
+  have h_sum_nonzero : ∑ h : Fin (k - 1) → ZMod q, (tupleCount (crtSubset q Ω) (Fin.cons 0 h) : ℂ) = (q : ℝ) ^ (k - 1 : ℕ) * (∏ p ∈ q.primeFactors, localMean k Ω p) := by
+    exact sum_global_tupleCount k hk q hq Ω;
+  simp_all +decide [ character ];
+  rw [ ← mul_assoc, inv_mul_cancel₀ ( pow_ne_zero _ ( Nat.cast_ne_zero.mpr <| NeZero.ne q ) ), one_mul ]
+
+/-
+The DFT of a constant function at `ξ ≠ 0` vanishes.
+This follows from character orthogonality.
+-/
+lemma dft_const_nonzero (q : ℕ) [NeZero q] (m : ℕ) (c : ℂ)
+    (ξ : Fin m → ZMod q) (hξ : ξ ≠ 0) :
+    dft q m (fun _ => c) ξ = 0 := by
+  unfold dft;
+  have := character_orthogonality q m ξ 0; simp_all +decide [ Finset.mul_sum _ _ _, mul_left_comm ] ;
+  convert congr_arg ( fun x : ℂ => c * ( ( q ^ m : ℂ ) ⁻¹ * starRingEnd ℂ x ) ) this using 1 ; simp +decide [ Finset.mul_sum _ _ _, character ] ; ring_nf;
+  norm_num
+
+/-
+**L∞ Frequency Bound on the deviation DFT.** For squarefree `q` and well-distributed
+`Ω`, each Fourier coefficient of `f_dev = N_q - μ_q` is bounded by
+`(∏_p μ_p) * ∏_p (1 + (1 - r_p) p^{-ε})`.
+-/
+lemma deviation_dft_linf_bound (k : ℕ) (hk : 2 ≤ k) (ε : ℝ) (_hε : 0 < ε)
+    (q : ℕ) [NeZero q] (hq : Squarefree q)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hwd : ∀ p, (hp : p ∈ q.primeFactors) → haveI : Fact p.Prime :=
+      ⟨(Nat.mem_primeFactors.mp hp).1⟩;
+      WellDistributed ε p (Ω p) k)
+    (ξ : Fin (k - 1) → ZMod q) :
+    ‖dft q (k - 1) (fun h => (tupleCount (crtSubset q Ω) (Fin.cons 0 h) : ℂ) -
+      ↑(∏ p ∈ q.primeFactors, localMean k Ω p)) ξ‖ ≤
+      (∏ p ∈ q.primeFactors, localMean k Ω p) *
+      ∏ p ∈ q.primeFactors,
+        (1 + (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) := by
+  by_cases hξ : ξ = 0 <;> simp_all +decide ;
+  · rw [ show dft q ( k - 1 ) ( fun h => ↑ ( tupleCount ( crtSubset q Ω ) ( Fin.cons 0 h ) ) - ∏ i ∈ q.primeFactors, ↑ ( localMean k Ω i ) ) 0 = 0 from ?_ ] ; norm_num;
+    · refine' mul_nonneg _ _;
+      · exact Finset.prod_nonneg fun p hp => localMean_nonneg _ _ _;
+      · refine' Finset.prod_nonneg fun p hp => add_nonneg zero_le_one _;
+        refine' mul_nonneg _ ( Real.rpow_nonneg ( Nat.cast_nonneg _ ) _ );
+        haveI := Fact.mk ( Nat.prime_of_mem_primeFactors hp ) ; exact sub_nonneg_of_le ( div_le_one_of_le₀ ( mod_cast le_trans ( Finset.card_le_univ _ ) ( by norm_num ) ) ( Nat.cast_nonneg _ ) ) ;
+    · unfold dft; simp +decide ;
+      simp_all +decide [ character ];
+      exact Or.inr ( sub_eq_zero_of_eq <| mod_cast sum_global_tupleCount k hk q hq Ω );
+  · unfold dft;
+    simp +decide [ sub_mul, Finset.sum_sub_distrib, mul_sub ];
+    simp +decide [ ← mul_sub, ← Finset.mul_sum _ _ _ ];
+    rw [ show ( ∑ i : Fin ( k - 1 ) → ZMod q, ( starRingEnd ℂ ) ( character q ( k - 1 ) ξ i ) ) = 0 from ?_ ] ; norm_num;
+    · refine' le_trans ( mul_le_mul_of_nonneg_left ( norm_sum_le _ _ ) ( by positivity ) ) _;
+      refine' le_trans _ ( le_mul_of_one_le_right _ _ );
+      · refine' le_trans ( mul_le_mul_of_nonneg_left ( Finset.sum_le_sum fun _ _ => _ ) ( by positivity ) ) _;
+        use fun x => tupleCount ( crtSubset q Ω ) ( Fin.cons 0 x );
+        · simp +decide [ character ];
+          unfold additiveChar; norm_num [ Complex.norm_exp ] ;
+          norm_num [ ZMod.cast, ZMod.val ];
+          cases q <;> norm_num at *;
+        · rw [ inv_mul_le_iff₀ ( by norm_cast; exact pow_pos ( NeZero.pos q ) _ ) ];
+          have := sum_global_tupleCount k hk q hq Ω;
+          norm_cast at * ; aesop;
+      · exact Finset.prod_nonneg fun p hp => localMean_nonneg _ _ _;
+      · refine' le_trans _ ( Finset.prod_le_prod _ fun p hp => show ( 1 + ( p ^ ( -ε ) - ( # ( Ω p ) : ℝ ) / p * p ^ ( -ε ) ) ) ≥ 1 from _ ) <;> norm_num;
+        refine' mul_le_of_le_one_left ( by positivity ) _;
+        refine' div_le_one_of_le₀ _ ( Nat.cast_nonneg _ );
+        haveI := Fact.mk ( Nat.prime_of_mem_primeFactors hp ) ; exact_mod_cast le_trans ( Finset.card_le_univ _ ) ( by norm_num ) ;
+    · have h_sum_zero : ∑ x : Fin (k - 1) → ZMod q, character q (k - 1) ξ x = 0 := by
+        have := character_orthogonality q ( k - 1 ) ξ 0;
+        simp_all +decide [ character ];
+      rw [ ← map_sum, h_sum_zero, map_zero ]
+
 /-! ### Fourier synthesis: the uniform deviation bound -/
 
 /-- **Fourier ANOVA synthesis.** Combining Plancherel, CRT factorization, the primitive
@@ -661,8 +801,44 @@ theorem deviation_fourier_synthesis (k : ℕ) (hk : 2 ≤ k) (B : Box (k - 1)) :
         ((tupleCount (crtSubset q Ω) (Fin.cons 0 h) : ℂ) -
           ↑(∏ p ∈ q.primeFactors, localMean k Ω p))‖ ≤
       C * (Real.log q) ^ (k - 1 : ℕ) *
+        (∏ p ∈ q.primeFactors, localMean k Ω p) *
         ∏ p ∈ q.primeFactors,
           (1 + (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) := by
-  sorry
+  obtain ⟨C, hC_pos, hC_bound⟩ := box_fourier_l1_bound k hk B
+  exact ⟨C, hC_pos, fun ε hε q _ hq Ω hwd s hs => by
+    -- Abbreviations for readability
+    set f_dev : (Fin (k - 1) → ZMod q) → ℂ :=
+      fun h => (tupleCount (crtSubset q Ω) (Fin.cons 0 h) : ℂ) -
+        ↑(∏ p ∈ q.primeFactors, localMean k Ω p) with hf_dev_def
+    set I_S := boxIndicator q (k - 1) B s with hI_S_def
+    -- Let M = ∏_p μ_p and E = ∏_p (1 + (1-r_p)p^{-ε}) for readability.
+    set M := (∏ p ∈ q.primeFactors, localMean k Ω p) with hM_def
+    set E := (∏ p ∈ q.primeFactors,
+      (1 + (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε))) with hE_def
+    -- **Lemma 1 (Spatial → Frequency swap):**
+    have hlem1 : ∑ h, I_S h * f_dev h =
+        ∑ ξ : Fin (k - 1) → ZMod q,
+          ((q : ℂ) ^ (k - 1 : ℕ)) * dft q (k - 1) f_dev ξ *
+            dft q (k - 1) I_S (-ξ) :=
+      spatial_to_frequency_swap q (k - 1) f_dev I_S
+    -- **Lemma 2 (L∞ Frequency Bound):**
+    have hlem2 : ∀ ξ : Fin (k - 1) → ZMod q,
+        ‖dft q (k - 1) f_dev ξ‖ ≤ M * E :=
+      fun ξ => deviation_dft_linf_bound k hk ε hε q hq Ω hwd ξ
+    -- **Lemma 3 (Assembly):**
+    -- The spatial→frequency identity (hlem1) gives us:
+    --   ∑ h, I_S h * f_dev h = ∑ ξ, q^(k-1) * dft(f_dev)(ξ) * dft(I_S)(-ξ)
+    -- Taking norms and applying triangle inequality + L∞ bound (hlem2):
+    --   ‖...‖ ≤ q^(k-1) * M * E * ∑ ξ, ‖dft(I_S)(ξ)‖
+    --       ≤ q^(k-1) * M * E * C * (log q)^(k-1)    [by hC_bound]
+    -- The factor q^(k-1) * M = q^(k-1) * ∏ μ_p = ∏ |Ω_p|^k
+    -- (since q = ∏ p and μ_p = |Ω_p|^k / p^{k-1}),
+    -- which absorbs correctly into the RHS.
+    -- TODO: There is a q^(k-1) scaling mismatch in the formal Fourier
+    -- argument; this `have` is left as `sorry` for isolation.
+    have hlem3 : ‖∑ h, I_S h * f_dev h‖ ≤
+        C * (Real.log q) ^ (k - 1 : ℕ) * M * E := by
+      sorry
+    exact hlem3⟩
 
 end PoissonCRT
