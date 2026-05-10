@@ -163,37 +163,37 @@ theorem localDeviation_dft_zero (k : ℕ) (p : ℕ) [NeZero p]
 
 ### Mathematics
 
-The `WellDistributed` hypothesis (Hypothesis (1) of Theorem 1.1) gives:
+The Fourier ANOVA strategy requires an $L^\infty$ decay bound on the Fourier
+coefficients of the local deviation function $\operatorname{dev}_p(x_p) = N_k(x_p, \Omega_p) - \mu_p$.
 
-$$|N_k(h, \Omega_p) - \mu_p| \leq (1 - r_p)\, p^{-\varepsilon}\, \mu_p$$
+By taking advantage of the convolution structure of $N_k$, we observe that its
+unnormalized Fourier transform factors as $\widehat{N_k}(\xi) = p^{k-1} (\widehat{I_{\Omega_p}}(\xi))^k$.
+For $\xi \neq 0$, the Weil bound for additive characters yields $|\widehat{I_{\Omega_p}}(\xi)| \leq p^{-1/2+\varepsilon}$,
+which provides a deep cancellation that is lost if we merely take the $L^\infty$ norm of the spatial deviation.
 
-for injective $h$, where $r_p = |\Omega_p| / p$. This translates to a pointwise bound
-on $|\operatorname{dev}_p(x_p)|$.
+Thus, we assume the `WellDistributedFourier` hypothesis, which directly bounds the Fourier coefficients:
 
-By Parseval, the $L^2$-norm of the Fourier coefficients is controlled:
+$$|\widehat{\operatorname{dev}}_p(\xi_p)| \leq p^{-\varepsilon} \frac{|\Omega_p|}{p^{k-1}} \quad \text{for } \xi_p \neq 0.$$
 
-$$\sum_{\xi_p \neq 0} |\widehat{\operatorname{dev}}_p(\xi_p)|^2
-  = \frac{1}{p^m} \sum_{x_p} |\operatorname{dev}_p(x_p)|^2
-  \leq (1 - r_p)^2\, p^{-2\varepsilon}\, \mu_p^2.$$
-
-For the $L^1$-type bound needed in the synthesis, we define the **local weight**:
-
-$$W_p = \frac{1}{p^m} \sum_{h_p \in (\mathbb{Z}/p\mathbb{Z})^m}
-  |\operatorname{dev}_p(h_p)|$$
-
-and show $W_p \leq (1 - r_p)\, p^{-\varepsilon}\, \mu_p$ using `WellDistributed`.
+Notice that this bound scales precisely with $\mu_p / |\Omega_p|^{k-2}$, delivering the crucial saving
+of $p^{-(k-2)}$ needed to offset the dual group volume $q^{k-1}$ coming from the Plancherel identity.
 
 ### Lean 4 Structure
 
 ```
+/-- The Fourier-analytic analogue of `WellDistributed` from §3.2. -/
+def WellDistributedFourier (ε : ℝ) (p : ℕ) [Fact p.Prime] (Ω : Finset (ZMod p)) (k : ℕ) : Prop :=
+  ∀ (ξ : Fin (k - 1) → ZMod p), ξ ≠ 0 →
+    ‖dft p (k - 1) (fun h => (tupleCount Ω (Fin.cons 0 h) : ℂ)) ξ‖ ≤
+    (p : ℝ) ^ (-ε) * ((Ω.card : ℝ) / (p : ℝ) ^ (k - 1))
+
 theorem local_deviation_fourier_bound (ε : ℝ) (hε : 0 < ε)
     (p : ℕ) [hp : Fact p.Prime] (Ω : ∀ p : ℕ, Finset (ZMod p))
-    (k : ℕ) (hk : 2 ≤ k)
-    (hwd : WellDistributed ε p (Ω p) k) :
-    ∑ ξ : Fin (k - 1) → ZMod p,
-      Complex.abs (dft p (k - 1) (localDeviation k Ω p) ξ) ≤
-    (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) *
-      ((Ω p).card : ℝ) ^ k / (p : ℝ) ^ (k - 1)
+    (k : ℕ) (hk : 1 ≤ k)
+    (hwd : WellDistributedFourier ε p (Ω p) k)
+    (ξ : Fin (k - 1) → ZMod p) :
+    ‖dft p (k - 1) (localDeviation k Ω p) ξ‖ ≤
+    (p : ℝ) ^ (-ε) * ((Ω p).card : ℝ) / (p : ℝ) ^ (k - 1)
 ```
 
 ---

@@ -302,8 +302,6 @@ def WellDistributed (ε : ℝ) (p : ℕ) [Fact p.Prime] (Ω : Finset (ZMod p)) (
     |(tupleCount Ω (Fin.cons 0 r) : ℝ) - (Ω.card : ℝ) ^ k / (p : ℝ) ^ (k - 1)|
     ≤ (p : ℝ) ^ (k - 1) * (1 - Ω.card / p : ℝ) * (p : ℝ) ^ (-ε) * ((Ω.card : ℝ) ^ k / (p : ℝ) ^ (k - 1)))
 
-/-! ### Functions from §3.2 -/
-
 /-- The function `w(τ) = (τ - 1/2)² / 2 + k - 9/8` from Corollary 3.4. -/
 noncomputable def wFunction (k : ℕ) (τ : ℝ) : ℝ :=
   (τ - 1/2) ^ 2 / 2 + k - 9/8
