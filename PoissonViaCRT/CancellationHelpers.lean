@@ -113,7 +113,7 @@ The bound uses:
 lemma deviation_times_spacing_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
-    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributedFourier ε p (Ω p) k)
     (hsp : ∀ (p : ℕ), p.Prime →
       (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
     (X : Box (k - 1))
@@ -148,7 +148,7 @@ The conversion from `D · s ≤ K` to `D ≤ K · s⁻¹` is straightforward:
 lemma deviation_sum_bound_q_indep (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
-    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributedFourier ε p (Ω p) k)
     (hsp : ∀ (p : ℕ), p.Prime →
       (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
     (X : Box (k - 1))
@@ -180,7 +180,7 @@ the box `X` and lattice-point constant `C_lp`. This wraps
 lemma deviation_sum_bound_uniform (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
-    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributedFourier ε p (Ω p) k)
     (hsp : ∀ (p : ℕ), p.Prime →
       (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε)) :
     ∃ δ : ℝ, 0 < δ ∧ ∀ (X : Box (k - 1))

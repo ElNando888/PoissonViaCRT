@@ -14,9 +14,76 @@ To cite Aristotle, tag @Aristotle-Harmonic on GitHub PRs/issues, and add as co-a
 Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
+/-
+PROVIDED SOLUTION
+
+# Task: Prove `local_deviation_fourier_bound` and `deviation_fourier_synthesis`
+
+**Target File:** `PoissonViaCRT/FourierANOVA.lean`
+
+## Task 1: Prove `local_deviation_fourier_bound`
+
+This lemma states that under the `WellDistributedFourier` hypothesis, the Fourier transform of the local deviation function `fourierLocalDeviation` is bounded pointwise by `p^{-ε} · |Ω_p| / p^{k-1}`.
+
+### Proof Strategy
+
+Split on whether `ξ = 0` or `ξ ≠ 0`:
+
+1. **Case `ξ = 0`:** Use the already-proved `fourierLocalDeviation_dft_zero` (which shows `dft(fourierLocalDeviation)(0) = 0`). The norm of zero is zero, which is `≤` the RHS (since the RHS is non-negative by `positivity`).
+
+2. **Case `ξ ≠ 0`:** The DFT of `fourierLocalDeviation` at `ξ ≠ 0` equals the DFT of `tupleCount` at `ξ` minus the DFT of the constant `μ_p` at `ξ`. But the DFT of a constant at `ξ ≠ 0` vanishes (by `dft_const_nonzero`, already proved in this file). So `dft(fourierLocalDeviation)(ξ) = dft(tupleCount)(ξ)`, and the `WellDistributedFourier` hypothesis `hwd` directly gives the bound.
+
+### Key Lemmas Available
+- `fourierLocalDeviation_dft_zero` — proved, gives `dft(dev)(0) = 0`
+- `dft_const_nonzero` — proved, gives `dft(const)(ξ) = 0` for `ξ ≠ 0`
+- `fourierLocalDeviation` — defined as `tupleCount - μ` (complex-valued)
+- The hypothesis `hwd : WellDistributedFourier ε p (Ω p) k` directly bounds the DFT of `tupleCount`
+
+### Important Details
+- `fourierLocalDeviation k Ω p h = (tupleCount (Ω p) (Fin.cons 0 h) : ℂ) - (((Ω p).card : ℝ) ^ k / (p : ℝ) ^ (k - 1) : ℝ)`
+- The DFT is **linear**, so `dft(f - g) = dft(f) - dft(g)`.
+- You may need to show linearity of `dft` explicitly or use `Finset.sum_sub_distrib` after unfolding.
+
+## Task 2: Close the inner `sorry` in `deviation_fourier_synthesis`
+
+The proof skeleton is already in place with:
+- `hlem1`: The spatial→frequency swap identity
+- `hlem2`: The `L∞` bound on `dft(f_dev)(ξ)` (calls `deviation_dft_linf_bound`, currently sorry'd — but it's available as a hypothesis in scope)
+- `hC_bound`: The box `L¹` bound (from `box_fourier_l1_bound`, also sorry'd but available)
+
+### Proof Strategy for `hlem3`
+
+Starting from `hlem1`:
+```
+∑ h, I_S(h) · f_dev(h) = ∑ ξ, q^{k-1} · dft(f_dev)(ξ) · dft(I_S)(-ξ)
+```
+
+1. **Take norms** of both sides: `‖LHS‖ = ‖RHS‖`.
+2. **Triangle inequality** on the RHS: `‖∑ ξ ...‖ ≤ ∑ ξ ‖...‖`.
+3. **Factor each term**: `‖q^{k-1} · dft(f_dev)(ξ) · dft(I_S)(-ξ)‖ = q^{k-1} · ‖dft(f_dev)(ξ)‖ · ‖dft(I_S)(-ξ)‖`.
+4. **Apply `hlem2`** to bound `‖dft(f_dev)(ξ)‖ ≤ q^{-ε} · |Ω_q| / q^{k-1}`.
+5. **Factor out** the constant `q^{k-1} · q^{-ε} · |Ω_q| / q^{k-1} = q^{-ε} · |Ω_q|`.
+6. **Sum** `∑ ξ ‖dft(I_S)(-ξ)‖ = ∑ ξ ‖dft(I_S)(ξ)‖` (by `sum_norm_dft_neg_eq`).
+7. **Apply `hC_bound`**: `∑ ξ ‖dft(I_S)(ξ)‖ ≤ C · (log q)^{k-1}`.
+8. **Multiply**: `q^{-ε} · |Ω_q| · C · (log q)^{k-1} = C · (log q)^{k-1} · q^{-ε} · |Ω_q|`.
+
+### Key Lemmas Available
+- `sum_norm_dft_neg_eq` — already proved in the file
+- `norm_mul` — from Mathlib
+- `Finset.sum_le_sum` — from Mathlib
+- `norm_sum_le` (or `Finset.norm_sum_le`) — triangle inequality for norms
+- `hC_bound` from `box_fourier_l1_bound` — in scope via the outer `obtain`
+
+## Build Verification
+After completing both proofs, the file should build successfully. The `sorry` count in `FourierANOVA.lean` should drop from 5 to 3 (the remaining 3 being `WellDistributed_implies_WellDistributedFourier`, `box_fourier_1d_bound`, and `deviation_dft_linf_bound`).
+
+-/
+
 import PoissonViaCRT.Defs
 import PoissonViaCRT.CRTMultiplicativity
 import PoissonViaCRT.DeviationBoundHelper
+
+set_option linter.unusedVariables false
 
 /-!
 # Fourier ANOVA for the Deviation Bound
@@ -37,7 +104,7 @@ via CRT, and bound the resulting sum using exponential-sum estimates from the
 * `PoissonCRT.character`: The additive character
   $\chi_\xi(x) = e^{2\pi i \langle \xi, x \rangle / q}$.
 * `PoissonCRT.dft`: The discrete Fourier transform on $(\mathbb{Z}/q\mathbb{Z})^m$.
-* `PoissonCRT.localDeviation`: The local deviation function
+* `PoissonCRT.fourierLocalDeviation`: The local deviation function
   $\operatorname{dev}_p(h) = N_k(h, \Omega_p) - \mu_p$.
 * `PoissonCRT.boxIndicator`: The indicator function of the scaled box $s \cdot X$
   in $(\mathbb{Z}/q\mathbb{Z})^m$.
@@ -47,7 +114,7 @@ via CRT, and bound the resulting sum using exponential-sum estimates from the
 * `PoissonCRT.character_orthogonality`: Orthogonality of additive characters.
 * `PoissonCRT.plancherel_identity`: Plancherel / Parseval identity on $G$.
 * `PoissonCRT.dft_inversion`: Fourier inversion formula.
-* `PoissonCRT.localDeviation_dft_zero`: The Fourier transform of the local deviation
+* `PoissonCRT.fourierLocalDeviation_dft_zero`: The Fourier transform of the local deviation
   vanishes at the zero frequency.
 * `PoissonCRT.local_deviation_fourier_bound`: $L^\infty$ bound on the local
   deviation Fourier coefficients using `WellDistributed`.
@@ -264,7 +331,7 @@ theorem plancherel_identity (q : ℕ) [NeZero q] (m : ℕ)
 /-- The **local deviation function** at prime `p`:
 $\operatorname{dev}_p(h) = N_k((0, h_1, \ldots, h_{k-1}), \Omega_p) - \mu_p$,
 where $\mu_p = |\Omega_p|^k / p^{k-1}$ is the local expected value. -/
-noncomputable def localDeviation (k : ℕ) (Ω : ∀ p : ℕ, Finset (ZMod p))
+noncomputable def fourierLocalDeviation (k : ℕ) (Ω : ∀ p : ℕ, Finset (ZMod p))
     (p : ℕ) [NeZero p] (h : Fin (k - 1) → ZMod p) : ℂ :=
   (tupleCount (Ω p) (Fin.cons 0 h) : ℂ) - (((Ω p).card : ℝ) ^ k / (p : ℝ) ^ (k - 1) : ℝ)
 
@@ -315,46 +382,46 @@ theorem sum_tupleCount_eq_card_pow (k : ℕ) (hk : 1 ≤ k) (p : ℕ) [NeZero p]
       ((Ω p).card : ℂ) ^ k := by
   exact_mod_cast sum_tupleCount_eq_card_pow_nat k hk p Ω
 
-/- The original statement of `localDeviation_sum_zero` omitted the hypothesis `1 ≤ k`.
+/- The original statement of `fourierLocalDeviation_sum_zero` omitted the hypothesis `1 ≤ k`.
    It is false when `k = 0`: ℕ subtraction gives `k - 1 = 0`, so `Fin.cons 0 h` has type
    `Fin 1 → ZMod p`, making the tuple count equal to `|Ω p|` while the mean term is
    `|Ω p|^0 / p^0 = 1`.  The corrected version below adds `(hk : 1 ≤ k)`. -/
--- theorem localDeviation_sum_zero (k : ℕ) (p : ℕ) [NeZero p]
+-- theorem fourierLocalDeviation_sum_zero (k : ℕ) (p : ℕ) [NeZero p]
 --     (Ω : ∀ p : ℕ, Finset (ZMod p)) :
---     ∑ h : Fin (k - 1) → ZMod p, localDeviation k Ω p h = 0 := by
+--     ∑ h : Fin (k - 1) → ZMod p, fourierLocalDeviation k Ω p h = 0 := by
 --   sorry
 
 /-- The sum of the local deviation over all elements of $(\mathbb{Z}/p\mathbb{Z})^{k-1}$
 is zero (the deviations from the mean cancel).
 
 *Corrected*: requires `1 ≤ k`; the original statement is false for `k = 0`. -/
-theorem localDeviation_sum_zero (k : ℕ) (hk : 1 ≤ k) (p : ℕ) [NeZero p]
+theorem fourierLocalDeviation_sum_zero (k : ℕ) (hk : 1 ≤ k) (p : ℕ) [NeZero p]
     (Ω : ∀ p : ℕ, Finset (ZMod p)) :
-    ∑ h : Fin (k - 1) → ZMod p, localDeviation k Ω p h = 0 := by
-  unfold localDeviation
+    ∑ h : Fin (k - 1) → ZMod p, fourierLocalDeviation k Ω p h = 0 := by
+  unfold fourierLocalDeviation
   simp +decide [Finset.sum_sub_distrib]
   rw [mul_div_cancel₀]
   · exact sub_eq_zero_of_eq <| mod_cast sum_tupleCount_eq_card_pow k hk p Ω
   · exact pow_ne_zero _ (Nat.cast_ne_zero.mpr <| NeZero.ne p)
 
-/- The original statement of `localDeviation_dft_zero` omitted `1 ≤ k`; it inherits
-   the same issue from `localDeviation_sum_zero`. -/
--- theorem localDeviation_dft_zero (k : ℕ) (p : ℕ) [NeZero p]
+/- The original statement of `fourierLocalDeviation_dft_zero` omitted `1 ≤ k`; it inherits
+   the same issue from `fourierLocalDeviation_sum_zero`. -/
+-- theorem fourierLocalDeviation_dft_zero (k : ℕ) (p : ℕ) [NeZero p]
 --     (Ω : ∀ p : ℕ, Finset (ZMod p)) :
---     dft p (k - 1) (localDeviation k Ω p) 0 = 0 := by
+--     dft p (k - 1) (fourierLocalDeviation k Ω p) 0 = 0 := by
 --   sorry
 
 /-- The Fourier transform of the local deviation vanishes at the zero frequency:
-$\widehat{\operatorname{dev}}_p(0) = 0$. This is immediate from `localDeviation_sum_zero`
+$\widehat{\operatorname{dev}}_p(0) = 0$. This is immediate from `fourierLocalDeviation_sum_zero`
 and the definition of `dft`.
 
-*Corrected*: requires `1 ≤ k`; see `localDeviation_sum_zero`. -/
-theorem localDeviation_dft_zero (k : ℕ) (hk : 1 ≤ k) (p : ℕ) [NeZero p]
+*Corrected*: requires `1 ≤ k`; see `fourierLocalDeviation_sum_zero`. -/
+theorem fourierLocalDeviation_dft_zero (k : ℕ) (hk : 1 ≤ k) (p : ℕ) [NeZero p]
     (Ω : ∀ p : ℕ, Finset (ZMod p)) :
-    dft p (k - 1) (localDeviation k Ω p) 0 = 0 := by
+    dft p (k - 1) (fourierLocalDeviation k Ω p) 0 = 0 := by
   unfold dft; simp +decide
   unfold character; simp +decide [additiveChar_zero]
-  exact Or.inr (localDeviation_sum_zero k hk p Ω)
+  exact Or.inr (fourierLocalDeviation_sum_zero k hk p Ω)
 
 /-! ### Box indicator function -/
 
@@ -379,6 +446,20 @@ def WellDistributedFourier (ε : ℝ) (p : ℕ) [Fact p.Prime] (Ω : Finset (ZMo
     ‖dft p (k - 1) (fun h => (tupleCount Ω (Fin.cons 0 h) : ℂ)) ξ‖ ≤
     (p : ℝ) ^ (-ε) * ((Ω.card : ℝ) / (p : ℝ) ^ (k - 1))
 
+/-- **Bridge: spatial → Fourier well-distribution.**
+The paper's spatial hypothesis `WellDistributed` (pointwise bound on `|N_k - μ|` for
+injective tuples) implies the Fourier hypothesis `WellDistributedFourier` (pointwise
+bound on non-zero DFT coefficients of the counting function).
+
+The proof uses the standard bound: each DFT coefficient is a weighted average of
+`N_k(h) - μ` against characters, so the triangle inequality + the spatial bound gives
+the Fourier bound up to a volume factor that is absorbed by the normalization. -/
+lemma WellDistributed_implies_WellDistributedFourier
+    (ε : ℝ) (p : ℕ) [Fact p.Prime] (Ω : Finset (ZMod p)) (k : ℕ)
+    (hWD : WellDistributed ε p Ω k) :
+    WellDistributedFourier ε p Ω k := by
+  sorry
+
 /--
 **$L^\\infty$ bound on local deviation Fourier coefficients.** Under the `WellDistributedFourier`
 hypothesis (which encodes the Weil bound cancellation from the convolution structure),
@@ -392,7 +473,7 @@ theorem local_deviation_fourier_bound (ε : ℝ) (_hε : 0 < ε)
     (k : ℕ) (hk : 1 ≤ k)
     (hwd : WellDistributedFourier ε p (Ω p) k)
     (ξ : Fin (k - 1) → ZMod p) :
-    ‖dft p (k - 1) (localDeviation k Ω p) ξ‖ ≤
+    ‖dft p (k - 1) (fourierLocalDeviation k Ω p) ξ‖ ≤
       (p : ℝ) ^ (-ε) * ((Ω p).card : ℝ) / (p : ℝ) ^ (k - 1) := by
   sorry
 
@@ -772,19 +853,19 @@ theorem deviation_fourier_synthesis (k : ℕ) (hk : 2 ≤ k) (B : Box (k - 1)) :
       fun h => (tupleCount (crtSubset q Ω) (Fin.cons 0 h) : ℂ) -
         ↑(∏ p ∈ q.primeFactors, localMean k Ω p)
     set I_S := boxIndicator q (k - 1) B s
-    
+
     -- **Lemma 1 (Spatial → Frequency swap):**
     have hlem1 : ∑ h, I_S h * f_dev h =
         ∑ ξ : Fin (k - 1) → ZMod q,
           ((q : ℂ) ^ (k - 1 : ℕ)) * dft q (k - 1) f_dev ξ *
             dft q (k - 1) I_S (-ξ) :=
       spatial_to_frequency_swap q (k - 1) f_dev I_S
-      
+
     -- **Lemma 2 (L∞ Frequency Bound):**
     have hlem2 : ∀ ξ : Fin (k - 1) → ZMod q,
         ‖dft q (k - 1) f_dev ξ‖ ≤ (q : ℝ) ^ (-ε) * ((crtSubset q Ω).card : ℝ) / (q : ℝ) ^ (k - 1) :=
       fun ξ => deviation_dft_linf_bound k hk ε hε q hq Ω hwd ξ
-      
+
     -- **Lemma 3 (Assembly):**
     -- The spatial→frequency identity (hlem1) gives us:
     --   ∑ h, I_S h * f_dev h = ∑ ξ, q^(k-1) * dft(f_dev)(ξ) * dft(I_S)(-ξ)

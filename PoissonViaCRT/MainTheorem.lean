@@ -281,7 +281,7 @@ lemma euler_product_convergence
     (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
-    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributedFourier ε p (Ω p) k)
     (hsp : ∀ (p : ℕ), p.Prime →
       (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε)) :
     ∃ C : ℝ, 0 < C ∧ ∀ (q : ℕ) [NeZero q],
@@ -337,7 +337,7 @@ lemma complete_period_cancellation_apply
     (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
-    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributedFourier ε p (Ω p) k)
     (hsp : ∀ (p : ℕ), p.Prime →
       (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
     (h_lp : ∀ (X : Box (k - 1)), ∃ C : ℝ, 0 < C ∧ ∀ (v : Fin (k - 1) → ℝ), (∀ i, 0 ≤ v i ∧ v i ≤ 1) →
@@ -360,7 +360,7 @@ lemma complete_period_cancellation_apply
     set bound := ⌈s * ∑ i, X.sides i⌉
     set S := (Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) bound).filter
       (fun h => inScaledBox X s (fun _ => 0) h)
-    
+
     have hs_ge : 1 ≤ s := spacing_ge_one Ω hΩ q
     have h_card_pos : 0 < (Ω_q.card : ℝ) := Nat.cast_pos.mpr (crtSubset_card_pos Ω hΩ q)
     have hq_pos : 0 < (q : ℝ) := Nat.cast_pos.mpr (NeZero.pos q)
@@ -431,7 +431,7 @@ lemma complete_period_cancellation_apply
       calc C_lp * s ^ (-1 : ℝ) + K * s ^ (-δ₀)
         _ ≤ C_lp * s ^ (-(min δ₀ 1 : ℝ)) + K * s ^ (-(min δ₀ 1 : ℝ)) := add_le_add (mul_le_mul_of_nonneg_left h1 hC_lp_pos.le) (mul_le_mul_of_nonneg_left h2 hK_pos.le)
         _ = (C_lp + K) * s ^ (-(min δ₀ 1 : ℝ)) := by ring
-    
+
     exact le_trans (le_trans h_triangle (add_le_add h_main_term h_deviation_term)) h_final
   ⟩
 
@@ -450,7 +450,7 @@ private lemma fluctuation_bound
     (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
-    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributedFourier ε p (Ω p) k)
     (hsp : ∀ (p : ℕ), p.Prime →
       (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε)) :
     ∃ δ : ℝ, 0 < δ ∧ ∀ (X : Box (k - 1)), ∃ C : ℝ, 0 < C ∧
@@ -476,7 +476,7 @@ theorem error_bound_simplified
     (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
-    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributedFourier ε p (Ω p) k)
     (hsp : ∀ (p : ℕ), p.Prime →
       (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε)) :
     ∃ δ : ℝ, 0 < δ ∧ ∀ (X : Box (k - 1)), ∃ C : ℝ, 0 < C ∧
@@ -526,7 +526,10 @@ theorem mainTheorem_precise
       apply Real.rpow_le_rpow_of_exponent_le (by exact_mod_cast hp.one_le)
       linarith
     exact le_trans h_base h_pow
-  have := error_bound_simplified ε hε k hk2 Ω hΩ (fun p _ => hWD p k hk_le) hsp_k
+  -- Bridge from the paper's spatial hypothesis to the Fourier hypothesis
+  have hWDF : ∀ (p : ℕ) [Fact p.Prime], WellDistributedFourier ε p (Ω p) k :=
+    fun p _ => WellDistributed_implies_WellDistributedFourier ε p (Ω p) k (hWD p k hk_le)
+  have := error_bound_simplified ε hε k hk2 Ω hΩ hWDF hsp_k
   exact ⟨this.choose, this.choose_spec.1, this.choose_spec.2 X⟩
 
 /-

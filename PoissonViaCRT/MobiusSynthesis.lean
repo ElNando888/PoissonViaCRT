@@ -22,8 +22,7 @@ import PoissonViaCRT.HardCaseSynthesis
 import PoissonViaCRT.ScaledBoxVariation
 import PoissonViaCRT.MobiusOptimization
 import PoissonViaCRT.MobiusTauIntegration
-import PoissonViaCRT.ConvergentEulerBound
-import PoissonViaCRT.DeviationBoundHelper
+import PoissonViaCRT.FourierANOVA
 
 set_option linter.unusedVariables false
 
@@ -1212,7 +1211,7 @@ previously attempted `k = 2` / `k ≥ 3` case split.
 private lemma deviation_expression_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
-    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributedFourier ε p (Ω p) k)
     (hsp : ∀ (p : ℕ), p.Prime →
       (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
     (hε_lt : ε < lambdaExponent k)
@@ -1237,7 +1236,7 @@ private lemma deviation_expression_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : 
 theorem deviation_final_synthesis (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
-    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributedFourier ε p (Ω p) k)
     (hsp : ∀ (p : ℕ), p.Prime →
       (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
     (X : Box (k - 1))
@@ -1284,7 +1283,7 @@ multiplicative constant `K` is allowed to depend on `X`. -/
 theorem deviation_uniform_exponent (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
-    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributedFourier ε p (Ω p) k)
     (hsp : ∀ (p : ℕ), p.Prime →
       (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε)) :
     ∃ δ : ℝ, 0 < δ ∧ ∀ (X : Box (k - 1))
