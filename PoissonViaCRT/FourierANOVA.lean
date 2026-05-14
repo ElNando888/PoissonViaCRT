@@ -14,71 +14,6 @@ To cite Aristotle, tag @Aristotle-Harmonic on GitHub PRs/issues, and add as co-a
 Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
-/-
-PROVIDED SOLUTION
-
-# Task: Prove `local_deviation_fourier_bound` and `deviation_fourier_synthesis`
-
-**Target File:** `PoissonViaCRT/FourierANOVA.lean`
-
-## Task 1: Prove `local_deviation_fourier_bound`
-
-This lemma states that under the `WellDistributedFourier` hypothesis, the Fourier transform of the local deviation function `fourierLocalDeviation` is bounded pointwise by `p^{-ε} · |Ω_p| / p^{k-1}`.
-
-### Proof Strategy
-
-Split on whether `ξ = 0` or `ξ ≠ 0`:
-
-1. **Case `ξ = 0`:** Use the already-proved `fourierLocalDeviation_dft_zero` (which shows `dft(fourierLocalDeviation)(0) = 0`). The norm of zero is zero, which is `≤` the RHS (since the RHS is non-negative by `positivity`).
-
-2. **Case `ξ ≠ 0`:** The DFT of `fourierLocalDeviation` at `ξ ≠ 0` equals the DFT of `tupleCount` at `ξ` minus the DFT of the constant `μ_p` at `ξ`. But the DFT of a constant at `ξ ≠ 0` vanishes (by `dft_const_nonzero`, already proved in this file). So `dft(fourierLocalDeviation)(ξ) = dft(tupleCount)(ξ)`, and the `WellDistributedFourier` hypothesis `hwd` directly gives the bound.
-
-### Key Lemmas Available
-- `fourierLocalDeviation_dft_zero` — proved, gives `dft(dev)(0) = 0`
-- `dft_const_nonzero` — proved, gives `dft(const)(ξ) = 0` for `ξ ≠ 0`
-- `fourierLocalDeviation` — defined as `tupleCount - μ` (complex-valued)
-- The hypothesis `hwd : WellDistributedFourier ε p (Ω p) k` directly bounds the DFT of `tupleCount`
-
-### Important Details
-- `fourierLocalDeviation k Ω p h = (tupleCount (Ω p) (Fin.cons 0 h) : ℂ) - (((Ω p).card : ℝ) ^ k / (p : ℝ) ^ (k - 1) : ℝ)`
-- The DFT is **linear**, so `dft(f - g) = dft(f) - dft(g)`.
-- You may need to show linearity of `dft` explicitly or use `Finset.sum_sub_distrib` after unfolding.
-
-## Task 2: Close the inner `sorry` in `deviation_fourier_synthesis`
-
-The proof skeleton is already in place with:
-- `hlem1`: The spatial→frequency swap identity
-- `hlem2`: The `L∞` bound on `dft(f_dev)(ξ)` (calls `deviation_dft_linf_bound`, currently sorry'd — but it's available as a hypothesis in scope)
-- `hC_bound`: The box `L¹` bound (from `box_fourier_l1_bound`, also sorry'd but available)
-
-### Proof Strategy for `hlem3`
-
-Starting from `hlem1`:
-```
-∑ h, I_S(h) · f_dev(h) = ∑ ξ, q^{k-1} · dft(f_dev)(ξ) · dft(I_S)(-ξ)
-```
-
-1. **Take norms** of both sides: `‖LHS‖ = ‖RHS‖`.
-2. **Triangle inequality** on the RHS: `‖∑ ξ ...‖ ≤ ∑ ξ ‖...‖`.
-3. **Factor each term**: `‖q^{k-1} · dft(f_dev)(ξ) · dft(I_S)(-ξ)‖ = q^{k-1} · ‖dft(f_dev)(ξ)‖ · ‖dft(I_S)(-ξ)‖`.
-4. **Apply `hlem2`** to bound `‖dft(f_dev)(ξ)‖ ≤ q^{-ε} · |Ω_q| / q^{k-1}`.
-5. **Factor out** the constant `q^{k-1} · q^{-ε} · |Ω_q| / q^{k-1} = q^{-ε} · |Ω_q|`.
-6. **Sum** `∑ ξ ‖dft(I_S)(-ξ)‖ = ∑ ξ ‖dft(I_S)(ξ)‖` (by `sum_norm_dft_neg_eq`).
-7. **Apply `hC_bound`**: `∑ ξ ‖dft(I_S)(ξ)‖ ≤ C · (log q)^{k-1}`.
-8. **Multiply**: `q^{-ε} · |Ω_q| · C · (log q)^{k-1} = C · (log q)^{k-1} · q^{-ε} · |Ω_q|`.
-
-### Key Lemmas Available
-- `sum_norm_dft_neg_eq` — already proved in the file
-- `norm_mul` — from Mathlib
-- `Finset.sum_le_sum` — from Mathlib
-- `norm_sum_le` (or `Finset.norm_sum_le`) — triangle inequality for norms
-- `hC_bound` from `box_fourier_l1_bound` — in scope via the outer `obtain`
-
-## Build Verification
-After completing both proofs, the file should build successfully. The `sorry` count in `FourierANOVA.lean` should drop from 5 to 3 (the remaining 3 being `WellDistributed_implies_WellDistributedFourier`, `box_fourier_1d_bound`, and `deviation_dft_linf_bound`).
-
--/
-
 import PoissonViaCRT.Defs
 import PoissonViaCRT.CRTMultiplicativity
 import PoissonViaCRT.DeviationBoundHelper
@@ -460,7 +395,7 @@ lemma WellDistributed_implies_WellDistributedFourier
     WellDistributedFourier ε p Ω k := by
   sorry
 
-/--
+/-
 **$L^\\infty$ bound on local deviation Fourier coefficients.** Under the `WellDistributedFourier`
 hypothesis (which encodes the Weil bound cancellation from the convolution structure),
 the Fourier transform of the local deviation function is bounded pointwise.
@@ -475,7 +410,20 @@ theorem local_deviation_fourier_bound (ε : ℝ) (_hε : 0 < ε)
     (ξ : Fin (k - 1) → ZMod p) :
     ‖dft p (k - 1) (fourierLocalDeviation k Ω p) ξ‖ ≤
       (p : ℝ) ^ (-ε) * ((Ω p).card : ℝ) / (p : ℝ) ^ (k - 1) := by
-  sorry
+  unfold WellDistributedFourier at hwd;
+  unfold dft fourierLocalDeviation;
+  by_cases hξ : ξ = 0 <;> simp_all +decide [ div_eq_mul_inv, mul_assoc, mul_comm, mul_left_comm ];
+  · simp_all +decide [ Finset.sum_sub_distrib, mul_comm, mul_left_comm, character ];
+    rw [ show ( ∑ x : Fin ( k - 1 ) → ZMod p, ( tupleCount ( Ω p ) ( Fin.cons 0 x ) : ℂ ) ) = ( # ( Ω p ) : ℂ ) ^ k from ?_ ] ; norm_num;
+    · positivity;
+    · convert sum_tupleCount_eq_card_pow k hk p Ω using 1;
+  · simp_all +decide [ mul_sub, mul_assoc, mul_comm, Finset.mul_sum _ _ _, dft ];
+    simp_all +decide [ ← Finset.mul_sum _ _ _ ];
+    rw [ show ( ∑ i : Fin ( k - 1 ) → ZMod p, ( starRingEnd ℂ ) ( character p ( k - 1 ) ξ i ) ) = 0 from ?_ ] ; aesop;
+    have := character_orthogonality p ( k - 1 ) ξ 0; simp_all +decide only [↓reduceIte] ;
+    convert congr_arg Star.star this using 1;
+    · simp +decide [ character ];
+    · norm_num
 
 /-! ### Box Fourier transform decay -/
 
@@ -873,8 +821,18 @@ theorem deviation_fourier_synthesis (k : ℕ) (hk : 2 ≤ k) (B : Box (k - 1)) :
     have hlem3 : ‖∑ h, I_S h * f_dev h‖ ≤
         C * (Real.log q) ^ (k - 1 : ℕ) *
         (q : ℝ) ^ (-ε) * ((crtSubset q Ω).card : ℝ) := by
-      sorry
+      -- Apply the triangle inequality to the sum.
+      have h_triangle : ‖∑ ξ : Fin (k - 1) → ZMod q, (q : ℂ) ^ (k - 1) * dft q (k - 1) f_dev ξ * dft q (k - 1) I_S (-ξ)‖ ≤ ∑ ξ : Fin (k - 1) → ZMod q, (q : ℝ) ^ (k - 1) * ‖dft q (k - 1) f_dev ξ‖ * ‖dft q (k - 1) I_S (-ξ)‖ := by
+        convert norm_sum_le _ _ using 2 ; norm_num [ norm_mul ];
+      -- Apply the bound from hlem2 to each term in the sum.
+      have h_bound : ∑ ξ : Fin (k - 1) → ZMod q, (q : ℝ) ^ (k - 1) * ‖dft q (k - 1) f_dev ξ‖ * ‖dft q (k - 1) I_S (-ξ)‖ ≤ (q : ℝ) ^ (k - 1) * ((q : ℝ) ^ (-ε) * ↑(#(crtSubset q Ω)) / q ^ (k - 1)) * ∑ ξ : Fin (k - 1) → ZMod q, ‖dft q (k - 1) I_S (-ξ)‖ := by
+        simpa only [ Finset.mul_sum _ _ _, mul_assoc ] using Finset.sum_le_sum fun ξ _ => mul_le_mul_of_nonneg_right ( mul_le_mul_of_nonneg_left ( hlem2 ξ ) ( by positivity ) ) ( by positivity );
+      convert h_triangle.trans h_bound |> le_trans <| ?_ using 1;
+      · rw [hlem1];
+      · rw [ mul_div_cancel₀ _ ( by norm_cast; exact pow_ne_zero _ <| NeZero.ne q ) ];
+        convert mul_le_mul_of_nonneg_right ( hC_bound q s hs ) ( show 0 ≤ ( q : ℝ ) ^ ( -ε ) * ↑ ( # ( crtSubset q Ω ) ) by positivity ) using 1 ; ring_nf;
+        · exact congrArg _ ( sum_norm_dft_neg_eq _ _ _ );
+        · ring
     exact hlem3⟩
-
 
 end PoissonCRT
