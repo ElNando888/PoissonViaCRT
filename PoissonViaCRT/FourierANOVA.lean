@@ -769,7 +769,66 @@ lemma deviation_dft_linf_bound (k : ℕ) (hk : 2 ≤ k) (ε : ℝ) (_hε : 0 < �
       (q : ℝ) ^ (-ε) * ((crtSubset q Ω).card : ℝ) / (q : ℝ) ^ (k - 1) := by
   sorry
 
+lemma dft_tupleCount_norm_le_localMean (k : ℕ) (hk : 2 ≤ k) (ε : ℝ) (hε : 0 < ε)
+    (p : ℕ) [hp : Fact p.Prime] (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hwd : WellDistributedFourier ε p (Ω p) k)
+    (ξ : Fin (k - 1) → ZMod p) :
+    ‖dft p (k - 1) (fun h => (tupleCount (Ω p) (Fin.cons 0 h) : ℂ)) ξ‖ ≤
+      localMean k Ω p := by
+  by_cases hξ : ξ = 0;
+  · -- By definition of $dft$, we have:
+    have h_dft_zero : dft p (k - 1) (fun h => ↑(tupleCount (Ω p) (Fin.cons 0 h))) 0 = (p : ℝ) ^ (-(k - 1) : ℤ) * ((Ω p).card : ℝ) ^ k := by
+      have := @sum_tupleCount_eq_card_pow;
+      rcases k with ( _ | _ | k ) <;> simp_all +decide [ dft ];
+      simp_all +decide [ character ];
+      convert congr_arg ( fun x : ℂ => ( p ^ ( k + 1 ) : ℂ ) ⁻¹ * x ) ( this ( k + 2 ) ( by linarith ) p Ω ) using 1 ; group;
+    rcases k with ( _ | _ | k ) <;> simp_all +decide [ localMean ];
+    norm_num [ zpow_add₀, hp.1.ne_zero ] ; ring_nf ; norm_num;
+  · refine' le_trans ( hwd ξ hξ ) _;
+    rcases eq_or_ne ( Finset.card ( Ω p ) ) 0 <;> simp_all +decide [ localMean ];
+    · positivity;
+    · rw [ mul_div, div_le_div_iff_of_pos_right ];
+      · exact le_trans ( mul_le_of_le_one_left ( Nat.cast_nonneg _ ) ( by simpa using Real.rpow_le_rpow_of_exponent_le ( mod_cast hp.1.one_lt.le ) ( neg_nonpos.mpr hε.le ) ) ) ( mod_cast Nat.le_self_pow ( by linarith ) _ );
+      · exact_mod_cast pow_pos hp.1.pos _
+
 /-! ### Fourier synthesis: the uniform deviation bound -/
+
+lemma deviation_dft_prod_bound (k : ℕ) (hk : 2 ≤ k) (ε : ℝ) (hε : 0 < ε)
+    (q : ℕ) [NeZero q] (hq : Squarefree q)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hwd : ∀ p, (hp : p ∈ q.primeFactors) → haveI : Fact p.Prime :=
+      ⟨(Nat.mem_primeFactors.mp hp).1⟩;
+      WellDistributedFourier ε p (Ω p) k)
+    (ξ : Fin (k - 1) → ZMod q) :
+    ‖dft q (k - 1) (fun h => (tupleCount (crtSubset q Ω) (Fin.cons 0 h) : ℂ) -
+      ↑(∏ p ∈ q.primeFactors, localMean k Ω p)) ξ‖ ≤
+      ∏ p ∈ q.primeFactors, localMean k Ω p := by
+  by_cases hξ : ξ = 0;
+  · -- By definition of $dft$, we know that
+    have h_dft_zero : dft q (k - 1) (fun h => (tupleCount (crtSubset q Ω) (Fin.cons 0 h) : ℂ) - (∏ p ∈ q.primeFactors, localMean k Ω p) : (Fin (k - 1) → ZMod q) → ℂ) 0 = 0 := by
+      have h_dft_zero : dft q (k - 1) (fun h => (tupleCount (crtSubset q Ω) (Fin.cons 0 h) : ℂ)) 0 = (∏ p ∈ q.primeFactors, localMean k Ω p) := by
+        convert dft_tupleCount_zero k hk q hq Ω using 1;
+      convert congr_arg ( fun x : ℂ => x - dft q ( k - 1 ) ( fun _ => ( ∏ p ∈ q.primeFactors, localMean k Ω p : ℂ ) ) 0 ) h_dft_zero using 1;
+      · unfold dft; norm_num [ Finset.sum_sub_distrib, sub_mul ] ;
+        rw [ mul_sub ];
+      · unfold dft; norm_num [ Finset.card_univ ] ;
+        unfold character; norm_num [ Finset.card_univ ] ;
+        rw [ ← mul_assoc, inv_mul_cancel₀ ( pow_ne_zero _ ( NeZero.ne _ ) ), one_mul, sub_self ];
+    rw [ hξ, h_dft_zero ];
+    exact le_trans ( by norm_num ) ( Finset.prod_nonneg fun p hp => div_nonneg ( pow_nonneg ( Nat.cast_nonneg _ ) _ ) ( pow_nonneg ( Nat.cast_nonneg _ ) _ ) );
+  · -- By linearity of the DFT, we have:
+    have h_dft_linear : dft q (k - 1) (fun h => (tupleCount (crtSubset q Ω) (Fin.cons 0 h) : ℂ) - (∏ p ∈ q.primeFactors, localMean k Ω p)) ξ = dft q (k - 1) (fun h => (tupleCount (crtSubset q Ω) (Fin.cons 0 h) : ℂ)) ξ := by
+      unfold dft; simp +decide [ *, Finset.sum_sub_distrib, sub_mul ] ;
+      rw [ ← Finset.mul_sum _ _ _, show ∑ x : Fin ( k - 1 ) → ZMod q, ( starRingEnd ℂ ) ( character q ( k - 1 ) ξ x ) = 0 from ?_ ] ; aesop;
+      convert congr_arg ( fun x : ℂ => starRingEnd ℂ x ) ( character_orthogonality q ( k - 1 ) ξ 0 ) using 1 <;> norm_num [ character ];
+      aesop;
+    rw [ h_dft_linear, dft_crt_factorization q hq Ω k hk ξ ];
+    rw [ norm_prod ];
+    refine' le_trans ( Finset.prod_le_prod _ fun p hp => _ ) _;
+    use fun p => localMean k Ω p;
+    · exact fun _ _ => norm_nonneg _;
+    · convert dft_tupleCount_norm_le_localMean k hk ε hε p ( Ω ) ( hwd p p.2 ) _ using 1;
+    · conv_rhs => rw [ ← Finset.prod_attach ] ;
 
 /-
 **Fourier ANOVA synthesis.** Combining Plancherel, CRT factorization, the primitive

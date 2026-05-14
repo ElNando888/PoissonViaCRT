@@ -1211,7 +1211,7 @@ previously attempted `k = 2` / `k ≥ 3` case split.
 private lemma deviation_expression_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
-    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributedFourier ε p (Ω p) k)
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
     (hsp : ∀ (p : ℕ), p.Prime →
       (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
     (hε_lt : ε < lambdaExponent k)
@@ -1236,7 +1236,7 @@ private lemma deviation_expression_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : 
 theorem deviation_final_synthesis (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
-    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributedFourier ε p (Ω p) k)
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
     (hsp : ∀ (p : ℕ), p.Prime →
       (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
     (X : Box (k - 1))
@@ -1283,7 +1283,7 @@ multiplicative constant `K` is allowed to depend on `X`. -/
 theorem deviation_uniform_exponent (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
-    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributedFourier ε p (Ω p) k)
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
     (hsp : ∀ (p : ℕ), p.Prime →
       (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε)) :
     ∃ δ : ℝ, 0 < δ ∧ ∀ (X : Box (k - 1))
@@ -1329,3 +1329,113 @@ theorem deviation_uniform_exponent (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 �
     sorry
 
 end PoissonCRT
+
+/-
+PROVIDED SOLUTION
+
+# Task: Prove `deviation_expression_uniform_bound` via the spatial Möbius approach
+
+**Target File:** `PoissonViaCRT/MobiusSynthesis.lean`
+
+## Goal
+
+Prove the private lemma `deviation_expression_uniform_bound` (line ~1211):
+
+```lean
+private lemma deviation_expression_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
+    (hsp : ∀ (p : ℕ), p.Prime → (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
+    (hε_lt : ε < lambdaExponent k)
+    (X : Box (k - 1))
+    (C_lp : ℝ) (_hC_lp_pos : 0 < C_lp)
+    (_hC_lp : ∀ (v : Fin (k - 1) → ℝ), (∀ i, 0 ≤ v i ∧ v i ≤ 1) → ∀ (s : ℝ), 1 ≤ s →
+      |(filter ...).card - s^{k-1} * X.volume| ≤ C_lp * s^{k-2}) :
+    ∃ δ : ℝ, 0 < δ ∧ ∃ K : ℝ, 0 < K ∧ ∀ (q : ℕ) [NeZero q] (hq_sq : Squarefree q),
+      |deviation expression| ≤ K * s ^ (-δ)
+```
+
+## Proof Strategy (GK08 §3.2 — spatial Möbius inversion)
+
+### Step 1: Decompose via `deviation_product_difference`
+
+For each `h`, the deviation `tupleCount - μ` decomposes as a sum over nonempty subsets `T ⊆ primeFactors(q)`:
+
+```
+tupleCount(h) - μ = ∑_{T ≠ ∅} (∏_{p∈T} (localCount_p - localMean_p)) · (∏_{p∉T} localMean_p)
+```
+
+This identity is already proved as `deviation_product_difference` in this file.
+
+### Step 2: Triangle inequality
+
+Sum over `h ∈ box`, apply the triangle inequality to exchange `|∑_T|` for `∑_T |...|`. Use `deviation_triangle_bound` (already proved).
+
+### Step 3: Per-subset bound
+
+For each nonempty T, the inner sum `|∑_h (1/|Ω_q|) · ∏_{p∈T} (dev_p) · ∏_{S\T} mean_p|` is bounded using `inner_bound_small_divisor` (already proved, line ~1084). This gives:
+
+```
+|∑_h ...| · s ≤ C_lp · ∏_{p∈T} (p · (1 - |Ω_p|/p) · p^{-ε})
+```
+
+when `∏_{p∈T} p ≤ s` (the small-divisor case).
+
+### Step 4: Large-divisor case
+
+When `∏_{p∈T} p > s`, the contribution is bounded trivially. The box at scale `s/d < 1` contains `O(1)` lattice points.
+
+### Step 5: Sum over all T
+
+The sum over all nonempty T of the per-subset Euler weight products converges. The Euler weight for each prime p is `p · (1 - |Ω_p|/p) · p^{-ε}`, and the sum over all subsets T gives:
+
+```
+∑_T ∏_{p∈T} w_p = ∏_p (1 + w_p) - 1
+```
+
+This Euler product converges absolutely because each `w_p = p · (1 - |Ω_p|/p) · p^{-ε} ≤ p^{1-ε}` and `∑ p^{-(1-ε)}` is summable for `ε < 1` (which holds since `ε < lambdaExponent k ≤ 1`).
+
+### Step 6: Extract δ
+
+Set `δ = 1` (or any fixed positive value). The spacing s grows with q, and the Euler product is bounded by a constant K independent of q, giving `|deviation| ≤ K · s^{-1}`.
+
+## Key Lemmas Already Available
+
+All of these are proved in `MobiusSynthesis.lean`:
+
+- `deviation_product_difference` (line ~99) — the algebraic identity
+- `deviation_triangle_bound` (line ~116) — triangle inequality
+- `deviation_product_sum_zero` (line ~266) — zero-sum property
+- `inner_bound_small_divisor` (line ~1084) — the complete small-divisor bound
+- `box_deviation_inner_bound` (line ~787) — the underlying 900-line spatial proof
+
+From `HardCaseSynthesis.lean`:
+- `deviation_synthesis_harder_case` — bounds divisor sums via convergent series
+- `divisor_boundary_bound` — boundary contribution bounds
+
+## Acceptable Simplification
+
+If assembling the full sum over all subsets T is too complex, you may:
+1. Introduce a helper `sorry` for the Euler product convergence step
+2. Or introduce a helper `sorry` for the large-divisor case
+
+The critical new content is wiring the existing `inner_bound_small_divisor` into the final uniform bound.
+
+## Also: Close `deviation_uniform_exponent` (line ~1329)
+
+The second sorry in `MobiusSynthesis.lean` is at line ~1329, in the `ε < λ_k` branch of `deviation_uniform_exponent`. This simply delegates to `deviation_expression_uniform_bound`:
+
+```lean
+    sorry  -- replace with:
+    -- obtain ⟨δ, hδ, K, hK, hbound⟩ :=
+    --   deviation_expression_uniform_bound ε hε k hk Ω hΩ hWD hsp hlt X C_lp hC_lp_pos hC_lp
+    -- exact ⟨K, hK, hbound⟩
+```
+
+The δ from `deviation_expression_uniform_bound` works for all boxes X, so extract it once, then for each X apply the lemma with that δ.
+
+## Build Verification
+
+After completing, the sorry count in `MobiusSynthesis.lean` should drop from 2 to 0. The remaining sorry's in `FourierANOVA.lean` are independent and do not affect the build.
+-/
