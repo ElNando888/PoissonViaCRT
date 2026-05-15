@@ -1208,6 +1208,37 @@ identically for `k = 2` and `k ≥ 3`, eliminating the need for the
 previously attempted `k = 2` / `k ≥ 3` case split.
 -/
 
+/-- **Core per-`q` deviation bound with fixed exponent `ε / 2`.**
+For each squarefree `q`, the deviation is bounded by `K * s^{-(ε/2)}` where
+`K` depends on `C_lp`, `ε`, `k`, and the box `X`, but not on `q`.
+The proof combines the product-difference expansion (`deviation_product_difference`),
+the small-divisor bound (`inner_bound_small_divisor`), and the convergent Euler product
+controlled by the spacing parameter `ε`. -/
+private lemma deviation_expression_fixed_delta (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
+    (hsp : ∀ (p : ℕ), p.Prime →
+      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
+    (hε_lt : ε < lambdaExponent k)
+    (X : Box (k - 1))
+    (C_lp : ℝ) (hC_lp_pos : 0 < C_lp)
+    (hC_lp : ∀ (v : Fin (k - 1) → ℝ), (∀ i, 0 ≤ v i ∧ v i ≤ 1) → ∀ (s : ℝ), 1 ≤ s →
+      |(((Fintype.piFinset fun _ : Fin (k - 1) =>
+          Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+        (fun h => inScaledBox X s v h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
+        C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1)) :
+    ∃ K : ℝ, 0 < K ∧ ∀ (q : ℕ) [NeZero q] (_ : Squarefree q),
+      let Ω_q := crtSubset q Ω
+      let s := (q : ℝ) / Ω_q.card
+      |(1 / (Ω_q.card : ℝ)) *
+        ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+            Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+          (fun h => inScaledBox X s (fun _ => 0) h)),
+        ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
+          (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| ≤ K * s ^ (-(ε / 2)) := by
+  sorry
+
 private lemma deviation_expression_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
@@ -1231,7 +1262,8 @@ private lemma deviation_expression_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : 
           (fun h => inScaledBox X s (fun _ => 0) h)),
         ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
           (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| ≤ K * s ^ (-δ) := by
-  sorry
+  exact ⟨ε / 2, half_pos hε,
+    deviation_expression_fixed_delta ε hε k hk Ω hΩ hWD hsp hε_lt X C_lp _hC_lp_pos _hC_lp⟩
 
 theorem deviation_final_synthesis (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
@@ -1323,10 +1355,11 @@ theorem deviation_uniform_exponent (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 �
       ((tupleCount (crtSubset q Ω) (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
         ((crtSubset q Ω).card : ℝ) ^ k / (q : ℝ) ^ (k - 1)))]
   · -- Case ε < λ_k: the unified Fourier ANOVA approach (via
-    -- `deviation_expression_uniform_bound`) handles all k ≥ 2 uniformly.
-    -- The exponent `δ` is extracted from a single representative invocation
-    -- and then applied to all boxes.
-    sorry
+    -- `deviation_expression_fixed_delta`) handles all k ≥ 2 uniformly.
+    -- The exponent `ε / 2` is independent of the box `X`, so we extract it
+    -- once and then for each `X` obtain the multiplicative constant `K`.
+    refine ⟨ε / 2, half_pos hε, fun X C_lp hC_lp_pos hC_lp => ?_⟩
+    exact deviation_expression_fixed_delta ε hε k hk Ω hΩ hWD hsp hlt X C_lp hC_lp_pos hC_lp
 
 end PoissonCRT
 
