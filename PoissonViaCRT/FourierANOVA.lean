@@ -379,21 +379,68 @@ $p^{-\\varepsilon} |\\Omega_p| / p^{k-1}$, which is necessary to offset the dual
 def WellDistributedFourier (ε : ℝ) (p : ℕ) [Fact p.Prime] (Ω : Finset (ZMod p)) (k : ℕ) : Prop :=
   ∀ (ξ : Fin (k - 1) → ZMod p), ξ ≠ 0 →
     ‖dft p (k - 1) (fun h => (tupleCount Ω (Fin.cons 0 h) : ℂ)) ξ‖ ≤
-    (p : ℝ) ^ (-ε) * ((Ω.card : ℝ) / (p : ℝ) ^ (k - 1))
+    (p : ℝ) ^ (-ε) * ((Ω.card : ℝ) ^ k / (p : ℝ) ^ (k - 1))
 
-/-- **Bridge: spatial → Fourier well-distribution.**
-The paper's spatial hypothesis `WellDistributed` (pointwise bound on `|N_k - μ|` for
-injective tuples) implies the Fourier hypothesis `WellDistributedFourier` (pointwise
-bound on non-zero DFT coefficients of the counting function).
+/-! ### Helper lemmas for the WD → WDF bridge -/
 
-The proof uses the standard bound: each DFT coefficient is a weighted average of
-`N_k(h) - μ` against characters, so the triangle inequality + the spatial bound gives
-the Fourier bound up to a volume factor that is absorbed by the normalization. -/
+/-- The norm of `additiveChar q a x` is 1. -/
+lemma norm_additiveChar (q : ℕ) [NeZero q] (a x : ZMod q) :
+    ‖additiveChar q a x‖ = 1 := by
+  unfold additiveChar
+  have h : 2 * ↑Real.pi * I * ↑(a * x).val / (↑q : ℂ) =
+      ↑(2 * Real.pi * ↑(a * x).val / (↑q : ℝ)) * I := by
+    push_cast; ring
+  rw [h, Complex.norm_exp_ofReal_mul_I]
+
+/-- The norm of `character q m ξ x` is 1. -/
+lemma norm_character (q : ℕ) [NeZero q] (m : ℕ) (ξ x : Fin m → ZMod q) :
+    ‖character q m ξ x‖ = 1 := by
+  unfold character
+  induction m with
+  | zero => simp
+  | succ n ih =>
+    rw [Fin.prod_univ_castSucc, norm_mul]
+    rw [ih (fun j => ξ j.castSucc) (fun j => x j.castSucc)]
+    rw [norm_additiveChar]
+    ring
+
+/-- For ξ ≠ 0, the sum of conjugate characters vanishes. -/
+lemma sum_star_character_eq_zero (q : ℕ) [NeZero q] (m : ℕ)
+    (ξ : Fin m → ZMod q) (hξ : ξ ≠ 0) :
+    ∑ x : Fin m → ZMod q, starRingEnd ℂ (character q m ξ x) = 0 := by
+  have h := character_orthogonality q m 0 ξ
+  simp only [character, Pi.zero_apply, additiveChar_zero, Finset.prod_const_one, one_mul] at h
+  rw [if_neg (Ne.symm hξ)] at h
+  convert h using 1
+
 lemma WellDistributed_implies_WellDistributedFourier
     (ε : ℝ) (p : ℕ) [Fact p.Prime] (Ω : Finset (ZMod p)) (k : ℕ)
     (hWD : WellDistributed ε p Ω k) :
     WellDistributedFourier ε p Ω k := by
-  sorry
+  intro ξξ hξ_ne_zero
+  have h_sum_zero : ∑ r : Fin (k - 1) → ZMod p, starRingEnd ℂ (character p (k - 1) ξξ r) = 0 := by
+    convert sum_star_character_eq_zero p ( k - 1 ) ξξ hξ_ne_zero using 1;
+  -- Apply the triangle inequality to the sum.
+  have h_triangle : ‖(1 / (p : ℂ) ^ (k - 1)) * ∑ r : Fin (k - 1) → ZMod p, (tupleCount Ω (Fin.cons 0 r) - ((Ω.card : ℂ) ^ k / (p : ℂ) ^ (k - 1))) * starRingEnd ℂ (character p (k - 1) ξξ r)‖ ≤ (1 / (p : ℝ) ^ (k - 1)) * ∑ r : Fin (k - 1) → ZMod p, |(tupleCount Ω (Fin.cons 0 r) : ℝ) - ((Ω.card : ℝ) ^ k / (p : ℝ) ^ (k - 1))| := by
+    have h_triangle : ∀ r : Fin (k - 1) → ZMod p, ‖(tupleCount Ω (Fin.cons 0 r) - ((Ω.card : ℂ) ^ k / (p : ℂ) ^ (k - 1))) * starRingEnd ℂ (character p (k - 1) ξξ r)‖ ≤ |(tupleCount Ω (Fin.cons 0 r) : ℝ) - ((Ω.card : ℝ) ^ k / (p : ℝ) ^ (k - 1))| := by
+      intro r
+      simp [norm_character];
+      convert Complex.norm_real _ |> le_of_eq using 1;
+      norm_num [ Complex.normSq, Complex.norm_def ];
+    rw [ norm_mul, norm_div ];
+    gcongr;
+    · exact_mod_cast pow_pos ( Nat.Prime.pos Fact.out ) _;
+    · norm_num;
+    · norm_num [ Complex.norm_pow ];
+    · exact le_trans ( norm_sum_le _ _ ) ( Finset.sum_le_sum fun _ _ => h_triangle _ );
+  refine le_trans ?_ ( h_triangle.trans ?_ );
+  · unfold dft; simp +decide [ sub_mul ] ;
+    simp_all +decide [ ← Finset.mul_sum _ _ _ ];
+  · have := hWD.2;
+    rw [ div_mul_eq_mul_div, div_le_iff₀ ] <;> norm_cast at * <;> simp_all +decide only [Nat.cast_pow,
+      one_div, Complex.norm_mul, norm_inv, norm_pow, RCLike.norm_natCast, one_mul];
+    · exact this.trans ( by nlinarith [ show 0 ≤ ( p : ℝ ) ^ ( k - 1 ) * ( p : ℝ ) ^ ( -ε ) * ( ( #Ω : ℝ ) ^ k / p ^ ( k - 1 ) ) by positivity, show ( 1 - ( #Ω : ℝ ) / p ) ≤ 1 by exact sub_le_self _ <| by positivity ] );
+    · exact pow_pos ( Nat.Prime.pos Fact.out ) _
 
 /-
 **$L^\\infty$ bound on local deviation Fourier coefficients.** Under the `WellDistributedFourier`
@@ -409,7 +456,7 @@ theorem local_deviation_fourier_bound (ε : ℝ) (_hε : 0 < ε)
     (hwd : WellDistributedFourier ε p (Ω p) k)
     (ξ : Fin (k - 1) → ZMod p) :
     ‖dft p (k - 1) (fourierLocalDeviation k Ω p) ξ‖ ≤
-      (p : ℝ) ^ (-ε) * ((Ω p).card : ℝ) / (p : ℝ) ^ (k - 1) := by
+      (p : ℝ) ^ (-ε) * ((Ω p).card : ℝ) ^ k / (p : ℝ) ^ (k - 1) := by
   unfold WellDistributedFourier at hwd;
   unfold dft fourierLocalDeviation;
   by_cases hξ : ξ = 0 <;> simp_all +decide [ div_eq_mul_inv, mul_assoc, mul_comm, mul_left_comm ];
@@ -766,7 +813,7 @@ lemma deviation_dft_linf_bound (k : ℕ) (hk : 2 ≤ k) (ε : ℝ) (_hε : 0 < �
     (ξ : Fin (k - 1) → ZMod q) :
     ‖dft q (k - 1) (fun h => (tupleCount (crtSubset q Ω) (Fin.cons 0 h) : ℂ) -
       ↑(∏ p ∈ q.primeFactors, localMean k Ω p)) ξ‖ ≤
-      (q : ℝ) ^ (-ε) * ((crtSubset q Ω).card : ℝ) / (q : ℝ) ^ (k - 1) := by
+      (q : ℝ) ^ (-ε) * ((crtSubset q Ω).card : ℝ) ^ k / (q : ℝ) ^ (k - 1) := by
   sorry
 
 lemma dft_tupleCount_norm_le_localMean (k : ℕ) (hk : 2 ≤ k) (ε : ℝ) (hε : 0 < ε)
@@ -785,11 +832,12 @@ lemma dft_tupleCount_norm_le_localMean (k : ℕ) (hk : 2 ≤ k) (ε : ℝ) (hε 
     rcases k with ( _ | _ | k ) <;> simp_all +decide [ localMean ];
     norm_num [ zpow_add₀, hp.1.ne_zero ] ; ring_nf ; norm_num;
   · refine' le_trans ( hwd ξ hξ ) _;
-    rcases eq_or_ne ( Finset.card ( Ω p ) ) 0 <;> simp_all +decide [ localMean ];
-    · positivity;
-    · rw [ mul_div, div_le_div_iff_of_pos_right ];
-      · exact le_trans ( mul_le_of_le_one_left ( Nat.cast_nonneg _ ) ( by simpa using Real.rpow_le_rpow_of_exponent_le ( mod_cast hp.1.one_lt.le ) ( neg_nonpos.mpr hε.le ) ) ) ( mod_cast Nat.le_self_pow ( by linarith ) _ );
-      · exact_mod_cast pow_pos hp.1.pos _
+    simp only [localMean];
+    rw [mul_div];
+    exact div_le_div_of_nonneg_right
+      (mul_le_of_le_one_left (by positivity)
+        (by simpa using Real.rpow_le_rpow_of_exponent_le (mod_cast hp.1.one_lt.le) (neg_nonpos.mpr hε.le)))
+      (by positivity)
 
 /-! ### Fourier synthesis: the uniform deviation bound -/
 
@@ -852,7 +900,7 @@ theorem deviation_fourier_synthesis (k : ℕ) (hk : 2 ≤ k) (B : Box (k - 1)) :
         ((tupleCount (crtSubset q Ω) (Fin.cons 0 h) : ℂ) -
           ↑(∏ p ∈ q.primeFactors, localMean k Ω p))‖ ≤
       C * (Real.log q) ^ (k - 1 : ℕ) *
-        (q : ℝ) ^ (-ε) * ((crtSubset q Ω).card : ℝ) := by
+        (q : ℝ) ^ (-ε) * ((crtSubset q Ω).card : ℝ) ^ k := by
   obtain ⟨C, hC_pos, hC_bound⟩ := box_fourier_l1_bound k hk B
   exact ⟨C, hC_pos, fun ε hε q _ hq Ω hwd s hs => by
     -- Abbreviations for readability
@@ -870,7 +918,7 @@ theorem deviation_fourier_synthesis (k : ℕ) (hk : 2 ≤ k) (B : Box (k - 1)) :
 
     -- **Lemma 2 (L∞ Frequency Bound):**
     have hlem2 : ∀ ξ : Fin (k - 1) → ZMod q,
-        ‖dft q (k - 1) f_dev ξ‖ ≤ (q : ℝ) ^ (-ε) * ((crtSubset q Ω).card : ℝ) / (q : ℝ) ^ (k - 1) :=
+        ‖dft q (k - 1) f_dev ξ‖ ≤ (q : ℝ) ^ (-ε) * ((crtSubset q Ω).card : ℝ) ^ k / (q : ℝ) ^ (k - 1) :=
       fun ξ => deviation_dft_linf_bound k hk ε hε q hq Ω hwd ξ
 
     -- **Lemma 3 (Assembly):**
@@ -879,17 +927,17 @@ theorem deviation_fourier_synthesis (k : ℕ) (hk : 2 ≤ k) (B : Box (k - 1)) :
     -- Taking norms and applying triangle inequality + L∞ bound (hlem2):
     have hlem3 : ‖∑ h, I_S h * f_dev h‖ ≤
         C * (Real.log q) ^ (k - 1 : ℕ) *
-        (q : ℝ) ^ (-ε) * ((crtSubset q Ω).card : ℝ) := by
+        (q : ℝ) ^ (-ε) * ((crtSubset q Ω).card : ℝ) ^ k := by
       -- Apply the triangle inequality to the sum.
       have h_triangle : ‖∑ ξ : Fin (k - 1) → ZMod q, (q : ℂ) ^ (k - 1) * dft q (k - 1) f_dev ξ * dft q (k - 1) I_S (-ξ)‖ ≤ ∑ ξ : Fin (k - 1) → ZMod q, (q : ℝ) ^ (k - 1) * ‖dft q (k - 1) f_dev ξ‖ * ‖dft q (k - 1) I_S (-ξ)‖ := by
         convert norm_sum_le _ _ using 2 ; norm_num [ norm_mul ];
       -- Apply the bound from hlem2 to each term in the sum.
-      have h_bound : ∑ ξ : Fin (k - 1) → ZMod q, (q : ℝ) ^ (k - 1) * ‖dft q (k - 1) f_dev ξ‖ * ‖dft q (k - 1) I_S (-ξ)‖ ≤ (q : ℝ) ^ (k - 1) * ((q : ℝ) ^ (-ε) * ↑(#(crtSubset q Ω)) / q ^ (k - 1)) * ∑ ξ : Fin (k - 1) → ZMod q, ‖dft q (k - 1) I_S (-ξ)‖ := by
+      have h_bound : ∑ ξ : Fin (k - 1) → ZMod q, (q : ℝ) ^ (k - 1) * ‖dft q (k - 1) f_dev ξ‖ * ‖dft q (k - 1) I_S (-ξ)‖ ≤ (q : ℝ) ^ (k - 1) * ((q : ℝ) ^ (-ε) * ↑(#(crtSubset q Ω)) ^ k / q ^ (k - 1)) * ∑ ξ : Fin (k - 1) → ZMod q, ‖dft q (k - 1) I_S (-ξ)‖ := by
         simpa only [ Finset.mul_sum _ _ _, mul_assoc ] using Finset.sum_le_sum fun ξ _ => mul_le_mul_of_nonneg_right ( mul_le_mul_of_nonneg_left ( hlem2 ξ ) ( by positivity ) ) ( by positivity );
       convert h_triangle.trans h_bound |> le_trans <| ?_ using 1;
       · rw [hlem1];
       · rw [ mul_div_cancel₀ _ ( by norm_cast; exact pow_ne_zero _ <| NeZero.ne q ) ];
-        convert mul_le_mul_of_nonneg_right ( hC_bound q s hs ) ( show 0 ≤ ( q : ℝ ) ^ ( -ε ) * ↑ ( # ( crtSubset q Ω ) ) by positivity ) using 1 ; ring_nf;
+        convert mul_le_mul_of_nonneg_right ( hC_bound q s hs ) ( show 0 ≤ ( q : ℝ ) ^ ( -ε ) * ↑ ( # ( crtSubset q Ω ) ) ^ k by positivity ) using 1 ; ring_nf;
         · exact congrArg _ ( sum_norm_dft_neg_eq _ _ _ );
         · ring
     exact hlem3⟩
