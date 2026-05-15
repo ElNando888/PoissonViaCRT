@@ -1246,6 +1246,44 @@ private lemma crtSubset_card_pos_aux (Ω : ∀ p : ℕ, Finset (ZMod p))
   use x;
   intro p hp hpq hq; specialize hx p; simp_all +decide [ Nat.mem_primeFactors ] ;
 
+/-- The series `∑ k^{ω(d)} d^{-1-ε/2}`, summed over nonempty squarefree divisors
+`d ≤ s` of `q`, is bounded by `K_series · s^{1 - ε/2}` via Rankin's trick.
+The full analytic convergence proof is omitted. -/
+private lemma small_divisor_series_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) :
+    ∃ K_series : ℝ, 0 < K_series ∧ ∀ (q : ℕ) (s : ℝ) (_ : 1 ≤ s),
+      ∑ T ∈ (q.primeFactors.powerset.filter (· ≠ ∅)).filter
+            (fun (T : Finset ℕ) => (∏ p ∈ T, (p : ℝ)) ≤ s),
+        (∏ p ∈ T, (k : ℝ) * (p : ℝ) ^ (-ε)) ≤ K_series * s ^ (1 - ε / 2) := by
+  sorry
+
+/-
+Each local factor `p * (1 - |Ω p|/p) * p^{-ε}` is bounded by `k * p^{-ε}`.
+-/
+private lemma local_factor_le_k_rpow (p : ℕ) (ε : ℝ) (k : ℕ)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hp : p.Prime)
+    (hrp : 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ)) :
+    (p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) ≤
+      (k : ℝ) * (p : ℝ) ^ (-ε) := by
+  exact mul_le_mul_of_nonneg_right ( by convert mul_le_mul_of_nonneg_left hrp ( Nat.cast_nonneg p ) using 1 ; rw [ mul_div_cancel₀ _ ( Nat.cast_ne_zero.mpr hp.ne_zero ) ] ) ( Real.rpow_nonneg ( Nat.cast_nonneg p ) _ )
+
+/-
+Product version of `local_factor_le_k_rpow`: The product over `T` of local factors
+is bounded by the product of `k * p^{-ε}`.
+-/
+private lemma prod_local_factor_le (T : Finset ℕ) (ε : ℝ) (k : ℕ) (q : ℕ)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hT_sub : T ⊆ q.primeFactors)
+    (hrp : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ)) :
+    ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) ≤
+      ∏ p ∈ T, ((k : ℝ) * (p : ℝ) ^ (-ε)) := by
+  apply Finset.prod_le_prod;
+  · intro p hp;
+    refine mul_nonneg ( mul_nonneg ( Nat.cast_nonneg _ ) ?_ ) ( Real.rpow_nonneg ( Nat.cast_nonneg _ ) _ );
+    have := Nat.prime_of_mem_primeFactors ( hT_sub hp );
+    haveI := Fact.mk this; exact sub_nonneg_of_le ( div_le_one_of_le₀ ( mod_cast le_trans ( Finset.card_le_univ _ ) ( by norm_num ) ) ( Nat.cast_nonneg _ ) ) ;
+  · exact fun p hp => mul_le_mul_of_nonneg_right ( by have := hrp p ( Nat.prime_of_mem_primeFactors ( hT_sub hp ) ) ; rw [ le_div_iff₀ ( Nat.cast_pos.mpr ( Nat.Prime.pos ( Nat.prime_of_mem_primeFactors ( hT_sub hp ) ) ) ) ] at this; nlinarith ) ( Real.rpow_nonneg ( Nat.cast_nonneg p ) _ )
+
 /-
 **Small-divisor contribution bound.**
 The sum over nonempty subsets `T ⊆ primeFactors(q)` with `∏ p ∈ T, (p : ℝ) ≤ s`
@@ -1267,7 +1305,7 @@ private lemma deviation_small_divisors (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk :
       |(((Fintype.piFinset fun _ : Fin (k - 1) =>
           Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
         (fun h => inScaledBox X s v h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
-        C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1)) :
+        C_lp * s ^ (((↑(k - 1 : ℕ) : ℤ) - 1))) :
     ∃ K₁ : ℝ, 0 < K₁ ∧ ∀ (q : ℕ) [NeZero q] (_ : Squarefree q),
       let Ω_q := crtSubset q Ω
       let s := (q : ℝ) / Ω_q.card
@@ -1281,7 +1319,29 @@ private lemma deviation_small_divisors (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk :
               (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p -
               localMean k Ω p)) *
             ∏ p ∈ q.primeFactors \ T, localMean k Ω p)| ≤ K₁ * s ^ (-(ε / 2)) := by
-  sorry
+  obtain ⟨K_series, hK_series_pos, hK_series⟩ := small_divisor_series_bound ε hε k;
+  refine' ⟨ C_lp * K_series, mul_pos hC_lp_pos hK_series_pos, fun q _ hq_sq => _ ⟩;
+  refine' le_trans ( Finset.sum_le_sum fun T hT => _ ) _;
+  use fun T => C_lp * ( ∏ p ∈ T, ( k : ℝ ) * ( p : ℝ ) ^ ( -ε ) ) / ( q / ( crtSubset q Ω |> Finset.card ) );
+  · refine' le_trans ( _ : _ ≤ _ ) ( div_le_div_of_nonneg_right ( mul_le_mul_of_nonneg_left ( prod_local_factor_le T ε k q Ω ( by aesop ) hrp ) hC_lp_pos.le ) ( by positivity ) );
+    have := inner_bound_small_divisor ε hε k ( by linarith ) Ω hΩ hWD hsp X C_lp hC_lp_pos hC_lp q hq_sq ( by
+      exact ne_of_gt ( crtSubset_card_pos_aux Ω hΩ q ) ) T ( by
+      grind ) ( by
+      grind ) ( by
+      grind );
+    rw [ le_div_iff₀ ];
+    · convert this using 1;
+    · exact div_pos ( Nat.cast_pos.mpr ( NeZero.pos q ) ) ( Nat.cast_pos.mpr ( Finset.card_pos.mpr ( by
+        exact Finset.card_pos.mp ( crtSubset_card_pos_aux Ω hΩ q ) ) ) );
+  · rw [ ← Finset.sum_div _ _ _, ← Finset.mul_sum ];
+    rw [ div_le_iff₀ ];
+    · convert mul_le_mul_of_nonneg_left ( hK_series q ( q / ( crtSubset q Ω |> Finset.card ) ) _ ) hC_lp_pos.le using 1;
+      · rw [ show ( 1 - ε / 2 : ℝ ) = - ( ε / 2 ) + 1 by ring, Real.rpow_add_one ] <;> ring ; norm_num [ NeZero.ne ];
+        exact Finset.Nonempty.ne_empty <| by have := crtSubset_card_pos_aux Ω hΩ q; exact Finset.card_pos.mp this;
+      · rw [ one_le_div ] <;> norm_cast;
+        · exact le_trans ( Finset.card_le_univ _ ) ( by norm_num );
+        · exact crtSubset_card_pos_aux Ω hΩ q;
+    · exact div_pos ( Nat.cast_pos.mpr <| NeZero.pos q ) <| Nat.cast_pos.mpr <| Nat.pos_of_ne_zero <| by have := crtSubset_card_pos_aux Ω hΩ q; aesop;
 
 /-- **Large-divisor contribution bound.**
 The sum over nonempty subsets `T ⊆ primeFactors(q)` with `∏ p ∈ T, (p : ℝ) > s`
@@ -1476,8 +1536,3 @@ theorem deviation_uniform_exponent (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 �
     exact deviation_expression_fixed_delta ε hε k hk Ω hΩ hWD hsp hrp hlt X C_lp hC_lp_pos hC_lp
 
 end PoissonCRT
-
-/-
-PROVIDED SOLUTION
-
--/
