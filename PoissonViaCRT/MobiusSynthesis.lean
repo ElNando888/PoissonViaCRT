@@ -1208,6 +1208,116 @@ identically for `k = 2` and `k ≥ 3`, eliminating the need for the
 previously attempted `k = 2` / `k ≥ 3` case split.
 -/
 
+/-
+The cardinality of `crtSubset q Ω` is positive when each `Ω p` is nonempty for primes.
+-/
+private lemma crtSubset_card_pos_aux (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty) (q : ℕ) [NeZero q] :
+    0 < (crtSubset q Ω).card := by
+  -- We need to show that `crtSubset q Ω` is nonempty.
+  by_contra h_empty;
+  -- If.crtSubset q Ω is empty, then for any x : ZMod q, there exists a prime p dividing q such that x is not in Ω p.
+  simp [crtSubset] at h_empty;
+  obtain ⟨ p, hp₁, hp₂, hp₃, hp₄ ⟩ := @h_empty 0;
+  contrapose! h_empty;
+  -- By the Chinese Remainder Theorem, there exists an integer $x$ such that $x \equiv a_p \pmod{p}$ for each prime $p$ dividing $q$.
+  obtain ⟨x, hx⟩ : ∃ x : ℕ, ∀ p ∈ q.primeFactors, (x : ZMod p) ∈ Ω p := by
+    have h_crt : ∀ p ∈ q.primeFactors, ∃ x_p : ℕ, (x_p : ZMod p) ∈ Ω p ∧ ∀ q' ∈ q.primeFactors, q' ≠ p → x_p ≡ 0 [MOD q'] := by
+      intro p hp
+      obtain ⟨x_p, hx_p⟩ : ∃ x_p : ℕ, (x_p : ZMod p) ∈ Ω p := by
+        obtain ⟨ x, hx ⟩ := hΩ p ( Nat.prime_of_mem_primeFactors hp );
+        use x.val;
+        cases p <;> aesop;
+      -- By the Chinese Remainder Theorem, there exists an integer $x_p$ such that $x_p \equiv x_p \pmod{p}$ and $x_p \equiv 0 \pmod{q'}$ for all $q' \in q.primeFactors$ with $q' \neq p$.
+      obtain ⟨x_p', hx_p'⟩ : ∃ x_p' : ℕ, x_p' ≡ x_p [MOD p] ∧ ∀ q' ∈ q.primeFactors, q' ≠ p → x_p' ≡ 0 [MOD q'] := by
+        -- By the Chinese Remainder Theorem, there exists an integer $x_p'$ such that $x_p' \equiv x_p \pmod{p}$ and $x_p' \equiv 0 \pmod{q'}$ for all $q' \in q.primeFactors$ with $q' \neq p$.
+        obtain ⟨x_p', hx_p'⟩ : ∃ x_p' : ℕ, x_p' ≡ x_p [MOD p] ∧ x_p' ≡ 0 [MOD (∏ q' ∈ q.primeFactors \ {p}, q')] := by
+          have h_crt : Nat.gcd p (∏ q' ∈ q.primeFactors \ {p}, q') = 1 := by
+            exact Nat.Coprime.prod_right fun q' hq' => by have := Nat.coprime_primes ( Nat.prime_of_mem_primeFactors hp ) ( Nat.prime_of_mem_primeFactors ( Finset.mem_sdiff.mp hq' |>.1 ) ) ; aesop;
+          have := Nat.chineseRemainder h_crt;
+          exact ⟨ _, this x_p 0 |>.2 ⟩;
+        exact ⟨ x_p', hx_p'.1, fun q' hq' hq'_ne => hx_p'.2.of_dvd <| Finset.dvd_prod_of_mem _ <| by aesop ⟩;
+      use x_p';
+      simp_all +decide [ ← ZMod.natCast_eq_natCast_iff ];
+    choose! x hx₁ hx₂ using h_crt;
+    use ∑ p ∈ q.primeFactors, x p;
+    intro p hp; simp_all +decide [ ← ZMod.natCast_eq_natCast_iff ] ;
+    rw [ Finset.sum_eq_single p ] <;> aesop;
+  use x;
+  intro p hp hpq hq; specialize hx p; simp_all +decide [ Nat.mem_primeFactors ] ;
+
+/-
+**Small-divisor contribution bound.**
+The sum over nonempty subsets `T ⊆ primeFactors(q)` with `∏ p ∈ T, (p : ℝ) ≤ s`
+(i.e. the period `d = ∏ T` is at most the spacing `s`) is bounded by `K₁ · s^{-(ε/2)}`.
+This uses the volume approximation via `inner_bound_small_divisor` and the convergent
+Euler product over small divisors.
+-/
+private lemma deviation_small_divisors (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
+    (hsp : ∀ (p : ℕ), p.Prime →
+      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
+    (hrp : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ))
+    (hε_lt : ε < lambdaExponent k)
+    (X : Box (k - 1))
+    (C_lp : ℝ) (hC_lp_pos : 0 < C_lp)
+    (hC_lp : ∀ (v : Fin (k - 1) → ℝ), (∀ i, 0 ≤ v i ∧ v i ≤ 1) → ∀ (s : ℝ), 1 ≤ s →
+      |(((Fintype.piFinset fun _ : Fin (k - 1) =>
+          Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+        (fun h => inScaledBox X s v h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
+        C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1)) :
+    ∃ K₁ : ℝ, 0 < K₁ ∧ ∀ (q : ℕ) [NeZero q] (_ : Squarefree q),
+      let Ω_q := crtSubset q Ω
+      let s := (q : ℝ) / Ω_q.card
+      ∑ T ∈ (q.primeFactors.powerset.filter (· ≠ ∅)).filter
+            (fun (T : Finset ℕ) => (∏ p ∈ T, (p : ℝ)) ≤ s),
+        |∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+            Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+          (fun h => inScaledBox X s (fun _ => 0) h)),
+        (1 / (Ω_q.card : ℝ)) *
+          ((∏ p ∈ T, (localCount Ω q
+              (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p -
+              localMean k Ω p)) *
+            ∏ p ∈ q.primeFactors \ T, localMean k Ω p)| ≤ K₁ * s ^ (-(ε / 2)) := by
+  sorry
+
+/-- **Large-divisor contribution bound.**
+The sum over nonempty subsets `T ⊆ primeFactors(q)` with `∏ p ∈ T, (p : ℝ) > s`
+(i.e. the period `d = ∏ T` exceeds the spacing `s`) is bounded by `K₂ · s^{-(ε/2)}`.
+When `d > s`, the box at scale `s/d < 1` contains `O(1)` lattice points, so a trivial
+bound or Cauchy–Schwarz / L² argument suffices. -/
+private lemma deviation_large_divisors (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
+    (hsp : ∀ (p : ℕ), p.Prime →
+      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
+    (hrp : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ))
+    (hε_lt : ε < lambdaExponent k)
+    (X : Box (k - 1))
+    (C_lp : ℝ) (hC_lp_pos : 0 < C_lp)
+    (hC_lp : ∀ (v : Fin (k - 1) → ℝ), (∀ i, 0 ≤ v i ∧ v i ≤ 1) → ∀ (s : ℝ), 1 ≤ s →
+      |(((Fintype.piFinset fun _ : Fin (k - 1) =>
+          Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+        (fun h => inScaledBox X s v h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
+        C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1)) :
+    ∃ K₂ : ℝ, 0 < K₂ ∧ ∀ (q : ℕ) [NeZero q] (_ : Squarefree q),
+      let Ω_q := crtSubset q Ω
+      let s := (q : ℝ) / Ω_q.card
+      ∑ T ∈ (q.primeFactors.powerset.filter (· ≠ ∅)).filter
+            (fun (T : Finset ℕ) => ¬((∏ p ∈ T, (p : ℝ)) ≤ s)),
+        |∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+            Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+          (fun h => inScaledBox X s (fun _ => 0) h)),
+        (1 / (Ω_q.card : ℝ)) *
+          ((∏ p ∈ T, (localCount Ω q
+              (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p -
+              localMean k Ω p)) *
+            ∏ p ∈ q.primeFactors \ T, localMean k Ω p)| ≤ K₂ * s ^ (-(ε / 2)) := by
+  sorry
+
 /-- **Core per-`q` deviation bound with fixed exponent `ε / 2`.**
 For each squarefree `q`, the deviation is bounded by `K * s^{-(ε/2)}` where
 `K` depends on `C_lp`, `ε`, `k`, and the box `X`, but not on `q`.
@@ -1220,6 +1330,7 @@ private lemma deviation_expression_fixed_delta (ε : ℝ) (hε : 0 < ε) (k : �
     (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
     (hsp : ∀ (p : ℕ), p.Prime →
       (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
+    (hrp : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ))
     (hε_lt : ε < lambdaExponent k)
     (X : Box (k - 1))
     (C_lp : ℝ) (hC_lp_pos : 0 < C_lp)
@@ -1245,6 +1356,7 @@ private lemma deviation_expression_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : 
     (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
     (hsp : ∀ (p : ℕ), p.Prime →
       (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
+    (hrp : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ))
     (hε_lt : ε < lambdaExponent k)
     (X : Box (k - 1))
     (C_lp : ℝ) (_hC_lp_pos : 0 < C_lp)
@@ -1263,7 +1375,7 @@ private lemma deviation_expression_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : 
         ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
           (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| ≤ K * s ^ (-δ) := by
   exact ⟨ε / 2, half_pos hε,
-    deviation_expression_fixed_delta ε hε k hk Ω hΩ hWD hsp hε_lt X C_lp _hC_lp_pos _hC_lp⟩
+    deviation_expression_fixed_delta ε hε k hk Ω hΩ hWD hsp hrp hε_lt X C_lp _hC_lp_pos _hC_lp⟩
 
 theorem deviation_final_synthesis (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
@@ -1271,6 +1383,7 @@ theorem deviation_final_synthesis (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 �
     (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
     (hsp : ∀ (p : ℕ), p.Prime →
       (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
+    (hrp : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ))
     (X : Box (k - 1))
     (C_lp : ℝ) (hC_lp_pos : 0 < C_lp)
     (hC_lp : ∀ (v : Fin (k - 1) → ℝ), (∀ i, 0 ≤ v i ∧ v i ≤ 1) → ∀ (s : ℝ), 1 ≤ s →
@@ -1307,7 +1420,7 @@ theorem deviation_final_synthesis (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 �
       ((tupleCount (crtSubset q Ω) (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
         ((crtSubset q Ω).card : ℝ) ^ k / (q : ℝ) ^ (k - 1)))]
   · -- Case ε < λ_k: use deviation_expression_uniform_bound directly.
-    exact deviation_expression_uniform_bound ε hε k hk Ω hΩ hWD hsp hlt X C_lp hC_lp_pos hC_lp
+    exact deviation_expression_uniform_bound ε hε k hk Ω hΩ hWD hsp hrp hlt X C_lp hC_lp_pos hC_lp
 
 /-- Uniform exponent version of `deviation_final_synthesis`: the decay exponent `δ` is
 chosen independently of the box `X` and lattice-point constant `C_lp`. Only the
@@ -1317,7 +1430,8 @@ theorem deviation_uniform_exponent (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 �
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
     (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
     (hsp : ∀ (p : ℕ), p.Prime →
-      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε)) :
+      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
+    (hrp : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ)) :
     ∃ δ : ℝ, 0 < δ ∧ ∀ (X : Box (k - 1))
       (C_lp : ℝ) (hC_lp_pos : 0 < C_lp)
       (hC_lp : ∀ (v : Fin (k - 1) → ℝ), (∀ i, 0 ≤ v i ∧ v i ≤ 1) → ∀ (s : ℝ), 1 ≤ s →
@@ -1359,116 +1473,11 @@ theorem deviation_uniform_exponent (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 �
     -- The exponent `ε / 2` is independent of the box `X`, so we extract it
     -- once and then for each `X` obtain the multiplicative constant `K`.
     refine ⟨ε / 2, half_pos hε, fun X C_lp hC_lp_pos hC_lp => ?_⟩
-    exact deviation_expression_fixed_delta ε hε k hk Ω hΩ hWD hsp hlt X C_lp hC_lp_pos hC_lp
+    exact deviation_expression_fixed_delta ε hε k hk Ω hΩ hWD hsp hrp hlt X C_lp hC_lp_pos hC_lp
 
 end PoissonCRT
 
 /-
 PROVIDED SOLUTION
 
-# Task: Prove `deviation_expression_uniform_bound` via the spatial Möbius approach
-
-**Target File:** `PoissonViaCRT/MobiusSynthesis.lean`
-
-## Goal
-
-Prove the private lemma `deviation_expression_uniform_bound` (line ~1211):
-
-```lean
-private lemma deviation_expression_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
-    (Ω : ∀ p : ℕ, Finset (ZMod p))
-    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
-    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
-    (hsp : ∀ (p : ℕ), p.Prime → (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
-    (hε_lt : ε < lambdaExponent k)
-    (X : Box (k - 1))
-    (C_lp : ℝ) (_hC_lp_pos : 0 < C_lp)
-    (_hC_lp : ∀ (v : Fin (k - 1) → ℝ), (∀ i, 0 ≤ v i ∧ v i ≤ 1) → ∀ (s : ℝ), 1 ≤ s →
-      |(filter ...).card - s^{k-1} * X.volume| ≤ C_lp * s^{k-2}) :
-    ∃ δ : ℝ, 0 < δ ∧ ∃ K : ℝ, 0 < K ∧ ∀ (q : ℕ) [NeZero q] (hq_sq : Squarefree q),
-      |deviation expression| ≤ K * s ^ (-δ)
-```
-
-## Proof Strategy (GK08 §3.2 — spatial Möbius inversion)
-
-### Step 1: Decompose via `deviation_product_difference`
-
-For each `h`, the deviation `tupleCount - μ` decomposes as a sum over nonempty subsets `T ⊆ primeFactors(q)`:
-
-```
-tupleCount(h) - μ = ∑_{T ≠ ∅} (∏_{p∈T} (localCount_p - localMean_p)) · (∏_{p∉T} localMean_p)
-```
-
-This identity is already proved as `deviation_product_difference` in this file.
-
-### Step 2: Triangle inequality
-
-Sum over `h ∈ box`, apply the triangle inequality to exchange `|∑_T|` for `∑_T |...|`. Use `deviation_triangle_bound` (already proved).
-
-### Step 3: Per-subset bound
-
-For each nonempty T, the inner sum `|∑_h (1/|Ω_q|) · ∏_{p∈T} (dev_p) · ∏_{S\T} mean_p|` is bounded using `inner_bound_small_divisor` (already proved, line ~1084). This gives:
-
-```
-|∑_h ...| · s ≤ C_lp · ∏_{p∈T} (p · (1 - |Ω_p|/p) · p^{-ε})
-```
-
-when `∏_{p∈T} p ≤ s` (the small-divisor case).
-
-### Step 4: Large-divisor case
-
-When `∏_{p∈T} p > s`, the contribution is bounded trivially. The box at scale `s/d < 1` contains `O(1)` lattice points.
-
-### Step 5: Sum over all T
-
-The sum over all nonempty T of the per-subset Euler weight products converges. The Euler weight for each prime p is `p · (1 - |Ω_p|/p) · p^{-ε}`, and the sum over all subsets T gives:
-
-```
-∑_T ∏_{p∈T} w_p = ∏_p (1 + w_p) - 1
-```
-
-This Euler product converges absolutely because each `w_p = p · (1 - |Ω_p|/p) · p^{-ε} ≤ p^{1-ε}` and `∑ p^{-(1-ε)}` is summable for `ε < 1` (which holds since `ε < lambdaExponent k ≤ 1`).
-
-### Step 6: Extract δ
-
-Set `δ = 1` (or any fixed positive value). The spacing s grows with q, and the Euler product is bounded by a constant K independent of q, giving `|deviation| ≤ K · s^{-1}`.
-
-## Key Lemmas Already Available
-
-All of these are proved in `MobiusSynthesis.lean`:
-
-- `deviation_product_difference` (line ~99) — the algebraic identity
-- `deviation_triangle_bound` (line ~116) — triangle inequality
-- `deviation_product_sum_zero` (line ~266) — zero-sum property
-- `inner_bound_small_divisor` (line ~1084) — the complete small-divisor bound
-- `box_deviation_inner_bound` (line ~787) — the underlying 900-line spatial proof
-
-From `HardCaseSynthesis.lean`:
-- `deviation_synthesis_harder_case` — bounds divisor sums via convergent series
-- `divisor_boundary_bound` — boundary contribution bounds
-
-## Acceptable Simplification
-
-If assembling the full sum over all subsets T is too complex, you may:
-1. Introduce a helper `sorry` for the Euler product convergence step
-2. Or introduce a helper `sorry` for the large-divisor case
-
-The critical new content is wiring the existing `inner_bound_small_divisor` into the final uniform bound.
-
-## Also: Close `deviation_uniform_exponent` (line ~1329)
-
-The second sorry in `MobiusSynthesis.lean` is at line ~1329, in the `ε < λ_k` branch of `deviation_uniform_exponent`. This simply delegates to `deviation_expression_uniform_bound`:
-
-```lean
-    sorry  -- replace with:
-    -- obtain ⟨δ, hδ, K, hK, hbound⟩ :=
-    --   deviation_expression_uniform_bound ε hε k hk Ω hΩ hWD hsp hlt X C_lp hC_lp_pos hC_lp
-    -- exact ⟨K, hK, hbound⟩
-```
-
-The δ from `deviation_expression_uniform_bound` works for all boxes X, so extract it once, then for each X apply the lemma with that δ.
-
-## Build Verification
-
-After completing, the sorry count in `MobiusSynthesis.lean` should drop from 2 to 0. The remaining sorry's in `FourierANOVA.lean` are independent and do not affect the build.
 -/

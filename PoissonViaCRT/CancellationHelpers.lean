@@ -116,6 +116,7 @@ lemma deviation_times_spacing_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) 
     (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
     (hsp : ∀ (p : ℕ), p.Prime →
       (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
+    (hrp : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ))
     (X : Box (k - 1))
     (C_lp : ℝ) (hC_lp_pos : 0 < C_lp)
     (hC_lp : ∀ (v : Fin (k - 1) → ℝ), (∀ i, 0 ≤ v i ∧ v i ≤ 1) → ∀ (s : ℝ), 1 ≤ s →
@@ -132,7 +133,7 @@ lemma deviation_times_spacing_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) 
           (fun h => inScaledBox X s (fun _ => 0) h)),
         ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
           (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| ≤ K * s ^ (-δ) :=
-  deviation_final_synthesis ε hε k hk Ω hΩ hWD hsp X C_lp hC_lp_pos hC_lp
+  deviation_final_synthesis ε hε k hk Ω hΩ hWD hsp hrp X C_lp hC_lp_pos hC_lp
 
 /-- The key q-independent deviation bound: the deviation sum
 `(1/|Ω_q|) * ∑_{h in box} (N_k(0::h) - μ)` is bounded by `C * s^{-1}`
@@ -151,6 +152,7 @@ lemma deviation_sum_bound_q_indep (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 �
     (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
     (hsp : ∀ (p : ℕ), p.Prime →
       (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
+    (hrp : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ))
     (X : Box (k - 1))
     (C_lp : ℝ) (hC_lp_pos : 0 < C_lp)
     (hC_lp : ∀ (v : Fin (k - 1) → ℝ), (∀ i, 0 ≤ v i ∧ v i ≤ 1) → ∀ (s : ℝ), 1 ≤ s →
@@ -170,7 +172,7 @@ lemma deviation_sum_bound_q_indep (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 �
       C * s ^ (-δ) := by
   -- Step 1: Obtain the uniform bound from the δ-aware deviation synthesis
   obtain ⟨δ, hδ_pos, K, hK_pos, hK⟩ := deviation_times_spacing_uniform_bound ε hε k hk Ω hΩ
-    hWD hsp X C_lp hC_lp_pos hC_lp
+    hWD hsp hrp X C_lp hC_lp_pos hC_lp
   -- Step 2: Pass through the δ and K directly
   exact ⟨δ, hδ_pos, K, hK_pos, hK⟩
 
@@ -182,7 +184,8 @@ lemma deviation_sum_bound_uniform (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 �
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
     (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
     (hsp : ∀ (p : ℕ), p.Prime →
-      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε)) :
+      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
+    (hrp : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ)) :
     ∃ δ : ℝ, 0 < δ ∧ ∀ (X : Box (k - 1))
       (C_lp : ℝ) (_hC_lp_pos : 0 < C_lp)
       (_hC_lp : ∀ (v : Fin (k - 1) → ℝ), (∀ i, 0 ≤ v i ∧ v i ≤ 1) → ∀ (s : ℝ), 1 ≤ s →
@@ -200,6 +203,6 @@ lemma deviation_sum_bound_uniform (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 �
           ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
             (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| ≤
         K * s ^ (-δ) :=
-  deviation_uniform_exponent ε hε k hk Ω hΩ hWD hsp
+  deviation_uniform_exponent ε hε k hk Ω hΩ hWD hsp hrp
 
 end PoissonCRT
