@@ -1336,7 +1336,7 @@ private lemma deviation_small_divisors (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk :
   · rw [ ← Finset.sum_div _ _ _, ← Finset.mul_sum ];
     rw [ div_le_iff₀ ];
     · convert mul_le_mul_of_nonneg_left ( hK_series q ( q / ( crtSubset q Ω |> Finset.card ) ) _ ) hC_lp_pos.le using 1;
-      · rw [ show ( 1 - ε / 2 : ℝ ) = - ( ε / 2 ) + 1 by ring, Real.rpow_add_one ] <;> ring ; norm_num [ NeZero.ne ];
+      · rw [ show ( 1 - ε / 2 : ℝ ) = - ( ε / 2 ) + 1 by ring, Real.rpow_add_one ] <;> ring_nf ; norm_num [ NeZero.ne ];
         exact Finset.Nonempty.ne_empty <| by have := crtSubset_card_pos_aux Ω hΩ q; exact Finset.card_pos.mp this;
       · rw [ one_le_div ] <;> norm_cast;
         · exact le_trans ( Finset.card_le_univ _ ) ( by norm_num );
@@ -1378,12 +1378,14 @@ private lemma deviation_large_divisors (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk :
             ∏ p ∈ q.primeFactors \ T, localMean k Ω p)| ≤ K₂ * s ^ (-(ε / 2)) := by
   sorry
 
-/-- **Core per-`q` deviation bound with fixed exponent `ε / 2`.**
+/-
+**Core per-`q` deviation bound with fixed exponent `ε / 2`.**
 For each squarefree `q`, the deviation is bounded by `K * s^{-(ε/2)}` where
 `K` depends on `C_lp`, `ε`, `k`, and the box `X`, but not on `q`.
 The proof combines the product-difference expansion (`deviation_product_difference`),
 the small-divisor bound (`inner_bound_small_divisor`), and the convergent Euler product
-controlled by the spacing parameter `ε`. -/
+controlled by the spacing parameter `ε`.
+-/
 private lemma deviation_expression_fixed_delta (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
@@ -1408,7 +1410,29 @@ private lemma deviation_expression_fixed_delta (ε : ℝ) (hε : 0 < ε) (k : �
           (fun h => inScaledBox X s (fun _ => 0) h)),
         ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
           (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| ≤ K * s ^ (-(ε / 2)) := by
-  sorry
+  -- Let's first obtain \( K_1 \) and \( K_2 \) from the previous lemmas.
+  obtain ⟨K₁, hK₁_pos, hK₁⟩ := deviation_small_divisors ε hε k hk Ω hΩ hWD hsp hrp hε_lt X C_lp hC_lp_pos hC_lp
+  obtain ⟨K₂, hK₂_pos, hK₂⟩ := deviation_large_divisors ε hε k hk Ω hΩ hWD hsp hrp hε_lt X C_lp hC_lp_pos hC_lp;
+  refine' ⟨ K₁ + K₂, add_pos hK₁_pos hK₂_pos, fun q _ hq ↦ _ ⟩;
+  -- Apply the triangle inequality to the sum.
+  have h_triangle : |(1 / (crtSubset q Ω).card : ℝ) * ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈(q : ℝ) / (crtSubset q Ω).card * ∑ i, X.sides i⌉).filter (fun h => inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) (fun _ => 0) h)), ((tupleCount (crtSubset q Ω) (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) - ∏ p ∈ q.primeFactors, localMean k Ω p)| ≤ ∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅), |∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈(q : ℝ) / (crtSubset q Ω).card * ∑ i, X.sides i⌉).filter (fun h => inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) (fun _ => 0) h)), (1 / (crtSubset q Ω).card : ℝ) * ((∏ p ∈ T, (localCount Ω q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p - localMean k Ω p)) * ∏ p ∈ q.primeFactors \ T, localMean k Ω p)| := by
+    have h_triangle : |∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈(q : ℝ) / (crtSubset q Ω).card * ∑ i, X.sides i⌉).filter (fun h => inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) (fun _ => 0) h)), ((tupleCount (crtSubset q Ω) (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) - ∏ p ∈ q.primeFactors, localMean k Ω p)| ≤ ∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅), |∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈(q : ℝ) / (crtSubset q Ω).card * ∑ i, X.sides i⌉).filter (fun h => inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) (fun _ => 0) h)), ((∏ p ∈ T, (localCount Ω q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p - localMean k Ω p)) * ∏ p ∈ q.primeFactors \ T, localMean k Ω p)| := by
+      have h_triangle : ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈(q : ℝ) / (crtSubset q Ω).card * ∑ i, X.sides i⌉).filter (fun h => inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) (fun _ => 0) h)), ((tupleCount (crtSubset q Ω) (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) - ∏ p ∈ q.primeFactors, localMean k Ω p) = ∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅), ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈(q : ℝ) / (crtSubset q Ω).card * ∑ i, X.sides i⌉).filter (fun h => inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) (fun _ => 0) h)), ((∏ p ∈ T, (localCount Ω q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p - localMean k Ω p)) * ∏ p ∈ q.primeFactors \ T, localMean k Ω p) := by
+        rw [ ← Finset.sum_comm ];
+        refine' Finset.sum_congr rfl fun x hx => _;
+        convert deviation_product_difference q hq Ω ( Fin.cons 0 fun i => ( x i : ZMod q ) ) using 1;
+        · grind;
+        · grind;
+      exact h_triangle.symm ▸ Finset.abs_sum_le_sum_abs _ _;
+    convert mul_le_mul_of_nonneg_left h_triangle ( show ( 0 : ℝ ) ≤ 1 / ( # ( crtSubset q Ω ) : ℝ ) by positivity ) using 1;
+    · rw [ abs_mul, abs_of_nonneg ( by positivity ) ];
+    · simp +decide only [← Finset.mul_sum _ _ _, abs_mul,
+          abs_of_nonneg (by positivity : (0 : ℝ) ≤ 1 / (#(crtSubset q Ω)))];
+  convert h_triangle.trans _ using 1;
+  · rw [ globalMean_eq_prod_localMean k q hq Ω ];
+  · convert add_le_add ( hK₁ q hq ) ( hK₂ q hq ) using 1;
+    · rw [ Finset.sum_filter_add_sum_filter_not ];
+    · ring
 
 private lemma deviation_expression_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
