@@ -23,6 +23,7 @@ import PoissonViaCRT.ScaledBoxVariation
 import PoissonViaCRT.MobiusOptimization
 import PoissonViaCRT.MobiusTauIntegration
 import PoissonViaCRT.FourierANOVA
+import PoissonViaCRT.LargeDivisorHelpers
 
 set_option linter.unusedVariables false
 
@@ -1361,10 +1362,12 @@ private lemma large_divisor_series_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk
         K_large * s ^ (-(ε / 2)) := by
   sorry
 
-/-- Per-`T` pointwise bound for the large-divisor case.
+/-
+Per-`T` pointwise bound for the large-divisor case.
 When `d = ∏ T > s`, we split `T` into small primes and large primes.
 Small primes use the trivial bound `|N_p - μ_p| ≤ p`.
-Large primes use the Weil bound `|N_p - μ_p| ≤ (1 - r_p) p^{-ε} μ_p` since the shifts are strictly injective. -/
+Large primes use the Weil bound `|N_p - μ_p| ≤ (1 - r_p) p^{-ε} μ_p` since the shifts are strictly injective.
+-/
 private lemma large_divisor_per_T_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
@@ -1401,7 +1404,35 @@ private lemma large_divisor_per_T_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk 
         ∏ p ∈ q.primeFactors \ T, localMean k Ω p) *
       (∏ p ∈ T_small, (p : ℝ)) *
       (∏ p ∈ T_large, (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) * localMean k Ω p) := by
-  sorry
+  rename_i hT hT';
+  refine' le_trans ( Finset.abs_sum_le_sum_abs _ _ ) _;
+  refine' le_trans ( Finset.sum_le_sum fun x hx => _ ) _;
+  use fun x => ( 1 / ( # ( crtSubset q Ω ) : ℝ ) ) * ( ∏ p ∈ T.filter ( · ≤ ⌈ ( q : ℝ ) / ( # ( crtSubset q Ω ) : ℝ ) * ∑ i, X.sides i⌉₊ ), ( p : ℝ ) ) * ( ∏ p ∈ T.filter ( ⌈ ( q : ℝ ) / ( # ( crtSubset q Ω ) : ℝ ) * ∑ i, X.sides i⌉₊ < · ), ( 1 - ( # ( Ω p ) : ℝ ) / p ) * ( p : ℝ ) ^ ( -ε ) * localMean k Ω p ) * ( ∏ p ∈ q.primeFactors \ T, localMean k Ω p );
+  · have := deviation_prod_pointwise_le ε ( by omega ) Ω q X ( ( q : ℝ ) / ( # ( crtSubset q Ω ) : ℝ ) ) ( by
+      exact div_pos ( Nat.cast_pos.mpr ( NeZero.pos q ) ) ( Nat.cast_pos.mpr ( Finset.card_pos.mpr ( by
+        exact Finset.card_pos.mp ( by exact crtSubset_card_pos_aux Ω hΩ q ) ) ) ) ) ( by
+      exact fun p hp => by rw [ Nat.sub_add_cancel ( by linarith ) ] ; exact hWD p; ) T ( by
+      grind ) ( ⌈ ( q : ℝ ) / ( # ( crtSubset q Ω ) : ℝ ) * ∑ i, X.sides i⌉₊ ) rfl x ( by
+      exact Finset.mem_filter.mp hx |>.2 ) ; simp_all +decide [ abs_mul, abs_of_nonneg ] ;
+    rcases k with ( _ | _ | k ) <;> simp_all +decide;
+    rw [ abs_of_nonneg ( show 0 ≤ ∏ p ∈ q.primeFactors \ T, localMean ( k + 1 + 1 ) Ω p from Finset.prod_nonneg fun p hp => ?_ ) ];
+    · simpa only [ mul_assoc ] using mul_le_mul_of_nonneg_right ( mul_le_mul_of_nonneg_left this ( by positivity ) ) ( Finset.prod_nonneg fun p hp => by unfold localMean; positivity );
+    · exact div_nonneg ( pow_nonneg ( Nat.cast_nonneg _ ) _ ) ( pow_nonneg ( Nat.cast_nonneg _ ) _ );
+  · simp +zetaDelta at *;
+    convert mul_le_mul_of_nonneg_right ( scaled_box_card_le ( show 2 ≤ k from hk ) X C_lp hC_lp_pos hC_lp ( q / ( # ( crtSubset q Ω ) : ℝ ) ) _ ) _ using 1;
+    · rw [ show ( q : ℝ ) ^ ( k - 1 ) = ( q : ℝ ) ^ ( k - 1 ) by rfl, show ( # ( crtSubset q Ω ) : ℝ ) ^ k = ( # ( crtSubset q Ω ) : ℝ ) ^ ( k - 1 ) * ( # ( crtSubset q Ω ) : ℝ ) by rw [ ← pow_succ, Nat.sub_add_cancel ( by linarith ) ] ] ; ring;
+    · rw [ one_le_div ] <;> norm_cast;
+      · exact le_trans ( Finset.card_le_univ _ ) ( by norm_num );
+      · exact crtSubset_card_pos_aux Ω hΩ q;
+    · refine' mul_nonneg _ _;
+      · refine' mul_nonneg _ _;
+        · exact mul_nonneg ( inv_nonneg.2 ( Nat.cast_nonneg _ ) ) ( Finset.prod_nonneg fun _ _ => Nat.cast_nonneg _ );
+        · refine' Finset.prod_nonneg fun p hp => mul_nonneg _ _;
+          · exact mul_nonneg ( sub_nonneg.2 <| div_le_one_of_le₀ ( mod_cast by
+              haveI := Fact.mk ( Nat.prime_of_mem_primeFactors ( hT'.1.1 ( Finset.mem_filter.mp hp |>.1 ) ) ) ; exact le_trans ( Finset.card_le_univ _ ) ( by norm_num ) ; ) <| Nat.cast_nonneg _ ) <| Real.rpow_nonneg ( Nat.cast_nonneg _ ) _;
+          · exact div_nonneg ( pow_nonneg ( Nat.cast_nonneg _ ) _ ) ( pow_nonneg ( Nat.cast_nonneg _ ) _ );
+      · refine' Finset.prod_nonneg fun p hp => _;
+        exact localMean_nonneg k Ω p
 
 /-- **Large-divisor contribution bound.**
 The sum over nonempty subsets `T ⊆ primeFactors(q)` with `∏ p ∈ T, (p : ℝ) > s`
