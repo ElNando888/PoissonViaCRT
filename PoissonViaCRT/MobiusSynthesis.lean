@@ -1343,6 +1343,54 @@ private lemma deviation_small_divisors (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk :
         · exact crtSubset_card_pos_aux Ω hΩ q;
     · exact div_pos ( Nat.cast_pos.mpr <| NeZero.pos q ) <| Nat.cast_pos.mpr <| Nat.pos_of_ne_zero <| by have := crtSubset_card_pos_aux Ω hΩ q; aesop;
 
+/-- The series `∑ 1 / μ_d`, summed over squarefree divisors `d > s` of `q`,
+is bounded by `K_large · s^{-ε/2}`. The full analytic convergence proof is omitted. -/
+private lemma large_divisor_series_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p)) :
+    ∃ K_large : ℝ, 0 < K_large ∧ ∀ (q : ℕ) [NeZero q] (s : ℝ) (_ : 1 ≤ s),
+      let Ω_q := crtSubset q Ω
+      ∑ T ∈ (q.primeFactors.powerset.filter (· ≠ ∅)).filter
+            (fun (T : Finset ℕ) => ¬((∏ p ∈ T, (p : ℝ)) ≤ s)),
+        ((q : ℝ) ^ (k - 1) / (Ω_q.card : ℝ) ^ k) * ∏ p ∈ q.primeFactors \ T, localMean k Ω p ≤
+        K_large * s ^ (-(ε / 2)) := by
+  sorry
+
+/-- Per-`T` pointwise bound for the large-divisor case.
+When `d = ∏ T > s`, we use a trivial (L∞) bound on the deviation inside the box.
+The absolute value of the inner sum is bounded by
+`(X.volume + C_lp) · (q^{k-1} / |Ω_q|^k) · ∏_{p ∉ T} μ_p`. -/
+private lemma large_divisor_per_T_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
+    (hsp : ∀ (p : ℕ), p.Prime →
+      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
+    (hrp : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ))
+    (hε_lt : ε < lambdaExponent k)
+    (X : Box (k - 1))
+    (C_lp : ℝ) (hC_lp_pos : 0 < C_lp)
+    (hC_lp : ∀ (v : Fin (k - 1) → ℝ), (∀ i, 0 ≤ v i ∧ v i ≤ 1) → ∀ (s : ℝ), 1 ≤ s →
+      |(((Fintype.piFinset fun _ : Fin (k - 1) =>
+          Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+        (fun h => inScaledBox X s v h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
+        C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1))
+    (q : ℕ) [NeZero q] (_ : Squarefree q)
+    (T : Finset ℕ)
+    (_ : T ∈ (q.primeFactors.powerset.filter (· ≠ ∅)).filter
+          (fun (T : Finset ℕ) => ¬((∏ p ∈ T, (p : ℝ)) ≤ (q : ℝ) / (crtSubset q Ω).card))) :
+    |∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+          Finset.Icc (1 : ℤ) ⌈((q : ℝ) / (crtSubset q Ω).card) * ∑ i, X.sides i⌉).filter
+        (fun h => inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) (fun _ => 0) h)),
+      (1 / ((crtSubset q Ω).card : ℝ)) *
+        ((∏ p ∈ T, (localCount Ω q
+            (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p -
+            localMean k Ω p)) *
+          ∏ p ∈ q.primeFactors \ T, localMean k Ω p)| ≤
+    (X.volume + C_lp) *
+      (((q : ℝ) ^ (k - 1) / ((crtSubset q Ω).card : ℝ) ^ k) *
+        ∏ p ∈ q.primeFactors \ T, localMean k Ω p) := by
+  sorry
+
 /-- **Large-divisor contribution bound.**
 The sum over nonempty subsets `T ⊆ primeFactors(q)` with `∏ p ∈ T, (p : ℝ) > s`
 (i.e. the period `d = ∏ T` exceeds the spacing `s`) is bounded by `K₂ · s^{-(ε/2)}`.
@@ -1376,7 +1424,29 @@ private lemma deviation_large_divisors (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk :
               (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p -
               localMean k Ω p)) *
             ∏ p ∈ q.primeFactors \ T, localMean k Ω p)| ≤ K₂ * s ^ (-(ε / 2)) := by
-  sorry
+  obtain ⟨K_large, hK_large_pos, hK_large⟩ := large_divisor_series_bound ε hε k hk Ω
+  have hXvol_pos : 0 < X.volume := Finset.prod_pos (fun i _ => X.sides_pos i)
+  refine ⟨(X.volume + C_lp) * K_large, mul_pos (add_pos hXvol_pos hC_lp_pos) hK_large_pos,
+    fun q _ hq_sq => ?_⟩
+  have hs_ge : 1 ≤ (q : ℝ) / (crtSubset q Ω).card := by
+    rw [one_le_div (Nat.cast_pos.mpr (Nat.pos_of_ne_zero (by
+      have := crtSubset_card_pos_aux Ω hΩ q; aesop)))]
+    norm_cast; exact le_trans (Finset.card_le_univ _) (by norm_num)
+  calc ∑ T ∈ _, |_|
+      ≤ ∑ T ∈ _, (X.volume + C_lp) *
+          (((q : ℝ) ^ (k - 1) / ((crtSubset q Ω).card : ℝ) ^ k) *
+            ∏ p ∈ q.primeFactors \ T, localMean k Ω p) :=
+        Finset.sum_le_sum fun T hT =>
+          large_divisor_per_T_bound ε hε k hk Ω hΩ hWD hsp hrp hε_lt X C_lp hC_lp_pos hC_lp
+            q hq_sq T hT
+    _ = (X.volume + C_lp) * ∑ T ∈ _, (((q : ℝ) ^ (k - 1) / ((crtSubset q Ω).card : ℝ) ^ k) *
+          ∏ p ∈ q.primeFactors \ T, localMean k Ω p) :=
+        (Finset.mul_sum _ _ _).symm
+    _ ≤ (X.volume + C_lp) * (K_large * ((q : ℝ) / (crtSubset q Ω).card) ^ (-(ε / 2))) :=
+        mul_le_mul_of_nonneg_left (hK_large q ((q : ℝ) / (crtSubset q Ω).card) hs_ge)
+          (le_of_lt (add_pos hXvol_pos hC_lp_pos))
+    _ = (X.volume + C_lp) * K_large * ((q : ℝ) / (crtSubset q Ω).card) ^ (-(ε / 2)) :=
+        by ring
 
 /-
 **Core per-`q` deviation bound with fixed exponent `ε / 2`.**

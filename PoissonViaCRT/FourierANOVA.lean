@@ -485,17 +485,6 @@ lemma boxIndicator_eq_prod (q : ℕ) [NeZero q] (m : ℕ)
       if (x j).val ∈ Finset.Icc 1 ⌊s * B.sides j⌋₊ then (1 : ℂ) else 0 := by
   unfold boxIndicator; split_ifs <;> simp_all +decide [ Finset.prod_ite ] ;
 
-/-- The 1D analogue of the box Fourier L¹ bound: the sum of norms of 1D DFT
-coefficients of a 1D box indicator is `O(log q)`, with a **universal** constant `C`
-independent of `q` and `N`. Proof deferred (analytic hurdle). -/
-lemma box_fourier_1d_bound :
-    ∃ C : ℝ, 0 < C ∧ ∀ (q : ℕ) [NeZero q] (N : ℕ),
-      ∑ ξ : ZMod q,
-        ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 N then (1 : ℂ) else 0)
-          (fun _ => ξ)‖ ≤
-      C * Real.log q := by
-  sorry
-
 /-
 The DFT of the box indicator factors as a product of 1D DFTs.
 This relies on `boxIndicator_eq_prod` to factor the function and the fact that
@@ -516,40 +505,6 @@ lemma dft_boxIndicator_eq_prod (q : ℕ) [NeZero q] (m : ℕ)
   · simp +decide [ funext_iff ];
   · exact fun b => ⟨ fun i => b i ( Finset.mem_univ i ) 0, funext fun i => funext fun _ => funext fun _ => by simp +decide [ Fin.eq_zero ] ⟩;
   · exact fun a => by rw [ ← Finset.prod_mul_distrib ] ; exact Finset.prod_congr rfl fun _ _ => by split_ifs <;> ring;
-
-/-
-**$L^1$-norm bound for the box Fourier transform.** The sum of norms
-of the Fourier coefficients of the box indicator is $O((\log q)^m)$:
-
-$\sum_{\xi \in (\mathbb{Z}/q\mathbb{Z})^m} \|\widehat{I}_S(\xi)\|
-  \leq C_{\mathrm{box}} \cdot (\log q)^m,$
-
-where $C_{\mathrm{box}}$ depends only on the box $X$ (not on $q$).
--/
-theorem box_fourier_l1_bound (k : ℕ) (_hk : 2 ≤ k) (B : Box (k - 1)) :
-    ∃ C : ℝ, 0 < C ∧ ∀ (q : ℕ) [NeZero q] (s : ℝ) (_hs : 0 < s),
-      ∑ ξ : Fin (k - 1) → ZMod q,
-        ‖dft q (k - 1) (boxIndicator q (k - 1) B s) ξ‖ ≤
-      C * (Real.log q) ^ (k - 1 : ℕ) := by
-  obtain ⟨ C₁D, hC₁D_pos, hC₁D_bound ⟩ := box_fourier_1d_bound;
-  refine' ⟨ C₁D ^ ( k - 1 ), pow_pos hC₁D_pos _, fun q _ s hs => _ ⟩;
-  -- Apply the bound for each component of the product.
-  have h_prod_bound : ∑ ξ : Fin (k - 1) → ZMod q, ∏ j : Fin (k - 1), ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 ⌊s * B.sides j⌋₊ then (1 : ℂ) else 0) (fun _ => ξ j)‖ ≤ (∏ j : Fin (k - 1), C₁D * Real.log q) := by
-    have h_prod_bound : ∀ (f : Fin (k - 1) → ZMod q → ℝ), (∀ j, 0 ≤ f j) → (∑ ξ : Fin (k - 1) → ZMod q, ∏ j, f j (ξ j)) ≤ ∏ j, (∑ ξ : ZMod q, f j ξ) := by
-      intro f hf; rw [ Finset.prod_sum ] ;
-      refine' le_of_eq _;
-      refine' Finset.sum_bij ( fun ξ _ => fun j _ => ξ j ) _ _ _ _ <;> simp +decide;
-      · simp +decide [ funext_iff ];
-      · exact fun b => ⟨ fun j => b j ( Finset.mem_univ j ), funext fun j => funext fun _ => rfl ⟩;
-    refine' le_trans _ ( Finset.prod_le_prod _ fun j _ => hC₁D_bound q ⌊s * B.sides j⌋₊ );
-    · convert h_prod_bound _ _ using 1;
-      · convert rfl;
-      · exact fun _ => fun _ => norm_nonneg _;
-    · exact fun _ _ => Finset.sum_nonneg fun _ _ => norm_nonneg _;
-  refine le_trans ?_ ( h_prod_bound.trans ?_ );
-  · exact Finset.sum_le_sum fun _ _ => by rw [ dft_boxIndicator_eq_prod ] ; norm_num;
-  · norm_num [ Finset.prod_mul_distrib ];
-    rw [ mul_pow ]
 
 /-! ### CRT frequency equivalence -/
 
@@ -799,23 +754,6 @@ lemma dft_const_nonzero (q : ℕ) [NeZero q] (m : ℕ) (c : ℂ)
   convert congr_arg ( fun x : ℂ => c * ( ( q ^ m : ℂ ) ⁻¹ * starRingEnd ℂ x ) ) this using 1 ; simp +decide [ Finset.mul_sum _ _ _, character ] ; ring_nf;
   norm_num
 
-/-
-**L∞ Frequency Bound on the deviation DFT.** For squarefree `q` and well-distributed
-`Ω`, each Fourier coefficient of `f_dev = N_q - μ_q` is bounded by
-`(∏_p μ_p) * ∏_p (1 + (1 - r_p) p^{-ε})`.
--/
-lemma deviation_dft_linf_bound (k : ℕ) (hk : 2 ≤ k) (ε : ℝ) (_hε : 0 < ε)
-    (q : ℕ) [NeZero q] (hq : Squarefree q)
-    (Ω : ∀ p : ℕ, Finset (ZMod p))
-    (hwd : ∀ p, (hp : p ∈ q.primeFactors) → haveI : Fact p.Prime :=
-      ⟨(Nat.mem_primeFactors.mp hp).1⟩;
-      WellDistributedFourier ε p (Ω p) k)
-    (ξ : Fin (k - 1) → ZMod q) :
-    ‖dft q (k - 1) (fun h => (tupleCount (crtSubset q Ω) (Fin.cons 0 h) : ℂ) -
-      ↑(∏ p ∈ q.primeFactors, localMean k Ω p)) ξ‖ ≤
-      (q : ℝ) ^ (-ε) * ((crtSubset q Ω).card : ℝ) ^ k / (q : ℝ) ^ (k - 1) := by
-  sorry
-
 lemma dft_tupleCount_norm_le_localMean (k : ℕ) (hk : 2 ≤ k) (ε : ℝ) (hε : 0 < ε)
     (p : ℕ) [hp : Fact p.Prime] (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hwd : WellDistributedFourier ε p (Ω p) k)
@@ -877,69 +815,5 @@ lemma deviation_dft_prod_bound (k : ℕ) (hk : 2 ≤ k) (ε : ℝ) (hε : 0 < ε
     · exact fun _ _ => norm_nonneg _;
     · convert dft_tupleCount_norm_le_localMean k hk ε hε p ( Ω ) ( hwd p p.2 ) _ using 1;
     · conv_rhs => rw [ ← Finset.prod_attach ] ;
-
-/-
-**Fourier ANOVA synthesis.** Combining Plancherel, CRT factorization, the primitive
-character sieve ($\widehat{\operatorname{dev}}_p(0) = 0$), exponential sum bounds, and
-box transform decay, we obtain the uniform deviation bound:
-
-$$\Bigl|\sum_{h \in s_q X} \bigl(N_k(h, \Omega_q) - \mu\bigr)\Bigr|
-  \leq C \cdot (\log q)^{k-1} \cdot
-    \prod_{p \mid q} \bigl(1 + (1 - r_p)\, p^{-\varepsilon}\bigr),$$
--/
-theorem deviation_fourier_synthesis (k : ℕ) (hk : 2 ≤ k) (B : Box (k - 1)) :
-    ∃ C : ℝ, 0 < C ∧
-      ∀ (ε : ℝ) (_hε : 0 < ε) (q : ℕ) [NeZero q] (_hq : Squarefree q)
-      (Ω : ∀ p : ℕ, Finset (ZMod p))
-      (_hwd : ∀ p, (hp : p ∈ q.primeFactors) → haveI : Fact p.Prime :=
-        ⟨(Nat.mem_primeFactors.mp hp).1⟩;
-        WellDistributedFourier ε p (Ω p) k)
-      (s : ℝ) (_hs : 0 < s),
-      ‖∑ h : Fin (k - 1) → ZMod q,
-        (boxIndicator q (k - 1) B s h) *
-        ((tupleCount (crtSubset q Ω) (Fin.cons 0 h) : ℂ) -
-          ↑(∏ p ∈ q.primeFactors, localMean k Ω p))‖ ≤
-      C * (Real.log q) ^ (k - 1 : ℕ) *
-        (q : ℝ) ^ (-ε) * ((crtSubset q Ω).card : ℝ) ^ k := by
-  obtain ⟨C, hC_pos, hC_bound⟩ := box_fourier_l1_bound k hk B
-  exact ⟨C, hC_pos, fun ε hε q _ hq Ω hwd s hs => by
-    -- Abbreviations for readability
-    set f_dev : (Fin (k - 1) → ZMod q) → ℂ :=
-      fun h => (tupleCount (crtSubset q Ω) (Fin.cons 0 h) : ℂ) -
-        ↑(∏ p ∈ q.primeFactors, localMean k Ω p)
-    set I_S := boxIndicator q (k - 1) B s
-
-    -- **Lemma 1 (Spatial → Frequency swap):**
-    have hlem1 : ∑ h, I_S h * f_dev h =
-        ∑ ξ : Fin (k - 1) → ZMod q,
-          ((q : ℂ) ^ (k - 1 : ℕ)) * dft q (k - 1) f_dev ξ *
-            dft q (k - 1) I_S (-ξ) :=
-      spatial_to_frequency_swap q (k - 1) f_dev I_S
-
-    -- **Lemma 2 (L∞ Frequency Bound):**
-    have hlem2 : ∀ ξ : Fin (k - 1) → ZMod q,
-        ‖dft q (k - 1) f_dev ξ‖ ≤ (q : ℝ) ^ (-ε) * ((crtSubset q Ω).card : ℝ) ^ k / (q : ℝ) ^ (k - 1) :=
-      fun ξ => deviation_dft_linf_bound k hk ε hε q hq Ω hwd ξ
-
-    -- **Lemma 3 (Assembly):**
-    -- The spatial→frequency identity (hlem1) gives us:
-    --   ∑ h, I_S h * f_dev h = ∑ ξ, q^(k-1) * dft(f_dev)(ξ) * dft(I_S)(-ξ)
-    -- Taking norms and applying triangle inequality + L∞ bound (hlem2):
-    have hlem3 : ‖∑ h, I_S h * f_dev h‖ ≤
-        C * (Real.log q) ^ (k - 1 : ℕ) *
-        (q : ℝ) ^ (-ε) * ((crtSubset q Ω).card : ℝ) ^ k := by
-      -- Apply the triangle inequality to the sum.
-      have h_triangle : ‖∑ ξ : Fin (k - 1) → ZMod q, (q : ℂ) ^ (k - 1) * dft q (k - 1) f_dev ξ * dft q (k - 1) I_S (-ξ)‖ ≤ ∑ ξ : Fin (k - 1) → ZMod q, (q : ℝ) ^ (k - 1) * ‖dft q (k - 1) f_dev ξ‖ * ‖dft q (k - 1) I_S (-ξ)‖ := by
-        convert norm_sum_le _ _ using 2 ; norm_num [ norm_mul ];
-      -- Apply the bound from hlem2 to each term in the sum.
-      have h_bound : ∑ ξ : Fin (k - 1) → ZMod q, (q : ℝ) ^ (k - 1) * ‖dft q (k - 1) f_dev ξ‖ * ‖dft q (k - 1) I_S (-ξ)‖ ≤ (q : ℝ) ^ (k - 1) * ((q : ℝ) ^ (-ε) * ↑(#(crtSubset q Ω)) ^ k / q ^ (k - 1)) * ∑ ξ : Fin (k - 1) → ZMod q, ‖dft q (k - 1) I_S (-ξ)‖ := by
-        simpa only [ Finset.mul_sum _ _ _, mul_assoc ] using Finset.sum_le_sum fun ξ _ => mul_le_mul_of_nonneg_right ( mul_le_mul_of_nonneg_left ( hlem2 ξ ) ( by positivity ) ) ( by positivity );
-      convert h_triangle.trans h_bound |> le_trans <| ?_ using 1;
-      · rw [hlem1];
-      · rw [ mul_div_cancel₀ _ ( by norm_cast; exact pow_ne_zero _ <| NeZero.ne q ) ];
-        convert mul_le_mul_of_nonneg_right ( hC_bound q s hs ) ( show 0 ≤ ( q : ℝ ) ^ ( -ε ) * ↑ ( # ( crtSubset q Ω ) ) ^ k by positivity ) using 1 ; ring_nf;
-        · exact congrArg _ ( sum_norm_dft_neg_eq _ _ _ );
-        · ring
-    exact hlem3⟩
 
 end PoissonCRT
