@@ -255,4 +255,22 @@ lemma inScaledBox_symmDiff_card_le (m : ℕ) (X : Box m) :
       gcongr;
       nlinarith [ Int.ceil_lt_add_one ( s * ∑ i, X.sides i ), show ( ⌈s * ∑ i, X.sides i⌉.toNat : ℝ ) ≤ ⌈s * ∑ i, X.sides i⌉ by exact_mod_cast Int.toNat_of_nonneg ( Int.ceil_nonneg ( mul_nonneg ( by positivity ) ( Finset.sum_nonneg fun _ _ => le_of_lt ( X.sides_pos _ ) ) ) ) |> le_of_eq, show ( ∑ i, X.sides i : ℝ ) ≥ 0 by exact Finset.sum_nonneg fun _ _ => le_of_lt ( X.sides_pos _ ) ]
 
+/-
+The prefix-sum map `d ↦ (i ↦ ∑_{j ≤ i} d j)` is injective.
+-/
+lemma prefixSum_injective (m : ℕ) :
+    Function.Injective (fun (d : Fin m → ℤ) (i : Fin m) =>
+      ∑ j ∈ Finset.univ.filter (fun j => j ≤ i), d j) := by
+  intro d₁ d₂ h_eq
+  have h_zero : ∀ i : Fin m, d₁ i = d₂ i := by
+    intro ⟨ i, hi ⟩ ; induction' i with i ih <;> simp_all +decide [ Finset.sum_filter ] ;
+    · replace h_eq := congr_fun h_eq ⟨ 0, hi ⟩ ; simp_all +decide [ Finset.sum_ite ] ;
+      rw [ show ( Finset.filter ( fun x => x ≤ ⟨ 0, hi ⟩ ) Finset.univ : Finset ( Fin m ) ) = { ⟨ 0, hi ⟩ } from Finset.eq_singleton_iff_unique_mem.mpr ⟨ Finset.mem_filter.mpr ⟨ Finset.mem_univ _, le_rfl ⟩, fun x hx => le_antisymm ( Finset.mem_filter.mp hx |>.2 ) ( Nat.zero_le _ ) ⟩ ] at h_eq ; aesop;
+    · have := congr_fun h_eq ⟨ i + 1, hi ⟩ ; have := congr_fun h_eq ⟨ i, by linarith ⟩ ; simp_all +decide [ Finset.sum_ite ] ;
+      rw [ show ( Finset.filter ( fun x : Fin m => x ≤ ⟨ i + 1, hi ⟩ ) Finset.univ : Finset ( Fin m ) ) = Finset.filter ( fun x : Fin m => x ≤ ⟨ i, by linarith ⟩ ) Finset.univ ∪ { ⟨ i + 1, hi ⟩ } from ?_, Finset.sum_union ] at * <;> norm_num at *;
+      · grind;
+      · grind +qlia
+  exact (by
+  exact funext h_zero)
+
 end PoissonCRT

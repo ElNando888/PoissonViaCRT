@@ -735,8 +735,9 @@ lemma gammaRow_dvd_diff_of_valid
     simp_all +decide [Finset.lcm_insert]
   simp +decide [← ‹_›, GCDMonoid.lcm])
 
--- See docs/proof_sketches.md for full proof sketch.
-set_option maxHeartbeats 800000 in
+/-
+See docs/proof_sketches.md for full proof sketch.
+-/
 lemma card_filtered_le_prod_of_fiber_dvd
     (n : ℕ) (H : ℕ) (m : Fin n → ℕ)
     (hm : ∀ j, 0 < m j)
@@ -746,96 +747,82 @@ lemma card_filtered_le_prod_of_fiber_dvd
       (∀ i : Fin n, i < j → h i = h' i) →
         (m j : ℤ) ∣ (h j - h' j)) :
     S.card ≤ ∏ j : Fin n, (H / m j + 1) := by
-  revert S hS hfib hm
-  induction' n with n ih <;>
-    simp_all +decide [Fin.prod_univ_castSucc]
-  intro hm S hS hfib
-  set I := S.image (Fin.init) with hI_def
-  have hI_card :
-      I.card ≤ ∏ j : Fin n,
-        (H / m (Fin.castSucc j) + 1) := by
-    apply ih (fun j => m (Fin.castSucc j))
-      (fun j => hm (Fin.castSucc j)) I
-    · simp +zetaDelta at *
-      exact fun h hh i => hS h hh (Fin.castSucc i)
-    · simp +zetaDelta at *
-      intro j a ha b hb hab
-      specialize hfib (Fin.castSucc j) a ha b hb
-      simp_all +decide [Fin.init]
-      exact hfib fun i hi => by
-        simpa using hab
-          ⟨i, by linarith [Fin.is_lt i, Fin.is_lt j,
-            show (i : ℕ) < j from hi]⟩
-          (by simpa [Fin.castSucc_lt_last] using hi)
-  have h_fib_card : ∀ g ∈ I,
-      (S.filter (fun h =>
-        Fin.init h = g)).card ≤
-        H / m (Fin.last n) + 1 := by
-    intros g hg
-    have h_fiber :
-        ∀ h ∈ Finset.filter
-          (fun h => Fin.init h = g) S,
-        ∀ h' ∈ Finset.filter
-          (fun h => Fin.init h = g) S,
-        (m (Fin.last n) : ℤ) ∣
-          (h (Fin.last n) - h' (Fin.last n)) := by
-      intros h hh h' hh'
-      apply hfib (Fin.last n) h
-        (Finset.mem_filter.mp hh).left h'
-        (Finset.mem_filter.mp hh').left
-      simp_all +decide [funext_iff, Fin.init]
-      exact fun i hi => by
-        have := hh.2 ⟨i, hi⟩
-        have := hh'.2 ⟨i, hi⟩; aesop
-    have h_last_coords :
-        (Finset.image (fun h => h (Fin.last n))
-          (Finset.filter (fun h => Fin.init h = g)
-            S)).card ≤
-          (H : ℝ) / (m (Fin.last n) : ℝ) + 1 := by
-      convert card_set_pairwise_dvd_le
-        (hm (Fin.last n)) H
-        (Finset.image (fun h => h (Fin.last n))
-          (Finset.filter (fun h => Fin.init h = g) S))
-        _ _ using 1
-      · simp +zetaDelta at *
-        exact fun x h hh hh' hx =>
-          hx ▸ hS h hh (Fin.last n)
-      · grind
-    rw [Finset.card_image_of_injOn] at h_last_coords <;>
-      norm_cast at *
-    · rw [div_add_one, le_div_iff₀] at h_last_coords <;>
-        norm_cast at * <;>
-        nlinarith [hm (Fin.last n),
-          Nat.div_add_mod H (m (Fin.last n)),
-          Nat.mod_lt H (hm (Fin.last n))]
-    · intro x hx y hy
-      have := hx.2; have := hy.2; simp_all
-      exact fun h => funext fun i =>
-        if hi : i.val < n then by
-          simpa [Fin.ext_iff] using
-            congr_fun ‹Fin.init x = g› ⟨i.val, hi⟩
-            |> Eq.trans <|
-            congr_fun ‹Fin.init y = g› ⟨i.val, hi⟩
-            |> Eq.symm
-        else by
-          rw [show i = Fin.last n from
-            le_antisymm (Fin.le_last _)
-              (not_lt.mp hi)]
-          exact h
-  have h_S_card :
-      S.card ≤
-        I.card * (H / m (Fin.last n) + 1) := by
-    have h_S_card :
-        S.card = ∑ g ∈ I,
-          (S.filter (fun h =>
-            Fin.init h = g)).card :=
-      Finset.card_eq_sum_card_image _ _
-    generalize_proofs at *; (
-    exact h_S_card.symm ▸ le_trans
-      (Finset.sum_le_sum h_fib_card)
-      (by simp +decide [mul_comm]))
-  exact le_trans h_S_card (by
-  exact Nat.mul_le_mul_right _ hI_card)
+  induction' n with n ih;
+  · exact le_trans ( Finset.card_le_univ _ ) ( by norm_num );
+  · -- Let `proj` be the projection onto the first `n` coordinates.
+    set proj : (Fin (Nat.succ n) → ℤ) → (Fin n → ℤ) := fun h => fun i => h (Fin.castSucc i);
+    nontriviality;
+    -- Let `I := S.image proj`.
+    set I := S.image proj with hI_def;
+    -- For each `g ∈ I`, the fiber `F_g := S.filter (fun h => proj h = g)` has cardinality at most `H / m (last n) + 1`.
+    have h_fiber_card : ∀ g ∈ I, (S.filter (fun h => proj h = g)).card ≤ H / m (Fin.last n) + 1 := by
+      intro g hg
+      have h_fiber : ∀ h ∈ S.filter (fun h => proj h = g), ∀ h' ∈ S.filter (fun h => proj h = g), (m (Fin.last n) : ℤ) ∣ (h (Fin.last n) - h' (Fin.last n)) := by
+        intros h hh h' hh';
+        apply hfib (Fin.last n) h (Finset.mem_filter.mp hh).left h' (Finset.mem_filter.mp hh').left;
+        intro i hi
+        have h1 := (Finset.mem_filter.mp hh).2
+        have h2 := (Finset.mem_filter.mp hh').2
+        have h1' := congr_fun h1 ⟨i, hi⟩
+        have h2' := congr_fun h2 ⟨i, hi⟩
+        simp only [proj] at h1' h2'
+        have : Fin.castSucc ⟨i, hi⟩ = (⟨i, by omega⟩ : Fin (n+1)) := by ext; simp
+        rw [this] at h1' h2'
+        exact h1'.trans h2'.symm;
+      have h_fiber_card : (Finset.image (fun h => h (Fin.last n)) (S.filter (fun h => proj h = g))).card ≤ H / m (Fin.last n) + 1 := by
+        have h_fiber_card : ∀ x ∈ Finset.image (fun h => h (Fin.last n)) (S.filter (fun h => proj h = g)), ∀ y ∈ Finset.image (fun h => h (Fin.last n)) (S.filter (fun h => proj h = g)), (m (Fin.last n) : ℤ) ∣ (x - y) := by
+          intro x hx y hy
+          simp only [Finset.mem_image, Finset.mem_filter] at hx hy
+          obtain ⟨a, ⟨haS, _⟩, rfl⟩ := hx
+          obtain ⟨b, ⟨hbS, _⟩, rfl⟩ := hy
+          exact h_fiber a (Finset.mem_filter.mpr ⟨haS, ‹_›⟩) b (Finset.mem_filter.mpr ⟨hbS, ‹_›⟩);
+        have := @card_set_pairwise_dvd_le ( m ( Fin.last n ) ) ( hm ( Fin.last n ) ) H ( Finset.image ( fun h => h ( Fin.last n ) ) ( Finset.filter ( fun h => proj h = g ) S ) ) ?_ ?_;
+        · rw [ div_add_one, le_div_iff₀ ] at this <;> norm_cast at *;
+          · nlinarith [ Nat.div_add_mod H ( m ( Fin.last n ) ), Nat.mod_lt H ( hm ( Fin.last n ) ), hm ( Fin.last n ) ];
+          · exact hm _;
+          · linarith [ hm ( Fin.last n ) ];
+        · intro x hx
+          simp only [Finset.mem_image, Finset.mem_filter] at hx
+          obtain ⟨a, ⟨haS, _⟩, rfl⟩ := hx
+          exact hS a haS (Fin.last n);
+        · exact h_fiber_card;
+      rwa [ Finset.card_image_of_injOn ] at h_fiber_card;
+      intro h hh h' hh' h_eq
+      have hhinit := (Finset.mem_filter.mp hh).2
+      have hh'init := (Finset.mem_filter.mp hh').2
+      funext i
+      by_cases hi : i.val < n
+      · have hh1 := congr_fun hhinit ⟨i.val, hi⟩
+        have hh2 := congr_fun hh'init ⟨i.val, hi⟩
+        simp only [proj] at hh1 hh2
+        have hcast : Fin.castSucc ⟨i.val, hi⟩ = i := by ext; simp
+        rw [hcast] at hh1 hh2; linarith
+      · have : i = Fin.last n := le_antisymm (Fin.le_last _) (by omega)
+        rw [this]; exact h_eq;
+    -- By the induction hypothesis, we have $I.card \leq \prod_{j : Fin n} (H / m j + 1)$.
+    have h_ind : I.card ≤ ∏ j : Fin n, (H / m (Fin.castSucc j) + 1) := by
+      apply ih (fun j => m (Fin.castSucc j)) (fun j => hm (Fin.castSucc j)) I;
+      · intro a ha i
+        simp only [I, Finset.mem_image] at ha
+        obtain ⟨a', ha'S, rfl⟩ := ha
+        exact hS a' ha'S (Fin.castSucc i);
+      · intro j a ha b hb hab
+        simp only [I, Finset.mem_image] at ha hb
+        obtain ⟨a', ha'S, rfl⟩ := ha
+        obtain ⟨b', hb'S, rfl⟩ := hb
+        apply hfib (Fin.castSucc j) a' ha'S b' hb'S
+        intro i hi
+        have hlt : i.val < n := by
+          have := Fin.val_lt_last (show Fin.castSucc j ≠ Fin.last n by simp [Fin.ext_iff]; omega)
+          simp [Fin.lt_def] at hi; omega
+        have := hab ⟨i.val, hlt⟩ (by simp [Fin.lt_def] at hi ⊢; exact hi)
+        simp only [proj] at this
+        have hcast : Fin.castSucc ⟨i.val, hlt⟩ = i := by ext; simp
+        rw [hcast] at this; exact this;
+    have h_card_S : S.card = ∑ g ∈ I, (S.filter (fun h => proj h = g)).card := by
+      exact Finset.card_eq_sum_card_image proj S;
+    rw [ h_card_S, Fin.prod_univ_castSucc ];
+    exact le_trans ( Finset.sum_le_sum h_fiber_card ) ( by simpa [ mul_comm ] using Nat.mul_le_mul_right ( H / m ( Fin.last n ) + 1 ) h_ind )
 
 /-! ### Upper bound on `M_Γ(H)` (Proposition 3.2) -/
 
@@ -972,46 +959,37 @@ theorem countTuples_bound_small_gamma
   · exact Nat.cast_pos.mpr
       (GammaStructure.gammaProd_pos Γ)
 
--- See docs/proof_sketches.md for full proof sketch.
-set_option maxHeartbeats 800000 in
+/-
+See docs/proof_sketches.md for full proof sketch.
+-/
 theorem countTuples_bound_large_gamma
     (Γ : GammaStructure (k + 1)) (H : ℕ)
     (hlarge : ∃ i : Fin k,
       H ≤ Γ.gammaRow i.succ) :
     (countTuplesWithGamma Γ H : ℝ) ≤
       2 ^ k * (H : ℝ) ^ (k - 1) := by
-  obtain ⟨i₀, hi₀⟩ := hlarge
-  have h_bound :
-      (countTuplesWithGamma Γ H) ≤
-        ∏ i : Fin k,
-          ((H : ℝ) / (Γ.gammaRow i.succ) + 1) :=
-    countTuples_bound_prop Γ H
-  have h_split : ∏ i : Fin k, ((H : ℝ) / (Γ.gammaRow i.succ) + 1)
-      ≤ ((H : ℝ) / (Γ.gammaRow i₀.succ) + 1) * ∏ i ∈ Finset.univ.erase i₀, ((H : ℝ) + 1) := by
-    rw [← Finset.mul_prod_erase _ _ (Finset.mem_univ i₀)]
-    gcongr
-    exact div_le_self (Nat.cast_nonneg _) (by norm_cast; exact Γ.gammaRow_pos _)
-  generalize_proofs at *; (
-  by_cases hH : H ≥ 1 <;> simp_all
-  · have h_exp_bound :
-        (H + 1 : ℝ) ^ (k - 1) ≤
-          2 ^ (k - 1) * H ^ (k - 1) := by
-      rw [← mul_pow]; gcongr; norm_cast; linarith
-    generalize_proofs at *; (
-    rcases k with (_ | k) <;>
-      simp_all +decide; ring_nf at *; (
-    refine le_trans h_bound <| h_split.trans ?_
-    nlinarith [show (H : ℝ) ≥ 1 by norm_cast,
-        inv_mul_cancel_left₀ (show ((‹GammaStructure (k + 1 + 1)›.gammaRow ‹Fin (k + 1)›.succ) : ℝ) ≠ 0 by
-          norm_cast;
-          exact Nat.ne_of_gt <| Nat.pos_of_ne_zero <| by aesop) <| (1 + H : ℝ) ^ k,
-          show ((‹GammaStructure (k + 1 + 1)›.gammaRow ‹Fin (k + 1)›.succ) : ℝ) ≥ H by exact_mod_cast hi₀]))
-  · rcases k with (_ | _ | k) <;>
-      norm_num at *; aesop
-    refine' le_antisymm _ _ <;>
-      simp_all +decide [countTuplesWithGamma]
-    exact fun h =>
-      absurd (h 0 1) (by simp +decide))
+  rcases hlarge with ⟨ i, hi ⟩;
+  by_cases hH : H = 0;
+  · rcases k with ( _ | _ | k ) <;> simp_all +decide [ countTuplesWithGamma ];
+    exact fun h => absurd ( h 0 1 ) ( by simp +decide );
+  · -- Applying the bound from countTuples_bound_prop, we get:
+    have h_bound : (countTuplesWithGamma Γ H : ℝ) ≤ ∏ j : Fin k, ((H : ℝ) / (Γ.gammaRow j.succ) + 1) := by
+      convert countTuples_bound_prop Γ H using 1;
+    -- Since $H \leq \Gamma.gammaRow i.succ$, we have $\frac{H}{\Gamma.gammaRow i.succ} \leq 1$, thus $\frac{H}{\Gamma.gammaRow i.succ} + 1 \leq 2$.
+    have h_term_bound : ∀ j : Fin k, ((H : ℝ) / (Γ.gammaRow j.succ) + 1) ≤ if j = i then 2 else (H : ℝ) + 1 := by
+      intro j; split_ifs <;> simp_all +decide ;
+      · linarith [ show ( H : ℝ ) / Γ.gammaRow i.succ ≤ 1 by rw [ div_le_iff₀ ( Nat.cast_pos.mpr <| Nat.pos_of_ne_zero <| by aesop ) ] ; norm_cast; linarith ];
+      · exact div_le_self ( Nat.cast_nonneg _ ) ( mod_cast Γ.gammaRow_pos _ );
+    refine le_trans h_bound <| le_trans ( Finset.prod_le_prod ?_ fun j _ => h_term_bound j ) ?_ <;> norm_num [ Finset.prod_ite, Finset.filter_eq', Finset.filter_ne' ];
+    · exact fun _ => by positivity;
+    · rcases k with ( _ | _ | k ) <;> norm_num [ pow_succ' ] at *;
+      · exact Fin.elim0 i;
+      · norm_cast ; ring_nf;
+        rcases H with ( _ | _ | H ) <;> norm_num at *;
+        · linarith;
+        · ring_nf;
+          norm_num [ mul_assoc, ← mul_pow ];
+          nlinarith [ pow_pos ( by linarith : 0 < 3 + H ) k, pow_le_pow_left' ( by linarith : 3 + H ≤ 2 * ( 2 + H ) ) k ]
 
 /-! ### Inequality (3.3): Greedy reordering bound -/
 
