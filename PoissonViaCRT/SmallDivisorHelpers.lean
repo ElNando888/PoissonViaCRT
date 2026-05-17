@@ -28,18 +28,37 @@ import PoissonViaCRT.EulerWeights
 set_option linter.unusedVariables false
 
 /-!
-# Small Divisor Helpers
+# Small-divisor helpers for spatial synthesis
 
-This file contains the lattice-point-bound machinery for small divisors
-in the Möbius synthesis. It includes:
+This file contains the lattice-point and residue-multiplicity
+machinery for the small-divisor contribution in the Möbius
+deviation bound. Small divisors are subsets
+`T ⊆ q.primeFactors` with `∏ p ∈ T, p ≤ s`; for these the
+inclusion-exclusion argument uses an L∞ × L¹ strategy:
 
-- The bijection between residue classes and rescaled boxes
-  (`rescaled_card_injectivity`, `rescaled_card_surjectivity`)
-- The residue multiplicity / discrepancy bounds
-  (`residue_class_card_eq_rescaled_card`, `residue_class_discrepancy_bound`,
-   `residue_total_variation_bound`)
-- The core inner bound `box_deviation_inner_bound`
-- The small-divisor contribution bound `deviation_small_divisors`
+- **Residue multiplicity bijection**: lattice points in a
+  rescaled box are in bijection with residue classes modulo
+  `d = ∏ T`, giving exact control of the per-class count.
+- **Total variation bound**: the sum of absolute deviations
+  over residue classes is bounded by `O(d · s^{−1})`.
+- **CRT factorisation**: the arithmetic L¹ norm factors
+  multiplicatively over prime factors via CRT.
+
+## Main results
+
+* `deviation_product_sum_zero` — the CRT deviation-product
+  sums to zero over all residue classes.
+* `globalMean_eq_prod_localMean` — the global mean factors
+  as a product of local means.
+* `box_deviation_inner_bound` — the core per-`T` bound
+  combining lattice point deviation with residue multiplicity.
+* `inner_bound_small_divisor` — the small-divisor inner bound
+  packaged for summation.
+* `crtSubset_card_pos_aux` — positivity of the CRT subset.
+* `small_divisor_series_bound` — convergence of the
+  small-divisor series.
+* `deviation_small_divisors` — the full small-divisor
+  contribution bound.
 -/
 
 open Finset BigOperators Classical
@@ -538,10 +557,10 @@ private lemma final_collapse (s C_lp : ℝ) (d : ℕ) (k : ℕ) (ε : ℝ)
   · simp +decide [ Finset.prod_mul_distrib ];
     simp +decide [ mul_left_comm ( s ^ k ), hs_ne ]
 
-/-
-The global expected value factors as a product of local expected values over
-the prime factors of squarefree `q`.
--/
+/-- The global expected value of the counting function factors
+as a product of local means over the prime factors of
+squarefree `q`. This multiplicativity is the CRT-side
+counterpart of the inclusion-exclusion decomposition. -/
 lemma globalMean_eq_prod_localMean (k : ℕ) (q : ℕ) [NeZero q] (hq : Squarefree q)
     (Ω : ∀ p : ℕ, Finset (ZMod p)) :
     ((crtSubset q Ω).card : ℝ) ^ k / (q : ℝ) ^ (k - 1) =
@@ -587,7 +606,7 @@ private lemma arith_l1_per_prime (k : ℕ) (ε : ℝ)
     ∑ r : Fin (k - 1) → ZMod p, |localCount Ω p (Fin.cons 0 r) p - localMean k Ω p| ≤
     p ^ (k - 1 : ℕ) * (1 - (Ω p).card / p : ℝ) * (p : ℝ) ^ (-ε) *
     ((Ω p).card : ℝ) ^ k / p ^ (k - 1 : ℕ) := by
-  by_cases h_card : ( Ω p ).card = 0 <;> simp_all +decide [ Nat.Prime.ne_zero Fact.out ];
+  by_cases h_card : ( Ω p ).card = 0 <;> simp_all +decide;
   · rcases k with ( _ | k ) <;> simp_all +decide [ localCount, localMean ];
     · split_ifs <;> norm_num [ tupleCount ];
       · specialize hWD p ; simp_all +decide [ WellDistributed ];
@@ -617,13 +636,13 @@ private lemma arith_l1_crt_transport (k : ℕ)
     ∑ r : (p : d.primeFactors) → Fin (k - 1) → ZMod p,
       ∏ p : d.primeFactors, |localCount Ω p (Fin.cons 0 (fun i => r p i)) p - localMean k Ω p| := by
   have hT_eq : T = d.primeFactors := Finset.Subset.antisymm hT_sub_d hd_sub_T;
-  subst hT_eq; rw [ Finset.sum_congr rfl ] ; simp +decide [ Finset.abs_prod ] ;
+  subst hT_eq; rw [ Finset.sum_congr rfl ] ; simp +decide
   convert Finset.sum_bijective _ ( box_period_equiv d hd_sq |> Equiv.bijective ) _ _ using 1;
   use fun i => ∏ p ∈ d.primeFactors, |localCount Ω d (Fin.cons 0 i) p - localMean k Ω p|;
   · grind;
   · intro i hi; rw [ ← Finset.prod_attach ] ; congr; ext p; simp +decide [ box_period_equiv_apply_eq_castHom ] ;
     unfold localCount localMean; simp +decide [ Fin.cons ] ;
-    split_ifs <;> simp_all +decide [ Nat.mem_primeFactors ];
+    split_ifs <;> simp_all +decide
     · congr! 3;
       congr! 2;
       rename_i x; induction x using Fin.inductionOn <;> aesop;
@@ -713,11 +732,11 @@ private lemma box_deviation_factors_through_d (k : ℕ) (q : ℕ) [NeZero q]
   intros v;
   unfold localCount;
   refine' Finset.prod_congr rfl fun p hp => _ ; simp_all +decide [ Nat.mem_primeFactors, Finset.prod_eq_zero_iff ];
-  split_ifs <;> simp_all +decide [ Finset.prod_eq_zero_iff, Nat.Prime.dvd_iff_not_coprime ];
+  split_ifs <;> simp_all +decide [ Nat.Prime.dvd_iff_not_coprime ];
   · congr! 2;
     rename_i i; induction i using Fin.inductionOn <;> aesop;
-  · simp_all +decide [ Nat.coprime_prod_right_iff, Nat.coprime_prod_left_iff ];
-    rename_i h₁ h₂; specialize h₂ p hp; simp_all +decide [ Nat.coprime_primes ] ;
+  · simp_all +decide [ Nat.coprime_prod_right_iff ];
+    rename_i h₁ h₂; specialize h₂ p hp; simp_all +decide
     exact absurd ( hT ( h₂ h₁.1.ne_one ) ) ( by aesop );
   · exact absurd ( ‹¬Nat.gcd p q = 1 → q = 0› ( by have := Nat.dvd_of_mem_primeFactors ( hT hp ) ; exact fun h => absurd ( Nat.dvd_gcd ( dvd_refl p ) this ) ( by aesop ) ) ) ( NeZero.ne q )
 
@@ -762,11 +781,18 @@ private lemma box_deviation_final_step (k : ℕ) (hk : 1 ≤ k) (q : ℕ) [NeZer
       exact div_nonneg ( pow_nonneg ( Nat.cast_nonneg _ ) _ ) ( pow_nonneg ( Nat.cast_nonneg _ ) _ );
   · rcases k with ( _ | _ | k ) <;> norm_num at *;
     · simp_all +decide [ mul_assoc, mul_comm, mul_left_comm, Finset.prod_mul_distrib ];
-    · rw [ show ( ∏ p ∈ T, ( p : ℝ ) * ( 1 - ( Ω p |> Finset.card : ℝ ) / p ) * p ^ ( -ε ) ) = ( ∏ p ∈ T, ( 1 - ( Ω p |> Finset.card : ℝ ) / p ) * p ^ ( -ε ) ) * ( ∏ p ∈ T, ( p : ℝ ) ) by rw [ ← Finset.prod_mul_distrib ] ; exact Finset.prod_congr rfl fun _ _ => by ring ] ; ring;
-      by_cases hs : s = 0 <;> simp_all +decide [ zpow_sub₀, zpow_add₀ ] ; ring;
+    · rw [ show ( ∏ p ∈ T, ( p : ℝ ) * ( 1 - ( Ω p |> Finset.card : ℝ ) / p ) * p ^ ( -ε ) ) = ( ∏ p ∈ T, ( 1 - ( Ω p |> Finset.card : ℝ ) / p ) * p ^ ( -ε ) ) * ( ∏ p ∈ T, ( p : ℝ ) ) by rw [ ← Finset.prod_mul_distrib ] ; exact Finset.prod_congr rfl fun _ _ => by ring ] ; ring_nf;
+      by_cases hs : s = 0 <;> simp_all +decide [ zpow_sub₀, zpow_add₀ ] ; ring_nf;
       · exact absurd hs_eq ( ne_of_lt ( div_pos ( Nat.cast_pos.mpr ( NeZero.pos q ) ) ( Nat.cast_pos.mpr ( Finset.card_pos.mpr hcard_pos ) ) ) );
       · by_cases h : ∏ i ∈ T, ( i : ℝ ) = 0 <;> simp_all +decide [ div_eq_mul_inv, mul_assoc, mul_comm, mul_left_comm ]
 
+/-- **Core per-`T` inner bound.** For a nonempty subset
+`T ⊆ q.primeFactors` with `∏ T ≤ s`, the absolute value
+of the inclusion-exclusion contribution is bounded by
+`C_lp · s^{−1} · ∏_{p ∈ T} (Euler weight)`. The proof
+combines the residue multiplicity total-variation bound
+with the lattice point deviation bound and the mean
+collapse identity. -/
 lemma box_deviation_inner_bound (k : ℕ) (hk : 1 ≤ k) (q : ℕ) [NeZero q]
     (hq_sq : Squarefree q)
     (ε : ℝ) (hε : 0 < ε) (s : ℝ) (C_lp : ℝ) (hC_lp_pos : 0 ≤ C_lp)
@@ -1017,9 +1043,10 @@ lemma inner_bound_small_divisor (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk1 : 1 ≤
 
 /-! ### CRT subset cardinality and small-divisor series -/
 
-/-
-The cardinality of `crtSubset q Ω` is positive when each `Ω p` is nonempty for primes.
--/
+/-- The cardinality of `crtSubset q Ω` is positive when each
+`Ω p` is nonempty for primes dividing `q`. This is needed to
+ensure the scaling parameter `s = q / |Ω_q|` is well-defined
+and positive. -/
 lemma crtSubset_card_pos_aux (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty) (q : ℕ) [NeZero q] :
     0 < (crtSubset q Ω).card := by
@@ -1053,7 +1080,11 @@ lemma crtSubset_card_pos_aux (Ω : ∀ p : ℕ, Finset (ZMod p))
   use x;
   intro p hp hpq hq; specialize hx p; simp_all +decide [ Nat.mem_primeFactors ] ;
 
-/-- The series bound for small divisors. -/
+/-- The series bound for small divisors: the sum
+`∑_{T : ∏ T ≤ s} ∏_{p ∈ T} k · p^{−ε}` is bounded by
+`K · s^{1 − ε/2}` uniformly in `q`. This controls the
+number of contributing subsets in the inclusion-exclusion
+expansion. -/
 lemma small_divisor_series_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) :
     ∃ K_series : ℝ, 0 < K_series ∧ ∀ (q : ℕ) (s : ℝ) (_ : 1 ≤ s),
       ∑ T ∈ (q.primeFactors.powerset.filter (· ≠ ∅)).filter
@@ -1063,11 +1094,12 @@ lemma small_divisor_series_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) :
 
 /-! ### Small-divisor contribution bound -/
 
-/--
-**Small-divisor contribution bound.**
-The sum over nonempty subsets `T ⊆ primeFactors(q)` with `∏ p ∈ T, (p : ℝ) ≤ s`
-is bounded by `K₁ · s^{-(ε/2)}`.
--/
+/-- **Small-divisor contribution bound.** The sum over
+nonempty subsets `T ⊆ primeFactors(q)` with
+`∏ p ∈ T, p ≤ s` of the inclusion-exclusion contributions
+is bounded by `K₁ · s^{−ε/2}`. This combines
+`inner_bound_small_divisor` with `prod_local_factor_le`
+and `small_divisor_series_bound`. -/
 lemma deviation_small_divisors (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)

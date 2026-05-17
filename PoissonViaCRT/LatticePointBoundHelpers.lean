@@ -22,21 +22,33 @@ set_option linter.unusedVariables false
 /-!
 # Helper lemmas for the offset lattice point bound
 
-Decomposition of the symmetric-difference bound on
-lattice point counts.
+This file provides the combinatorial infrastructure for the lattice point deviation bounds used in
+the spatial synthesis. The main technique is a symmetric-difference decomposition: the count of
+lattice points in a shifted scaled box `s · X + v` differs from the unshifted count by at most
+`O(s^{m−1})`, established via the gap map and per-coordinate boundary counting.
+
+## Main results
+
+* `gapMap_injective` — the gap map `h ↦ (hᵢ − hᵢ₋₁)` is injective.
+* `inScaledBox_iff_gap` — the `inScaledBox` predicate is equivalent to per-coordinate gap conditions.
+* `boundary_coord_card_le` — for each coordinate `j`, at most `2 · N^{m−1}` tuples differ between
+  shifted and unshifted boxes.
+* `inScaledBox_symmDiff_card_le` — the full symmetric-difference bound `|S_v △ S_0| ≤ D · s^{m−1}`.
+* `prefixSum_injective` — the prefix-sum map is injective (used in `LatticePointBound.lean`).
 -/
 
 open Finset BigOperators Classical
 
 namespace PoissonCRT
 
+/-- The set of tuples in `{1, …, N}^m`, used as the ambient finset for lattice point counting in
+scaled boxes. -/
 noncomputable abbrev piBox (m : ℕ) (N : ℤ) :
     Finset (Fin m → ℤ) :=
   Fintype.piFinset fun _ : Fin m => Finset.Icc (1 : ℤ) N
 
-/-
-|card(A) - card(B)| ≤ card(A \ B) + card(B \ A)
--/
+/-- `|card(A) − card(B)| ≤ card(A \ B) + card(B \ A)`:
+the absolute difference of cardinalities is bounded by the symmetric-difference cardinality. -/
 lemma abs_card_diff_le_card_sdiff
     {α : Type*} [DecidableEq α] (A B : Finset α) :
     |(A.card : ℤ) - B.card| ≤
@@ -49,9 +61,9 @@ lemma abs_card_diff_le_card_sdiff
 def gapMap (m : ℕ) (h : Fin m → ℤ) (i : Fin m) : ℤ :=
   h i - if (i : ℕ) = 0 then 0 else h ⟨i - 1, by omega⟩
 
-/-
-The gap map is injective.
--/
+/-- The gap map `h ↦ (hᵢ − hᵢ₋₁)` is injective: distinct tuples produce distinct gap sequences.
+This injectivity is used to transfer lattice point counts between the gap representation and the
+original coordinates. -/
 lemma gapMap_injective (m : ℕ) :
     Function.Injective (gapMap m) := by
   intro h h'
@@ -66,9 +78,9 @@ lemma gapMap_injective (m : ℕ) :
       simp_all +decide [gapMap]
       linarith!
 
-/-
-inScaledBox is equivalent to gap conditions.
--/
+/-- The `inScaledBox` predicate is equivalent to per-coordinate gap conditions: each gap `dᵢ` lies
+in the half-open interval `(αᵢ, αᵢ + s · bᵢ]` where `αᵢ` depends on the offset `v`. This
+reformulation is the basis of the boundary-counting argument. -/
 lemma inScaledBox_iff_gap {m : ℕ} (X : Box m)
     (s : ℝ) (v : Fin m → ℝ) (h : Fin m → ℤ) :
     inScaledBox X s v h ↔ ∀ i : Fin m,
@@ -81,10 +93,8 @@ lemma inScaledBox_iff_gap {m : ℕ} (X : Box m)
   norm_num +zetaDelta at *
   grind
 
-/-
-The number of integers in a half-open interval
-`(α, α + L]` is at most `⌊L⌋ + 1`.
--/
+/-- The number of integers in the half-open interval `(α, α + L]` is at most `L + 1`. This elementary
+counting lemma is used in the boundary coordinate estimates. -/
 lemma int_count_in_interval (α L : ℝ) (hL : 0 < L) :
     ((Finset.Ioc ⌊α⌋ ⌊α + L⌋).card : ℝ) ≤ L + 1 := by
   have h_card :
@@ -97,10 +107,8 @@ lemma int_count_in_interval (α L : ℝ) (hL : 0 < L) :
       Int.lt_floor_add_one (α + L),
       Int.floor_le α, Int.lt_floor_add_one α])
 
-/-
-The number of integers in `(α, α+L] \ (0, L]` is at
-most 2 when `|α| ≤ 1`.
--/
+/-- The number of integers in `(α, α + L] \ (0, L]` is at most `2` when `|α| ≤ 1`. This bounds the
+per-coordinate boundary contribution in the symmetric-difference estimate. -/
 lemma int_excess_count (α L : ℝ) (_hL : 0 < L)
     (hα : |α| ≤ 1) :
     ({d : ℤ | α < (d : ℝ) ∧ (d : ℝ) ≤ α + L ∧
@@ -144,15 +152,10 @@ lemma int_excess_count (α L : ℝ) (_hL : 0 < L)
 
 /-! ### Boundary counting -/
 
-/-
-For each coordinate `j`, the number of `h` in `piBox m N`
-where the `inScaledBox` condition at coordinate `j` differs
-between offsets `v` and `0` is at most `2 · N^{m-1}`.
-This is because: for fixed values of all coordinates except
-`h_j`, the gap `d_j = h_j - h_{j-1}` is constrained to the
-boundary of the shifted interval, which has at most 2 integer
-values.
--/
+/-- For each coordinate `j`, the number of tuples `h` in `piBox m N` where the `inScaledBox`
+condition at coordinate `j` differs between offsets `v` and `0` is at most `2 · N^{m−1}`. For
+fixed values of all other coordinates, the gap `d_j` is constrained to the boundary of the shifted
+interval, which has at most 2 integer values. -/
 lemma boundary_coord_card_le (m : ℕ) (N : ℤ)
     (hN : 0 ≤ N) (j : Fin m)
     (P : (Fin m → ℤ) → Prop) [DecidablePred P]
@@ -252,11 +255,8 @@ lemma boundary_coord_card_le (m : ℕ) (N : ℤ)
   · simpa [mul_comm] using
       Nat.mul_le_mul_left 2 h_fibers
 
-/-
-The symmetric difference `S_v △ S_0` is contained in
-the union of the boundary sets over all coordinates.
-Each boundary set has at most `2 · N^{m-1}` elements.
--/
+/-- The one-sided symmetric difference `S_v \ S_0` is bounded by `2 · m · N^{m−1}`: union the
+per-coordinate boundary sets, each contributing at most `2 · N^{m−1}` elements. -/
 lemma sdiff_card_le_sum_boundary (m : ℕ)
     (X : Box m) (s : ℝ) (hs : 1 ≤ s)
     (v : Fin m → ℝ)
@@ -374,10 +374,8 @@ lemma sdiff_card_le_sum_boundary (m : ℕ)
           h_card_le _)
         (by norm_num; linarith)
 
-/-
-The reverse excess: integers in `(0, L] \ (α, α+L]`
-also has at most 2 elements.
--/
+/-- The reverse excess: integers in `(0, L] \ (α, α + L]` also number at most `2` when `|α| ≤ 1`.
+This is the symmetric counterpart of `int_excess_count`. -/
 lemma int_excess_count_rev (α L : ℝ)
     (hL : 0 < L) (hα : |α| ≤ 1) :
     ({d : ℤ | (0 : ℝ) < (d : ℝ) ∧
@@ -417,10 +415,8 @@ lemma int_excess_count_rev (α L : ℝ)
       (Set.ncard_insert_le _ _) |>
     le_trans <| by norm_num⟩
 
-/-
-The reverse direction: `S_0 \ S_v` is also bounded
-by `2 · m · N^{m-1}`.
--/
+/-- The reverse direction: `S_0 \ S_v` is also bounded by `2 · m · N^{m−1}`. Together with
+`sdiff_card_le_sum_boundary`, this gives the full symmetric-difference bound. -/
 lemma sdiff_card_le_sum_boundary_rev (m : ℕ)
     (X : Box m) (s : ℝ) (hs : 1 ≤ s)
     (v : Fin m → ℝ)
@@ -499,9 +495,9 @@ lemma sdiff_card_le_sum_boundary_rev (m : ℕ)
 
 /-! ### The main symmetric-difference bound -/
 
-/-
-The symmetric-difference cardinality bound.
--/
+/-- The symmetric-difference cardinality bound: there exists `D ≥ 0` (depending only on the box `X`)
+such that for all offsets `v ∈ [0,1]^m` and all `s ≥ 1`, `|S_v △ S_0| ≤ D · s^{m−1}`. This is the
+core lattice point deviation bound underlying the spatial synthesis. -/
 lemma inScaledBox_symmDiff_card_le (m : ℕ)
     (X : Box m) :
     ∃ D : ℝ, 0 ≤ D ∧
@@ -560,10 +556,9 @@ lemma inScaledBox_symmDiff_card_le (m : ℕ)
           exact Finset.sum_nonneg fun _ _ =>
             le_of_lt (X.sides_pos _)]
 
-/-
-The prefix-sum map `d ↦ (i ↦ ∑_{j ≤ i} d j)` is
-injective.
--/
+/-- The prefix-sum map `d ↦ (i ↦ ∑_{j ≤ i} d_j)` is injective. Used in
+`count_inScaledBox_eq_prod_floor` to establish the bijection between gap sequences and lattice
+points. -/
 lemma prefixSum_injective (m : ℕ) :
     Function.Injective
       (fun (d : Fin m → ℤ) (i : Fin m) =>
@@ -589,8 +584,7 @@ lemma prefixSum_injective (m : ℕ) :
       aesop
     · have := congr_fun h_eq ⟨i + 1, hi⟩
       have := congr_fun h_eq ⟨i, by linarith⟩
-      simp_all +decide [Finset.sum_ite,
-        Finset.filter_le_eq_Ici]
+      simp_all +decide [Finset.sum_ite]
       rw [show (Finset.filter
           (fun x : Fin m => x ≤ ⟨i + 1, hi⟩)
           Finset.univ : Finset (Fin m)) =

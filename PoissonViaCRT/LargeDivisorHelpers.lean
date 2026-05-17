@@ -27,21 +27,32 @@ import PoissonViaCRT.DeviationBoundHelper
 set_option linter.unusedVariables false
 
 /-!
-# Helper lemmas for `large_divisor_per_T_bound`
+# Large-divisor helper lemmas
 
-This file provides the main technical ingredients used to close the per-`T`
-pointwise bound in `MobiusSynthesis.lean`:
+This file provides the main technical ingredients for the large-divisor
+contribution in the spatial synthesis of the deviation bound
+(`MobiusSynthesis.lean`). Large divisors are subsets `T ⊆ q.primeFactors`
+whose product exceeds the scaling parameter `s`; for these the
+deviation is controlled by a pointwise inclusion-exclusion argument
+combining the lattice point deviation bound with residue multiplicity
+estimates.
 
-1. `scaled_box_card_le` — lattice-point counting bound for the box `S`.
-2. `inScaledBox_strictMono` — elements of the box form a strictly increasing
-   sequence starting above 0.
-3. `inScaledBox_le_sum_sides` — every coordinate is bounded by `s · ∑ b_i`.
-4. `fin_cons_castHom_injective` — the `Fin.cons 0 h` tuple is injective modulo
-   any prime `p` larger than the ceiling bound.
-5. `localCount_deviation_weil` — the Weil-type bound on `|N_p − μ_p|` for large
-   primes, obtained from the `WellDistributed` hypothesis.
-6. `deviation_prod_pointwise_le` — per-`h` pointwise bound on the product of
-   deviations over `T`, splitting `T` into small and large primes.
+## Main results
+
+1. `scaled_box_card_le` — lattice point counting bound for the
+   scaled box `S`.
+2. `inScaledBox_strictMono` — elements of the box form a strictly
+   increasing sequence starting above 0.
+3. `inScaledBox_le_sum_sides` — every coordinate is bounded by
+   `s · ∑ b_i`.
+4. `fin_cons_castHom_injective` — the `Fin.cons 0 h` tuple is
+   injective modulo any prime `p` larger than the ceiling bound.
+5. `localCount_deviation_weil` — the Weil-type bound on
+   `|N_p − μ_p|` for large primes, via the `WellDistributed`
+   hypothesis.
+6. `deviation_prod_pointwise_le` — per-`h` pointwise bound on
+   the product of deviations over `T`, splitting `T` into small
+   and large primes.
 -/
 
 open Finset BigOperators Classical
@@ -50,10 +61,10 @@ namespace PoissonCRT
 
 /-! ## 1. Box cardinality bound -/
 
-/-
-The number of lattice points in the scaled box `S` is at most
-`(X.volume + C_lp) * s ^ (k - 1)` for `s ≥ 1` and `k ≥ 2`.
--/
+/-- The number of lattice points in the scaled box `S` is at most
+`(X.volume + C_lp) · s^(k−1)` for `s ≥ 1` and `k ≥ 2`.
+This is the lattice point deviation bound that controls the
+number of summands in the inclusion-exclusion expansion. -/
 lemma scaled_box_card_le {k : ℕ} (hk : 2 ≤ k) (X : Box (k - 1)) (C_lp : ℝ)
     (hC_lp_pos : 0 < C_lp)
     (hC_lp : ∀ (v : Fin (k - 1) → ℝ), (∀ i, 0 ≤ v i ∧ v i ≤ 1) → ∀ (s : ℝ), 1 ≤ s →
@@ -75,10 +86,10 @@ lemma scaled_box_card_le {k : ℕ} (hk : 2 ≤ k) (X : Box (k - 1)) (C_lp : ℝ)
 
 /-! ## 2. Box monotonicity and bounds -/
 
-/-
-Elements of the scaled box (with offset `v = 0`) form a strictly increasing
-sequence of positive integers: `0 < h 0 < h 1 < ⋯ < h (n-1)`.
--/
+/-- Elements of the scaled box (with offset `v = 0`) form a
+strictly increasing sequence of positive integers:
+`0 < h 0 < h 1 < ⋯ < h (n−1)`. This structural monotonicity
+is used to establish injectivity of the residue projection. -/
 lemma inScaledBox_strictMono {n : ℕ} (hn : 1 ≤ n) (X : Box n) (s : ℝ) (h : Fin n → ℤ)
     (hbox : inScaledBox X s (fun _ => 0) h) :
     StrictMono h ∧ (0 : ℤ) < h ⟨0, by omega⟩ := by
@@ -90,10 +101,11 @@ lemma inScaledBox_strictMono {n : ℕ} (hn : 1 ≤ n) (X : Box n) (s : ℝ) (h :
       grind;
   · have := hbox ⟨ 0, hn ⟩ ; aesop;
 
-/-
-Every coordinate of an element of the scaled box is bounded by
-`s * ∑ i, X.sides i`.
--/
+/-- Every coordinate of a lattice point in the scaled box
+satisfies `h i ≤ s · ∑ X.sides`. Combined with
+`inScaledBox_strictMono`, this gives the coordinate range
+needed for the injectivity argument in the large-divisor
+deviation bound. -/
 lemma inScaledBox_le_sum_sides {n : ℕ} (hn : 1 ≤ n) (X : Box n) (s : ℝ) (hs : 0 < s)
     (h : Fin n → ℤ) (hbox : inScaledBox X s (fun _ => 0) h) (i : Fin n) :
     (h i : ℝ) ≤ s * ∑ j, X.sides j := by
@@ -111,11 +123,12 @@ lemma inScaledBox_le_sum_sides {n : ℕ} (hn : 1 ≤ n) (X : Box n) (s : ℝ) (h
 
 /-! ## 3. Injectivity of Fin.cons 0 h modulo large primes -/
 
-/-
-When `p` exceeds `⌈s * ∑ sides⌉` and `h` is in the scaled box, the tuple
-`Fin.cons 0 (fun i => (h i : ZMod q))` projected to `ZMod p` is injective.
-Uses `inScaledBox_strictMono` and `inScaledBox_le_sum_sides`.
--/
+/-- When `p` exceeds `⌈s · ∑ sides⌉` and `h` lies in the scaled
+box, the tuple `Fin.cons 0 (h • cast)` projected to `ZMod p` is
+injective. This is the key step that allows the `WellDistributed`
+hypothesis to apply: residue multiplicity at a large prime `p`
+reduces to counting injective tuples. Uses
+`inScaledBox_strictMono` and `inScaledBox_le_sum_sides`. -/
 lemma fin_cons_castHom_injective {n : ℕ} (hn : 1 ≤ n) (q : ℕ) [NeZero q]
     (X : Box n) (s : ℝ) (hs : 0 < s) (p : ℕ) (hp : Nat.Prime p)
     (hp_dvd : p ∣ q)
@@ -176,13 +189,12 @@ lemma fin_cons_castHom_injective {n : ℕ} (hn : 1 ≤ n) (q : ℕ) [NeZero q]
 
 /-! ## 4. Weil bound for large primes -/
 
-/-
-For a large prime `p > ⌈s * ∑ sides⌉` and `h` in the scaled box, the local
-counting function satisfies the Weil-type bound
-  `|localCount − localMean| ≤ (1 − |Ω_p|/p) · p^{−ε} · localMean`.
-This follows from the `WellDistributed` hypothesis applied to the injective
-tuple from `fin_cons_castHom_injective`.
--/
+/-- For a large prime `p > ⌈s · ∑ sides⌉` and a lattice point
+`h` in the scaled box, the local counting function satisfies
+the residue multiplicity deviation bound
+`|localCount − localMean| ≤ (1 − |Ω_p|/p) · p^{−ε} · localMean`.
+This follows from the `WellDistributed` hypothesis applied to
+the injective tuple from `fin_cons_castHom_injective`. -/
 lemma localCount_deviation_weil (ε : ℝ) {n : ℕ} (hn : 1 ≤ n)
     (Ω : ∀ p : ℕ, Finset (ZMod p)) (q : ℕ) [NeZero q]
     (X : Box n) (s : ℝ) (hs : 0 < s)
@@ -200,11 +212,12 @@ lemma localCount_deviation_weil (ε : ℝ) {n : ℕ} (hn : 1 ≤ n)
 
 /-! ## 5. Per-`h` pointwise bound on the deviation product -/
 
-/-
-For each lattice point `h` in the box, the absolute value of the product
-`∏_{p ∈ T} (localCount − localMean)` is bounded by the product of the trivial
-bound over small primes times the Weil bound over large primes.
--/
+/-- For each lattice point `h` in the box, the absolute value
+of the product `∏_{p ∈ T} (localCount − localMean)` is bounded
+by the product of the trivial bound over small primes times the
+residual multiplicity deviation bound over large primes. This is
+the pointwise ingredient for the inclusion-exclusion summation
+in the large-divisor contribution. -/
 lemma deviation_prod_pointwise_le (ε : ℝ) {n : ℕ} (hn : 1 ≤ n)
     (Ω : ∀ p : ℕ, Finset (ZMod p)) (q : ℕ) [NeZero q]
     (X : Box n) (s : ℝ) (hs : 0 < s)

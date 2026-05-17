@@ -21,35 +21,48 @@ set_option linter.unusedVariables false
 /-!
 # Euler Weight Bounds
 
-This file contains bounds on local Euler weight factors used in the Möbius synthesis.
-Specifically:
-- `omega_card_le_prime`: `|Ω_p| ≤ p` for prime factors `p` of `q`.
-- `omega_ratio_pow_le_one`: `(|Ω_p|/p)^k ≤ 1`.
-- `local_factor_le_k_rpow`: Each local factor `p(1 - |Ω_p|/p) p^{-ε} ≤ k p^{-ε}`.
-- `prod_local_factor_le`: Product version of the above bound.
+This file contains bounds on local Euler weight factors used in the
+spatial synthesis step of the Möbius deviation bound. The Euler
+weights arise from the inclusion-exclusion decomposition over
+squarefree divisors and control the multiplicative contribution
+of each prime factor to the residue multiplicity estimate.
+
+## Main results
+
+* `omega_card_le_prime`: `|Ω_p| ≤ p` for prime factors `p` of `q`.
+* `omega_ratio_pow_le_one`: `(|Ω_p| / p)^k ≤ 1`.
+* `local_factor_le_k_rpow`: Each local factor
+  `p · (1 − |Ω_p|/p) · p^{−ε} ≤ k · p^{−ε}`.
+* `prod_local_factor_le`: Product version of the above bound.
 -/
 
 open Finset BigOperators Classical
 
 namespace PoissonCRT
 
-/-- For p a prime factor of q, (Ω p).card ≤ p. -/
+/-- For `p` a prime factor of `q`, the residue set satisfies
+`(Ω p).card ≤ p`. This is the basic cardinality bound used in
+the Euler weight estimates for the spatial synthesis. -/
 lemma omega_card_le_prime (q : ℕ) [NeZero q]
     (Ω : ∀ p : ℕ, Finset (ZMod p)) (p : ℕ) (hp : p ∈ q.primeFactors) :
     ((Ω p).card : ℝ) ≤ (p : ℝ) := by
   haveI : Fact p.Prime := ⟨Nat.prime_of_mem_primeFactors hp⟩
   exact_mod_cast le_trans (Finset.card_le_univ (Ω p)) (by simp +decide [ZMod.card])
 
-/-- For p a prime factor of q with positive |Ω_p|, (|Ω_p|/p)^{k-1} ≤ 1. -/
+/-- The residue ratio `|Ω_p| / p` is at most `1`, so its
+`k`-th power is also at most `1`. Used to control the
+Euler weight in the residue multiplicity bounds. -/
 lemma omega_ratio_pow_le_one (q : ℕ) [NeZero q]
     (Ω : ∀ p : ℕ, Finset (ZMod p)) (k : ℕ) (p : ℕ) (hp : p ∈ q.primeFactors) :
     ((Ω p).card / (p : ℝ)) ^ k ≤ 1 := by
   apply pow_le_one₀ (div_nonneg (Nat.cast_nonneg _) (Nat.cast_nonneg _))
   exact div_le_one_of_le₀ (omega_card_le_prime q Ω p hp) (Nat.cast_nonneg _)
 
-/-
-Each local factor `p * (1 - |Ω p|/p) * p^{-ε}` is bounded by `k * p^{-ε}`.
--/
+/-- Each local Euler weight factor
+`p · (1 − |Ω_p| / p) · p^{−ε}` is bounded above by
+`k · p^{−ε}`, using the spacing hypothesis `hrp`. This
+pointwise bound feeds into the product bound
+`prod_local_factor_le`. -/
 lemma local_factor_le_k_rpow (p : ℕ) (ε : ℝ) (k : ℕ)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hp : p.Prime)
@@ -58,10 +71,11 @@ lemma local_factor_le_k_rpow (p : ℕ) (ε : ℝ) (k : ℕ)
       (k : ℝ) * (p : ℝ) ^ (-ε) := by
   exact mul_le_mul_of_nonneg_right ( by convert mul_le_mul_of_nonneg_left hrp ( Nat.cast_nonneg p ) using 1 ; rw [ mul_div_cancel₀ _ ( Nat.cast_ne_zero.mpr hp.ne_zero ) ] ) ( Real.rpow_nonneg ( Nat.cast_nonneg p ) _ )
 
-/-
-Product version of `local_factor_le_k_rpow`: The product over `T` of local factors
-is bounded by the product of `k * p^{-ε}`.
--/
+/-- Product version of `local_factor_le_k_rpow`: the product
+over a subset `T ⊆ q.primeFactors` of the local Euler weight
+factors is bounded by `∏ p ∈ T, k · p^{−ε}`. This is the key
+multiplicative estimate used in the inclusion-exclusion
+deviation bound. -/
 lemma prod_local_factor_le (T : Finset ℕ) (ε : ℝ) (k : ℕ) (q : ℕ)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hT_sub : T ⊆ q.primeFactors)

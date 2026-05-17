@@ -22,11 +22,18 @@ import Mathlib.Data.Pi.Interval
 /-!
 # Lattice point counting in scaled boxes
 
-Helper lemmas for the lattice point box bound (Proposition 3.6).
+This file establishes the lattice point deviation bounds for
+scaled boxes, a key ingredient in the spatial synthesis of
+the Möbius deviation bound.
 
-The main result `lattice_point_box_bound` states that the number
-of lattice points in a scaled box `s·X` deviates from
-`s^m · vol(X)` by at most `C · s^{m-1}`.
+## Main results
+
+* `count_inScaledBox_eq_prod_floor` — the lattice point count
+  in the unshifted scaled box equals `∏ᵢ ⌊s · bᵢ⌋`.
+* `prod_floor_approx` — the product `∏ ⌊s · bᵢ⌋` approximates
+  `s^m · ∏ bᵢ` with error `O(s^{m−1})`.
+* `inScaledBox_offset_card_diff` — the offset card difference:
+  `|#S_v − #S_0| ≤ D · s^{m−1}` for all offsets `v ∈ [0,1]^m`.
 -/
 
 open Finset BigOperators Classical
@@ -35,6 +42,10 @@ namespace PoissonCRT
 
 /-! ### Step 1: The count equals a product of floors -/
 
+/-- The lattice point count in the unshifted scaled box
+(offset `v = 0`) equals the product of floors
+`∏ᵢ ⌊s · X.sidesᵢ⌋`. This bijection goes through the gap map
+and the prefix-sum map from `LatticePointBoundHelpers`. -/
 lemma count_inScaledBox_eq_prod_floor (m : ℕ)
     (X : Box m) (s : ℝ) (hs : 1 ≤ s) :
     ((Fintype.piFinset fun _ : Fin m =>
@@ -218,6 +229,10 @@ lemma count_inScaledBox_eq_prod_floor (m : ℕ)
 
 /-! ### Step 2: Product error bound -/
 
+/-- The product `∏ᵢ ⌊s · bᵢ⌋` approximates `s^m · ∏ᵢ bᵢ` with
+error at most `C · s^{m−1}` for some `C > 0` depending only
+on the side lengths `b`. This is proved by induction on `m`,
+peeling off one factor at a time. -/
 lemma prod_floor_approx (m : ℕ) (b : Fin m → ℝ)
     (hb : ∀ i, 0 < b i) :
     ∃ C : ℝ, 0 < C ∧ ∀ (s : ℝ), 1 ≤ s →
