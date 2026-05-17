@@ -1129,27 +1129,28 @@ lemma deviation_small_divisors (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k
               localMean k Ω p)) *
             ∏ p ∈ q.primeFactors \ T, localMean k Ω p)| ≤ K₁ * s ^ (-(ε / 2)) := by
   obtain ⟨K_series, hK_series_pos, hK_series⟩ := small_divisor_series_bound ε hε k;
-  refine' ⟨ C_lp * K_series, mul_pos hC_lp_pos hK_series_pos, fun q _ hq_sq => _ ⟩;
+  refine ⟨ C_lp * K_series, mul_pos hC_lp_pos hK_series_pos, fun q _ hq_sq => ?_ ⟩;
   refine' le_trans ( Finset.sum_le_sum fun T hT => _ ) _;
   use fun T => C_lp * ( ∏ p ∈ T, ( k : ℝ ) * ( p : ℝ ) ^ ( -ε ) ) / ( q / ( crtSubset q Ω |> Finset.card ) );
   · refine' le_trans ( _ : _ ≤ _ ) ( div_le_div_of_nonneg_right ( mul_le_mul_of_nonneg_left ( prod_local_factor_le T ε k q Ω ( by aesop ) hrp ) hC_lp_pos.le ) ( by positivity ) );
     have := inner_bound_small_divisor ε hε k ( by linarith ) Ω hΩ hWD hsp X C_lp hC_lp_pos hC_lp q hq_sq ( by
-      exact ne_of_gt ( crtSubset_card_pos_aux Ω hΩ q ) ) T ( by
-      grind ) ( by
-      grind ) ( by
-      grind );
+      exact ne_of_gt ( crtSubset_card_pos_aux Ω hΩ q ) ) T ( by grind ) ( by grind ) ( by grind );
     rw [ le_div_iff₀ ];
     · convert this using 1;
-    · exact div_pos ( Nat.cast_pos.mpr ( NeZero.pos q ) ) ( Nat.cast_pos.mpr ( Finset.card_pos.mpr ( by
-        exact Finset.card_pos.mp ( crtSubset_card_pos_aux Ω hΩ q ) ) ) );
+    · exact div_pos ( Nat.cast_pos.mpr ( NeZero.pos q ) ) ( Nat.cast_pos.mpr ( Finset.card_pos.mpr
+        ( by exact Finset.card_pos.mp ( crtSubset_card_pos_aux Ω hΩ q ) ) ) );
   · rw [ ← Finset.sum_div _ _ _, ← Finset.mul_sum ];
     rw [ div_le_iff₀ ];
-    · convert mul_le_mul_of_nonneg_left ( hK_series q ( q / ( crtSubset q Ω |> Finset.card ) ) _ ) hC_lp_pos.le using 1;
-      · rw [ show ( 1 - ε / 2 : ℝ ) = - ( ε / 2 ) + 1 by ring, Real.rpow_add_one ] <;> ring_nf ; norm_num [ NeZero.ne ];
-        exact Finset.Nonempty.ne_empty <| by have := crtSubset_card_pos_aux Ω hΩ q; exact Finset.card_pos.mp this;
+    · convert mul_le_mul_of_nonneg_left ( hK_series q ( q / ( crtSubset q Ω |> Finset.card ) ) _ )
+        hC_lp_pos.le using 1;
+      · rw [ show ( 1 - ε / 2 : ℝ ) = - ( ε / 2 ) + 1 by ring, Real.rpow_add_one ] <;> ring_nf
+        norm_num [ NeZero.ne ];
+        exact Finset.Nonempty.ne_empty <| by have := crtSubset_card_pos_aux Ω hΩ q;
+                                             exact Finset.card_pos.mp this;
       · rw [ one_le_div ] <;> norm_cast;
         · exact le_trans ( Finset.card_le_univ _ ) ( by norm_num );
         · exact crtSubset_card_pos_aux Ω hΩ q;
-    · exact div_pos ( Nat.cast_pos.mpr <| NeZero.pos q ) <| Nat.cast_pos.mpr <| Nat.pos_of_ne_zero <| by have := crtSubset_card_pos_aux Ω hΩ q; aesop;
+    · exact div_pos ( Nat.cast_pos.mpr <| NeZero.pos q ) <| Nat.cast_pos.mpr <| Nat.pos_of_ne_zero <|
+        by have := crtSubset_card_pos_aux Ω hΩ q; aesop;
 
 end PoissonCRT
