@@ -22,7 +22,6 @@ import PoissonViaCRT.HardCaseSynthesis
 import PoissonViaCRT.ScaledBoxVariation
 import PoissonViaCRT.MobiusOptimization
 import PoissonViaCRT.MobiusTauIntegration
-import PoissonViaCRT.FourierANOVA
 import PoissonViaCRT.LargeDivisorHelpers
 
 set_option linter.unusedVariables false

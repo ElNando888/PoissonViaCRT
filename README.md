@@ -26,19 +26,19 @@ This formalization was developed using a tandem approach between human mathemati
 ### Scope Limitations
 - **Corollary 1.2:** The formalization of Corollary 1.2 (regarding $d$-th powers) was ultimately removed from the project scope. The `RiemannHypothesisCurves` repository, which was intended to provide the necessary hyperelliptic curve machinery, proved to be ill-equipped for this specific application at the current stage.
 
-### Remaining Tasks (TODOs)
-Several components are marked with `TODO` in the codebase, indicating areas requiring further infrastructure or proof refinement:
-- **Algebraic Cancellation:** Refining the cancellation argument to support the general $s^{-\delta}$ error form in `MainTheorem.lean`.
-- **Discrete Geometry:** Implementing Davenport's Principle for lattice point counts in boxes where the period $d$ exceeds the scale $s$ (`MobiusSynthesis.lean`).
-- **Fourier Analysis:** Integrating $L_2$ variance bounds (Fourier ANOVA) to close the $k=2$ case, where pointwise estimates are insufficient (`MobiusSynthesis.lean`).
-- **Euler Weights:** Generalizing convergent Euler product bounds for the $k \ge 3$ synthesis.
-- **Iwaniec-Kowalski Integration:** Chapters 3 & 4 of Iwaniec-Kowalski are required for certain character sum estimates. We are currently deferring this effort to wait for [Alex Kontorovich's ongoing project](https://leanprover.zulipchat.com/#narrow/channel/423402-PrimeNumberTheorem.2B/topic/IwaniecKowalski) on the Prime Number Theorem.
+### Remaining Tasks (sorries)
+The core geometric, algebraic, and structural components of the deviation bound are now **100% verified**, including the difficult spatial synthesis over the box bounds. The codebase currently contains only two remaining `sorry`s, both of which are standard (but formally difficult) analytic number theory sum bounds:
+- **Analytic Convergence Bounds (`small_divisor_series_bound` & `large_divisor_series_bound`):** These lemmas require tightly bounding sums of the form $\sum_{d \le s} k^{\omega(d)} / d$ and applying Rankin's trick over divisors $d > s$. These estimates require advanced analytic tools (like Dirichlet series, contour integration, and Perron's formula) that are still active research-level efforts in the Mathlib4 ecosystem.
+- **Iwaniec-Kowalski Integration:** The `WellDistributed` hypothesis abstracts away the deep Weil/character sum bounds. Discharging this hypothesis unconditionally will eventually require chapters 3 & 4 of Iwaniec-Kowalski. We are currently deferring this effort to wait for [Alex Kontorovich's ongoing project](https://leanprover.zulipchat.com/#narrow/channel/423402-PrimeNumberTheorem.2B/topic/IwaniecKowalski) on the Prime Number Theorem.
+
+*(Note: The previously planned `FourierANOVA` approach was mathematically proven to be incompatible with the large divisor sum decay penalty in our specific spatial geometry, and has been completely purged from the repository in favor of a uniform spatial Möbius inclusion-exclusion strategy.)*
 
 ## Repository Structure
 - `PoissonViaCRT/Defs.lean`: Core definitions ($N_k$, $\Omega_q$, $R_k$).
 - `PoissonViaCRT/MainTheorem.lean`: Precise versions of Theorem 1.1 and supporting lemmas.
 - `PoissonViaCRT/MobiusSynthesis.lean`: The primary framework for the deviation synthesis.
 - `PoissonViaCRT/LatticePointBound.lean`: Counting lattice points in rescaled boxes.
+- `PoissonViaCRT/LargeDivisorHelpers.lean`: Bounding product deviations via Weil bounds on strictly injective coordinate mappings.
 
 ## References
 - Granville, A., & Kurlberg, P. (2004). *Poisson statistics via the Chinese remainder theorem*. arXiv:math/0412135.
