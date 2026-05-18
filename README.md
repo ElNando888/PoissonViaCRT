@@ -24,7 +24,7 @@ This formalization was developed using a tandem approach between human mathemati
 ## Project Status
 
 ### Scope Limitations
-- **Corollary 1.2:** The formalization of Corollary 1.2 (regarding $d$-th powers) was ultimately removed from the project scope. The `RiemannHypothesisCurves` repository, which was intended to provide the necessary hyperelliptic curve machinery, proved to be ill-equipped for this specific application at the current stage.
+- **Corollary 1.2:** The formalization of Corollary 1.2 (regarding $d$-th powers) is explicitly excluded from the project scope. Proving the `WellDistributed` hypothesis for $d$-th powers requires deep algebraic geometry (the Riemann Hypothesis for curves over finite fields), which is not currently available. For additive sieve problems like the Krafft sieve (which exclude a bounded number of residue classes), no algebraic geometry is needed. The exact enumeration of solutions satisfies the `WellDistributed` hypothesis and spacing bound (`hrp`) via elementary inclusion-exclusion.
 
 ### Remaining Tasks (sorries)
 The core geometric, algebraic, and structural components of the deviation bound are now **100% verified**, including the difficult spatial synthesis over the box bounds. The codebase currently contains only two remaining `sorry`s, both of which are standard (but formally difficult) analytic number theory sum bounds:

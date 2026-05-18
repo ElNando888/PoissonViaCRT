@@ -571,10 +571,11 @@ theorem error_from_euler_products
       · exact fun h => absurd h hp.1.ne_zero;
     · rw [ mul_div_cancel_right₀ _ ( ne_of_gt ( div_pos ( pow_pos ( Nat.cast_pos.mpr ( Finset.card_pos.mpr ( Finset.nonempty_of_ne_empty ‹_› ) ) ) _ ) ( pow_pos ( Nat.cast_pos.mpr hp.1.pos ) _ ) ) ) ]
 
-/- Corollary 1.2 (d-th powers well-distributed) has been removed from scope.
-   The target applications (Krafft multi-residue sieve and n²+1 quadratic sieve)
-   rely strictly on exact combinatorial bounds or quadratic characters, which are
-   covered by the hyperelliptic curve machinery already formalized in RHC/. -/
+/- Corollary 1.2 (d-th powers well-distributed) has been removed from scope,
+   as it requires the Hasse-Weil bound (Riemann Hypothesis for curves).
+   The target applications (like the Krafft multi-residue sieve) rely strictly
+   on exact combinatorial additive bounds (excluding bounded residue classes),
+   which trivially satisfy the WellDistributed hypotheses without algebraic geometry. -/
 
 
 /-! ### Special case: Hooley's theorem (integers coprime to q) -/
