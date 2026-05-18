@@ -14,8 +14,8 @@ To cite Aristotle, tag @Aristotle-Harmonic on GitHub PRs/issues, and add as co-a
 Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
-import PoissonViaCRT.CancellationInfra
 import Mathlib.Analysis.PSeries
+import Mathlib.NumberTheory.ArithmeticFunction.Moebius
 
 /-!
 # Möbius Decomposition Infrastructure

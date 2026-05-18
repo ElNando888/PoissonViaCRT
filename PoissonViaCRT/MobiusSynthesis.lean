@@ -183,7 +183,8 @@ private lemma deviation_bound_single {k : ℕ} (hk : 2 ≤ k) (q : ℕ) [NeZero 
   refine' le_trans ( mul_le_mul_of_nonneg_left ( Finset.abs_sum_le_sum_abs _ _ ) zero_le_one ) _;
   refine' le_trans ( mul_le_mul_of_nonneg_left ( Finset.sum_le_sum fun x hx => _ ) zero_le_one ) _;
   use fun x => 2 * #(crtSubset q Ω);
-  · convert individual_deviation_bound ( crtSubset q Ω ) ( k - 1 ) hcard ( mod_cast hle ) ( fun i => x i ) using 1;
+  · convert individual_deviation_bound ( crtSubset q Ω ) ( k - 1 ) hcard ( mod_cast hle )
+      ( fun i => x i ) using 1;
     cases k <;> aesop;
   · norm_num [ mul_assoc, mul_comm, mul_left_comm ]
 
@@ -201,7 +202,8 @@ private lemma spacing_forces_eps_le_lambda (ε : ℝ) (hε : 0 < ε) (k : ℕ) (
     ε ≤ lambdaExponent k := by
   have := hsp 2 Nat.prime_two;
   contrapose! this;
-  refine' lt_of_lt_of_le ( Real.rpow_lt_rpow_of_exponent_lt ( by norm_num ) ( sub_neg.mpr this ) ) _ ; norm_num;
+  refine lt_of_lt_of_le ( Real.rpow_lt_rpow_of_exponent_lt ( by norm_num ) ( sub_neg.mpr this ) ) ?_
+  norm_num
   rw [ one_le_div ] <;> norm_cast;
   · exact le_trans ( Finset.card_le_univ _ ) ( by norm_num );
   · exact Finset.card_pos.mpr ( hΩ 2 Nat.prime_two )
@@ -232,7 +234,8 @@ private lemma crtSubset_full_of_all_full (q : ℕ) [NeZero q]
   all_goals try infer_instance;
   · ext x;
     simp +decide [ crtSubset ];
-    intro p pp dp _; specialize hall p pp; haveI := Fact.mk pp; rw [ Finset.eq_of_subset_of_card_le ( Finset.subset_univ ( Ω p ) ) ] ; aesop;
+    intro p pp dp _; specialize hall p pp; haveI := Fact.mk pp
+    rw [ Finset.eq_of_subset_of_card_le ( Finset.subset_univ ( Ω p ) ) ] ; simp_all only [mem_univ]
     simp +decide [ hall, ZMod.card ];
   · cases q <;> aesop
 
@@ -243,7 +246,8 @@ When `(Ω p).card = p` and `p` is prime, `Ω p = Finset.univ`.
 -/
 private lemma omegaFull_eq_univ {p : ℕ} [Fact p.Prime] (Ω : Finset (ZMod p))
     (h_full : Ω.card = p) : Ω = Finset.univ := by
-  exact Finset.eq_of_subset_of_card_le ( Finset.subset_univ Ω ) ( by simp +decide [ h_full, Finset.card_univ ] )
+  exact Finset.eq_of_subset_of_card_le ( Finset.subset_univ Ω )
+    ( by simp +decide [ h_full, Finset.card_univ ] )
 
 /-
 `tupleCount univ g = Fintype.card (ZMod p)` for any `g`.
@@ -277,7 +281,8 @@ lemma localCount_sub_localMean_eq_zero_of_not_dvd {k : ℕ} (hk : 1 ≤ k) (q : 
   haveI : Fact p.Prime := ⟨ Nat.prime_of_mem_primeFactors hp ⟩ ;
   rw [ show Ω p = Finset.univ from ?_ ];
   · rw [ sub_eq_zero, tupleCount_univ_eq ] ; norm_num [ ZMod.card ];
-  · exact Finset.eq_of_subset_of_card_le ( Finset.subset_univ _ ) ( by simp +decide [ h_full, Finset.card_univ ] )
+  · exact Finset.eq_of_subset_of_card_le ( Finset.subset_univ _ )
+      ( by simp +decide [ h_full, Finset.card_univ ] )
 
 /-- If the product of local deviations over `T ⊆ q.primeFactors` is nonzero and each
 `Ω p` for `p ∈ T` is the full set, then every prime `p ∈ T` divides some pairwise
@@ -378,11 +383,15 @@ private lemma large_divisor_per_T_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk 
       · exact crtSubset_card_pos_aux Ω hΩ q;
     · refine' mul_nonneg _ _;
       · refine' mul_nonneg _ _;
-        · exact mul_nonneg ( inv_nonneg.2 ( Nat.cast_nonneg _ ) ) ( Finset.prod_nonneg fun _ _ => Nat.cast_nonneg _ );
+        · exact mul_nonneg ( inv_nonneg.2 ( Nat.cast_nonneg _ ) )
+            ( Finset.prod_nonneg fun _ _ => Nat.cast_nonneg _ )
         · refine' Finset.prod_nonneg fun p hp => mul_nonneg _ _;
           · exact mul_nonneg ( sub_nonneg.2 <| div_le_one_of_le₀ ( mod_cast by
-              haveI := Fact.mk ( Nat.prime_of_mem_primeFactors ( hT'.1.1 ( Finset.mem_filter.mp hp |>.1 ) ) ) ; exact le_trans ( Finset.card_le_univ _ ) ( by norm_num ) ; ) <| Nat.cast_nonneg _ ) <| Real.rpow_nonneg ( Nat.cast_nonneg _ ) _;
-          · exact div_nonneg ( pow_nonneg ( Nat.cast_nonneg _ ) _ ) ( pow_nonneg ( Nat.cast_nonneg _ ) _ );
+              haveI := Fact.mk ( Nat.prime_of_mem_primeFactors ( hT'.1.1 ( Finset.mem_filter.mp hp |>.1 ) ) )
+              exact le_trans ( Finset.card_le_univ _ ) ( by norm_num ) ; ) <| Nat.cast_nonneg _ ) <|
+              Real.rpow_nonneg ( Nat.cast_nonneg _ ) _;
+          · exact div_nonneg ( pow_nonneg ( Nat.cast_nonneg _ ) _ )
+              ( pow_nonneg ( Nat.cast_nonneg _ ) _ );
       · refine' Finset.prod_nonneg fun p hp => _;
         exact localMean_nonneg k Ω p
 
@@ -476,8 +485,10 @@ private lemma deviation_expression_fixed_delta (ε : ℝ) (hε : 0 < ε) (k : �
         ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
           (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| ≤ K * s ^ (-(ε / 2)) := by
   -- Let's first obtain \( K_1 \) and \( K_2 \) from the previous lemmas.
-  obtain ⟨K₁, hK₁_pos, hK₁⟩ := deviation_small_divisors ε hε k hk Ω hΩ hWD hsp hrp hε_lt X C_lp hC_lp_pos hC_lp
-  obtain ⟨K₂, hK₂_pos, hK₂⟩ := deviation_large_divisors ε hε k hk Ω hΩ hWD hsp hrp hε_lt X C_lp hC_lp_pos hC_lp;
+  obtain ⟨K₁, hK₁_pos, hK₁⟩ :=
+    deviation_small_divisors ε hε k hk Ω hΩ hWD hsp hrp hε_lt X C_lp hC_lp_pos hC_lp
+  obtain ⟨K₂, hK₂_pos, hK₂⟩ :=
+    deviation_large_divisors ε hε k hk Ω hΩ hWD hsp hrp hε_lt X C_lp hC_lp_pos hC_lp;
   refine' ⟨ K₁ + K₂, add_pos hK₁_pos hK₂_pos, fun q _ hq ↦ _ ⟩;
   -- Apply the triangle inequality to the sum.
   have h_triangle : |(1 / (crtSubset q Ω).card : ℝ) * ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈(q : ℝ) / (crtSubset q Ω).card * ∑ i, X.sides i⌉).filter (fun h => inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) (fun _ => 0) h)), ((tupleCount (crtSubset q Ω) (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) - ∏ p ∈ q.primeFactors, localMean k Ω p)| ≤ ∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅), |∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈(q : ℝ) / (crtSubset q Ω).card * ∑ i, X.sides i⌉).filter (fun h => inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) (fun _ => 0) h)), (1 / (crtSubset q Ω).card : ℝ) * ((∏ p ∈ T, (localCount Ω q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p - localMean k Ω p)) * ∏ p ∈ q.primeFactors \ T, localMean k Ω p)| := by
@@ -489,7 +500,8 @@ private lemma deviation_expression_fixed_delta (ε : ℝ) (hε : 0 < ε) (k : �
         · grind;
         · grind;
       exact h_triangle.symm ▸ Finset.abs_sum_le_sum_abs _ _;
-    convert mul_le_mul_of_nonneg_left h_triangle ( show ( 0 : ℝ ) ≤ 1 / ( # ( crtSubset q Ω ) : ℝ ) by positivity ) using 1;
+    convert mul_le_mul_of_nonneg_left h_triangle ( show ( 0 : ℝ ) ≤ 1 / ( # ( crtSubset q Ω ) : ℝ )
+      by positivity ) using 1;
     · rw [ abs_mul, abs_of_nonneg ( by positivity ) ];
     · simp +decide only [← Finset.mul_sum _ _ _, abs_mul,
           abs_of_nonneg (by positivity : (0 : ℝ) ≤ 1 / (#(crtSubset q Ω)))];
