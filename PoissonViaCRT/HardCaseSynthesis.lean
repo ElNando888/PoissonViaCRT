@@ -20,8 +20,6 @@ import PoissonViaCRT.CancellationInfra
 import PoissonViaCRT.MobiusBounds
 import PoissonViaCRT.MobiusInfra
 import PoissonViaCRT.CRTMultiplicativity
-import PoissonViaCRT.ProductDifference
-import PoissonViaCRT.LatticePointBound
 
 /-!
 # Hard Case Synthesis

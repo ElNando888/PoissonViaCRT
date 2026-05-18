@@ -14,14 +14,6 @@ To cite Aristotle, tag @Aristotle-Harmonic on GitHub PRs/issues, and add as co-a
 Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
-import PoissonViaCRT.MobiusInfra
-import PoissonViaCRT.CRTMultiplicativity
-import PoissonViaCRT.ProductDifference
-import PoissonViaCRT.MobiusBounds
-import PoissonViaCRT.HardCaseSynthesis
-import PoissonViaCRT.ScaledBoxVariation
-import PoissonViaCRT.MobiusOptimization
-import PoissonViaCRT.MobiusTauIntegration
 import PoissonViaCRT.DeviationBoundHelper
 
 set_option linter.unusedVariables false

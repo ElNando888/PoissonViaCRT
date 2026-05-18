@@ -15,7 +15,6 @@ Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
 import PoissonViaCRT.MobiusBounds
-import PoissonViaCRT.ScaledBoxVariation
 
 /-!
 # Möbius τ-Optimization

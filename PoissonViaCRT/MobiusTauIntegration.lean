@@ -15,7 +15,7 @@ Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
 import PoissonViaCRT.TauOptimization
-import PoissonViaCRT.MobiusBounds
+import Mathlib.NumberTheory.ArithmeticFunction.Moebius
 
 /-!
 # Möbius–τ Integration Bridge
