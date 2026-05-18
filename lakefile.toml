@@ -11,10 +11,5 @@ name = "repl"
 git = "https://github.com/leanprover-community/repl.git"
 rev = "v4.28.0"
 
-[[require]]
-name = "RiemannHypothesisCurves"
-git = "https://github.com/ElNando888/RiemannHypothesisCurves.git"
-rev = "refactor"
-
 [[lean_lib]]
 name = "PoissonViaCRT"
