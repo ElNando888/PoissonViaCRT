@@ -16,10 +16,10 @@ Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 
 module
 public import PoissonViaCRT.CancellationInfra
-public import PoissonViaCRT.CRTMultiplicativity
+public import PoissonViaCRT.DeviationBoundHelper
 import PoissonViaCRT.PeriodPullback
-public import PoissonViaCRT.LargeDivisorHelpers
 import PoissonViaCRT.EulerWeights
+import PoissonViaCRT.IteratedCancellation
 
 set_option linter.unusedVariables false
 

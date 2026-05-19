@@ -15,7 +15,9 @@ Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
 module
-public import Mathlib.Analysis.PSeries
+public import Mathlib.Algebra.BigOperators.Group.Finset.Defs
+public import Mathlib.Data.Real.Basic
+import Mathlib.Analysis.PSeries
 import Mathlib.NumberTheory.ArithmeticFunction.Moebius
 
 /-!

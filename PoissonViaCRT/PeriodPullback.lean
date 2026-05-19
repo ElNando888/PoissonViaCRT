@@ -15,10 +15,9 @@ Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
 module
-public import PoissonViaCRT.IteratedCancellation
-public import PoissonViaCRT.TupleCount
 public import PoissonViaCRT.CRTMultiplicativity
-public import PoissonViaCRT.FluctuationHelpers
+import PoissonViaCRT.FluctuationHelpers
+import PoissonViaCRT.IteratedCancellation
 
 /-!
 # Period Pullback via the Chinese Remainder Theorem

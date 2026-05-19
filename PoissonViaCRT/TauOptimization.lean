@@ -15,10 +15,8 @@ Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
 module
-import Mathlib.Algebra.BigOperators.Ring.Finset
-import Mathlib.Analysis.Complex.Exponential
-import Mathlib.Analysis.PSeries
 public import Mathlib.Analysis.SpecialFunctions.Pow.Real
+import Mathlib.Analysis.PSeries
 
 /-!
 # τ-Optimization from §3.2 of Granville–Kurlberg

@@ -16,8 +16,8 @@ Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 
 module
 public import PoissonViaCRT.Defs
-public import Mathlib.Combinatorics.Enumerative.Stirling
-public import Mathlib.Data.Pi.Interval
+import Mathlib.Combinatorics.Enumerative.Stirling
+import Mathlib.Data.Pi.Interval
 
 /-!
 # Combinatorics of Gamma Structures (§3.1)

@@ -15,13 +15,9 @@ Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
 module
-import PoissonViaCRT.TupleCount
-import PoissonViaCRT.FluctuationHelpers
-import PoissonViaCRT.LatticePointBound
+public import PoissonViaCRT.Defs
 import PoissonViaCRT.CancellationInfra
-import PoissonViaCRT.MobiusInfra
-import PoissonViaCRT.CRTMultiplicativity
-public import PoissonViaCRT.MobiusSynthesis
+import PoissonViaCRT.MobiusSynthesis
 
 /-!
 # Cancellation Helpers for Proposition 3.6

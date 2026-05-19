@@ -15,9 +15,11 @@ Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
 module
-public import Mathlib.Algebra.BigOperators.Ring.Finset
-import Mathlib.Data.Finset.Powerset
-import Mathlib.Tactic.Ring
+public import Mathlib.Algebra.BigOperators.Group.Finset.Defs
+public import Mathlib.Algebra.Ring.Defs
+public import Mathlib.Data.Finset.Powerset
+import Mathlib.Algebra.BigOperators.Ring.Finset
+import Mathlib.Tactic.Ring.RingNF
 
 /-!
 # Product-Difference Expansion

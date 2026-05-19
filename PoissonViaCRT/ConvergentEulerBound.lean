@@ -15,11 +15,7 @@ Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
 module
-public import Mathlib.Algebra.BigOperators.Ring.Finset
-public import Mathlib.Data.Finset.Powerset
-public import Mathlib.Analysis.SpecialFunctions.Exp
 public import Mathlib.Analysis.SpecialFunctions.Pow.Real
-public import Mathlib.Topology.Algebra.InfiniteSum.Order
 
 /-!
 # Convergent Euler Bound for k ≥ 3

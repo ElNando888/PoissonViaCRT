@@ -15,8 +15,10 @@ Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
 module
-public import Mathlib.Algebra.BigOperators.Ring.Finset
-import Mathlib.Data.Fintype.Pi
+public import Mathlib.Algebra.BigOperators.Group.Finset.Defs
+public import Mathlib.Algebra.Ring.Defs
+public import Mathlib.Data.Fintype.Pi
+import Mathlib.Algebra.BigOperators.Ring.Finset
 
 /-!
 # Iterated Cancellation over Product Spaces

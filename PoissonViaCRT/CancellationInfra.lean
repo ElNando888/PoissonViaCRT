@@ -15,8 +15,9 @@ Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
 module
-public import PoissonViaCRT.TupleCount
+public import PoissonViaCRT.Defs
 import PoissonViaCRT.FluctuationHelpers
+import PoissonViaCRT.TupleCount
 
 /-!
 # Cancellation Infrastructure

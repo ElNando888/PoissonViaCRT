@@ -15,7 +15,8 @@ Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
 module
-public import PoissonViaCRT.TupleCount
+public import PoissonViaCRT.Defs
+import PoissonViaCRT.TupleCount
 
 /-!
 # Helper lemmas for the fluctuation bound (Proposition 3.6)

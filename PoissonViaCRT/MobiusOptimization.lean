@@ -17,6 +17,7 @@ Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 module
 import PoissonViaCRT.Defs
 import PoissonViaCRT.MobiusBounds
+import Mathlib.Analysis.PSeries
 
 /-!
 # Möbius τ-Optimization

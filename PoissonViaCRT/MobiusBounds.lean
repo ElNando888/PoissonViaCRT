@@ -15,7 +15,9 @@ Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
 module
-public import PoissonViaCRT.MobiusInfra
+public import Mathlib.Analysis.SpecialFunctions.Pow.Real
+import Mathlib.Analysis.PSeries
+import PoissonViaCRT.MobiusInfra
 
 /-!
 # Analytic Bounds for the Möbius Decomposition

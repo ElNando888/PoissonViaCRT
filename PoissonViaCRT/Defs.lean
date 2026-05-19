@@ -15,12 +15,7 @@ Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
 module
-public import Mathlib.Algebra.BigOperators.Ring.Finset
-public import Mathlib.Data.Finset.Powerset
-public import Mathlib.Data.Fintype.Pi
-public import Mathlib.Data.Nat.PrimeFin
-public import Mathlib.Data.ZMod.Basic
-public import Mathlib.Tactic
+public import Mathlib.Tactic -- shake: keep
 
 /-!
 # Poisson Statistics via the Chinese Remainder Theorem — Definitions

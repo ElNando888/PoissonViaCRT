@@ -15,17 +15,12 @@ Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
 module
-import PoissonViaCRT.MobiusInfra
+public import PoissonViaCRT.Defs
 import PoissonViaCRT.CRTMultiplicativity
 import PoissonViaCRT.ProductDifference
-import PoissonViaCRT.MobiusBounds
-import PoissonViaCRT.HardCaseSynthesis
-import PoissonViaCRT.ScaledBoxVariation
-import PoissonViaCRT.MobiusOptimization
-import PoissonViaCRT.MobiusTauIntegration
 import PoissonViaCRT.LargeDivisorHelpers
-public import PoissonViaCRT.SmallDivisorHelpers
-import PoissonViaCRT.EulerWeights
+import PoissonViaCRT.SmallDivisorHelpers
+import PoissonViaCRT.TupleCount
 
 set_option linter.unusedVariables false
 

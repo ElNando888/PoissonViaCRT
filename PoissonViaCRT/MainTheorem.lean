@@ -15,10 +15,10 @@ Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
 module
+public import PoissonViaCRT.Defs
 import PoissonViaCRT.TupleCount
-import PoissonViaCRT.FluctuationHelpers
 import PoissonViaCRT.LatticePointBound
-public import PoissonViaCRT.CancellationHelpers
+import PoissonViaCRT.CancellationHelpers
 
 set_option linter.unusedVariables false
 

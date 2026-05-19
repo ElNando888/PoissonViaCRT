@@ -15,12 +15,11 @@ Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
 module
+public import PoissonViaCRT.Defs
 import PoissonViaCRT.PeriodPullback
-import PoissonViaCRT.IteratedCancellation
 import PoissonViaCRT.CancellationInfra
 import PoissonViaCRT.MobiusBounds
-import PoissonViaCRT.MobiusInfra
-public import PoissonViaCRT.CRTMultiplicativity
+import PoissonViaCRT.FluctuationHelpers
 
 /-!
 # Hard Case Synthesis
