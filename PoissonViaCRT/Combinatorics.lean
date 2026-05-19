@@ -14,9 +14,10 @@ To cite Aristotle, tag @Aristotle-Harmonic on GitHub PRs/issues, and add as co-a
 Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
-import PoissonViaCRT.Defs
-import Mathlib.Combinatorics.Enumerative.Stirling
-import Mathlib.Data.Pi.Interval
+module
+public import PoissonViaCRT.Defs
+public import Mathlib.Combinatorics.Enumerative.Stirling
+public import Mathlib.Data.Pi.Interval
 
 /-!
 # Combinatorics of Gamma Structures (§3.1)
@@ -475,7 +476,7 @@ lemma GammaStructure.gammaRow_cast_ge_one
     (Γ.gammaRow j : ℝ) ≥ 1 :=
   Nat.one_le_cast.mpr (Γ.gammaRow_pos j)
 
-lemma GammaStructure.gammaProd_pos
+public lemma GammaStructure.gammaProd_pos
     (Γ : GammaStructure k) : 0 < Γ.gammaProd :=
   Finset.prod_pos fun j _ => Γ.gammaRow_pos j
 
@@ -520,13 +521,13 @@ lemma GammaStructure.gamma_le_gammaProd
 /-! ### Finset of Gamma structures with fixed product -/
 
 /-- Two `GammaStructure`s are equal iff their `gamma` matrices agree. -/
-theorem GammaStructure.ext_iff {Γ₁ Γ₂ : GammaStructure k} :
+public theorem GammaStructure.ext_iff {Γ₁ Γ₂ : GammaStructure k} :
     Γ₁ = Γ₂ ↔ Γ₁.gamma = Γ₂.gamma := by
   constructor
   · rintro rfl; rfl
   · intro h; cases Γ₁; cases Γ₂; simp_all
 
-instance : DecidableEq (GammaStructure k) := fun Γ₁ Γ₂ =>
+public instance : DecidableEq (GammaStructure k) := fun Γ₁ Γ₂ =>
   if h : Γ₁.gamma = Γ₂.gamma then
     .isTrue (GammaStructure.ext_iff.mpr h)
   else
@@ -535,7 +536,8 @@ instance : DecidableEq (GammaStructure k) := fun Γ₁ Γ₂ =>
 /-- The finite set of all `GammaStructure k` with `gammaProd = γ`. Every entry of such
 a structure is bounded by `γ` (by `gamma_le_gammaProd`), so the carrier is a subset
 of the finite set of `k × k` matrices with entries in `Finset.range (γ + 1)`. -/
-noncomputable def finsetGammaStructures (γ : ℕ) : Finset (GammaStructure k) :=
+@[expose]
+public noncomputable def finsetGammaStructures (γ : ℕ) : Finset (GammaStructure k) :=
   let mats := (Fintype.piFinset fun _ : Fin k =>
       Fintype.piFinset fun _ : Fin k =>
         Finset.range (γ + 1)).filter fun mat =>
@@ -555,7 +557,7 @@ noncomputable def finsetGammaStructures (γ : ℕ) : Finset (GammaStructure k) :
       compat := hf.2.2.2.2.1 }
 
 @[simp]
-theorem mem_finsetGammaStructures {γ : ℕ} {Γ : GammaStructure k} :
+public theorem mem_finsetGammaStructures {γ : ℕ} {Γ : GammaStructure k} :
     Γ ∈ finsetGammaStructures γ ↔ Γ.gammaProd = γ := by
   constructor;
   · unfold finsetGammaStructures;
@@ -613,7 +615,7 @@ lemma card_upper_triangular_pairs (k : ℕ) :
   simp +decide [ Finset.filter_lt_eq_Ioi ];
   rw [ ← Finset.sum_range_reflect, Finset.sum_range ]
 
-theorem countGammaStructures_le (γ : ℕ) (hγ : 0 < γ) :
+public theorem countGammaStructures_le (γ : ℕ) (hγ : 0 < γ) :
     (finsetGammaStructures γ : Finset (GammaStructure k)).card ≤
       (2 ^ k.choose 2) ^ γ.primeFactors.card := by
   -- Each GammaStructure is determined by its upper triangular entries gamma(i,j) for i < j.
@@ -906,7 +908,7 @@ theorem countTuples_bound
 /-! ### Corollary 3.3: Bounds from Proposition 3.2 -/
 
 -- See docs/proof_sketches.md for full proof sketch.
-theorem countTuples_bound_small_gamma
+public theorem countTuples_bound_small_gamma
     (Γ : GammaStructure (k + 1)) (H : ℕ)
     (hsmall : ∀ i : Fin k,
       Γ.gammaRow i.succ ≤ H) :

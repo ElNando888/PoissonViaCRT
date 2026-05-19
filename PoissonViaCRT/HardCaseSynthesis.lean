@@ -14,12 +14,13 @@ To cite Aristotle, tag @Aristotle-Harmonic on GitHub PRs/issues, and add as co-a
 Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
+module
 import PoissonViaCRT.PeriodPullback
 import PoissonViaCRT.IteratedCancellation
 import PoissonViaCRT.CancellationInfra
 import PoissonViaCRT.MobiusBounds
 import PoissonViaCRT.MobiusInfra
-import PoissonViaCRT.CRTMultiplicativity
+public import PoissonViaCRT.CRTMultiplicativity
 
 /-!
 # Hard Case Synthesis
@@ -67,7 +68,7 @@ The deviations satisfy:
 - **Zero-sum**: they sum to zero over all `g` (by `deviation_sum_period_zero`),
 - **Pointwise bound**: each is at most `2 * |Ω|` in absolute value
   (by `individual_deviation_bound`). -/
-theorem divisor_boundary_bound (q : ℕ) [NeZero q]
+public theorem divisor_boundary_bound (q : ℕ) [NeZero q]
     (Ω : Finset (ZMod q))
     (hcard : 0 < Ω.card) (hle : (Ω.card : ℝ) ≤ (q : ℝ))
     (m : ℕ) (w : (Fin m → ZMod q) → ℝ)

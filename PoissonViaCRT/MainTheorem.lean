@@ -14,10 +14,11 @@ To cite Aristotle, tag @Aristotle-Harmonic on GitHub PRs/issues, and add as co-a
 Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
+module
 import PoissonViaCRT.TupleCount
 import PoissonViaCRT.FluctuationHelpers
 import PoissonViaCRT.LatticePointBound
-import PoissonViaCRT.CancellationHelpers
+public import PoissonViaCRT.CancellationHelpers
 
 set_option linter.unusedVariables false
 
@@ -498,7 +499,7 @@ Then for `k ≤ K` and any box `X`, the `k`-level correlation satisfies
 
 This follows from Proposition 3.6 and the lemma below.
 -/
-theorem mainTheorem_precise
+public theorem mainTheorem_precise
     (ε : ℝ) (hε : 0 < ε) (K : ℕ) (hK : 2 ≤ K)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)

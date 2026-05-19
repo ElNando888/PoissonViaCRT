@@ -14,10 +14,11 @@ To cite Aristotle, tag @Aristotle-Harmonic on GitHub PRs/issues, and add as co-a
 Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
-import PoissonViaCRT.IteratedCancellation
-import PoissonViaCRT.TupleCount
-import PoissonViaCRT.CRTMultiplicativity
-import PoissonViaCRT.FluctuationHelpers
+module
+public import PoissonViaCRT.IteratedCancellation
+public import PoissonViaCRT.TupleCount
+public import PoissonViaCRT.CRTMultiplicativity
+public import PoissonViaCRT.FluctuationHelpers
 
 /-!
 # Period Pullback via the Chinese Remainder Theorem
@@ -50,7 +51,7 @@ namespace PoissonCRT
 /-! ### Auxiliary instance -/
 
 /-- Every element of `d.primeFactors` is a positive natural number, hence nonzero. -/
-instance neZero_of_mem_primeFactors {d : ℕ} (p : d.primeFactors) : NeZero p.val :=
+public instance neZero_of_mem_primeFactors {d : ℕ} (p : d.primeFactors) : NeZero p.val :=
   ⟨(Nat.pos_of_mem_primeFactors p.2).ne'⟩
 
 /-! ### 1. The CRT period equivalence -/
@@ -63,20 +64,21 @@ The construction composes two standard equivalences:
    `(Fin k → ZMod d) ≃ (Fin k → ∏_{p | d} ZMod p)`.
 2. **Argument transposition**: Swap the quantifier order via `Equiv.piComm`, giving
    `(Fin k → ∏_{p | d} ZMod p) ≃ ∏_{p | d} (Fin k → ZMod p)`. -/
-noncomputable def box_period_equiv (d : ℕ) [NeZero d] (hd : Squarefree d) :
+@[expose]
+public noncomputable def box_period_equiv (d : ℕ) [NeZero d] (hd : Squarefree d) :
     (Fin k → ZMod d) ≃ ((p : d.primeFactors) → Fin k → ZMod ↑p) :=
   (Equiv.piCongrRight fun _ => (crtRingEquiv d hd).toEquiv).trans
     (Equiv.piComm fun _ _ => _)
 
 /-- Each component of `box_period_equiv` acts as the CRT projection composed with
 evaluation at the given coordinate. -/
-theorem box_period_equiv_apply (d : ℕ) [NeZero d] (hd : Squarefree d)
+public theorem box_period_equiv_apply (d : ℕ) [NeZero d] (hd : Squarefree d)
     (g : Fin k → ZMod d) (p : d.primeFactors) (i : Fin k) :
     box_period_equiv d hd g p i = crtRingEquiv d hd (g i) p := rfl
 
 /-- `box_period_equiv` at each component agrees with `ZMod.castHom`, the canonical
 reduction modulo `p`. -/
-theorem box_period_equiv_apply_eq_castHom (d : ℕ) [NeZero d] (hd : Squarefree d)
+public theorem box_period_equiv_apply_eq_castHom (d : ℕ) [NeZero d] (hd : Squarefree d)
     (g : Fin k → ZMod d) (p : d.primeFactors) (i : Fin k) :
     box_period_equiv d hd g p i =
       ZMod.castHom (Nat.dvd_of_mem_primeFactors p.2) (ZMod ↑p) (g i) := by
@@ -89,13 +91,14 @@ $$\delta_p(g) \;=\; N_{k+1}\!\bigl((0, g_1, \dots, g_k),\, \Omega_p\bigr)
   \;-\; \frac{|\Omega_p|^{k+1}}{p^k}.$$
 The sum `∑_g δ_p(g) = 0` for every prime `p`
 (by `tupleCount_cons_deviation_sum_zero`). -/
-noncomputable def localDeviation (Ω : ∀ p : ℕ, Finset (ZMod p)) (k : ℕ)
+@[expose]
+public noncomputable def localDeviation (Ω : ∀ p : ℕ, Finset (ZMod p)) (k : ℕ)
     (p : ℕ) [NeZero p] (g : Fin k → ZMod p) : ℝ :=
   (tupleCount (Ω p) (Fin.cons 0 g) : ℝ) - (Ω p).card ^ (k + 1) / (p : ℝ) ^ k
 
 /-- The local deviation sums to zero over all `g : (ZMod p)^k`. This is a direct
 consequence of `tupleCount_cons_deviation_sum_zero`. -/
-theorem localDeviation_sum_zero (Ω : ∀ p : ℕ, Finset (ZMod p)) (k : ℕ)
+public theorem localDeviation_sum_zero (Ω : ∀ p : ℕ, Finset (ZMod p)) (k : ℕ)
     (p : ℕ) [NeZero p] :
     ∑ g : Fin k → ZMod p, localDeviation Ω k p g = 0 :=
   tupleCount_cons_deviation_sum_zero (Ω p) k
@@ -116,7 +119,7 @@ of local deviations `localDeviation Ω k p (x p)` over all prime factors `p | d`
 We need `d` to have at least one prime factor (equivalently, `1 < d`) so that there exists
 a coordinate whose marginal sum vanishes, enabling the application of
 `zero_sum_implies_pi_sum_zero`. -/
-theorem deviation_sum_pullback (d : ℕ) [NeZero d] (hd_pos : 0 < d.primeFactors.card)
+public theorem deviation_sum_pullback (d : ℕ) [NeZero d] (hd_pos : 0 < d.primeFactors.card)
     (Ω : ∀ p : ℕ, Finset (ZMod p)) (k : ℕ) :
     ∑ x : ((p : d.primeFactors) → Fin k → ZMod ↑p),
       ∏ p : d.primeFactors, localDeviation Ω k ↑p (x p) = 0 := by

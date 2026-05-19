@@ -14,7 +14,8 @@ To cite Aristotle, tag @Aristotle-Harmonic on GitHub PRs/issues, and add as co-a
 Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
-import PoissonViaCRT.MobiusInfra
+module
+public import PoissonViaCRT.MobiusInfra
 
 /-!
 # Analytic Bounds for the Möbius Decomposition
@@ -56,7 +57,7 @@ full series, giving a `q`-independent constant.
 -/
 
 /-- The p-series exponent for `k ≥ 3` exceeds 1. -/
-lemma pseries_exponent_gt_one {k : ℕ} (hk : 3 ≤ k) {ε : ℝ} (hε : 0 < ε) :
+public lemma pseries_exponent_gt_one {k : ℕ} (hk : 3 ≤ k) {ε : ℝ} (hε : 0 < ε) :
     1 < (k : ℝ) - 2 + ε := by
   have : (k : ℝ) ≥ 3 := by exact_mod_cast hk
   linarith
@@ -88,18 +89,19 @@ uniformly bounded by the convergent p-series.
 -/
 
 /-- The critical exponent `λ₂ = (√17 - 3) / 2` from §3.2. -/
-noncomputable def lambda2 : ℝ := (Real.sqrt 17 - 3) / 2
+@[expose]
+public noncomputable def lambda2 : ℝ := (Real.sqrt 17 - 3) / 2
 
 /-
 `λ₂` is positive.
 -/
-lemma lambda2_pos : 0 < lambda2 := by
+public lemma lambda2_pos : 0 < lambda2 := by
   exact div_pos ( sub_pos.mpr ( Real.lt_sqrt_of_sq_lt ( by norm_num ) ) ) ( by norm_num )
 
 /-
 `λ₂ < 1`.
 -/
-lemma lambda2_lt_one : lambda2 < 1 := by
+public lemma lambda2_lt_one : lambda2 < 1 := by
   exact div_lt_one ( by norm_num ) |>.2 ( by nlinarith [ Real.sqrt_nonneg 17, Real.sq_sqrt ( show 0 ≤ 17 by norm_num ) ] )
 
 /-
@@ -108,7 +110,7 @@ lemma lambda2_lt_one : lambda2 < 1 := by
 function growth), the divisor sum `∑_{d | q} d^{-α}` is uniformly bounded by the
 convergent p-series.
 -/
-theorem critical_exponent_divisor_bound (α : ℝ) (hα : 1 < α) (q : ℕ) (_hq : 0 < q) :
+public theorem critical_exponent_divisor_bound (α : ℝ) (hα : 1 < α) (q : ℕ) (_hq : 0 < q) :
     ∑ d ∈ q.divisors, ((d : ℝ) ^ α)⁻¹ ≤ ∑' n : ℕ, ((n : ℝ) ^ α)⁻¹ := by
   exact Summable.sum_le_tsum _ ( fun _ _ => by positivity ) ( by simpa using Real.summable_nat_rpow_inv.mpr hα )
 
@@ -130,7 +132,7 @@ from the lattice point counting infrastructure. For each divisor `d | q`, the to
 variation of the residue class multiplicities is bounded by the boundary term from
 `box_card_upper_bound` applied with scaling `s/d`, giving the `O(s^{k-2}/d^{k-2+ε})`
 decay rate needed for the Möbius synthesis. -/
-theorem total_variation_bound {ι : Type*} [Fintype ι]
+public theorem total_variation_bound {ι : Type*} [Fintype ι]
     (f w : ι → ℝ)
     (hf_sum : ∑ x, f x = 0)
     (M : ℝ) (hM_nn : 0 ≤ M) (hM : ∀ x, |f x| ≤ M)

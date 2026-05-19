@@ -14,7 +14,8 @@ To cite Aristotle, tag @Aristotle-Harmonic on GitHub PRs/issues, and add as co-a
 Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
-import PoissonViaCRT.TauOptimization
+module
+import all PoissonViaCRT.TauOptimization
 import Mathlib.NumberTheory.ArithmeticFunction.Moebius
 
 /-!

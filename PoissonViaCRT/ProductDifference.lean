@@ -14,7 +14,8 @@ To cite Aristotle, tag @Aristotle-Harmonic on GitHub PRs/issues, and add as co-a
 Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
-import Mathlib.Algebra.BigOperators.Ring.Finset
+module
+public import Mathlib.Algebra.BigOperators.Ring.Finset
 import Mathlib.Data.Finset.Powerset
 import Mathlib.Tactic.Ring
 
@@ -43,7 +44,7 @@ For a commutative ring `R`, a finset `S`, and functions `a b : ι → R`,
 
 The proof rewrites `a i = (a i - b i) + b i`, applies `Finset.prod_add` to expand the product
 over all subsets `T ⊆ S`, and then subtracts the `T = ∅` term (which is `∏ i ∈ S, b i`). -/
-theorem prod_sub_prod_expansion {ι : Type*} {R : Type*} [CommRing R] [DecidableEq ι]
+public theorem prod_sub_prod_expansion {ι : Type*} {R : Type*} [CommRing R] [DecidableEq ι]
     (a b : ι → R) (S : Finset ι) :
     ∏ i ∈ S, a i - ∏ i ∈ S, b i =
       ∑ T ∈ S.powerset.filter (· ≠ ∅), (∏ i ∈ T, (a i - b i)) * ∏ i ∈ S \ T, b i := by

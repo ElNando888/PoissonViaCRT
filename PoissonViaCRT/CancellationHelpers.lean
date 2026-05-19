@@ -14,13 +14,14 @@ To cite Aristotle, tag @Aristotle-Harmonic on GitHub PRs/issues, and add as co-a
 Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
+module
 import PoissonViaCRT.TupleCount
 import PoissonViaCRT.FluctuationHelpers
 import PoissonViaCRT.LatticePointBound
 import PoissonViaCRT.CancellationInfra
 import PoissonViaCRT.MobiusInfra
 import PoissonViaCRT.CRTMultiplicativity
-import PoissonViaCRT.MobiusSynthesis
+public import PoissonViaCRT.MobiusSynthesis
 
 /-!
 # Cancellation Helpers for Proposition 3.6
@@ -179,7 +180,7 @@ lemma deviation_sum_bound_q_indep (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 �
 /-- Uniform deviation bound: the decay exponent `δ` is chosen independently of
 the box `X` and lattice-point constant `C_lp`. This wraps
 `deviation_uniform_exponent` from `MobiusSynthesis.lean`. -/
-lemma deviation_sum_bound_uniform (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+public lemma deviation_sum_bound_uniform (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
     (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)

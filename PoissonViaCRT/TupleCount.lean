@@ -14,7 +14,8 @@ To cite Aristotle, tag @Aristotle-Harmonic on GitHub PRs/issues, and add as co-a
 Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
-import PoissonViaCRT.Defs
+module
+public import PoissonViaCRT.Defs
 
 /-!
 # Properties of the Counting Function `N_k`
@@ -45,7 +46,7 @@ variable {q : ℕ} [NeZero q]
 
 /-- `N_{k+1}(h, Ω) ≤ |Ω|`, since each valid `t` satisfies `t + h 0 ∈ Ω`, and the map
 `t ↦ t + h 0` is injective. -/
-theorem tupleCount_le_card (Ω : Finset (ZMod q)) (h : Fin (k + 1) → ZMod q) :
+public theorem tupleCount_le_card (Ω : Finset (ZMod q)) (h : Fin (k + 1) → ZMod q) :
     tupleCount Ω h ≤ Ω.card := by
   refine le_trans ?_ (Finset.card_le_card <| show Finset.image (fun t : ZMod q => t + h 0)
     (Finset.filter (fun t : ZMod q => ∀ i, t + h i ∈ Ω) Finset.univ) ⊆ Ω from ?_)
@@ -82,7 +83,7 @@ we have `∑_g N_{k+1}(0 :: g, Ω) = |Ω|^{k+1}`. The condition `t + 0 ∈ Ω` r
 -/
 
 /-- **Sum formula for `N_k`**: `∑_h N_k(h, Ω) = q · |Ω|^k`. -/
-theorem tupleCount_sum_eq (Ω : Finset (ZMod q)) :
+public theorem tupleCount_sum_eq (Ω : Finset (ZMod q)) :
     ∑ h : Fin k → ZMod q, tupleCount Ω h = q * Ω.card ^ k := by
   have h_fubini : ∑ h : Fin k → ZMod q, (Finset.univ.filter fun t : ZMod q =>
       ∀ i, t + h i ∈ Ω).card =
@@ -109,7 +110,7 @@ theorem tupleCount_sum_eq (Ω : Finset (ZMod q)) :
 
 /-- **Sum formula with `h₀ = 0` fixed** (Lemma 3.5 identity):
 `∑_g N_{k+1}(Fin.cons 0 g, Ω) = |Ω|^{k+1}`. -/
-theorem tupleCount_sum_cons_eq (Ω : Finset (ZMod q)) :
+public theorem tupleCount_sum_cons_eq (Ω : Finset (ZMod q)) :
     ∑ g : Fin k → ZMod q, tupleCount Ω (Fin.cons 0 g) = Ω.card ^ (k + 1) := by
   unfold tupleCount
   simp +decide only [card_filter]
@@ -150,7 +151,7 @@ theorem tupleCount_empty (h : Fin (k + 1) → ZMod q) :
   simp_all only [notMem_empty, forall_const, filter_false, card_empty]
 
 /-- `N_k(h, univ) = q` for all `h`. -/
-theorem tupleCount_univ (h : Fin k → ZMod q) :
+public theorem tupleCount_univ (h : Fin k → ZMod q) :
     tupleCount (univ : Finset (ZMod q)) h = q := by
   unfold tupleCount
   simp_all only [mem_univ, implies_true, filter_true, card_univ, ZMod.card]

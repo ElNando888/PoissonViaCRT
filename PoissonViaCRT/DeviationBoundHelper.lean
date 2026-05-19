@@ -14,7 +14,8 @@ To cite Aristotle, tag @Aristotle-Harmonic on GitHub PRs/issues, and add as co-a
 Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
-import PoissonViaCRT.Defs
+module
+public import PoissonViaCRT.Defs
 import PoissonViaCRT.ConvergentEulerBound
 
 /-!
@@ -113,13 +114,15 @@ theorem large_partition_bound {ε : ℝ} (hε : 0 < ε)
 
 /-- The local expected value (mean) for the counting function at prime `p`:
 `μ_p = |Ω_p|^k / p^{k-1}`. -/
-noncomputable def localMean (k : ℕ) (Ω : ∀ p : ℕ, Finset (ZMod p)) (p : ℕ) : ℝ :=
+@[expose]
+public noncomputable def localMean (k : ℕ) (Ω : ∀ p : ℕ, Finset (ZMod p)) (p : ℕ) : ℝ :=
   ((Ω p).card : ℝ) ^ k / (p : ℝ) ^ (k - 1)
 
 /-- The local counting function value at prime `p`, projected from `ZMod q`.
 For `p ∈ q.primeFactors`, this is `N_k(h mod p, Ω_p)`.
 For `p ∉ q.primeFactors`, this is defined as `1` (a neutral element for products). -/
-noncomputable def localCount {m : ℕ} (Ω : ∀ p : ℕ, Finset (ZMod p))
+@[expose]
+public noncomputable def localCount {m : ℕ} (Ω : ∀ p : ℕ, Finset (ZMod p))
     (q : ℕ) [NeZero q] (h : Fin m → ZMod q) (p : ℕ) : ℝ :=
   if hp : p ∈ q.primeFactors then
     haveI : NeZero p := ⟨(Nat.mem_primeFactors.mp hp).1.ne_zero⟩
@@ -145,7 +148,7 @@ lemma localCount_le {q : ℕ} [NeZero q]
   haveI := Fact.mk hp.1; exact_mod_cast le_trans ( Finset.card_filter_le _ _ ) ( by norm_num ) ;
 
 /-- `localMean` is nonneg. -/
-lemma localMean_nonneg (k : ℕ) (Ω : ∀ p : ℕ, Finset (ZMod p)) (p : ℕ) :
+public lemma localMean_nonneg (k : ℕ) (Ω : ∀ p : ℕ, Finset (ZMod p)) (p : ℕ) :
     0 ≤ localMean k Ω p := by
   exact div_nonneg ( pow_nonneg ( Nat.cast_nonneg _ ) _ ) ( pow_nonneg ( Nat.cast_nonneg _ ) _ )
 
@@ -167,7 +170,7 @@ in `[0, p]`:
 - `localMean = |Ω_p|^k / p^{k-1} ≤ p^k / p^{k-1} = p`.
 
 Thus `|localCount - localMean| ≤ p ≤ p ^ k` (for `k ≥ 1` and `p ≥ 2`). -/
-lemma abs_localCount_sub_localMean_le_p {k : ℕ} (hk : 1 ≤ k) (q : ℕ) [NeZero q]
+public lemma abs_localCount_sub_localMean_le_p {k : ℕ} (hk : 1 ≤ k) (q : ℕ) [NeZero q]
     (p : ℕ) (hp : p ∈ q.primeFactors) (Ω : ∀ p : ℕ, Finset (ZMod p))
     (h : Fin k → ZMod q) :
     |localCount Ω q h p - localMean k Ω p| ≤ (p : ℝ) := by

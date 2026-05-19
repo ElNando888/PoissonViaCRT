@@ -14,7 +14,8 @@ To cite Aristotle, tag @Aristotle-Harmonic on GitHub PRs/issues, and add as co-a
 Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
-import PoissonViaCRT.DeviationBoundHelper
+module
+public import PoissonViaCRT.DeviationBoundHelper
 
 set_option linter.unusedVariables false
 
@@ -57,7 +58,7 @@ namespace PoissonCRT
 `(X.volume + C_lp) · s^(k−1)` for `s ≥ 1` and `k ≥ 2`.
 This is the lattice point deviation bound that controls the
 number of summands in the inclusion-exclusion expansion. -/
-lemma scaled_box_card_le {k : ℕ} (hk : 2 ≤ k) (X : Box (k - 1)) (C_lp : ℝ)
+public lemma scaled_box_card_le {k : ℕ} (hk : 2 ≤ k) (X : Box (k - 1)) (C_lp : ℝ)
     (hC_lp_pos : 0 < C_lp)
     (hC_lp : ∀ (v : Fin (k - 1) → ℝ), (∀ i, 0 ≤ v i ∧ v i ≤ 1) → ∀ (s : ℝ), 1 ≤ s →
       |(((Fintype.piFinset fun _ : Fin (k - 1) =>
@@ -210,7 +211,7 @@ by the product of the trivial bound over small primes times the
 residual multiplicity deviation bound over large primes. This is
 the pointwise ingredient for the inclusion-exclusion summation
 in the large-divisor contribution. -/
-lemma deviation_prod_pointwise_le (ε : ℝ) {n : ℕ} (hn : 1 ≤ n)
+public lemma deviation_prod_pointwise_le (ε : ℝ) {n : ℕ} (hn : 1 ≤ n)
     (Ω : ∀ p : ℕ, Finset (ZMod p)) (q : ℕ) [NeZero q]
     (X : Box n) (s : ℝ) (hs : 0 < s)
     (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) (n + 1))

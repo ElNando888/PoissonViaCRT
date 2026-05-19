@@ -15,7 +15,8 @@ and add as co-author to commits:
 Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
-import PoissonViaCRT.Defs
+module
+public import PoissonViaCRT.Defs
 import PoissonViaCRT.LatticePointBoundHelpers
 import Mathlib.Data.Pi.Interval
 
@@ -46,7 +47,7 @@ namespace PoissonCRT
 (offset `v = 0`) equals the product of floors
 `∏ᵢ ⌊s · X.sidesᵢ⌋`. This bijection goes through the gap map
 and the prefix-sum map from `LatticePointBoundHelpers`. -/
-lemma count_inScaledBox_eq_prod_floor (m : ℕ)
+public lemma count_inScaledBox_eq_prod_floor (m : ℕ)
     (X : Box m) (s : ℝ) (hs : 1 ≤ s) :
     ((Fintype.piFinset fun _ : Fin m =>
         Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
@@ -233,7 +234,7 @@ lemma count_inScaledBox_eq_prod_floor (m : ℕ)
 error at most `C · s^{m−1}` for some `C > 0` depending only
 on the side lengths `b`. This is proved by induction on `m`,
 peeling off one factor at a time. -/
-lemma prod_floor_approx (m : ℕ) (b : Fin m → ℝ)
+public lemma prod_floor_approx (m : ℕ) (b : Fin m → ℝ)
     (hb : ∀ i, 0 < b i) :
     ∃ C : ℝ, 0 < C ∧ ∀ (s : ℝ), 1 ≤ s →
       |(∏ i, (⌊s * b i⌋₊ : ℝ)) -
@@ -381,7 +382,7 @@ lemma prod_floor_approx (m : ℕ) (b : Fin m → ℝ)
 with bounded offset `v` differs from the `v = 0` count
 by at most `D · s^{m-1}`, where `D` depends only on
 the box `X`. -/
-lemma inScaledBox_offset_card_diff (m : ℕ)
+public lemma inScaledBox_offset_card_diff (m : ℕ)
     (X : Box m) :
     ∃ D : ℝ, 0 ≤ D ∧
       ∀ (v : Fin m → ℝ),

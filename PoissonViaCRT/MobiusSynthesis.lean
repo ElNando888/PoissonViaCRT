@@ -14,6 +14,7 @@ To cite Aristotle, tag @Aristotle-Harmonic on GitHub PRs/issues, and add as co-a
 Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
+module
 import PoissonViaCRT.MobiusInfra
 import PoissonViaCRT.CRTMultiplicativity
 import PoissonViaCRT.ProductDifference
@@ -23,7 +24,7 @@ import PoissonViaCRT.ScaledBoxVariation
 import PoissonViaCRT.MobiusOptimization
 import PoissonViaCRT.MobiusTauIntegration
 import PoissonViaCRT.LargeDivisorHelpers
-import PoissonViaCRT.SmallDivisorHelpers
+public import PoissonViaCRT.SmallDivisorHelpers
 import PoissonViaCRT.EulerWeights
 
 set_option linter.unusedVariables false
@@ -548,7 +549,7 @@ The proof splits into the `ε = λ_k` case (trivial: all
 local sets are full) and `ε < λ_k` (the spatial synthesis
 combining small- and large-divisor contributions via
 inclusion-exclusion). -/
-theorem deviation_final_synthesis (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+public theorem deviation_final_synthesis (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
     (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
@@ -596,7 +597,7 @@ theorem deviation_final_synthesis (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 �
 /-- Uniform exponent version of `deviation_final_synthesis`: the decay exponent `δ` is
 chosen independently of the box `X` and lattice-point constant `C_lp`. Only the
 multiplicative constant `K` is allowed to depend on `X`. -/
-theorem deviation_uniform_exponent (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+public theorem deviation_uniform_exponent (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
     (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)

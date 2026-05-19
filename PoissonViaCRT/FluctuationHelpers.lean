@@ -14,7 +14,8 @@ To cite Aristotle, tag @Aristotle-Harmonic on GitHub PRs/issues, and add as co-a
 Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
-import PoissonViaCRT.TupleCount
+module
+public import PoissonViaCRT.TupleCount
 
 /-!
 # Helper lemmas for the fluctuation bound (Proposition 3.6)
@@ -37,7 +38,7 @@ theorem kCorrelation_nonneg (Ω : Finset (ZMod q)) (X : Box m) :
 
 /-- The deviation sum vanishes: `∑_g (tupleCount(Ω, 0::g) - μ) = 0`
 where `μ = |Ω|^{m+1} / q^m`. -/
-theorem tupleCount_cons_deviation_sum_zero (Ω : Finset (ZMod q)) (m : ℕ) :
+public theorem tupleCount_cons_deviation_sum_zero (Ω : Finset (ZMod q)) (m : ℕ) :
     (∑ g : Fin m → ZMod q,
       ((tupleCount Ω (Fin.cons (0 : ZMod q) g) : ℝ) -
         (Ω.card : ℝ) ^ (m + 1) / (q : ℝ) ^ m)) = 0 := by

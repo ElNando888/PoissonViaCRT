@@ -14,7 +14,8 @@ To cite Aristotle, tag @Aristotle-Harmonic on GitHub PRs/issues, and add as co-a
 Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
-import Mathlib.Analysis.PSeries
+module
+public import Mathlib.Analysis.PSeries
 import Mathlib.NumberTheory.ArithmeticFunction.Moebius
 
 /-!
@@ -131,7 +132,7 @@ Step 1: Show ∑ w * f = ∑ (w - c) * f. Since ∑ f = 0, we have c * ∑ f = 0
 
 Step 2: |∑ (w-c)*f| ≤ ∑ |w-c|*|f| by triangle inequality (Finset.abs_sum_le_sum_abs). Then ∑ |w-c|*|f| ≤ ∑ |w-c|*M by pointwise bound hM and abs_nonneg. Finally ∑ |w-c|*M = (∑ |w-c|)*M by Finset.sum_mul.
 -/
-theorem d_contribution_bound {ι : Type*} [Fintype ι] (f w : ι → ℝ)
+public theorem d_contribution_bound {ι : Type*} [Fintype ι] (f w : ι → ℝ)
     (hf_sum : ∑ x, f x = 0) (M : ℝ) (hM : ∀ x, |f x| ≤ M)
     (c : ℝ) :
     |∑ x, w x * f x| ≤ (∑ x, |w x - c|) * M := by

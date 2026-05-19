@@ -15,7 +15,8 @@ and add as co-author to commits:
 Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
-import PoissonViaCRT.Defs
+module
+public import PoissonViaCRT.Defs
 
 set_option linter.unusedVariables false
 
@@ -43,13 +44,14 @@ namespace PoissonCRT
 
 /-- The set of tuples in `{1, …, N}^m`, used as the ambient finset for lattice point counting in
 scaled boxes. -/
-noncomputable abbrev piBox (m : ℕ) (N : ℤ) :
+@[expose]
+public noncomputable abbrev piBox (m : ℕ) (N : ℤ) :
     Finset (Fin m → ℤ) :=
   Fintype.piFinset fun _ : Fin m => Finset.Icc (1 : ℤ) N
 
 /-- `|card(A) − card(B)| ≤ card(A \ B) + card(B \ A)`:
 the absolute difference of cardinalities is bounded by the symmetric-difference cardinality. -/
-lemma abs_card_diff_le_card_sdiff
+public lemma abs_card_diff_le_card_sdiff
     {α : Type*} [DecidableEq α] (A B : Finset α) :
     |(A.card : ℤ) - B.card| ≤
       (A \ B).card + (B \ A).card := by
@@ -498,7 +500,7 @@ lemma sdiff_card_le_sum_boundary_rev (m : ℕ)
 /-- The symmetric-difference cardinality bound: there exists `D ≥ 0` (depending only on the box `X`)
 such that for all offsets `v ∈ [0,1]^m` and all `s ≥ 1`, `|S_v △ S_0| ≤ D · s^{m−1}`. This is the
 core lattice point deviation bound underlying the spatial synthesis. -/
-lemma inScaledBox_symmDiff_card_le (m : ℕ)
+public lemma inScaledBox_symmDiff_card_le (m : ℕ)
     (X : Box m) :
     ∃ D : ℝ, 0 ≤ D ∧
       ∀ (v : Fin m → ℝ),
@@ -559,7 +561,7 @@ lemma inScaledBox_symmDiff_card_le (m : ℕ)
 /-- The prefix-sum map `d ↦ (i ↦ ∑_{j ≤ i} d_j)` is injective. Used in
 `count_inScaledBox_eq_prod_floor` to establish the bijection between gap sequences and lattice
 points. -/
-lemma prefixSum_injective (m : ℕ) :
+public lemma prefixSum_injective (m : ℕ) :
     Function.Injective
       (fun (d : Fin m → ℤ) (i : Fin m) =>
         ∑ j ∈ Finset.univ.filter (fun j => j ≤ i),

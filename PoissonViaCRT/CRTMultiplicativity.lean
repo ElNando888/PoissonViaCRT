@@ -14,8 +14,9 @@ To cite Aristotle, tag @Aristotle-Harmonic on GitHub PRs/issues, and add as co-a
 Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
-import PoissonViaCRT.Defs
-import Mathlib.Data.ZMod.QuotientRing
+module
+public import PoissonViaCRT.Defs
+public import Mathlib.Data.ZMod.QuotientRing
 
 /-!
 # CRT Multiplicativity of the Counting Function
@@ -53,7 +54,7 @@ namespace PoissonCRT
 
 /-- The prime factors of a squarefree number are pairwise coprime (as a `Pairwise` condition
 on the subtype `q.primeFactors`). -/
-theorem primeFactors_pairwise_coprime (q : ℕ) :
+public theorem primeFactors_pairwise_coprime (q : ℕ) :
     Pairwise (Function.onFun Nat.Coprime
       (fun (p : q.primeFactors) => (p : ℕ))) := by
   intro ⟨a, ha⟩ ⟨b, hb⟩ hab
@@ -64,14 +65,15 @@ theorem primeFactors_pairwise_coprime (q : ℕ) :
     hab (Subtype.ext (hb'.eq_one_or_self_of_dvd a h |>.resolve_left ha'.one_lt.ne'))
 
 /-- A squarefree natural number equals the product of its prime factors. -/
-theorem prod_primeFactors_eq (q : ℕ) (hq : Squarefree q) :
+public theorem prod_primeFactors_eq (q : ℕ) (hq : Squarefree q) :
     q = ∏ p : q.primeFactors, (p : ℕ) := by
   rw [Finset.prod_coe_sort q.primeFactors (fun p => p)]
   exact (Nat.prod_primeFactors_of_squarefree hq).symm
 
 /-- The CRT ring isomorphism: for squarefree `q`,
 `ZMod q ≃+* ∏_{p ∈ q.primeFactors} ZMod p`. -/
-noncomputable def crtRingEquiv (q : ℕ) [NeZero q] (hq : Squarefree q) :
+@[expose]
+public noncomputable def crtRingEquiv (q : ℕ) [NeZero q] (hq : Squarefree q) :
     ZMod q ≃+* ((p : q.primeFactors) → ZMod (p : ℕ)) :=
   (ZMod.ringEquivCongr (prod_primeFactors_eq q hq)).trans
     (ZMod.prodEquivPi _ (primeFactors_pairwise_coprime q))
@@ -81,7 +83,7 @@ noncomputable def crtRingEquiv (q : ℕ) [NeZero q] (hq : Squarefree q) :
 /-- Each component of the CRT equivalence agrees with the canonical `ZMod.castHom`
 projection. This follows from the uniqueness of ring homomorphisms out of `ZMod q`
 (`RingHom.ext_zmod`). -/
-theorem crtRingEquiv_apply_eq_castHom (q : ℕ) [NeZero q] (hq : Squarefree q)
+public theorem crtRingEquiv_apply_eq_castHom (q : ℕ) [NeZero q] (hq : Squarefree q)
     (x : ZMod q) (p : q.primeFactors) :
     crtRingEquiv q hq x p =
       ZMod.castHom (Nat.dvd_of_mem_primeFactors p.2) (ZMod p) x := by
@@ -95,7 +97,7 @@ theorem crtRingEquiv_apply_eq_castHom (q : ℕ) [NeZero q] (hq : Squarefree q)
 
 /-- Membership in the CRT subset, restated using the CRT equivalence:
 `x ∈ Ω_q ↔ ∀ p | q, (CRT projection of x to ZMod p) ∈ Ω_p`. -/
-theorem mem_crtSubset_iff_crtEquiv (q : ℕ) [NeZero q] (hq : Squarefree q)
+public theorem mem_crtSubset_iff_crtEquiv (q : ℕ) [NeZero q] (hq : Squarefree q)
     (Ω : ∀ p : ℕ, Finset (ZMod p)) (x : ZMod q) :
     x ∈ crtSubset q Ω ↔
       ∀ p : q.primeFactors, crtRingEquiv q hq x p ∈ Ω p := by
@@ -104,7 +106,8 @@ theorem mem_crtSubset_iff_crtEquiv (q : ℕ) [NeZero q] (hq : Squarefree q)
 
 /-- The CRT domain equivalence: for squarefree `q`, the CRT subset `Ω_q ⊆ ZMod q`
 is in bijection with the Cartesian product `∏_{p | q} Ω_p`. -/
-noncomputable def crt_domain_equiv (q : ℕ) [NeZero q] (hq : Squarefree q)
+@[expose]
+public noncomputable def crt_domain_equiv (q : ℕ) [NeZero q] (hq : Squarefree q)
     (Ω : ∀ p : ℕ, Finset (ZMod p)) :
     ↥(crtSubset q Ω) ≃ ((p : q.primeFactors) → ↥(Ω p.val)) := by
   refine Equiv.ofBijective
@@ -114,7 +117,8 @@ noncomputable def crt_domain_equiv (q : ℕ) [NeZero q] (hq : Squarefree q)
     simp only [Subtype.mk.injEq]
     apply (crtRingEquiv q hq).injective
     funext p
-    exact congrArg Subtype.val (congr_fun (by exact heq) p)
+    have h1 := congr_fun heq p
+    exact congrArg Subtype.val h1
   · intro f
     let y : (p : q.primeFactors) → ZMod (p : ℕ) := fun p => (f p).val
     refine ⟨⟨(crtRingEquiv q hq).symm y, ?_⟩, ?_⟩
@@ -129,7 +133,7 @@ noncomputable def crt_domain_equiv (q : ℕ) [NeZero q] (hq : Squarefree q)
 
 /-- The tuple counting function condition, transferred through the CRT equivalence:
 `∀ i, t + h i ∈ crtSubset q Ω` iff the projected condition holds componentwise. -/
-theorem tupleCount_filter_iff (q : ℕ) [NeZero q] (hq : Squarefree q)
+public theorem tupleCount_filter_iff (q : ℕ) [NeZero q] (hq : Squarefree q)
     {k : ℕ} (Ω : ∀ p : ℕ, Finset (ZMod p)) (h : Fin k → ZMod q)
     (t : ZMod q) :
     (∀ i, t + h i ∈ crtSubset q Ω) ↔
@@ -152,7 +156,7 @@ $N_k(h, \Omega_q) = \prod_{p \mid q} N_k(h \bmod p, \Omega_p).$
 
 The proof uses the CRT ring isomorphism to transfer the count from `ZMod q` to the
 product type `∏_{p | q} ZMod p`, where the filter condition factors componentwise. -/
-theorem counting_function_multiplicative {k : ℕ} (q : ℕ) [NeZero q] (hq : Squarefree q)
+public theorem counting_function_multiplicative {k : ℕ} (q : ℕ) [NeZero q] (hq : Squarefree q)
     (Ω : ∀ p : ℕ, Finset (ZMod p)) (h : Fin k → ZMod q) :
     tupleCount (crtSubset q Ω) h =
       ∏ p : q.primeFactors,

@@ -14,6 +14,7 @@ To cite Aristotle, tag @Aristotle-Harmonic on GitHub PRs/issues, and add as co-a
 Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
+module
 import PoissonViaCRT.Defs
 import PoissonViaCRT.TupleCount
 

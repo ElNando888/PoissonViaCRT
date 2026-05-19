@@ -14,7 +14,8 @@ To cite Aristotle, tag @Aristotle-Harmonic on GitHub PRs/issues, and add as co-a
 Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
-import PoissonViaCRT.TupleCount
+module
+public import PoissonViaCRT.TupleCount
 import PoissonViaCRT.FluctuationHelpers
 
 /-!
@@ -43,7 +44,8 @@ variable {q : ℕ} [NeZero q]
 
 /-- The multiplicity of a residue class `g` in a filtered lattice set: the number of
 lattice points `h` in the given set whose reduction mod `q` equals `g`. -/
-noncomputable def residueMultiplicity
+@[expose]
+public noncomputable def residueMultiplicity
     (S : Finset (Fin m → ℤ)) (g : Fin m → ZMod q) : ℕ :=
   (S.filter fun h => (fun i => (h i : ZMod q)) = g).card
 
@@ -56,7 +58,7 @@ Specifically, if `f(h)` depends only on the reduction of `h` modulo `q`, then
 
 We partition S by residue class. Each h ∈ S maps to g = (h i mod q)_i, and the filter S.filter (cond = g) gives exactly the elements with that residue. Use Finset.sum_fiberwise or Finset.sum_partition to rewrite the sum. The key is that S = ⊔_{g} (S.filter (residue = g)), and on each fiber the function value is f(g). So the sum over the fiber is (fiber.card) * f(g) = residueMultiplicity S g * f(g).
 -/
-lemma sum_by_residue_classes
+public lemma sum_by_residue_classes
     (m : ℕ) (S : Finset (Fin m → ℤ)) (f : (Fin m → ZMod q) → ℝ) :
     ∑ h ∈ S, f (fun i => (h i : ZMod q)) =
       ∑ g : Fin m → ZMod q, (residueMultiplicity S g : ℝ) * f g := by
@@ -102,7 +104,7 @@ Second, 0 ≤ μ = |Ω|^{m+1}/q^m ≤ |Ω| because |Ω|^{m+1}/q^m = |Ω| * (|Ω|
 
 So both N_k and μ are in [0, |Ω|], hence |N_k - μ| ≤ |Ω| ≤ 2*|Ω|. Actually |N_k - μ| ≤ max(N_k, μ) ≤ |Ω|. But to be safe, use the triangle: |N_k - μ| ≤ |N_k| + |μ| = N_k + μ ≤ |Ω| + |Ω| = 2|Ω|.
 -/
-lemma individual_deviation_bound (Ω : Finset (ZMod q)) (m : ℕ) (hΩ : 0 < Ω.card)
+public lemma individual_deviation_bound (Ω : Finset (ZMod q)) (m : ℕ) (hΩ : 0 < Ω.card)
     (hs : (Ω.card : ℝ) ≤ (q : ℝ))
     (g : Fin m → ZMod q) :
     |(tupleCount Ω (Fin.cons (0 : ZMod q) g) : ℝ) -

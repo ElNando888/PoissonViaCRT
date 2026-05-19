@@ -14,10 +14,11 @@ To cite Aristotle, tag @Aristotle-Harmonic on GitHub PRs/issues, and add as co-a
 Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
-import PoissonViaCRT.CancellationInfra
-import PoissonViaCRT.CRTMultiplicativity
+module
+public import PoissonViaCRT.CancellationInfra
+public import PoissonViaCRT.CRTMultiplicativity
 import PoissonViaCRT.PeriodPullback
-import PoissonViaCRT.LargeDivisorHelpers
+public import PoissonViaCRT.LargeDivisorHelpers
 import PoissonViaCRT.EulerWeights
 
 set_option linter.unusedVariables false
@@ -589,7 +590,7 @@ private lemma final_collapse (s C_lp : ℝ) (d : ℕ) (k : ℕ) (ε : ℝ)
 as a product of local means over the prime factors of
 squarefree `q`. This multiplicativity is the CRT-side
 counterpart of the inclusion-exclusion decomposition. -/
-lemma globalMean_eq_prod_localMean (k : ℕ) (q : ℕ) [NeZero q] (hq : Squarefree q)
+public lemma globalMean_eq_prod_localMean (k : ℕ) (q : ℕ) [NeZero q] (hq : Squarefree q)
     (Ω : ∀ p : ℕ, Finset (ZMod p)) :
     ((crtSubset q Ω).card : ℝ) ^ k / (q : ℝ) ^ (k - 1) =
       ∏ p ∈ q.primeFactors, localMean k Ω p := by
@@ -1086,7 +1087,7 @@ lemma inner_bound_small_divisor (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk1 : 1 ≤
 `Ω p` is nonempty for primes dividing `q`. This is needed to
 ensure the scaling parameter `s = q / |Ω_q|` is well-defined
 and positive. -/
-lemma crtSubset_card_pos_aux (Ω : ∀ p : ℕ, Finset (ZMod p))
+public lemma crtSubset_card_pos_aux (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty) (q : ℕ) [NeZero q] :
     0 < (crtSubset q Ω).card := by
   -- We need to show that `crtSubset q Ω` is nonempty.
@@ -1139,7 +1140,7 @@ nonempty subsets `T ⊆ primeFactors(q)` with
 is bounded by `K₁ · s^{−ε/2}`. This combines
 `inner_bound_small_divisor` with `prod_local_factor_le`
 and `small_divisor_series_bound`. -/
-lemma deviation_small_divisors (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+public lemma deviation_small_divisors (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
     (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)

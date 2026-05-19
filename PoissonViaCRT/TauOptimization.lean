@@ -14,10 +14,11 @@ To cite Aristotle, tag @Aristotle-Harmonic on GitHub PRs/issues, and add as co-a
 Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
+module
 import Mathlib.Algebra.BigOperators.Ring.Finset
 import Mathlib.Analysis.Complex.Exponential
 import Mathlib.Analysis.PSeries
-import Mathlib.Analysis.SpecialFunctions.Pow.Real
+public import Mathlib.Analysis.SpecialFunctions.Pow.Real
 
 /-!
 # τ-Optimization from §3.2 of Granville–Kurlberg
@@ -68,7 +69,8 @@ namespace PoissonCRT
 
 In the context of §3.2 of Granville–Kurlberg, when a prime `p` is "activated"
 in a τ-partition, it contributes this weight to the optimization bound. -/
-noncomputable def tauLocalWeight (ε : ℝ) (p : ℕ) : ℝ :=
+@[expose]
+public noncomputable def tauLocalWeight (ε : ℝ) (p : ℕ) : ℝ :=
   2 * (p : ℝ) ^ (-ε)
 
 /-- The dimension `v(τ)` of a τ-partition is the cardinality of the active set `T`.
@@ -85,19 +87,21 @@ noncomputable def tauWeight (ε : ℝ) (T : Finset ℕ) : ℝ :=
 
 This is the total optimization weight from §3.2, summing over all possible
 τ-partitions (subsets of the prime factor set). -/
-noncomputable def tauPartitionSum (ε : ℝ) (S : Finset ℕ) : ℝ :=
+@[expose]
+public noncomputable def tauPartitionSum (ε : ℝ) (S : Finset ℕ) : ℝ :=
   ∑ T ∈ S.powerset, ∏ p ∈ T, tauLocalWeight ε p
 
 /-- The convergent bound constant `C(ε) = exp(∑' n, tauLocalWeight ε n)`.
 For `ε > 1`, this is a finite positive constant that bounds the partition sum
 for all finsets `S`. -/
-noncomputable def tauBoundConstant (ε : ℝ) : ℝ :=
+@[expose]
+public noncomputable def tauBoundConstant (ε : ℝ) : ℝ :=
   exp (∑' n : ℕ, tauLocalWeight ε n)
 
 /-! ### Basic Properties -/
 
 /-- The local weight is nonneg for any `ε` and `p : ℕ`. -/
-theorem tauLocalWeight_nonneg (ε : ℝ) (p : ℕ) : 0 ≤ tauLocalWeight ε p :=
+public theorem tauLocalWeight_nonneg (ε : ℝ) (p : ℕ) : 0 ≤ tauLocalWeight ε p :=
   mul_nonneg (by norm_num) (rpow_nonneg (Nat.cast_nonneg p) (-ε))
 
 /-- The partition sum is nonneg. -/
@@ -173,7 +177,7 @@ for ALL finsets `S` (and in particular for `S = primeFactors(q)` for any `q`).
 
 This is the abstract form of the main result of §3.2: the optimization sum
 converges uniformly over all squarefree integers. -/
-theorem tauPartitionSum_le_bound {ε : ℝ} (hε : 1 < ε) (S : Finset ℕ) :
+public theorem tauPartitionSum_le_bound {ε : ℝ} (hε : 1 < ε) (S : Finset ℕ) :
     tauPartitionSum ε S ≤ tauBoundConstant ε :=
   calc tauPartitionSum ε S
       ≤ exp (∑ p ∈ S, tauLocalWeight ε p) := tauPartitionSum_le_exp ε S

@@ -14,7 +14,8 @@ To cite Aristotle, tag @Aristotle-Harmonic on GitHub PRs/issues, and add as co-a
 Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
-import Mathlib.Algebra.BigOperators.Ring.Finset
+module
+public import Mathlib.Algebra.BigOperators.Ring.Finset
 import Mathlib.Data.Fintype.Pi
 
 /-!
@@ -47,7 +48,7 @@ theorem sum_prod_pi (f : (i : ι) → α i → R) :
 
 /-- **Iterated Cancellation Lemma.** If the sum of `f j` over the fiber `α j` is zero for some
 index `j`, then the total sum of the product over the entire pi type is zero. -/
-theorem sum_prod_pi_eq_zero (f : (i : ι) → α i → R) {j : ι} (hj : ∑ y, f j y = 0) :
+public theorem sum_prod_pi_eq_zero (f : (i : ι) → α i → R) {j : ι} (hj : ∑ y, f j y = 0) :
     ∑ x : (i : ι) → α i, ∏ i, f i (x i) = 0 := by
   rw [sum_prod_pi]
   exact Finset.prod_eq_zero (Finset.mem_univ j) hj

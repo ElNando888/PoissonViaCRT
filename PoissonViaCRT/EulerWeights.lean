@@ -14,7 +14,8 @@ To cite Aristotle, tag @Aristotle-Harmonic on GitHub PRs/issues, and add as co-a
 Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
-import Mathlib.Analysis.SpecialFunctions.Pow.Real
+module
+public import Mathlib.Analysis.SpecialFunctions.Pow.Real
 
 set_option linter.unusedVariables false
 
@@ -43,7 +44,7 @@ namespace PoissonCRT
 /-- For `p` a prime factor of `q`, the residue set satisfies
 `(Ω p).card ≤ p`. This is the basic cardinality bound used in
 the Euler weight estimates for the spatial synthesis. -/
-lemma omega_card_le_prime (q : ℕ) [NeZero q]
+public lemma omega_card_le_prime (q : ℕ) [NeZero q]
     (Ω : ∀ p : ℕ, Finset (ZMod p)) (p : ℕ) (hp : p ∈ q.primeFactors) :
     ((Ω p).card : ℝ) ≤ (p : ℝ) := by
   haveI : Fact p.Prime := ⟨Nat.prime_of_mem_primeFactors hp⟩
@@ -76,7 +77,7 @@ over a subset `T ⊆ q.primeFactors` of the local Euler weight
 factors is bounded by `∏ p ∈ T, k · p^{−ε}`. This is the key
 multiplicative estimate used in the inclusion-exclusion
 deviation bound. -/
-lemma prod_local_factor_le (T : Finset ℕ) (ε : ℝ) (k : ℕ) (q : ℕ)
+public lemma prod_local_factor_le (T : Finset ℕ) (ε : ℝ) (k : ℕ) (q : ℕ)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hT_sub : T ⊆ q.primeFactors)
     (hrp : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ)) :

@@ -14,11 +14,12 @@ To cite Aristotle, tag @Aristotle-Harmonic on GitHub PRs/issues, and add as co-a
 Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
-import Mathlib.Algebra.BigOperators.Ring.Finset
-import Mathlib.Data.Finset.Powerset
-import Mathlib.Analysis.SpecialFunctions.Exp
-import Mathlib.Analysis.SpecialFunctions.Pow.Real
-import Mathlib.Topology.Algebra.InfiniteSum.Order
+module
+public import Mathlib.Algebra.BigOperators.Ring.Finset
+public import Mathlib.Data.Finset.Powerset
+public import Mathlib.Analysis.SpecialFunctions.Exp
+public import Mathlib.Analysis.SpecialFunctions.Pow.Real
+public import Mathlib.Topology.Algebra.InfiniteSum.Order
 
 /-!
 # Convergent Euler Bound for k ≥ 3
@@ -58,12 +59,13 @@ namespace PoissonCRT
 `convergentEulerLocalWeight ε Ω p = p * (1 - |Ω_p| / p) * p ^ (-ε)`.
 
 This matches the actual per-prime factor from the L∞ × L₁ inner bound. -/
-noncomputable def convergentEulerLocalWeight (ε : ℝ) (Ω : ∀ p : ℕ, Finset (ZMod p))
+@[expose]
+public noncomputable def convergentEulerLocalWeight (ε : ℝ) (Ω : ∀ p : ℕ, Finset (ZMod p))
     (p : ℕ) : ℝ :=
   (p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)
 
 /-- The local weight is nonneg for all `ε` and `p : ℕ`, provided `|Ω_p| ≤ p`. -/
-theorem convergentEulerLocalWeight_nonneg (ε : ℝ) (Ω : ∀ p : ℕ, Finset (ZMod p)) (p : ℕ)
+public theorem convergentEulerLocalWeight_nonneg (ε : ℝ) (Ω : ∀ p : ℕ, Finset (ZMod p)) (p : ℕ)
     (hp : (Ω p).card ≤ p) :
     0 ≤ convergentEulerLocalWeight ε Ω p := by
   unfold convergentEulerLocalWeight
@@ -89,7 +91,8 @@ theorem convergentEuler_comparison {p : ℕ} (hp : p.Prime) (ε : ℝ)
 
 By the Euler product identity, this equals
 `∑_{T ⊆ S} ∏_{p ∈ T} convergentEulerLocalWeight ε Ω p`. -/
-noncomputable def convergentEulerPartitionSum (ε : ℝ) (Ω : ∀ p : ℕ, Finset (ZMod p))
+@[expose]
+public noncomputable def convergentEulerPartitionSum (ε : ℝ) (Ω : ∀ p : ℕ, Finset (ZMod p))
     (S : Finset ℕ) : ℝ :=
   ∏ p ∈ S, (1 + convergentEulerLocalWeight ε Ω p)
 
@@ -104,7 +107,7 @@ theorem convergentEulerPartitionSum_nonneg (ε : ℝ) (Ω : ∀ p : ℕ, Finset 
 **Euler product identity**: The powerset sum of products equals the partition sum product:
 `∑_{T ⊆ S} ∏_{p ∈ T} w(p) = ∏_{p ∈ S} (1 + w(p))`.
 -/
-theorem powerset_prod_eq_convergentEulerPartitionSum (ε : ℝ) (Ω : ∀ p : ℕ, Finset (ZMod p))
+public theorem powerset_prod_eq_convergentEulerPartitionSum (ε : ℝ) (Ω : ∀ p : ℕ, Finset (ZMod p))
     (S : Finset ℕ) :
     ∑ T ∈ S.powerset, ∏ p ∈ T, convergentEulerLocalWeight ε Ω p =
       convergentEulerPartitionSum ε Ω S := by
@@ -164,11 +167,12 @@ theorem convergentEulerPartitionSum_le_bound {k : ℕ} (hk : 3 ≤ k) {ε : ℝ}
 
 When `d = ∏_{p ∈ T} p > s`, bounding `s ≤ d` introduces an extra factor of `p`
 per prime, upgrading the local weight. -/
-noncomputable def largeEulerLocalWeight (ε : ℝ) (Ω : ∀ p : ℕ, Finset (ZMod p))
+@[expose]
+public noncomputable def largeEulerLocalWeight (ε : ℝ) (Ω : ∀ p : ℕ, Finset (ZMod p))
     (p : ℕ) : ℝ :=
   (p : ℝ) * convergentEulerLocalWeight ε Ω p
 
-theorem largeEulerLocalWeight_nonneg (ε : ℝ) (Ω : ∀ p : ℕ, Finset (ZMod p)) (p : ℕ)
+public theorem largeEulerLocalWeight_nonneg (ε : ℝ) (Ω : ∀ p : ℕ, Finset (ZMod p)) (p : ℕ)
     (hp : (Ω p).card ≤ p) :
     0 ≤ largeEulerLocalWeight ε Ω p :=
   mul_nonneg (Nat.cast_nonneg p) (convergentEulerLocalWeight_nonneg ε Ω p hp)
@@ -183,7 +187,8 @@ theorem largeEuler_comparison {p : ℕ} (hp : p.Prime) (ε : ℝ)
 
 /-- The large-divisor Euler partition sum:
 `largeEulerPartitionSum ε Ω S = ∏_{p ∈ S} (1 + largeEulerLocalWeight ε Ω p)`. -/
-noncomputable def largeEulerPartitionSum (ε : ℝ) (Ω : ∀ p : ℕ, Finset (ZMod p))
+@[expose]
+public noncomputable def largeEulerPartitionSum (ε : ℝ) (Ω : ∀ p : ℕ, Finset (ZMod p))
     (S : Finset ℕ) : ℝ :=
   ∏ p ∈ S, (1 + largeEulerLocalWeight ε Ω p)
 
@@ -193,7 +198,7 @@ theorem largeEulerPartitionSum_nonneg (ε : ℝ) (Ω : ∀ p : ℕ, Finset (ZMod
   Finset.prod_nonneg fun p hp =>
     add_nonneg one_pos.le (largeEulerLocalWeight_nonneg ε Ω p (hΩ p hp))
 
-theorem powerset_prod_eq_largeEulerPartitionSum (ε : ℝ) (Ω : ∀ p : ℕ, Finset (ZMod p))
+public theorem powerset_prod_eq_largeEulerPartitionSum (ε : ℝ) (Ω : ∀ p : ℕ, Finset (ZMod p))
     (S : Finset ℕ) :
     ∑ T ∈ S.powerset, ∏ p ∈ T, largeEulerLocalWeight ε Ω p =
       largeEulerPartitionSum ε Ω S := by
