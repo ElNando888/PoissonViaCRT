@@ -298,7 +298,35 @@ lemma prod_diff_ne_zero_implies_dvd {k : ℕ} (hk : 1 ≤ k) (q : ℕ) [NeZero q
     (localCount_sub_localMean_eq_zero_of_not_dvd hk q p (hT hp) Ω h h_dist h_no_col
       (hΩ_full p hp)))
 
-/-! ### Large-divisor bounds -/
+/-! ### Large-divisor bounds
+  
+  TODO(Action Plan): Reconnect the Gamma-Structure Infrastructure
+  The `large_divisor_series_bound` below is currently a `sorry` that represents
+  a drastic overapproximation of the actual mathematics in Granville-Kurlberg (2004) §3.1.
+  
+  What happened:
+  Instead of exactly counting tuple collisions via the Gamma structures `Γ = {γ_ij}`,
+  Aristotle bypassed the algebraic rearrangement and GCD manipulation. It flattened the
+  geometry by using a brute-force pointwise bound (`deviation_prod_pointwise_le` in
+  `LargeDivisorHelpers.lean`). This shortcut split the prime factors into small primes
+  (paying a worst-case penalty of `p` per prime) and large primes (paying the Weil
+  bound `p^{-ε}`). 
+
+  The Disconnect:
+  Because the box summation was pushed inside this pointwise overapproximation,
+  the resulting `sorry` formulation is purely in terms of subsets of primes `T` and
+  Euler products. It entirely ignores the $M_γ(H)$ sums and collision matrices.
+  Consequently, `Combinatorics.lean` and `GammaRangeSum.lean` are currently
+  "dead code" and unimported.
+  
+  The Fix:
+  To successfully prove this bound, the brute-force overapproximation will likely fail 
+  as it is too loose for analytic convergence. Future efforts must:
+  1. Delete Aristotle's pointwise overapproximation (`deviation_prod_pointwise_le`).
+  2. Resurrect and import the `GammaStructure` machinery from `Combinatorics.lean`.
+  3. Reconstruct the $M_γ(H)$ sums exactly as in GK08 Eq 1233-1326.
+  4. Reformulate this `sorry` to bridge the `prod_diff` sum with the $M_γ$ bounds.
+-/
 
 /-- The series `∑ 1 / μ_d`, summed over squarefree divisors `d > s` of `q`,
 is bounded by `K_large · s^{-ε/2}`. The full analytic convergence proof is omitted. -/
