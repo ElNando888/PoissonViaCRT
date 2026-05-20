@@ -15,10 +15,9 @@ Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
 module
-import Mathlib
-import PoissonViaCRT.Combinatorics
-import PoissonViaCRT.GammaRangeSum
-import PoissonViaCRT.LargeDivisorHelpers
+public import PoissonViaCRT.Combinatorics
+public import PoissonViaCRT.GammaRangeSum
+public import PoissonViaCRT.LargeDivisorHelpers
 
 set_option linter.unusedVariables false
 
@@ -77,13 +76,12 @@ provided every prime in `T` divides the radical of `γ`. When some
 prime in `T` does not divide `radical γ`, the weight is `0` (the
 deviation product vanishes because the local counting function
 equals the local mean at that prime for non-colliding tuples). -/
-noncomputable def perGammaDeviationWeight (ε : ℝ) (k : ℕ)
-    (Ω : ∀ p : ℕ, Finset (ZMod p)) (T : Finset ℕ) (B_max : ℕ) (γ : ℕ) : ℝ :=
-  if ∀ p ∈ T, p ∣ radical γ then
-    (∏ p ∈ T.filter (· ≤ B_max), (p : ℝ)) *
-    (∏ p ∈ T.filter (B_max < ·),
-      (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) * localMean k Ω p)
-  else 0
+@[expose]
+public noncomputable def perGammaDeviationWeight (ε : ℝ) (k : ℕ)
+    (Ω : ∀ p : ℕ, Finset (ZMod p)) (T : Finset ℕ) (γ : ℕ) : ℝ :=
+  (∏ p ∈ T.filter (fun p => p ∣ radical γ), (p : ℝ)) *
+  (∏ p ∈ T.filter (fun p => ¬(p ∣ radical γ)),
+    (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) * localMean k Ω p)
 
 /-! ## 2. Deviation sum bounded by gamma sum -/
 
@@ -100,7 +98,7 @@ $$\sum_{h \in \mathrm{Box}} \Bigl|\prod_{p \in T}
 \sum_{\gamma = 1}^{H}
   w(\gamma, T)\;\cdot\;M_\gamma(H)$$
 
-where `H = ⌈s · ∑ bᵢ⌉` and `w(γ, T) = perGammaDeviationWeight ε k Ω T B_max γ`.
+where `H = ⌈s · ∑ bᵢ⌉` and `w(γ, T) = perGammaDeviationWeight ε k Ω T γ`.
 
 ### Proof sketch (to be filled in a subsequent run)
 
@@ -116,30 +114,29 @@ where `H = ⌈s · ∑ bᵢ⌉` and `w(γ, T) = perGammaDeviationWeight ε k Ω 
 3. Within each fiber (fixed `γ`), bound the deviation product pointwise:
    - For primes `p ∈ T` with `p ∤ radical γ`, the deviation vanishes
      (`localCount_sub_localMean_eq_zero_of_not_dvd`).
-   - For small primes `p ≤ B_max`: `|N_p − μ_p| ≤ p`
+   - For primes `p ∣ radical γ` (colliding): `|N_p − μ_p| ≤ p`
      (`abs_localCount_sub_localMean_le_p`).
-   - For large primes `p > B_max`: `|N_p − μ_p| ≤ (1 − |Ω_p|/p) · p^{−ε} · μ_p`
+   - For primes `¬(p ∣ radical γ)` (well-distributed): `|N_p − μ_p| ≤ (1 − |Ω_p|/p) · p^{−ε} · μ_p`
      (`localCount_deviation_weil`).
 
 4. The fiber cardinality is bounded by `countTuplesWithGammaProd (k - 1) γ H`
    (by definition of `countTuplesWithGammaProd`).
 -/
-lemma deviation_sum_le_gamma_sum (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+public lemma deviation_sum_le_gamma_sum (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p)) (q : ℕ) [NeZero q] (hq : Squarefree q)
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
     (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
     (X : Box (k - 1)) (s : ℝ) (hs : 1 ≤ s)
     (T : Finset ℕ) (hT : T ⊆ q.primeFactors) (hT_ne : T.Nonempty) :
     let H := ⌈s * ∑ i, X.sides i⌉₊
-    let B_max := H
     ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
         Finset.Icc (1 : ℤ) ↑H).filter
       (fun h => inScaledBox X s (fun _ => 0) h)),
       |∏ p ∈ T, (localCount Ω q
           (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p -
           localMean k Ω p)| ≤
-    ∑ γ ∈ Finset.Icc 1 H,
-      perGammaDeviationWeight ε k Ω T B_max γ *
+    ∑ γ ∈ Finset.Icc 1 (H ^ k),
+      perGammaDeviationWeight ε k Ω T γ *
         (countTuplesWithGammaProd (k - 1) γ H : ℝ) := by
   sorry
 
@@ -172,19 +169,18 @@ is bounded by `K · s^{−ε/2}`. This combines:
 4. Since `∏ T > s` and all factors are prime (`≥ 2`), the tail sum
    decays as `s^{−ε/2}` after summing over all relevant `T`.
 -/
-lemma gamma_weighted_series_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+public lemma gamma_weighted_series_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p)) (X : Box (k - 1))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
     (hΩle : ∀ p, p.Prime → (Ω p).card ≤ p) :
     ∃ K : ℝ, 0 < K ∧ ∀ (q : ℕ) [NeZero q] (s : ℝ) (_ : 1 ≤ s),
       let H := ⌈s * ∑ i, X.sides i⌉₊
-      let B_max := H
       ∑ T ∈ (q.primeFactors.powerset.filter (· ≠ ∅)).filter
             (fun (T : Finset ℕ) => ¬((∏ p ∈ T, (p : ℝ)) ≤ s)),
         ((q : ℝ) ^ (k - 1) / (crtSubset q Ω).card ^ k) *
         (∏ p ∈ q.primeFactors \ T, localMean k Ω p) *
-        (∑ γ ∈ Finset.Icc 1 H,
-          perGammaDeviationWeight ε k Ω T B_max γ *
+        (∑ γ ∈ Finset.Icc 1 (H ^ k),
+          perGammaDeviationWeight ε k Ω T γ *
             (countTuplesWithGammaProd (k - 1) γ H : ℝ)) ≤
         K * s ^ (-(ε / 2)) := by
   sorry
