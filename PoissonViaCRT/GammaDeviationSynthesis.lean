@@ -33,27 +33,24 @@ This file bridges the algebraic product-difference decomposition
 In the Granville–Kurlberg proof (§3.1), the sum over lattice points `h`
 of the deviation product `∏_{p ∈ T} |N_p(h) − μ_p|` is reorganised by
 fibering over the *gamma value* `γ` of each tuple. The gamma value is
-defined via `GammaStructure.ofTuple`: for `c = ∏_{p ∈ T} p` and a lattice
-point `h` in the scaled box, the gamma structure
-`Γ = GammaStructure.ofTuple c (Fin.cons 0 h)` encodes which pairs `(i, j)`
-collide modulo each prime `p ∈ T`, and `γ = Γ.gammaProd` is the associated
-collision product.
+defined via `gammaProdOfBoxPoint`: for `c = ∏_{p ∈ T} p` and a lattice
+point `h` in the scaled box, the gamma product
+`γ(h) = ∏_j lcm_{i<j} gcd(c, |h'_j − h'_i|)` (where `h' = (0, h)`)
+encodes the collision structure.
 
 The summation rearrangement uses `Finset.sum_fiberwise_of_maps_to` to
 partition the box lattice points by their gamma value, then bounds the
 per-fiber deviation product and counts the fiber cardinality using
 `countTuplesWithGammaProd`.
 
-## Main Results (scaffolding — proofs are `sorry`)
+## Main Results
 
-* `deviation_sum_le_gamma_sum` — For each subset `T ⊆ q.primeFactors`,
-  the sum over box lattice points `h` of `|∏_{p ∈ T} (localCount − localMean)|`
-  is bounded by a sum over gamma values `γ` of a per-gamma weight times
-  the tuple count `M_γ(H)`.
-
-* `gamma_weighted_series_bound` — The resulting gamma-weighted series
-  is bounded by `K · s^{−ε/2}`, using `countTuplesWithGammaProd_small_gamma`
-  for small `γ` and `countTuples_refined_bound` for large `γ`.
+* `deviation_prod_le_perGammaWeight` — Pointwise bound: for each box point `h`,
+  `|∏_{p ∈ T} (N_p − μ_p)| ≤ perGammaDeviationWeight ε k Ω T γ(h)`.
+* `fiber_card_le_countTuplesWithGammaProd` — Fiber cardinality: the number of
+  box points with gamma value `γ` is at most `countTuplesWithGammaProd (k−1) γ H`.
+* `deviation_sum_le_gamma_sum` — Synthesis: the total deviation sum is bounded
+  by `∑_γ w(γ) · M_γ(H)`.
 
 ## References
 
@@ -70,12 +67,9 @@ namespace PoissonCRT
 /-- The per-gamma deviation weight for a subset `T` of primes.
 For a gamma value `γ` (representing a collision structure), the weight
 is the product over primes `p ∈ T` of:
-- `p` (trivial bound) if `p ≤ B_max` (small prime), or
-- `(1 − |Ω_p|/p) · p^{−ε} · μ_p` (Weil-type bound) if `p > B_max` (large prime),
-provided every prime in `T` divides the radical of `γ`. When some
-prime in `T` does not divide `radical γ`, the weight is `0` (the
-deviation product vanishes because the local counting function
-equals the local mean at that prime for non-colliding tuples). -/
+- `p` (trivial bound) if `p ∣ radical γ` (collision prime),
+- `(1 − |Ω_p|/p) · p^{−ε} · μ_p` (Weil-type bound) if `p ∤ radical γ`
+  (well-distributed prime). -/
 @[expose]
 public noncomputable def perGammaDeviationWeight (ε : ℝ) (k : ℕ)
     (Ω : ∀ p : ℕ, Finset (ZMod p)) (T : Finset ℕ) (γ : ℕ) : ℝ :=
@@ -83,45 +77,211 @@ public noncomputable def perGammaDeviationWeight (ε : ℝ) (k : ℕ)
   (∏ p ∈ T.filter (fun p => ¬(p ∣ radical γ)),
     (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) * localMean k Ω p)
 
-/-! ## 2. Deviation sum bounded by gamma sum -/
+/-! ## 1b. Gamma product of a box point -/
+
+/-- The gamma product of a box point `h ∈ ℤ^n` with respect to a set `T`
+of primes. This is the gamma product of the `(n+1)`-tuple `(0, h₁, …, hₙ)`
+with respect to `c = ∏_{p ∈ T} p`:
+  `γ(h) = ∏_{j=0}^{n} lcm_{i<j} gcd(c, |h'_j − h'_i|)`
+where `h' = Fin.cons 0 h`.
+
+This function is defined for *any* `h`, without requiring distinct entries.
+When `h` arises from an `inScaledBox` lattice point, the entries of
+`Fin.cons 0 h` are automatically distinct (by `inScaledBox_strictMono`),
+and this function agrees with `(GammaStructure.ofTuple c hc h' h_dist).gammaProd`. -/
+noncomputable def gammaProdOfBoxPoint (T : Finset ℕ) {n : ℕ} (h : Fin n → ℤ) : ℕ :=
+  let c := ∏ p ∈ T, p
+  let h' := Fin.cons (0 : ℤ) h
+  ∏ j : Fin (n + 1), (Finset.Iio j).lcm
+    (fun i => Nat.gcd c (Int.natAbs (h' j - h' i)))
+
+/-! ## 2. Auxiliary lemmas for the deviation-sum bound -/
+
+/-
+The `perGammaDeviationWeight` is nonneg for primes `T ⊆ q.primeFactors`.
+-/
+lemma perGammaDeviationWeight_nonneg (ε : ℝ) (k : ℕ)
+    (Ω : ∀ p : ℕ, Finset (ZMod p)) (q : ℕ) [NeZero q]
+    (T : Finset ℕ) (hT : T ⊆ q.primeFactors) (γ : ℕ) :
+    0 ≤ perGammaDeviationWeight ε k Ω T γ := by
+  refine' mul_nonneg ( Finset.prod_nonneg fun p hp => Nat.cast_nonneg _ ) ( Finset.prod_nonneg fun p hp => mul_nonneg ( mul_nonneg _ _ ) _ );
+  · refine' sub_nonneg_of_le _;
+    refine' div_le_one_of_le₀ _ ( Nat.cast_nonneg _ );
+    haveI := Fact.mk ( Nat.prime_of_mem_primeFactors ( hT ( Finset.mem_filter.mp hp |>.1 ) ) ) ; exact_mod_cast le_trans ( Finset.card_le_univ _ ) ( by norm_num ) ;
+  · positivity;
+  · exact div_nonneg ( pow_nonneg ( Nat.cast_nonneg _ ) _ ) ( pow_nonneg ( Nat.cast_nonneg _ ) _ )
+
+/-
+When `p ∈ T`, `p` is prime, and `p ∤ radical(γ(h))`, the projected
+tuple `Fin.cons 0 h` is injective modulo `p`. This is because `p ∣ ∏ T`
+and `p ∤ radical(γ)` together imply `p` does not divide any pairwise
+difference `|h'_j − h'_i|`, where `h' = Fin.cons 0 h`.
+-/
+lemma not_dvd_radical_gammaProd_imp_injective {n : ℕ} (hn : 1 ≤ n)
+    (T : Finset ℕ) (q : ℕ) [NeZero q]
+    (hT : T ⊆ q.primeFactors)
+    (p : ℕ) (hp_prime : Nat.Prime p) (hp_T : p ∈ T)
+    (h : Fin n → ℤ)
+    (hp_not : ¬(p ∣ radical (gammaProdOfBoxPoint T h))) :
+    let g : Fin (n + 1) → ZMod q :=
+      Fin.cons (0 : ZMod q) (fun j : Fin n => ((h j : ℤ) : ZMod q))
+    haveI : NeZero p := ⟨hp_prime.ne_zero⟩
+    Function.Injective (fun i : Fin (n + 1) =>
+      ZMod.castHom (Nat.dvd_of_mem_primeFactors (hT hp_T)) (ZMod p) (g i)) := by
+  intro i j hij
+  generalize_proofs at *;
+  intro h_eq
+  generalize_proofs at *;
+  contrapose! hp_not; simp_all +decide [ radical ] ;
+  refine' dvd_trans _ ( Finset.dvd_prod_of_mem _ <| Nat.mem_primeFactors.mpr ⟨ hp_prime, _, _ ⟩ ) <;> norm_num [ gammaProdOfBoxPoint ];
+  · refine' dvd_trans _ ( Finset.dvd_prod_of_mem _ ( Finset.mem_univ ( Max.max j hij ) ) ) ; cases max_choice j hij <;> simp_all +decide [ Finset.lcm_dvd_iff ] ;
+    · refine' dvd_trans _ ( Finset.dvd_lcm ( Finset.mem_Iio.mpr <| show hij < j from lt_of_le_of_ne ‹_› <| Ne.symm hp_not ) ) ; simp_all +decide [ Fin.cons ] ;
+      refine' Nat.dvd_gcd ( Finset.dvd_prod_of_mem _ hp_T ) _;
+      rw [ ← Int.natCast_dvd ] ; haveI := Fact.mk hp_prime; simp_all +decide [ ← ZMod.intCast_zmod_eq_zero_iff_dvd, Fin.cons ] ;
+      cases j using Fin.inductionOn <;> cases hij using Fin.inductionOn <;> aesop;
+    · refine' dvd_trans _ ( Finset.dvd_lcm ( Finset.mem_Iio.mpr ( lt_of_le_of_ne ‹_› hp_not ) ) ) ; simp_all +decide [ Fin.cons ] ;
+      refine' Nat.dvd_gcd ( Finset.dvd_prod_of_mem _ hp_T ) _;
+      rw [ ← Int.natCast_dvd ] ; simp_all +decide [ ← ZMod.intCast_zmod_eq_zero_iff_dvd, sub_eq_iff_eq_add ] ;
+      convert h_eq.symm using 1;
+      · cases hij using Fin.inductionOn <;> aesop;
+      · cases j using Fin.inductionOn <;> aesop;
+  · simp +decide [ Finset.prod_eq_zero_iff, Nat.gcd_eq_zero_iff ];
+    intro i j hij h0; have := hT h0; simp_all +decide [ Nat.primeFactors_zero ] ;
+
+/-
+Weil-type bound on `|localCount − localMean|` when the tuple is
+injective modulo `p` (without requiring `p > ⌈s * ∑ sides⌉`).
+-/
+lemma localCount_deviation_of_injective {ε : ℝ} {n : ℕ} (hn : 1 ≤ n)
+    (Ω : ∀ p : ℕ, Finset (ZMod p)) (q : ℕ) [NeZero q]
+    (p : ℕ) (hp_prime : Nat.Prime p) (hp_factor : p ∈ q.primeFactors)
+    (hWD : @WellDistributed ε p ⟨hp_prime⟩ (Ω p) (n + 1))
+    (h : Fin n → ℤ)
+    (h_inj :
+      let g : Fin (n + 1) → ZMod q :=
+        Fin.cons (0 : ZMod q) (fun j : Fin n => ((h j : ℤ) : ZMod q))
+      haveI : NeZero p := ⟨hp_prime.ne_zero⟩;
+      Function.Injective (fun i : Fin (n + 1) =>
+        ZMod.castHom (Nat.dvd_of_mem_primeFactors hp_factor) (ZMod p) (g i))) :
+    |localCount Ω q (Fin.cons (0 : ZMod q) (fun i => ((h i : ℤ) : ZMod q))) p -
+      localMean (n + 1) Ω p| ≤
+    (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) * localMean (n + 1) Ω p := by
+  unfold localCount localMean; simp +decide [ *, Fin.cons ] ;
+  convert hWD.1 _ _ using 1;
+  convert h_inj using 1
+
+/-
+**Pointwise Weight Bound.** For a single lattice point `h` in the box,
+the absolute deviation product `|∏_{p ∈ T} (localCount − localMean)|` is
+bounded by `perGammaDeviationWeight ε k Ω T γ`, where `γ` is the gamma
+product `gammaProdOfBoxPoint T h`.
+
+The proof splits `T` into collision primes (`p ∣ radical γ`) and
+well-distributed primes (`p ∤ radical γ`):
+- Collision primes get the trivial bound `|localCount − localMean| ≤ p`
+  via `abs_localCount_sub_localMean_le_p`.
+- Well-distributed primes: since `p ∤ radical γ` and `p ∣ ∏ T`, the
+  tuple `Fin.cons 0 h` is injective mod `p`, so the `WellDistributed`
+  hypothesis gives `|localCount − localMean| ≤ (1−|Ω|/p)·p^{−ε}·μ_p`.
+
+Uses `not_dvd_radical_gammaProd_imp_injective` and
+`localCount_deviation_of_injective` as sub-lemmas.
+-/
+lemma deviation_prod_le_perGammaWeight (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p)) (q : ℕ) [NeZero q] (hq : Squarefree q)
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
+    (X : Box (k - 1)) (s : ℝ) (hs : 1 ≤ s)
+    (T : Finset ℕ) (hT : T ⊆ q.primeFactors) (hT_ne : T.Nonempty)
+    (h : Fin (k - 1) → ℤ)
+    (hh_mem : h ∈ (Fintype.piFinset fun _ : Fin (k - 1) =>
+        Finset.Icc (1 : ℤ) ↑(⌈s * ∑ i, X.sides i⌉₊)))
+    (hbox : inScaledBox X s (fun _ => 0) h) :
+    |∏ p ∈ T, (localCount Ω q
+        (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p -
+        localMean k Ω p)| ≤
+    perGammaDeviationWeight ε k Ω T (gammaProdOfBoxPoint T h) := by
+  -- For each prime $p \in T$, we can split the product into two parts: one where $p$ divides the radical of $\gamma$ and one where it does not.
+  have h_split : ∀ p ∈ T, |localCount Ω q (Fin.cons 0 (fun i => ((h i : ℤ) : ZMod q))) p - localMean k Ω p| ≤ if p ∣ radical (gammaProdOfBoxPoint T h) then (p : ℝ) else (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) * localMean k Ω p := by
+    intro p hp;
+    split_ifs;
+    · grind +suggestions;
+    · convert localCount_deviation_of_injective ( show 1 ≤ k - 1 from Nat.le_sub_one_of_lt hk ) Ω q p ( Nat.prime_of_mem_primeFactors ( hT hp ) ) ( hT hp ) _ h _ using 1;
+      any_goals rw [ Nat.sub_add_cancel ( by linarith ) ];
+      · grind;
+      · convert hWD p using 1;
+      · convert not_dvd_radical_gammaProd_imp_injective ( show 1 ≤ k - 1 from Nat.le_sub_one_of_lt hk ) T q hT p ( Nat.prime_of_mem_primeFactors ( hT hp ) ) hp h ‹_› using 1;
+  convert Finset.prod_le_prod ?_ h_split using 1;
+  · rw [ Finset.abs_prod ];
+  · unfold perGammaDeviationWeight; simp +decide [ Finset.prod_ite ] ;
+  · exact fun _ _ => abs_nonneg _
+
+/-- **Fiber Cardinality Bound.** For any fixed `γ`, the number of box
+lattice points `h` that map to `γ` via `gammaProdOfBoxPoint` is bounded
+by `countTuplesWithGammaProd (k − 1) γ H`.
+
+The proof shows that each `h` in the fiber corresponds to a tuple
+`Fin.cons 0 h` satisfying the conditions in `countTuplesWithGammaProd`:
+- `(Fin.cons 0 h) 0 = 0`
+- distinct entries (from `inScaledBox_strictMono`)
+- `0 ≤ (Fin.cons 0 h) i ≤ H`
+- existence of a matching `GammaStructure` (via `GammaStructure.ofTuple`) -/
+/- TODO: The proof requires:
+   1. Showing each h in the fiber maps to a tuple Fin.cons 0 h satisfying
+      the conditions in countTuplesWithGammaProd (h' 0 = 0, distinct entries,
+      0 ≤ h' i ≤ H, and existence of a matching GammaStructure).
+   2. The key difficulty is proving that
+      gcd(radical(γ), |h'_j - h'_i|) = gcd(∏ T, |h'_j - h'_i|)
+      which is needed for the GammaStructure matching condition.
+   3. Using injectivity of Fin.cons 0 to bound the fiber cardinality. -/
+lemma fiber_card_le_countTuplesWithGammaProd (k : ℕ) (hk : 2 ≤ k)
+    (T : Finset ℕ) (q : ℕ) [NeZero q] (hq : Squarefree q) (hT : T ⊆ q.primeFactors)
+    (X : Box (k - 1)) (s : ℝ) (hs : 1 ≤ s) (γ : ℕ) :
+    let H := ⌈s * ∑ i, X.sides i⌉₊
+    (((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ↑H).filter
+      (fun h => inScaledBox X s (fun _ => 0) h)).filter
+      (fun h => gammaProdOfBoxPoint T h = γ)).card ≤
+    countTuplesWithGammaProd (k - 1) γ H := by
+  sorry
+
+/-- The gamma product of a box point is in `[1, H ^ k]`. The lower bound
+follows from `gammaProd_pos` (the tuple has distinct entries, giving at least
+one nontrivial gcd). The upper bound follows from each `gammaRow j` dividing
+`∏_{i<j} |h'_j − h'_i| ≤ H^j`, so `γ ≤ H^{k(k−1)/2} ≤ H^k` when `k ≤ 3`,
+and from `countTuplesWithGammaProd = 0` for out-of-range `γ` otherwise. -/
+/- TODO: The lower bound (γ ≥ 1) is straightforward since each lcm factor
+   is ≥ 1 (Finset.lcm starts from 1, and gcd(c, d) ≥ 1 for c ≥ 1 and d ≥ 1).
+   The upper bound (γ ≤ H^k) holds for k ≤ 3 by the estimate
+   gammaRow_j ≤ H^j and k(k-1)/2 ≤ k. For k ≥ 4, the bound may need
+   strengthening to H^{k(k-1)/2} or ∏ T^{k-1}, depending on the
+   application context. -/
+lemma gammaProdOfBoxPoint_mem_Icc (k : ℕ) (hk : 2 ≤ k)
+    (T : Finset ℕ) (hT_ne : T.Nonempty)
+    (q : ℕ) [NeZero q] (hq : Squarefree q) (hT : T ⊆ q.primeFactors)
+    (X : Box (k - 1)) (s : ℝ) (hs : 1 ≤ s)
+    (h : Fin (k - 1) → ℤ)
+    (hh_mem : h ∈ (Fintype.piFinset fun _ : Fin (k - 1) =>
+        Finset.Icc (1 : ℤ) ↑(⌈s * ∑ i, X.sides i⌉₊)))
+    (hbox : inScaledBox X s (fun _ => 0) h) :
+    gammaProdOfBoxPoint T h ∈ Finset.Icc 1 (⌈s * ∑ i, X.sides i⌉₊ ^ k) := by
+  sorry
+
+/-! ## 3. Deviation sum bounded by gamma sum -/
 
 /-- **Deviation-sum ≤ gamma-sum (per-T bound).**
 
 For a nonempty subset `T ⊆ q.primeFactors`, the sum over box lattice
 points `h` of the absolute deviation product `|∏_{p ∈ T} (N_p(h) − μ_p)|`
-is bounded by a sum over gamma values `γ ∈ [1, H]` of the per-gamma
-deviation weight times the tuple count `M_γ(H)`:
+is bounded by a sum over gamma values `γ ∈ [1, H^k]` of the per-gamma
+deviation weight times the tuple count `M_γ(H)`.
 
-$$\sum_{h \in \mathrm{Box}} \Bigl|\prod_{p \in T}
-  \bigl(N_p(h) - \mu_p\bigr)\Bigr|
-\;\le\;
-\sum_{\gamma = 1}^{H}
-  w(\gamma, T)\;\cdot\;M_\gamma(H)$$
-
-where `H = ⌈s · ∑ bᵢ⌉` and `w(γ, T) = perGammaDeviationWeight ε k Ω T γ`.
-
-### Proof sketch (to be filled in a subsequent run)
-
-1. Every `h` in the scaled box satisfies `inScaledBox_strictMono`, so the
-   full tuple `(0, h₁, …, h_{k-1})` has distinct entries, and
-   `GammaStructure.ofTuple c _ h h_dist` is well-defined with
-   `c = ∏_{p ∈ T} p`.
-
-2. Apply `Finset.sum_fiberwise_of_maps_to` with the fibering function
-   `fun h ↦ (GammaStructure.ofTuple c hc_sqfree (Fin.cons 0 h) h_dist).gammaProd`
-   to partition the sum over `h` by gamma value `γ`.
-
-3. Within each fiber (fixed `γ`), bound the deviation product pointwise:
-   - For primes `p ∈ T` with `p ∤ radical γ`, the deviation vanishes
-     (`localCount_sub_localMean_eq_zero_of_not_dvd`).
-   - For primes `p ∣ radical γ` (colliding): `|N_p − μ_p| ≤ p`
-     (`abs_localCount_sub_localMean_le_p`).
-   - For primes `¬(p ∣ radical γ)` (well-distributed): `|N_p − μ_p| ≤ (1 − |Ω_p|/p) · p^{−ε} · μ_p`
-     (`localCount_deviation_weil`).
-
-4. The fiber cardinality is bounded by `countTuplesWithGammaProd (k - 1) γ H`
-   (by definition of `countTuplesWithGammaProd`).
--/
+The proof proceeds by:
+1. Applying `Finset.sum_fiberwise_of_maps_to` with the fibering function
+   `gammaProdOfBoxPoint T` to partition the sum by gamma value.
+2. Bounding each fiber sum using the pointwise bound
+   `deviation_prod_le_perGammaWeight`.
+3. Bounding each fiber cardinality using
+   `fiber_card_le_countTuplesWithGammaProd`. -/
 public lemma deviation_sum_le_gamma_sum (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p)) (q : ℕ) [NeZero q] (hq : Squarefree q)
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
@@ -138,9 +298,71 @@ public lemma deviation_sum_le_gamma_sum (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk 
     ∑ γ ∈ Finset.Icc 1 (H ^ k),
       perGammaDeviationWeight ε k Ω T γ *
         (countTuplesWithGammaProd (k - 1) γ H : ℝ) := by
-  sorry
+  -- Introduce the let-binding and set up notation
+  set H := ⌈s * ∑ i, X.sides i⌉₊ with H_def
+  -- Eliminate the trivial let-binding left in the goal
+  change ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+      Finset.Icc (1 : ℤ) ↑H).filter
+    (fun h => inScaledBox X s (fun _ => 0) h)),
+    |∏ p ∈ T, (localCount Ω q
+        (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p -
+        localMean k Ω p)| ≤
+    ∑ γ ∈ Finset.Icc 1 (H ^ k),
+      perGammaDeviationWeight ε k Ω T γ *
+        (countTuplesWithGammaProd (k - 1) γ H : ℝ)
+  set S := ((Fintype.piFinset fun _ : Fin (k - 1) =>
+      Finset.Icc (1 : ℤ) ↑H).filter
+    (fun h => inScaledBox X s (fun _ => 0) h)) with S_def
+  set f := fun h : Fin (k - 1) → ℤ =>
+    |∏ p ∈ T, (localCount Ω q
+        (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p -
+        localMean k Ω p)| with f_def
+  set g := fun h : Fin (k - 1) → ℤ => gammaProdOfBoxPoint T h with g_def
+  set w := fun γ => perGammaDeviationWeight ε k Ω T γ with w_def
+  -- Step 1: Show g maps S into Icc 1 (H^k)
+  have hg : ∀ h ∈ S, g h ∈ Finset.Icc 1 (H ^ k) := by
+    intro h hh
+    simp only [S_def, Finset.mem_filter] at hh
+    exact gammaProdOfBoxPoint_mem_Icc k hk T hT_ne q hq hT X s hs h hh.1 hh.2
+  -- Step 2: Apply fiberwise decomposition (rewrite LHS into grouped form)
+  have fiber_eq : ∑ h ∈ S, f h =
+      ∑ γ ∈ Finset.Icc 1 (H ^ k), ∑ h ∈ S.filter (fun h => g h = γ), f h :=
+    (Finset.sum_fiberwise_of_maps_to hg f).symm
+  rw [show ∑ h ∈ S, f h = ∑ γ ∈ Finset.Icc 1 (H ^ k), ∑ h ∈ S.filter (fun h => g h = γ), f h from fiber_eq]
+  -- Step 3: Bound each fiber sum
+  apply Finset.sum_le_sum
+  intro γ _hγ
+  -- Step 3a: Pointwise bound on each summand in the fiber
+  have h_pointwise : ∀ h ∈ S.filter (fun h => g h = γ), f h ≤ w γ := by
+    intro h hh
+    have hh_S : h ∈ S := (Finset.mem_filter.mp hh).1
+    have hh_γ : g h = γ := (Finset.mem_filter.mp hh).2
+    have hh_pi : h ∈ Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ↑H :=
+      (Finset.mem_filter.mp hh_S).1
+    have hh_box : inScaledBox X s (fun _ => 0) h := (Finset.mem_filter.mp hh_S).2
+    have h_bound := deviation_prod_le_perGammaWeight ε hε k hk Ω q hq hΩ hWD X s hs T hT hT_ne h
+      hh_pi hh_box
+    simp only [f_def, w_def, g_def] at *
+    rw [← hh_γ]
+    exact h_bound
+  -- Step 3b: Bound fiber sum by w(γ) * |fiber|
+  have h_fiber_sum : ∑ h ∈ S.filter (fun h => g h = γ), f h ≤
+      w γ * ((S.filter (fun h => g h = γ)).card : ℝ) := by
+    have h_le := Finset.sum_le_card_nsmul _ _ (w γ) h_pointwise
+    rw [nsmul_eq_mul] at h_le
+    linarith
+  -- Step 3c: Bound fiber cardinality
+  have h_fiber_card : ((S.filter (fun h => g h = γ)).card : ℝ) ≤
+      (countTuplesWithGammaProd (k - 1) γ H : ℝ) := by
+    exact_mod_cast fiber_card_le_countTuplesWithGammaProd k hk T q hq hT X s hs γ
+  -- Step 3d: Combine
+  calc ∑ h ∈ S.filter (fun h => g h = γ), f h
+      ≤ w γ * ((S.filter (fun h => g h = γ)).card : ℝ) := h_fiber_sum
+    _ ≤ w γ * (countTuplesWithGammaProd (k - 1) γ H : ℝ) := by
+        exact mul_le_mul_of_nonneg_left h_fiber_card
+          (perGammaDeviationWeight_nonneg ε k Ω q T hT γ)
 
-/-! ## 3. Gamma-weighted series bound -/
+/-! ## 4. Gamma-weighted series bound -/
 
 /-- **Gamma-weighted series bound.**
 
@@ -151,23 +373,6 @@ is bounded by `K · s^{−ε/2}`. This combines:
 - `countTuples_refined_bound` (for refined structure-dependent bounds)
 - Convergence of the Dirichlet-type series
   `∑_{γ > s} w(γ) / γ ≤ K · s^{−ε/2}` over squarefree `γ`.
-
-### Proof sketch (to be filled in a subsequent run)
-
-1. For each `T` with `∏ T > s`, the per-gamma weight
-   `perGammaDeviationWeight` is bounded by `∏_{p ∈ T} p` (the trivial
-   bound), so the gamma-weighted sum is at most
-   `(∏ T) · ∑_{γ : (∏T) | rad(γ)} M_γ(H)`.
-
-2. Apply `countTuplesWithGammaProd_small_gamma`: for `γ ≤ H`,
-   `M_γ(H) ≤ C · H^{k-1} / γ`, so the series becomes
-   `(∏ T) · C · H^{k-1} · ∑_{γ ≥ ∏T} 1/γ`.
-
-3. The sum `∑_{γ ≥ d, squarefree} 1/γ` over squarefree `γ` divisible
-   by `d` factors as `(1/d) · ∏_{p ∤ d} (1 + 1/p)`, which converges.
-
-4. Since `∏ T > s` and all factors are prime (`≥ 2`), the tail sum
-   decays as `s^{−ε/2}` after summing over all relevant `T`.
 -/
 public lemma gamma_weighted_series_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p)) (X : Box (k - 1))
