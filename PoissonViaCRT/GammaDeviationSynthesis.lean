@@ -263,7 +263,7 @@ lemma gammaProdOfBoxPoint_mem_Icc (k : ℕ) (hk : 2 ≤ k)
     (hh_mem : h ∈ (Fintype.piFinset fun _ : Fin (k - 1) =>
         Finset.Icc (1 : ℤ) ↑(⌈s * ∑ i, X.sides i⌉₊)))
     (hbox : inScaledBox X s (fun _ => 0) h) :
-    gammaProdOfBoxPoint T h ∈ Finset.Icc 1 (⌈s * ∑ i, X.sides i⌉₊ ^ k) := by
+    gammaProdOfBoxPoint T h ∈ Finset.Icc 1 (⌈s * ∑ i, X.sides i⌉₊ ^ (k * k)) := by
   sorry
 
 /-! ## 3. Deviation sum bounded by gamma sum -/
@@ -272,7 +272,7 @@ lemma gammaProdOfBoxPoint_mem_Icc (k : ℕ) (hk : 2 ≤ k)
 
 For a nonempty subset `T ⊆ q.primeFactors`, the sum over box lattice
 points `h` of the absolute deviation product `|∏_{p ∈ T} (N_p(h) − μ_p)|`
-is bounded by a sum over gamma values `γ ∈ [1, H^k]` of the per-gamma
+is bounded by a sum over gamma values `γ ∈ [1, H^{k^2}]` of the per-gamma
 deviation weight times the tuple count `M_γ(H)`.
 
 The proof proceeds by:
@@ -295,7 +295,7 @@ public lemma deviation_sum_le_gamma_sum (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk 
       |∏ p ∈ T, (localCount Ω q
           (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p -
           localMean k Ω p)| ≤
-    ∑ γ ∈ Finset.Icc 1 (H ^ k),
+    ∑ γ ∈ Finset.Icc 1 (H ^ (k * k)),
       perGammaDeviationWeight ε k Ω T γ *
         (countTuplesWithGammaProd (k - 1) γ H : ℝ) := by
   -- Introduce the let-binding and set up notation
@@ -307,7 +307,7 @@ public lemma deviation_sum_le_gamma_sum (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk 
     |∏ p ∈ T, (localCount Ω q
         (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p -
         localMean k Ω p)| ≤
-    ∑ γ ∈ Finset.Icc 1 (H ^ k),
+    ∑ γ ∈ Finset.Icc 1 (H ^ (k * k)),
       perGammaDeviationWeight ε k Ω T γ *
         (countTuplesWithGammaProd (k - 1) γ H : ℝ)
   set S := ((Fintype.piFinset fun _ : Fin (k - 1) =>
@@ -320,15 +320,15 @@ public lemma deviation_sum_le_gamma_sum (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk 
   set g := fun h : Fin (k - 1) → ℤ => gammaProdOfBoxPoint T h with g_def
   set w := fun γ => perGammaDeviationWeight ε k Ω T γ with w_def
   -- Step 1: Show g maps S into Icc 1 (H^k)
-  have hg : ∀ h ∈ S, g h ∈ Finset.Icc 1 (H ^ k) := by
+  have hg : ∀ h ∈ S, g h ∈ Finset.Icc 1 (H ^ (k * k)) := by
     intro h hh
     simp only [S_def, Finset.mem_filter] at hh
     exact gammaProdOfBoxPoint_mem_Icc k hk T hT_ne q hq hT X s hs h hh.1 hh.2
   -- Step 2: Apply fiberwise decomposition (rewrite LHS into grouped form)
   have fiber_eq : ∑ h ∈ S, f h =
-      ∑ γ ∈ Finset.Icc 1 (H ^ k), ∑ h ∈ S.filter (fun h => g h = γ), f h :=
+      ∑ γ ∈ Finset.Icc 1 (H ^ (k * k)), ∑ h ∈ S.filter (fun h => g h = γ), f h :=
     (Finset.sum_fiberwise_of_maps_to hg f).symm
-  rw [show ∑ h ∈ S, f h = ∑ γ ∈ Finset.Icc 1 (H ^ k), ∑ h ∈ S.filter (fun h => g h = γ), f h from fiber_eq]
+  rw [show ∑ h ∈ S, f h = ∑ γ ∈ Finset.Icc 1 (H ^ (k * k)), ∑ h ∈ S.filter (fun h => g h = γ), f h from fiber_eq]
   -- Step 3: Bound each fiber sum
   apply Finset.sum_le_sum
   intro γ _hγ
@@ -384,7 +384,7 @@ public lemma gamma_weighted_series_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk
             (fun (T : Finset ℕ) => ¬((∏ p ∈ T, (p : ℝ)) ≤ s)),
         ((q : ℝ) ^ (k - 1) / (crtSubset q Ω).card ^ k) *
         (∏ p ∈ q.primeFactors \ T, localMean k Ω p) *
-        (∑ γ ∈ Finset.Icc 1 (H ^ k),
+        (∑ γ ∈ Finset.Icc 1 (H ^ (k * k)),
           perGammaDeviationWeight ε k Ω T γ *
             (countTuplesWithGammaProd (k - 1) γ H : ℝ)) ≤
         K * s ^ (-(ε / 2)) := by
