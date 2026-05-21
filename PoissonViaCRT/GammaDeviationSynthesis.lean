@@ -14,11 +14,30 @@ To cite Aristotle, tag @Aristotle-Harmonic on GitHub PRs/issues, and add as co-a
 Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
+module
 import PoissonViaCRT.Combinatorics
 import PoissonViaCRT.GammaRangeSum
 import PoissonViaCRT.LargeDivisorHelpers
 import PoissonViaCRT.GammaDeviationHelpers
-import Mathlib
+import Mathlib.Algebra.Order.Floor.Extended
+import Mathlib.Algebra.Order.Floor.Semifield
+import Mathlib.Algebra.Order.Interval.Basic
+import Mathlib.Algebra.Order.Ring.Star
+import Mathlib.Analysis.Complex.UpperHalfPlane.Basic
+import Mathlib.Analysis.SpecialFunctions.Bernstein
+import Mathlib.Analysis.SpecialFunctions.Gamma.Basic
+import Mathlib.Analysis.SpecialFunctions.Trigonometric.DerivHyp
+import Mathlib.Combinatorics.Enumerative.DyckWord
+import Mathlib.Combinatorics.SimpleGraph.Triangle.Removal
+import Mathlib.Data.Int.Star
+import Mathlib.Data.NNRat.Floor
+import Mathlib.Data.Nat.Factorial.DoubleFactorial
+import Mathlib.Geometry.Euclidean.Altitude
+import Mathlib.NumberTheory.Height.Basic
+import Mathlib.NumberTheory.LucasLehmer
+import Mathlib.NumberTheory.SelbergSieve
+import Mathlib.RingTheory.WittVector.IsPoly
+import Mathlib.Topology.Sheaves.Presheaf
 
 set_option linter.unusedVariables false
 
@@ -116,10 +135,11 @@ lemma not_dvd_radical_gammaProd_imp_injective {n : ℕ} (hn : 1 ≤ n)
   generalize_proofs at *;
   contrapose! hp_not; simp_all +decide [ radical ] ;
   refine' dvd_trans _ ( Finset.dvd_prod_of_mem _ <| Nat.mem_primeFactors.mpr ⟨ hp_prime, _, _ ⟩ ) <;> norm_num [ gammaProdOfBoxPoint ];
-  · refine' dvd_trans _ ( Finset.dvd_prod_of_mem _ ( Finset.mem_univ ( Max.max j hij ) ) ) ; cases max_choice j hij <;> simp_all +decide [ Finset.lcm_dvd_iff ] ;
+  · refine' dvd_trans _ ( Finset.dvd_prod_of_mem _ ( Finset.mem_univ ( Max.max j hij ) ) ) ; cases max_choice j hij <;> simp_all +decide
     · refine' dvd_trans _ ( Finset.dvd_lcm ( Finset.mem_Iio.mpr <| show hij < j from lt_of_le_of_ne ‹_› <| Ne.symm hp_not ) ) ; simp_all +decide [ Fin.cons ] ;
       refine' Nat.dvd_gcd ( Finset.dvd_prod_of_mem _ hp_T ) _;
-      rw [ ← Int.natCast_dvd ] ; haveI := Fact.mk hp_prime; simp_all +decide [ ← ZMod.intCast_zmod_eq_zero_iff_dvd, Fin.cons ] ;
+      rw [ ← Int.natCast_dvd ]
+      haveI := Fact.mk hp_prime; simp_all +decide [← ZMod.intCast_zmod_eq_zero_iff_dvd] ;
       cases j using Fin.inductionOn <;> cases hij using Fin.inductionOn <;> aesop;
     · refine' dvd_trans _ ( Finset.dvd_lcm ( Finset.mem_Iio.mpr ( lt_of_le_of_ne ‹_› hp_not ) ) ) ; simp_all +decide [ Fin.cons ] ;
       refine' Nat.dvd_gcd ( Finset.dvd_prod_of_mem _ hp_T ) _;
@@ -128,7 +148,7 @@ lemma not_dvd_radical_gammaProd_imp_injective {n : ℕ} (hn : 1 ≤ n)
       · cases hij using Fin.inductionOn <;> aesop;
       · cases j using Fin.inductionOn <;> aesop;
   · simp +decide [ Finset.prod_eq_zero_iff, Nat.gcd_eq_zero_iff ];
-    intro i j hij h0; have := hT h0; simp_all +decide [ Nat.primeFactors_zero ] ;
+    intro i j hij h0; have := hT h0; simp_all +decide
 
 /-
 Weil-type bound on `|localCount − localMean|` when the tuple is
@@ -269,8 +289,7 @@ lemma fiber_card_le_countTuplesWithGammaProd (k : ℕ) (hk : 2 ≤ k)
   · apply Set.Finite.subset (Finset.finite_toSet
       (Fintype.piFinset (fun _ : Fin (k - 1 + 1) => Finset.Icc (0 : ℤ) H)))
     intro h' ⟨_, _, hh_range, _⟩
-    simp only [Finset.coe_filter, Set.mem_setOf, Fintype.mem_piFinset, Finset.mem_Icc,
-      Finset.mem_coe]
+    simp only [Fintype.mem_piFinset, Finset.mem_Icc, Finset.mem_coe]
     exact fun i => hh_range i
 
 /-- The gamma product of a box point is in `[1, H ^ k]`. The lower bound

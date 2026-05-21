@@ -5,9 +5,26 @@ Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 
 module
 public import PoissonViaCRT.Defs
-public import PoissonViaCRT.Combinatorics
-public import PoissonViaCRT.LargeDivisorHelpers
-public import Mathlib
+import PoissonViaCRT.Combinatorics
+import Mathlib.Algebra.Order.Floor.Extended
+import Mathlib.Algebra.Order.Floor.Semifield
+import Mathlib.Algebra.Order.Interval.Basic
+import Mathlib.Algebra.Order.Ring.Star
+import Mathlib.Analysis.Complex.UpperHalfPlane.Basic
+import Mathlib.Analysis.SpecialFunctions.Bernstein
+import Mathlib.Analysis.SpecialFunctions.Gamma.Basic
+import Mathlib.Analysis.SpecialFunctions.Trigonometric.DerivHyp
+import Mathlib.Combinatorics.Enumerative.DyckWord
+import Mathlib.Combinatorics.SimpleGraph.Triangle.Removal
+import Mathlib.Data.Int.Star
+import Mathlib.Data.NNRat.Floor
+import Mathlib.Data.Nat.Factorial.DoubleFactorial
+import Mathlib.Geometry.Euclidean.Altitude
+import Mathlib.NumberTheory.Height.Basic
+import Mathlib.NumberTheory.LucasLehmer
+import Mathlib.NumberTheory.SelbergSieve
+import Mathlib.RingTheory.WittVector.IsPoly
+import Mathlib.Topology.Sheaves.Presheaf
 
 set_option linter.unusedVariables false
 
@@ -127,14 +144,14 @@ public lemma fin_cons_zero_injective {n : ℕ} (hn : 1 ≤ n)
     (hbox : inScaledBox X s (fun _ => 0) h) :
     let h' : Fin (n + 1) → ℤ := Fin.cons (0 : ℤ) h
     ∀ i j : Fin (n + 1), i ≠ j → h' i ≠ h' j := by
-  simp +decide [ Fin.forall_fin_succ, hbox ]
+  simp +decide [ Fin.forall_fin_succ ]
   have h_mono : StrictMono h := by
     have h_diff_pos : ∀ i : Fin n, 0 < h i - (if i.val = 0 then 0 else h (Fin.mk (i.val - 1) (by
     exact lt_of_le_of_lt ( Nat.pred_le _ ) i.2))) := by
       intro i; specialize hbox i; aesop
     generalize_proofs at *
-    intro i j hij; induction' j with j hj ih ; induction' i with i hi ih' ; simp_all +decide [ Fin.ext_iff, Nat.add_one_le_iff ]
-    induction hij <;> simp_all +decide [ Fin.add_def, Nat.mod_eq_of_lt ]
+    intro i j hij; induction' j with j hj ih ; induction' i with i hi ih' ; simp_all +decide [ Nat.add_one_le_iff ]
+    induction hij <;> simp_all +decide
     · specialize h_diff_pos ⟨ i + 1, hj ⟩ ; aesop
     · grind
   have h_pos : ∀ i : Fin n, 0 < h i := by
