@@ -714,13 +714,42 @@ lemma tail_sum_decay (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k) (Ω : �
 
 /-! ## 5. Gamma-weighted series bound -/
 
-/-- **Gamma-weighted prime splitting.**
+/-
+If `p` is prime and divides `radical γ`, then `p ≤ γ`.
+-/
+lemma prime_dvd_radical_le_self (p γ : ℕ) (hp : p.Prime) (h : p ∣ radical γ) : p ≤ γ := by
+  by_cases hg : γ = 0 <;> simp_all +decide [ radical ];
+  simp_all +decide [ Nat.Prime.dvd_iff_not_coprime hp, Nat.coprime_prod_right_iff ];
+  obtain ⟨ q, hq₁, hq₂, hq₃ ⟩ := h; have := Nat.gcd_dvd_left p q; have := Nat.gcd_dvd_right p q; simp_all +decide [ Nat.dvd_prime ] ;
+  exact Nat.le_of_dvd ( Nat.pos_of_ne_zero hg ) hq₂
 
-For $\gamma \le B_{max}$, any prime dividing $\gamma$ must be at most $B_{max}$.
-Therefore, for primes $p > B_{max}$, they cannot divide $\gamma$, and their contribution
+/-
+The Weil weight `(1 − |Ω_p|/p) · p^{−ε} · localMean k Ω p` is at most `p`
+for any prime `p` and `ε ≥ 0`.
+-/
+lemma weil_weight_le_prime (ε : ℝ) (hε : 0 ≤ ε) (k : ℕ) (hk : 1 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p)) (p : ℕ) (hp : p.Prime) :
+    (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) * localMean k Ω p ≤ (p : ℝ) := by
+  have h_weil_weight_le_p : (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) * localMean k Ω p ≤ (1 : ℝ) * (p : ℝ) ^ (-ε) * p := by
+    gcongr <;> norm_num [ localMean ];
+    · positivity;
+    · positivity;
+    · have h_card_le_p : (Ω p).card ≤ p := by
+        haveI := Fact.mk hp; exact le_trans ( Finset.card_le_univ _ ) ( by norm_num ) ;
+      generalize_proofs at *; (
+      rcases k with ( _ | k ) <;> simp_all +decide [ pow_succ ];
+      exact div_le_of_le_mul₀ ( by positivity ) ( by positivity ) ( by norm_cast; nlinarith [ pow_pos ( Nat.pos_of_ne_zero hp.ne_zero ) k, pow_le_pow_left' h_card_le_p k ] ));
+  exact h_weil_weight_le_p.trans ( by rw [ one_mul ] ; exact mul_le_of_le_one_left ( Nat.cast_nonneg _ ) ( by simpa using Real.rpow_le_rpow_of_exponent_le ( Nat.one_le_cast.mpr hp.pos ) ( neg_nonpos.mpr hε ) ) )
+
+/-
+**Gamma-weighted prime splitting.**
+
+For `γ ≤ B_max`, any prime dividing `radical γ` must be at most `B_max`.
+Therefore, for primes `p > B_max`, they cannot divide `γ`, and their contribution
 to `perGammaDeviationWeight` is exactly the well-distributed Weil weight.
-For primes $p \le B_{max}$, their contribution (whether collision or well-distributed)
-is bounded universally by $p$. -/
+For primes `p ≤ B_max`, their contribution (whether collision or well-distributed)
+is bounded universally by `p`.
+-/
 lemma perGammaDeviationWeight_split_bound (ε : ℝ) (hε : 0 ≤ ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (T : Finset ℕ) (hT_prime : ∀ p ∈ T, Nat.Prime p)
@@ -728,7 +757,41 @@ lemma perGammaDeviationWeight_split_bound (ε : ℝ) (hε : 0 ≤ ε) (k : ℕ) 
     perGammaDeviationWeight ε k Ω T γ ≤
     (∏ p ∈ T.filter (· ≤ B_max), (p : ℝ)) *
     (∏ p ∈ T.filter (B_max < ·), (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) * localMean k Ω p) := by
-  sorry
+  refine' le_trans _ ( mul_le_mul_of_nonneg_right ( Finset.prod_le_prod _ fun x hx => _ ) _ );
+  rotate_left;
+  use fun p => if p ∣ radical γ then p else ( 1 - ( Ω p |> Finset.card : ℝ ) / p ) * p ^ ( -ε ) * localMean k Ω p;
+  · intro p hp; split_ifs <;> simp_all +decide ;
+    apply_rules [ mul_nonneg, sub_nonneg.2, div_le_one_of_le₀, combinedEulerWeight_nonneg ];
+    · haveI := Fact.mk ( hT_prime p hp.1 ) ; exact_mod_cast le_trans ( Finset.card_le_univ _ ) ( by norm_num ) ;
+    · positivity;
+    · positivity;
+    · positivity;
+    · positivity;
+  · split_ifs <;> norm_num;
+    exact PoissonCRT.weil_weight_le_prime ε hε k ( by linarith ) Ω x ( hT_prime x ( Finset.filter_subset _ _ hx ) );
+  · refine' Finset.prod_nonneg fun p hp => mul_nonneg ( mul_nonneg _ _ ) _ <;> norm_num;
+    · refine' div_le_one_of_le₀ _ ( Nat.cast_nonneg _ );
+      haveI := Fact.mk ( hT_prime p ( Finset.filter_subset _ _ hp ) ) ; exact_mod_cast le_trans ( Finset.card_le_univ _ ) ( by norm_num ) ;
+    · positivity;
+    · exact localMean_nonneg k Ω p;
+  · convert le_rfl using 1;
+    unfold perGammaDeviationWeight;
+    rw [ show ( T.filter fun p => p ∣ radical γ ) = ( T.filter fun p => p ≤ B_max ∧ p ∣ radical γ ) from ?_, show ( T.filter fun p => ¬p ∣ radical γ ) = ( T.filter fun p => p ≤ B_max ∧ ¬p ∣ radical γ ) ∪ ( T.filter fun p => B_max < p ∧ ¬p ∣ radical γ ) from ?_ ];
+    · rw [ Finset.prod_union ];
+      · simp +decide [ Finset.prod_ite, Finset.filter_and ];
+        simp +decide [ Finset.filter_filter, Finset.inter_filter ] ; ring;
+        congr! 2;
+        · congr! 1;
+          grind;
+        · congr! 1;
+          grind;
+        · ext; simp [Finset.mem_filter];
+          exact ⟨ fun h => ⟨ ⟨ h, h.1 ⟩, fun h' => by have := prime_dvd_radical_le_self _ _ ( hT_prime _ h.1 ) h'; linarith ⟩, fun h => ⟨ h.1.1.1, h.1.1.2 ⟩ ⟩;
+      · exact Finset.disjoint_filter.mpr fun _ _ _ _ => by linarith;
+    · grind;
+    · ext p;
+      simp +zetaDelta at *;
+      exact fun hp hp' => le_trans ( prime_dvd_radical_le_self p γ ( hT_prime p hp ) hp' ) hγ
 
 /-- **Gamma-weighted series bound.**
 
