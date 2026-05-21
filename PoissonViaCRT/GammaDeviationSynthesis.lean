@@ -19,6 +19,7 @@ import PoissonViaCRT.Combinatorics
 import PoissonViaCRT.GammaRangeSum
 import PoissonViaCRT.LargeDivisorHelpers
 import PoissonViaCRT.GammaDeviationHelpers
+import PoissonViaCRT.SmallDivisorHelpers
 import Mathlib
 
 set_option linter.unusedVariables false
@@ -576,11 +577,25 @@ noncomputable def combinedEulerWeight (ε : ℝ) (k : ℕ) (Ω : ∀ p : ℕ, Fi
 The $q$-dependent prefactor $(q^{k-1}/|\Omega_q|^k) \prod_{q \setminus T} \mu_p$
 simplifies algebraically to exactly $\prod_{p \in T} \mu_p^{-1}$. -/
 lemma prefactor_absorption (k : ℕ) (hk : 2 ≤ k) (Ω : ∀ p : ℕ, Finset (ZMod p))
-    (q : ℕ) [NeZero q] (T : Finset ℕ) (hT : T ⊆ q.primeFactors) :
+    (q : ℕ) [NeZero q] (hq : Squarefree q)
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (T : Finset ℕ) (hT : T ⊆ q.primeFactors) :
     ((q : ℝ) ^ (k - 1) / ((crtSubset q Ω).card : ℝ) ^ k) *
     (∏ p ∈ q.primeFactors \ T, localMean k Ω p) =
     ∏ p ∈ T, (localMean k Ω p)⁻¹ := by
-  sorry
+  have hlm_pos : ∀ p ∈ q.primeFactors, 0 < localMean k Ω p := by
+    intro p hp; unfold localMean
+    exact div_pos (pow_pos (Nat.cast_pos.mpr (Finset.Nonempty.card_pos (hΩ p (Nat.prime_of_mem_primeFactors hp)))) _)
+      (pow_pos (Nat.cast_pos.mpr (Nat.pos_of_mem_primeFactors hp)) _)
+  have hgm := globalMean_eq_prod_localMean k q hq Ω
+  have h_inv : (q : ℝ) ^ (k - 1) / ((crtSubset q Ω).card : ℝ) ^ k =
+    (∏ p ∈ q.primeFactors, localMean k Ω p)⁻¹ := by
+    rw [← hgm, inv_div]
+  rw [h_inv]
+  have h_split := (Finset.prod_sdiff hT (f := fun p => localMean k Ω p)).symm
+  rw [h_split, mul_inv_rev, mul_assoc,
+    inv_mul_cancel₀ (ne_of_gt (Finset.prod_pos (fun p hp => hlm_pos p (Finset.sdiff_subset hp)))),
+    mul_one, Finset.prod_inv_distrib]
 
 /-- **Tail-sum decay.**
 
