@@ -564,23 +564,34 @@ lemma dirichlet_gamma_sum_converges (T : Finset ℕ) (hT_prime : ∀ p ∈ T, Na
   · norm_num [ hd_def ];
   · convert euler_product_one_add_inv _ using 1
 
+/-- **Combined per-prime Euler weight.**
+The product of the collision-structure Gamma sum and the $q$-dependent
+prefactor simplifies to an Euler product over $T$ where each prime contributes:
+  `(localMean)⁻¹ * (p/(p-1) + (1 - |Ω_p|/p) * p^{-ε} * localMean)`
+Since `localMean ≈ p`, this is dominated by `p^{-ε}` for large `p`. -/
+noncomputable def combinedEulerWeight (ε : ℝ) (k : ℕ) (Ω : ∀ p : ℕ, Finset (ZMod p)) (p : ℕ) : ℝ :=
+  (localMean k Ω p)⁻¹ * ((p : ℝ) / ((p : ℝ) - 1) + (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) * localMean k Ω p)
+
+/-- **Prefactor absorption identity.**
+The $q$-dependent prefactor $(q^{k-1}/|\Omega_q|^k) \prod_{q \setminus T} \mu_p$
+simplifies algebraically to exactly $\prod_{p \in T} \mu_p^{-1}$. -/
+lemma prefactor_absorption (k : ℕ) (hk : 2 ≤ k) (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (q : ℕ) [NeZero q] (T : Finset ℕ) (hT : T ⊆ q.primeFactors) :
+    ((q : ℝ) ^ (k - 1) / ((crtSubset q Ω).card : ℝ) ^ k) *
+    (∏ p ∈ q.primeFactors \ T, localMean k Ω p) =
+    ∏ p ∈ T, (localMean k Ω p)⁻¹ := by
+  sorry
+
 /-- **Tail-sum decay.**
 
 The sum over nonempty subsets `T ⊆ q.primeFactors` with `∏ T > s` of the
-combined bound `(1 / ∏ T) · (∏ T)^{1−ε} · H^k` decays as
-`O(s^{−ε/2})`. More precisely, there exists `K > 0` (depending on `k` and `ε`)
-such that for all `s ≥ 1`:
-  `∑_{T : ∏T > s} (∏_{p ∈ T} p)^{−ε} ≤ K · s^{−ε/2}`.
-
-This captures the tail decay of the Euler product expansion when summing
-over large-divisor subsets. The key idea is that each prime `p` contributes
-a factor `(1 + p^{−ε})` to the full Euler product, but only the tail
-(subsets with large product) survives, giving the `s^{−ε/2}` decay. -/
-lemma tail_sum_decay (ε : ℝ) (hε : 0 < ε) :
+combined Euler weight decays as `O(s^{−ε/2})`.
+This captures the tail decay of the true Euler product expansion. -/
+lemma tail_sum_decay (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k) (Ω : ∀ p : ℕ, Finset (ZMod p)) :
     ∃ K : ℝ, 0 < K ∧ ∀ (q : ℕ) [NeZero q] (s : ℝ) (_ : 1 ≤ s),
       ∑ T ∈ (q.primeFactors.powerset.filter (· ≠ ∅)).filter
             (fun (T : Finset ℕ) => ¬((∏ p ∈ T, (p : ℝ)) ≤ s)),
-        (∏ p ∈ T, (p : ℝ)) ^ (-ε) ≤
+        ∏ p ∈ T, combinedEulerWeight ε k Ω p ≤
         K * s ^ (-(ε / 2)) := by
   sorry
 
@@ -589,19 +600,15 @@ lemma tail_sum_decay (ε : ℝ) (hε : 0 < ε) :
 /-- **Gamma-weighted series bound.**
 
 The sum over large-divisor subsets `T` of the gamma-weighted tuple counts
-is bounded by `K · s^{−ε/2}`. This combines:
-- `weight_le_prod_T`: `w(γ, T) ≤ ∏ p ∈ T, p`
-- `dirichlet_gamma_sum_converges`: Euler product factorization of `∑ 1/γ`
-- `tail_sum_decay`: tail-sum decay `∑_{∏T > s} (∏T)^{−ε} ≤ K · s^{−ε/2}`
-- `countTuplesWithGammaProd_small_gamma` (for `γ ≤ H`):
-  `M_γ(H) ≤ C(k+1,2)^{ω(γ)} · 2^k · H^k / γ`
+is bounded by `K · s^{−ε/2}`.
 
 The proof sketch:
-1. Use `weight_le_prod_T` to bound `w(γ, T) · M_γ(H)` by `(∏T) · M_γ(H)`.
-2. Use `countTuplesWithGammaProd_small_gamma` to bound `M_γ(H) ≤ C · H^k / γ`.
-3. Sum over `γ` using `dirichlet_gamma_sum_converges` to get `∑ 1/γ ≤ C'/(∏T)`.
-4. The resulting per-`T` bound is `C'' · H^k · (∏T)^{−ε}`.
-5. Sum over `T` with `∏T > s` using `tail_sum_decay` to get `K · s^{−ε/2}`.
+1. Every $\gamma$ has radical contained in $T$. Let $T_c = \text{radical}(\gamma)$.
+2. Evaluate $\sum_{\gamma} w(\gamma, T)/\gamma$ by splitting into an Euler product over $T_c \subseteq T$,
+   yielding $\prod_{p \in T} (p/(p-1) + \text{WeilBound}_p)$.
+3. Use `prefactor_absorption` to combine the $q$-dependent prefactor with this Euler product.
+   This yields exactly $\prod_{p \in T} \text{combinedEulerWeight}_p$.
+4. Use `tail_sum_decay` on this combined product to bound the sum over $T$ by $K s^{-\epsilon/2}$.
 -/
 lemma gamma_weighted_series_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p)) (X : Box (k - 1))
