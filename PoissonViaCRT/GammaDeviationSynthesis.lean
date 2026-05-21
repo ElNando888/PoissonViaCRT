@@ -19,25 +19,7 @@ import PoissonViaCRT.Combinatorics
 import PoissonViaCRT.GammaRangeSum
 import PoissonViaCRT.LargeDivisorHelpers
 import PoissonViaCRT.GammaDeviationHelpers
-import Mathlib.Algebra.Order.Floor.Extended
-import Mathlib.Algebra.Order.Floor.Semifield
-import Mathlib.Algebra.Order.Interval.Basic
-import Mathlib.Algebra.Order.Ring.Star
-import Mathlib.Analysis.Complex.UpperHalfPlane.Basic
-import Mathlib.Analysis.SpecialFunctions.Bernstein
-import Mathlib.Analysis.SpecialFunctions.Gamma.Basic
-import Mathlib.Analysis.SpecialFunctions.Trigonometric.DerivHyp
-import Mathlib.Combinatorics.Enumerative.DyckWord
-import Mathlib.Combinatorics.SimpleGraph.Triangle.Removal
-import Mathlib.Data.Int.Star
-import Mathlib.Data.NNRat.Floor
-import Mathlib.Data.Nat.Factorial.DoubleFactorial
-import Mathlib.Geometry.Euclidean.Altitude
-import Mathlib.NumberTheory.Height.Basic
-import Mathlib.NumberTheory.LucasLehmer
-import Mathlib.NumberTheory.SelbergSieve
-import Mathlib.RingTheory.WittVector.IsPoly
-import Mathlib.Topology.Sheaves.Presheaf
+import Mathlib
 
 set_option linter.unusedVariables false
 
@@ -466,7 +448,71 @@ lemma weight_le_prod_T (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
   · intro p hp; split_ifs <;> norm_num [ localMean ] ;
     exact mul_nonneg ( mul_nonneg ( sub_nonneg.2 <| div_le_one_of_le₀ ( mod_cast hΩle p <| Nat.prime_of_mem_primeFactors <| hT hp ) <| Nat.cast_nonneg _ ) <| Real.rpow_nonneg ( Nat.cast_nonneg _ ) _ ) <| div_nonneg ( pow_nonneg ( Nat.cast_nonneg _ ) _ ) <| pow_nonneg ( Nat.cast_nonneg _ ) _
 
-/-- **Dirichlet gamma-sum convergence.**
+/-! ### Helper lemmas for the Dirichlet gamma-sum bound -/
+
+/-
+**Euler product expansion.** The product `∏_{p ∈ S} (1 + 1/p)` equals
+the sum over all subsets `A ⊆ S` of `∏_{p ∈ A} (1/p)`. This follows
+from `Finset.prod_add` with `f = 1/p`, `g = 1`.
+-/
+lemma euler_product_one_add_inv (S : Finset ℕ) :
+    ∏ p ∈ S, (1 + 1 / (p : ℝ)) =
+    ∑ A ∈ S.powerset, ∏ p ∈ A, (1 / (p : ℝ)) := by
+  simp +decide [ add_comm, Finset.prod_add ]
+
+/-
+For squarefree `γ` divisible by `d = ∏ T` (where `T` consists of primes),
+we have `T ⊆ γ.primeFactors` and
+`γ = (∏ p ∈ T, p) * ∏ p ∈ γ.primeFactors \ T, p`.
+-/
+lemma squarefree_prod_primeFactors_sdiff (T : Finset ℕ) (hT : ∀ p ∈ T, Nat.Prime p)
+    (γ : ℕ) (hγ : Squarefree γ) (hdvd : (∏ p ∈ T, p) ∣ γ) :
+    γ = (∏ p ∈ T, p) * ∏ p ∈ γ.primeFactors \ T, p := by
+  convert Nat.prod_primeFactors_of_squarefree hγ |> Eq.symm |> Eq.trans <| ?_ using 1;
+  rw [ ← Finset.prod_union ( Finset.disjoint_sdiff ), Finset.union_sdiff_of_subset ];
+  have h_prime_factors : T ⊆ γ.primeFactors := by
+    have h_div : ∏ p ∈ T, p ∣ γ := hdvd
+    have h_prime : ∀ p ∈ T, Nat.Prime p := hT
+    exact fun p hp => Nat.mem_primeFactors.mpr ⟨ h_prime p hp, Nat.dvd_trans ( Finset.dvd_prod_of_mem _ hp ) h_div, by aesop ⟩ ;
+  assumption
+
+/-
+For squarefree `γ ∈ [1, N]`, the set `γ.primeFactors \ T` lies in
+the powerset of `S = {primes p ∈ [2,N], p ∉ T}`.
+-/
+lemma primeFactors_sdiff_mem_powerset (T : Finset ℕ) (hT : ∀ p ∈ T, Nat.Prime p)
+    (N γ : ℕ) (hγ_sq : Squarefree γ) (hγ_range : γ ∈ Finset.Icc 1 N) :
+    γ.primeFactors \ T ∈
+      ((Finset.Icc 2 N).filter (fun p => Nat.Prime p ∧ p ∉ T)).powerset := by
+  simp +zetaDelta at *;
+  intro p hp; simp_all +decide ;
+  exact ⟨ hp.1.1.two_le, Nat.le_trans ( Nat.le_of_dvd hγ_range.1 hp.1.2.1 ) hγ_range.2 ⟩
+
+/-
+The map `γ ↦ γ.primeFactors \ T` is injective on squarefree multiples
+of `d = ∏ T`. This is because squarefree `γ` is determined by its prime
+factors, and `T ⊆ γ.primeFactors` (so the sdiff determines all of
+`γ.primeFactors`).
+-/
+lemma primeFactors_sdiff_injOn (T : Finset ℕ) (hT : ∀ p ∈ T, Nat.Prime p) (N : ℕ) :
+    Set.InjOn (fun γ : ℕ => γ.primeFactors \ T)
+      ((Finset.Icc 1 N).filter (fun γ => Squarefree γ ∧ (∏ p ∈ T, p) ∣ γ) : Finset ℕ) := by
+  intros γ₁ hγ₁ γ₂ hγ₂ h_eq; simp_all +decide [Finset.ext_iff] ;
+  -- Since γ₁ and γ₂ are squarefree and divisible by d, their prime factors are exactly T and the prime factors of γ₁ and γ₂ that are not in T.
+  have h_prime_factors : γ₁.primeFactors = T ∪ (γ₁.primeFactors \ T) ∧ γ₂.primeFactors = T ∪ (γ₂.primeFactors \ T) := by
+    have h_prime_factors : T ⊆ γ₁.primeFactors ∧ T ⊆ γ₂.primeFactors := by
+      exact ⟨ fun p hp => Nat.mem_primeFactors.mpr ⟨ hT p hp, Nat.dvd_trans ( Finset.dvd_prod_of_mem _ hp ) hγ₁.2.2, by linarith ⟩, fun p hp => Nat.mem_primeFactors.mpr ⟨ hT p hp, Nat.dvd_trans ( Finset.dvd_prod_of_mem _ hp ) hγ₂.2.2, by linarith ⟩ ⟩
+    generalize_proofs at *; (
+    exact ⟨ by rw [ Finset.union_sdiff_of_subset h_prime_factors.1 ], by rw [ Finset.union_sdiff_of_subset h_prime_factors.2 ] ⟩)
+  generalize_proofs at *; (
+  -- Since γ₁ and γ₂ are squarefree and have the same prime factors, they must be equal.
+  have h_eq_prime_factors : γ₁.primeFactors = γ₂.primeFactors := by
+    grind +ring
+  generalize_proofs at *; (
+  exact Nat.prod_primeFactors_of_squarefree hγ₁.2.1 ▸ Nat.prod_primeFactors_of_squarefree hγ₂.2.1 ▸ by rw [ h_eq_prime_factors ] ;))
+
+/-
+**Dirichlet gamma-sum convergence.**
 
 For a squarefree integer `d = radical(∏ T)` (i.e., `d = ∏ T` when `T`
 consists of distinct primes), the sum
@@ -479,9 +525,9 @@ More precisely, for a fixed finite set `T` of primes, we bound:
 This provides the analytic convergence factor needed in the
 gamma-weighted series bound.
 
-Note: Full proof requires Euler product machinery for squarefree sums.
-The factorization identity is:
-`∑_{γ sqfree, d | γ} 1/γ = (1/d) · ∏_{p | d} 1 · ∏_{p ∤ d} (1 + 1/p)`. -/
+The proof uses `euler_product_one_add_inv`, `squarefree_prod_primeFactors_sdiff`,
+`primeFactors_sdiff_mem_powerset`, and `primeFactors_sdiff_injOn`.
+-/
 lemma dirichlet_gamma_sum_converges (T : Finset ℕ) (hT_prime : ∀ p ∈ T, Nat.Prime p)
     (N : ℕ) :
     ∑ γ ∈ (Finset.Icc 1 N).filter (fun γ => Squarefree γ ∧ (∏ p ∈ T, p) ∣ γ),
@@ -489,7 +535,34 @@ lemma dirichlet_gamma_sum_converges (T : Finset ℕ) (hT_prime : ∀ p ∈ T, Na
     (1 : ℝ) / (∏ p ∈ T, (p : ℝ)) *
       ∏ p ∈ (Finset.Icc 2 N).filter (fun p => Nat.Prime p ∧ p ∉ T),
         (1 + 1 / (p : ℝ)) := by
-  sorry
+  -- Let $d = \prod_{p \in T} p$.
+  set d := ∏ p ∈ T, p with hd_def
+  have hd_pos : 0 < d := by
+    exact Finset.prod_pos fun p hp => Nat.Prime.pos ( hT_prime p hp );
+  nontriviality;
+  revert ‹Nontrivial ℝ›;
+  intro h_nontrivial
+  have h_sum : ∑ γ ∈ Finset.filter (fun γ => Squarefree γ ∧ d ∣ γ) (Finset.Icc 1 N), (1 / (γ : ℝ)) ≤ (1 / (d : ℝ)) * ∑ A ∈ ((Finset.Icc 2 N).filter (fun p => Nat.Prime p ∧ p ∉ T)).powerset, (∏ p ∈ A, (1 / (p : ℝ))) := by
+    have h_sum : ∑ γ ∈ Finset.filter (fun γ => Squarefree γ ∧ d ∣ γ) (Finset.Icc 1 N), (1 / (γ : ℝ)) ≤ (1 / (d : ℝ)) * ∑ γ ∈ Finset.filter (fun γ => Squarefree γ ∧ d ∣ γ) (Finset.Icc 1 N), (∏ p ∈ γ.primeFactors \ T, (1 / (p : ℝ))) := by
+      have h_sum : ∀ γ ∈ Finset.filter (fun γ => Squarefree γ ∧ d ∣ γ) (Finset.Icc 1 N), (1 / (γ : ℝ)) = (1 / (d : ℝ)) * (∏ p ∈ γ.primeFactors \ T, (1 / (p : ℝ))) := by
+        intro γ hγ
+        have hγ_eq : γ = d * ∏ p ∈ γ.primeFactors \ T, p := by
+          apply squarefree_prod_primeFactors_sdiff T hT_prime γ (Finset.mem_filter.mp hγ).right.left (Finset.mem_filter.mp hγ).right.right;
+        rw [ hγ_eq, Nat.cast_mul, mul_comm ] ; norm_num [ hd_pos.ne' ];
+        rw [ ← hγ_eq ];
+      rw [ Finset.mul_sum _ _ _, Finset.sum_congr rfl h_sum ];
+    refine le_trans h_sum <| mul_le_mul_of_nonneg_left ?_ <| by positivity;
+    have h_inj : Set.InjOn (fun γ : ℕ => γ.primeFactors \ T) (Finset.filter (fun γ => Squarefree γ ∧ d ∣ γ) (Finset.Icc 1 N)) := by
+      apply primeFactors_sdiff_injOn T hT_prime N;
+    have h_image : Finset.image (fun γ : ℕ => γ.primeFactors \ T) (Finset.filter (fun γ => Squarefree γ ∧ d ∣ γ) (Finset.Icc 1 N)) ⊆ ((Finset.Icc 2 N).filter (fun p => Nat.Prime p ∧ p ∉ T)).powerset := by
+      simp +contextual [ Finset.subset_iff ];
+      rintro _ x hx₁ hx₂ hx₃ hx₄ rfl y hy; exact ⟨ ⟨ Nat.Prime.two_le ( Nat.prime_of_mem_primeFactors ( Finset.mem_sdiff.mp hy |>.1 ) ), Nat.le_trans ( Nat.le_of_mem_primeFactors ( Finset.mem_sdiff.mp hy |>.1 ) ) hx₂ ⟩, Nat.prime_of_mem_primeFactors ( Finset.mem_sdiff.mp hy |>.1 ), Finset.mem_sdiff.mp hy |>.2 ⟩ ;
+    have h_sum_le : ∑ γ ∈ Finset.filter (fun γ => Squarefree γ ∧ d ∣ γ) (Finset.Icc 1 N), (∏ p ∈ γ.primeFactors \ T, (1 / (p : ℝ))) ≤ ∑ A ∈ Finset.image (fun γ : ℕ => γ.primeFactors \ T) (Finset.filter (fun γ => Squarefree γ ∧ d ∣ γ) (Finset.Icc 1 N)), (∏ p ∈ A, (1 / (p : ℝ))) := by
+      rw [ Finset.sum_image <| by intros a ha b hb hab; exact h_inj ha hb hab ];
+    exact h_sum_le.trans ( Finset.sum_le_sum_of_subset_of_nonneg h_image fun _ _ _ => Finset.prod_nonneg fun _ _ => one_div_nonneg.mpr <| Nat.cast_nonneg _ );
+  convert h_sum using 2 ; norm_num [ euler_product_one_add_inv ];
+  · norm_num [ hd_def ];
+  · convert euler_product_one_add_inv _ using 1
 
 /-- **Tail-sum decay.**
 
