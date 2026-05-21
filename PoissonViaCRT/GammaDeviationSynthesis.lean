@@ -810,7 +810,8 @@ The proof sketch:
 lemma gamma_weighted_series_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p)) (X : Box (k - 1))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
-    (hΩle : ∀ p, p.Prime → (Ω p).card ≤ p) :
+    (hΩle : ∀ p, p.Prime → (Ω p).card ≤ p)
+    (hrp : ∀ p, p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ)) :
     ∃ K : ℝ, 0 < K ∧ ∀ (q : ℕ) [NeZero q] (s : ℝ) (_ : 1 ≤ s),
       let H := ⌈s * ∑ i, X.sides i⌉₊
       ∑ T ∈ (q.primeFactors.powerset.filter (· ≠ ∅)).filter
