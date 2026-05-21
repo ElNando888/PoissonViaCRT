@@ -229,15 +229,16 @@ public noncomputable def countTuplesWithGamma (Γ : GammaStructure (k + 1)) (H :
 
 /-- Given a squarefree positive integer `c` and distinct integers `h₀ = 0, h₁, …, hₖ₋₁`,
 define `γᵢⱼ(h) := gcd(c, |hⱼ - hᵢ|)` for `i ≠ j` and `γᵢᵢ = 0`. -/
-def gammaOfTuple (c : ℕ) (h : Fin k → ℤ) (i j : Fin k) : ℕ :=
+@[expose]
+public def gammaOfTuple (c : ℕ) (h : Fin k → ℤ) (i j : Fin k) : ℕ :=
   if i = j then 0 else Nat.gcd c (Int.natAbs (h j - h i))
 
 @[simp]
-theorem gammaOfTuple_self (c : ℕ) (h : Fin k → ℤ) (i : Fin k) :
+public theorem gammaOfTuple_self (c : ℕ) (h : Fin k → ℤ) (i : Fin k) :
     gammaOfTuple c h i i = 0 := by
   simp [gammaOfTuple]
 
-theorem gammaOfTuple_of_ne (c : ℕ) (h : Fin k → ℤ) {i j : Fin k} (hij : i ≠ j) :
+public theorem gammaOfTuple_of_ne (c : ℕ) (h : Fin k → ℤ) {i j : Fin k} (hij : i ≠ j) :
     gammaOfTuple c h i j = Nat.gcd c (Int.natAbs (h j - h i)) := by
   simp [gammaOfTuple, hij]
 
@@ -245,7 +246,8 @@ theorem gammaOfTuple_of_ne (c : ℕ) (h : Fin k → ℤ) {i j : Fin k} (hij : i 
 The gamma structure induced by a squarefree integer `c` and a tuple `h` with
 distinct entries. Each off-diagonal entry is `gcd(c, |h j - h i|)`.
 -/
-def GammaStructure.ofTuple (c : ℕ) (hc : Squarefree c) (h : Fin k → ℤ)
+@[expose]
+public def GammaStructure.ofTuple (c : ℕ) (hc : Squarefree c) (h : Fin k → ℤ)
     (h_dist : ∀ i j, i ≠ j → h i ≠ h j) : GammaStructure k where
   gamma := gammaOfTuple c h
   diag := gammaOfTuple_self c h
@@ -333,5 +335,24 @@ public noncomputable def lambdaExponent (k : ℕ) : ℝ :=
   else if k = 2 then (Real.sqrt 17 - 3) / 2
   else if k = 3 then 1 / 3
   else 1 / (k - 1 : ℝ)
+
+/-! ### Gamma product of a box point -/
+
+/-- The gamma product of a box point `h ∈ ℤ^n` with respect to a set `T`
+of primes. This is the gamma product of the `(n+1)`-tuple `(0, h₁, …, hₙ)`
+with respect to `c = ∏_{p ∈ T} p`:
+  `γ(h) = ∏_{j=0}^{n} lcm_{i<j} gcd(c, |h'_j − h'_i|)`
+where `h' = Fin.cons 0 h`.
+
+This function is defined for *any* `h`, without requiring distinct entries.
+When `h` arises from an `inScaledBox` lattice point, the entries of
+`Fin.cons 0 h` are automatically distinct (by `inScaledBox_strictMono`),
+and this function agrees with `(GammaStructure.ofTuple c hc h' h_dist).gammaProd`. -/
+@[expose]
+public noncomputable def gammaProdOfBoxPoint (T : Finset ℕ) {n : ℕ} (h : Fin n → ℤ) : ℕ :=
+  let c := ∏ p ∈ T, p
+  let h' := Fin.cons (0 : ℤ) h
+  ∏ j : Fin (n + 1), (Finset.Iio j).lcm
+    (fun i => Nat.gcd c (Int.natAbs (h' j - h' i)))
 
 end PoissonCRT

@@ -14,10 +14,11 @@ To cite Aristotle, tag @Aristotle-Harmonic on GitHub PRs/issues, and add as co-a
 Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
-module
-public import PoissonViaCRT.Combinatorics
-public import PoissonViaCRT.GammaRangeSum
-public import PoissonViaCRT.LargeDivisorHelpers
+import PoissonViaCRT.Combinatorics
+import PoissonViaCRT.GammaRangeSum
+import PoissonViaCRT.LargeDivisorHelpers
+import PoissonViaCRT.GammaDeviationHelpers
+import Mathlib
 
 set_option linter.unusedVariables false
 
@@ -70,30 +71,11 @@ is the product over primes `p ∈ T` of:
 - `p` (trivial bound) if `p ∣ radical γ` (collision prime),
 - `(1 − |Ω_p|/p) · p^{−ε} · μ_p` (Weil-type bound) if `p ∤ radical γ`
   (well-distributed prime). -/
-@[expose]
-public noncomputable def perGammaDeviationWeight (ε : ℝ) (k : ℕ)
+noncomputable def perGammaDeviationWeight (ε : ℝ) (k : ℕ)
     (Ω : ∀ p : ℕ, Finset (ZMod p)) (T : Finset ℕ) (γ : ℕ) : ℝ :=
   (∏ p ∈ T.filter (fun p => p ∣ radical γ), (p : ℝ)) *
   (∏ p ∈ T.filter (fun p => ¬(p ∣ radical γ)),
     (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) * localMean k Ω p)
-
-/-! ## 1b. Gamma product of a box point -/
-
-/-- The gamma product of a box point `h ∈ ℤ^n` with respect to a set `T`
-of primes. This is the gamma product of the `(n+1)`-tuple `(0, h₁, …, hₙ)`
-with respect to `c = ∏_{p ∈ T} p`:
-  `γ(h) = ∏_{j=0}^{n} lcm_{i<j} gcd(c, |h'_j − h'_i|)`
-where `h' = Fin.cons 0 h`.
-
-This function is defined for *any* `h`, without requiring distinct entries.
-When `h` arises from an `inScaledBox` lattice point, the entries of
-`Fin.cons 0 h` are automatically distinct (by `inScaledBox_strictMono`),
-and this function agrees with `(GammaStructure.ofTuple c hc h' h_dist).gammaProd`. -/
-noncomputable def gammaProdOfBoxPoint (T : Finset ℕ) {n : ℕ} (h : Fin n → ℤ) : ℕ :=
-  let c := ∏ p ∈ T, p
-  let h' := Fin.cons (0 : ℤ) h
-  ∏ j : Fin (n + 1), (Finset.Iio j).lcm
-    (fun i => Nat.gcd c (Int.natAbs (h' j - h' i)))
 
 /-! ## 2. Auxiliary lemmas for the deviation-sum bound -/
 
@@ -234,6 +216,7 @@ The proof shows that each `h` in the fiber corresponds to a tuple
       gcd(radical(γ), |h'_j - h'_i|) = gcd(∏ T, |h'_j - h'_i|)
       which is needed for the GammaStructure matching condition.
    3. Using injectivity of Fin.cons 0 to bound the fiber cardinality. -/
+
 lemma fiber_card_le_countTuplesWithGammaProd (k : ℕ) (hk : 2 ≤ k)
     (T : Finset ℕ) (q : ℕ) [NeZero q] (hq : Squarefree q) (hT : T ⊆ q.primeFactors)
     (X : Box (k - 1)) (s : ℝ) (hs : 1 ≤ s) (γ : ℕ) :
@@ -242,7 +225,53 @@ lemma fiber_card_le_countTuplesWithGammaProd (k : ℕ) (hk : 2 ≤ k)
       (fun h => inScaledBox X s (fun _ => 0) h)).filter
       (fun h => gammaProdOfBoxPoint T h = γ)).card ≤
     countTuplesWithGammaProd (k - 1) γ H := by
-  sorry
+  intro H
+  -- The fiber is a finset of h : Fin (k-1) → ℤ
+  -- Map each h to Fin.cons 0 h : Fin k → ℤ and show it's in the counting set
+  set S := ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ↑H).filter
+    (fun h => inScaledBox X s (fun _ => 0) h)).filter
+    (fun h => gammaProdOfBoxPoint T h = γ) with S_def
+  -- countTuplesWithGammaProd is Set.ncard of a set
+  unfold countTuplesWithGammaProd
+  -- Map h to h' = Fin.cons 0 h
+  have h_inj : ∀ a ∈ S, ∀ b ∈ S,
+      (Fin.cons (0 : ℤ) a : Fin (k - 1 + 1) → ℤ) = Fin.cons (0 : ℤ) b → a = b := by
+    intro a _ b _ hab
+    funext i; have := congr_fun hab (Fin.succ i)
+    simp [Fin.cons] at this; exact this
+  set F : (Fin (k - 1) → ℤ) → (Fin (k - 1 + 1) → ℤ) := fun h => Fin.cons (0 : ℤ) h
+  have h_card : S.card = (S.image F).card :=
+    (Finset.card_image_of_injOn (fun a ha b hb => h_inj a ha b hb)).symm
+  rw [h_card, ← Set.ncard_coe_finset]
+  apply Set.ncard_le_ncard
+  · intro h' hh'
+    simp only [Finset.coe_image, Set.mem_image, Finset.mem_coe] at hh'
+    obtain ⟨h, hh, rfl⟩ := hh'
+    simp only [S_def, Finset.mem_filter] at hh
+    obtain ⟨⟨hh_pi, hh_box⟩, hh_gamma⟩ := hh
+    -- Show h' = Fin.cons 0 h is in the counting set
+    refine ⟨?_, ?_, ?_, ?_⟩
+    · -- h' 0 = 0
+      rfl
+    · -- distinct entries
+      exact fin_cons_zero_injective (by omega) X s h hh_box
+    · -- 0 ≤ h' i ≤ H
+      exact fin_cons_zero_range H h hh_pi
+    · -- ∃ Γ with matching structure
+      have h_dist := fin_cons_zero_injective (by omega) X s h hh_box
+      have hc_sq := prod_primes_squarefree T q hq hT
+      refine ⟨GammaStructure.ofTuple (∏ p ∈ T, p) hc_sq (Fin.cons 0 h) h_dist, ?_, ?_⟩
+      · -- gammaProd = γ
+        rw [gammaProd_ofTuple_eq T _ hc_sq rfl h h_dist]
+        exact hh_gamma
+      · -- matching gcd condition
+        exact ofTuple_gcd_eq _ hc_sq _ h_dist
+  · apply Set.Finite.subset (Finset.finite_toSet
+      (Fintype.piFinset (fun _ : Fin (k - 1 + 1) => Finset.Icc (0 : ℤ) H)))
+    intro h' ⟨_, _, hh_range, _⟩
+    simp only [Finset.coe_filter, Set.mem_setOf, Fintype.mem_piFinset, Finset.mem_Icc,
+      Finset.mem_coe]
+    exact fun i => hh_range i
 
 /-- The gamma product of a box point is in `[1, H ^ k]`. The lower bound
 follows from `gammaProd_pos` (the tuple has distinct entries, giving at least
@@ -264,7 +293,25 @@ lemma gammaProdOfBoxPoint_mem_Icc (k : ℕ) (hk : 2 ≤ k)
         Finset.Icc (1 : ℤ) ↑(⌈s * ∑ i, X.sides i⌉₊)))
     (hbox : inScaledBox X s (fun _ => 0) h) :
     gammaProdOfBoxPoint T h ∈ Finset.Icc 1 (⌈s * ∑ i, X.sides i⌉₊ ^ (k * k)) := by
-  sorry
+  simp only [Finset.mem_Icc]
+  set H := ⌈s * ∑ i, X.sides i⌉₊ with H_def
+  constructor
+  · -- Lower bound: γ ≥ 1
+    exact gammaProdOfBoxPoint_pos T hT_ne q hT h
+  · -- Upper bound: γ ≤ H^(k*k)
+    -- k * k ≥ (k-1+1)*(k-1+1) = k*k, so H^(k*k) ≥ H^((k-1+1)*(k-1+1))
+    have hH_pos : 0 < H := by
+      apply Nat.ceil_pos.mpr
+      exact mul_pos (by linarith) (Finset.sum_pos (fun _ _ => X.sides_pos _)
+        ⟨⟨0, by omega⟩, Finset.mem_univ _⟩)
+    have hkk : (k - 1 + 1) * (k - 1 + 1) ≤ k * k := by
+      rw [Nat.sub_add_cancel (by omega : 1 ≤ k)]
+    calc gammaProdOfBoxPoint T h
+        ≤ H ^ ((k - 1 + 1) * (k - 1 + 1)) := by
+          apply gammaProdOfBoxPoint_le T H hH_pos h
+          · exact natAbs_diff_le_H H h hh_mem
+          · exact fin_cons_zero_diff_pos (by omega) X s h hbox
+      _ ≤ H ^ (k * k) := Nat.pow_le_pow_right hH_pos hkk
 
 /-! ## 3. Deviation sum bounded by gamma sum -/
 
@@ -282,7 +329,7 @@ The proof proceeds by:
    `deviation_prod_le_perGammaWeight`.
 3. Bounding each fiber cardinality using
    `fiber_card_le_countTuplesWithGammaProd`. -/
-public lemma deviation_sum_le_gamma_sum (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+lemma deviation_sum_le_gamma_sum (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p)) (q : ℕ) [NeZero q] (hq : Squarefree q)
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
     (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
@@ -374,7 +421,7 @@ is bounded by `K · s^{−ε/2}`. This combines:
 - Convergence of the Dirichlet-type series
   `∑_{γ > s} w(γ) / γ ≤ K · s^{−ε/2}` over squarefree `γ`.
 -/
-public lemma gamma_weighted_series_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+lemma gamma_weighted_series_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p)) (X : Box (k - 1))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
     (hΩle : ∀ p, p.Prime → (Ω p).card ≤ p) :
