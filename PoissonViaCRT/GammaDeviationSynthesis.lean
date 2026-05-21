@@ -714,19 +714,35 @@ lemma tail_sum_decay (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k) (Ω : �
 
 /-! ## 5. Gamma-weighted series bound -/
 
+/-- **Gamma-weighted prime splitting.**
+
+For $\gamma \le B_{max}$, any prime dividing $\gamma$ must be at most $B_{max}$.
+Therefore, for primes $p > B_{max}$, they cannot divide $\gamma$, and their contribution
+to `perGammaDeviationWeight` is exactly the well-distributed Weil weight.
+For primes $p \le B_{max}$, their contribution (whether collision or well-distributed)
+is bounded universally by $p$. -/
+lemma perGammaDeviationWeight_split_bound (ε : ℝ) (hε : 0 ≤ ε) (k : ℕ) (hk : 2 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (T : Finset ℕ) (hT_prime : ∀ p ∈ T, Nat.Prime p)
+    (γ B_max : ℕ) (hγ : γ ≤ B_max) :
+    perGammaDeviationWeight ε k Ω T γ ≤
+    (∏ p ∈ T.filter (· ≤ B_max), (p : ℝ)) *
+    (∏ p ∈ T.filter (B_max < ·), (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) * localMean k Ω p) := by
+  sorry
+
 /-- **Gamma-weighted series bound.**
 
 The sum over large-divisor subsets `T` of the gamma-weighted tuple counts
 is bounded by `K · s^{−ε/2}`.
 
 The proof sketch:
-1. Every $\gamma$ has radical contained in $T$. Let $T_c = \text{radical}(\gamma)$.
-2. Evaluate $\sum_{\gamma} w(\gamma, T)/\gamma$ by splitting into an Euler product over $T_c \subseteq T$,
-   yielding $\prod_{p \in T} (p/(p-1) + \text{WeilBound}_p)$.
-3. Use `prefactor_absorption` to combine the $q$-dependent prefactor with this Euler product.
-   Separate the collision-Euler factor $\prod 1/(p-1)$ from the deviation factor
-   $\prod \text{combinedEulerWeight}_p$.
-4. Use `tail_sum_decay` on the deviation product to bound the sum over $T$ by $K s^{-\epsilon/2}$.
+1. Since $\gamma \le H^{k^2}$, use `perGammaDeviationWeight_split_bound` to split $T$ into
+   $T_{small}$ ($p \le H^{k^2}$) and $T_{large}$ ($p > H^{k^2}$).
+2. The weight for $T_{large}$ is exactly the Weil bound, and no primes in $T_{large}$ divide $\gamma$.
+3. Use `prefactor_absorption` to combine the $q$-dependent prefactor with the $T_{large}$ weight.
+   This yields exactly $\prod_{p \in T_{large}} \text{combinedEulerWeight}_p$.
+4. For $T_{small}$, the product is bounded by $\log s$, which is absorbed by $s^{-\epsilon/2}$.
+5. Use `tail_sum_decay` on the deviation product to bound the sum over $T$.
 -/
 lemma gamma_weighted_series_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p)) (X : Box (k - 1))
