@@ -21,7 +21,8 @@ import PoissonViaCRT.ProductDifference
 import PoissonViaCRT.LargeDivisorHelpers
 import PoissonViaCRT.SmallDivisorHelpers
 import PoissonViaCRT.TupleCount
-import PoissonViaCRT.GammaDeviationSynthesis
+import PoissonViaCRT.EulerWeights
+import PoissonViaCRT.L2DeviationSynthesis
 
 set_option linter.unusedVariables false
 
@@ -301,19 +302,12 @@ lemma prod_diff_ne_zero_implies_dvd {k : ℕ} (hk : 1 ≤ k) (q : ℕ) [NeZero q
 
 /-! ### Large-divisor bounds
 
-  **Status:** `large_divisor_series_bound` is now proved (sorry-free) via `tail_sum_decay`.
-  The remaining `sorry` is in `deviation_large_divisors`, which needs the Gamma-structure
-  cancellation machinery to connect the per-`T` pointwise bound to the `combinedEulerWeight`
-  tail-sum.  See the docstring on `large_divisor_series_bound` for details on why the
-  previous (false) formulation was replaced.
+  **Status:** `deviation_large_divisors` is now proved using the per-T L2 bound
+  (`per_T_deviation_le_combinedEulerWeight` from `L2DeviationSynthesis.lean`)
+  combined with `tail_sum_decay` (relocated to `EulerWeights.lean`).
 
-  TODO(Action Plan): Connect `deviation_large_divisors` to the Gamma-structure infrastructure.
-  The brute-force per-`T` pointwise bound (`deviation_prod_pointwise_le`) splits primes
-  into small (paying `p` per prime) and large (paying `p^{-ε}`). This overapproximation
-  is too loose when `T` contains many small primes. The correct approach must:
-  1. Resurrect the `GammaStructure` machinery from `Combinatorics.lean`.
-  2. Use tuple-collision counting to obtain cancellation in the `h`-sum.
-  3. Bridge the per-`T` deviation directly to `∏_T combinedEulerWeight`.
+  The per-T bound reduces each `|inner_T|` to `C · ∏_{p ∈ T} combinedEulerWeight`,
+  after which the Rankin-trick tail sum gives the `O(s^{-ε/2})` decay.
 -/
 
 /-- **Combined Euler weight tail-sum bound.**
@@ -442,34 +436,41 @@ private lemma deviation_large_divisors (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk :
               (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p -
               localMean k Ω p)) *
             ∏ p ∈ q.primeFactors \ T, localMean k Ω p)| ≤ K₂ * s ^ (-(ε / 2)) := by
-  -- Obtain the tail-sum decay bound on ∑_T ∏_T combinedEulerWeight.
+  -- Step 1: Obtain the per-T L2 bound from L2DeviationSynthesis.
+  obtain ⟨C_T, hC_T_pos, hC_T⟩ :=
+    per_T_deviation_le_combinedEulerWeight ε hε k hk Ω hΩ hWD hsp hrp hε_lt X C_lp hC_lp_pos hC_lp
+  -- Step 2: Obtain the tail-sum decay bound on ∑_T ∏_T combinedEulerWeight.
   obtain ⟨K_large, hK_large_pos, hK_large⟩ := large_divisor_series_bound ε hε k hk Ω hrp
-  have hXvol_pos : 0 < X.volume := Finset.prod_pos (fun i _ => X.sides_pos i)
-  refine ⟨(X.volume + C_lp) * K_large, mul_pos (add_pos hXvol_pos hC_lp_pos) hK_large_pos,
-    fun q _ hq_sq => ?_⟩
+  -- Step 3: Combine: the total is bounded by C_T · K_large · s^{-ε/2}.
+  refine ⟨C_T * K_large, mul_pos hC_T_pos hK_large_pos, fun q _ hq_sq => ?_⟩
   have hs_ge : 1 ≤ (q : ℝ) / (crtSubset q Ω).card := by
     rw [one_le_div (Nat.cast_pos.mpr (Nat.pos_of_ne_zero (by
       have := crtSubset_card_pos_aux Ω hΩ q; aesop)))]
     norm_cast; exact le_trans (Finset.card_le_univ _) (by norm_num)
-  /- **Analysis of this sorry** (see `docs/deviation_large_divisors_analysis.md` for details):
-
-     This sorry cannot be closed using the per-T pointwise bound
-     (`large_divisor_per_T_bound`) combined with `large_divisor_series_bound`, because the
-     per-T bound introduces factors `p^k/|Ω_p|^k` for primes p ≤ B_max that cannot be
-     connected to `combinedEulerWeight`.  Summing these per-T bounds over all T with
-     ∏_T p > s diverges due to the exponentially many subsets of small primes.
-
-     The intermediate lemma `gamma_weighted_series_bound` (GammaDeviationSynthesis.lean) is
-     **mathematically false**: it pushes |·| inside ∑_h via `deviation_sum_le_gamma_sum`,
-     losing the cancellation in the h-sum that makes the bound true.
-
-     The correct approach (Granville–Kurlberg §3.1) uses the **second moment method**:
-     exploit CRT independence to show ∑_r ∏_T f_p(r_p) = 0 (mean-zero product), then
-     bound the lattice-point error term.  This preserves the h-sum cancellation and yields
-     a per-T bound of C · H^{k−2} · P_T · ∏_T(cEW · μ), which sums to O(s^{−ε/2}) via
-     the Rankin trick.  Building this infrastructure requires ~500+ lines of new code
-     (CRT equidistribution + mean-zero product + error analysis). -/
-  sorry
+  -- Each |inner_T| ≤ C_T · ∏_T cEW, so ∑_T |inner_T| ≤ C_T · ∑_T ∏ cEW ≤ C_T · K · s^{-ε/2}.
+  calc ∑ T ∈ (q.primeFactors.powerset.filter (· ≠ ∅)).filter
+            (fun (T : Finset ℕ) => ¬((∏ p ∈ T, (p : ℝ)) ≤ (q : ℝ) / (crtSubset q Ω).card)),
+        |∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+            Finset.Icc (1 : ℤ) ⌈(q : ℝ) / (crtSubset q Ω).card * ∑ i, X.sides i⌉).filter
+          (fun h => inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) (fun _ => 0) h)),
+        (1 / ((crtSubset q Ω).card : ℝ)) *
+          ((∏ p ∈ T, (localCount Ω q
+              (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p -
+              localMean k Ω p)) *
+            ∏ p ∈ q.primeFactors \ T, localMean k Ω p)|
+      ≤ ∑ T ∈ (q.primeFactors.powerset.filter (· ≠ ∅)).filter
+            (fun (T : Finset ℕ) => ¬((∏ p ∈ T, (p : ℝ)) ≤ (q : ℝ) / (crtSubset q Ω).card)),
+          C_T * ∏ p ∈ T, combinedEulerWeight ε k Ω p := by
+        apply Finset.sum_le_sum
+        intro T hT
+        exact hC_T q hq_sq T (Finset.mem_filter.mp hT |>.1)
+    _ = C_T * ∑ T ∈ (q.primeFactors.powerset.filter (· ≠ ∅)).filter
+            (fun (T : Finset ℕ) => ¬((∏ p ∈ T, (p : ℝ)) ≤ (q : ℝ) / (crtSubset q Ω).card)),
+          ∏ p ∈ T, combinedEulerWeight ε k Ω p := by
+        rw [← Finset.mul_sum]
+    _ ≤ C_T * (K_large * ((q : ℝ) / (crtSubset q Ω).card) ^ (-(ε / 2))) := by
+        gcongr; exact hK_large q ((q : ℝ) / (crtSubset q Ω).card) hs_ge
+    _ = C_T * K_large * ((q : ℝ) / (crtSubset q Ω).card) ^ (-(ε / 2)) := by ring
 
 /-! ### Core deviation bound assembly -/
 
@@ -663,20 +664,3 @@ public theorem deviation_uniform_exponent (ε : ℝ) (hε : 0 < ε) (k : ℕ) (h
     exact deviation_expression_fixed_delta ε hε k hk Ω hΩ hWD hsp hrp hlt X C_lp hC_lp_pos hC_lp
 
 end PoissonCRT
-
-/-
-PROVIDED SOLUTION (completed)
-
-The `sorry` on `large_divisor_series_bound` has been closed.  The original formulation
-(involving a `T_small / T_large` prime-factor split with the CRT prefactor and complement
-product) was **mathematically false**: when `|Ω_p| = p` for all primes, each summand equals
-1 after prefactor absorption, but the number of contributing subsets grows as `2^{ω(q)}`,
-exceeding any fixed `K · s^{−ε/2}`.
-
-The corrected `large_divisor_series_bound` bounds `∑_T ∏_{p ∈ T} combinedEulerWeight` and
-is proved directly via `tail_sum_decay` (Rankin trick + Euler product bound).
-
-The remaining `sorry` is now on `deviation_large_divisors`, which is a **true** statement.
-Closing it requires the Gamma-structure cancellation machinery from Granville–Kurlberg §3.1
-(tuple-collision counting) to connect the per-`T` deviation to `∏_T combinedEulerWeight`.
--/
