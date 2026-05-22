@@ -119,7 +119,115 @@ lemma mean_zero_local_deviation (p : ℕ) [NeZero p] (Ω : Finset (ZMod p)) (k :
 
 /-! ## 4. All-Large-Prime Per-T Bound -/
 
-/-- When every prime `p ∈ T` satisfies `p > B_max`, the per-T deviation bound follows
+/-- Per-prime Weil bound reformulated with `k` instead of `n+1`.  Wraps
+`localCount_deviation_weil` handling the `k - 1 + 1 = k` conversion. -/
+private lemma per_prime_large_bound (ε : ℝ) (k : ℕ) (hk : 2 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
+    (q : ℕ) [NeZero q]
+    (X : Box (k - 1))
+    (s : ℝ) (hs : 0 < s)
+    (p : ℕ) (hp_prime : Nat.Prime p) (hp_factor : p ∈ q.primeFactors)
+    (hp_large : (⌈s * ∑ i, X.sides i⌉₊ : ℕ) < p)
+    (h : Fin (k - 1) → ℤ)
+    (hbox : inScaledBox X s (fun _ => 0) h) :
+    |localCount Ω q (Fin.cons (0 : ZMod q) (fun i => (h i : ZMod q))) p -
+      localMean k Ω p| ≤
+    combinedEulerWeight ε k Ω p * localMean k Ω p := by
+  have hk_eq : k - 1 + 1 = k := Nat.sub_add_cancel (by omega)
+  have hWD' : @WellDistributed ε p ⟨hp_prime⟩ (Ω p) (k - 1 + 1) := hk_eq ▸ @hWD p ⟨hp_prime⟩
+  have h1 := localCount_deviation_weil ε (show 1 ≤ k - 1 by omega) Ω q X s hs p hp_prime hp_factor hp_large hWD' h hbox
+  simp only [hk_eq] at h1
+  unfold combinedEulerWeight
+  exact h1
+
+/-
+Helper: pointwise bound on |∏_T (localCount - localMean)| when all primes in T are large.
+Uses `per_prime_large_bound` for each p, then assembles via Finset.prod_le_prod.
+-/
+private lemma all_large_abs_prod_le (ε : ℝ) (k : ℕ) (hk : 2 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
+    (q : ℕ) [NeZero q]
+    (X : Box (k - 1))
+    (T : Finset ℕ) (hT_sub : T ⊆ q.primeFactors)
+    (s : ℝ) (hs : 0 < s)
+    (hT_large : ∀ p ∈ T, (⌈s * ∑ i, X.sides i⌉₊ : ℕ) < p)
+    (h : Fin (k - 1) → ℤ)
+    (hbox : inScaledBox X s (fun _ => 0) h) :
+    |∏ p ∈ T, (localCount Ω q (Fin.cons (0 : ZMod q) (fun i => (h i : ZMod q))) p -
+        localMean k Ω p)| ≤
+    (∏ p ∈ T, combinedEulerWeight ε k Ω p) * (∏ p ∈ T, localMean k Ω p) := by
+  rw [ ← Finset.prod_mul_distrib ];
+  rw [ Finset.abs_prod ];
+  apply Finset.prod_le_prod ?_ ?_;
+  · exact fun _ _ => abs_nonneg _;
+  · intro p hp
+    apply per_prime_large_bound ε k hk Ω hWD q X s hs p (Nat.prime_of_mem_primeFactors (hT_sub hp)) (hT_sub hp) (hT_large p hp) h hbox
+
+/-
+Helper: the prefactor (1/|Ω_q|) times the product of all local means equals (|Ω_q|/q)^{k-1}.
+Uses globalMean_eq_prod_localMean for the CRT factorization.
+-/
+private lemma prefactor_localMean_collapse' (k : ℕ) (hk : 1 ≤ k) (q : ℕ) [NeZero q]
+    (hq : Squarefree q) (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hc : 0 < (crtSubset q Ω).card) :
+    (1 / ((crtSubset q Ω).card : ℝ)) * ∏ p ∈ q.primeFactors, localMean k Ω p =
+      (((crtSubset q Ω).card : ℝ) / (q : ℝ)) ^ (k - 1 : ℕ) := by
+  -- By definition of `globalMean`, we know that
+  have h_globalMean : ((crtSubset q Ω).card : ℝ) ^ k / (q : ℝ) ^ (k - 1) = ∏ p ∈ q.primeFactors, localMean k Ω p := by
+    convert globalMean_eq_prod_localMean k q hq Ω using 1;
+  rw [ ← h_globalMean, one_div, inv_mul_eq_div, div_pow ];
+  rw [ div_eq_iff ( by positivity ) ] ; cases k <;> simp_all +decide [ pow_succ', mul_assoc, mul_comm, mul_left_comm, div_eq_mul_inv ]
+
+/-
+Helper: algebraic cancellation S · (1/s)^n ≤ V + C given S ≤ (V + C) · s^n.
+-/
+private lemma box_card_ratio_cancel (S V C s : ℝ) (n : ℕ)
+    (hVC : 0 ≤ V + C) (hs : 0 < s)
+    (hS_le : S ≤ (V + C) * s ^ n) :
+    S * (1 / s) ^ n ≤ V + C := by
+  convert mul_le_mul_of_nonneg_right hS_le ( by positivity : 0 ≤ ( 1 / s ) ^ n ) using 1 ; ring_nf ; norm_num [ hs.ne' ]
+
+/-
+Helper: per-h bound on the summand. For each lattice point h in the box,
+the absolute value of the summand is ≤ (∏_T cEW) * (c/q)^{k-1}.
+-/
+private lemma per_h_bound (ε : ℝ) (k : ℕ) (hk : 2 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
+    (q : ℕ) [NeZero q] (hq : Squarefree q)
+    (X : Box (k - 1))
+    (T : Finset ℕ) (hT_sub : T ⊆ q.primeFactors)
+    (s : ℝ) (hs : 0 < s)
+    (hT_large : ∀ p ∈ T, (⌈s * ∑ i, X.sides i⌉₊ : ℕ) < p)
+    (h : Fin (k - 1) → ℤ)
+    (hbox : inScaledBox X s (fun _ => 0) h) :
+    |(1 / ((crtSubset q Ω).card : ℝ)) *
+        ((∏ p ∈ T, (localCount Ω q
+            (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p -
+            localMean k Ω p)) *
+          ∏ p ∈ q.primeFactors \ T, localMean k Ω p)| ≤
+    (∏ p ∈ T, combinedEulerWeight ε k Ω p) *
+      (((crtSubset q Ω).card : ℝ) / (q : ℝ)) ^ (k - 1 : ℕ) := by
+  -- Apply the lemma all_large_abs_prod_le to bound the absolute value of the product.
+  have h_abs_prod : |∏ p ∈ T, (localCount Ω q (Fin.cons 0 (fun i => h i)) p - localMean k Ω p)| ≤ (∏ p ∈ T, combinedEulerWeight ε k Ω p) * (∏ p ∈ T, localMean k Ω p) := by
+    convert all_large_abs_prod_le ε k hk Ω hWD q X T hT_sub s hs hT_large h hbox using 1;
+  -- Apply the lemma prefactor_localMean_collapse' to simplify the expression.
+  have h_prefactor : (1 / ((crtSubset q Ω).card : ℝ)) * (∏ p ∈ q.primeFactors, localMean k Ω p) = (((crtSubset q Ω).card : ℝ) / (q : ℝ)) ^ (k - 1 : ℕ) := by
+    convert prefactor_localMean_collapse' k ( by linarith ) q hq Ω _ using 1;
+    convert PoissonCRT.crtSubset_card_pos_aux Ω hΩ q using 1;
+  convert mul_le_mul_of_nonneg_left h_abs_prod _ using 1;
+  any_goals exact ( 1 / ( # ( crtSubset q Ω ) : ℝ ) ) * ( ∏ p ∈ q.primeFactors \ T, localMean k Ω p );
+  · rw [ abs_mul, abs_mul, abs_of_nonneg ( by positivity ) ] ; ring;
+    rw [ abs_of_nonneg ( Finset.prod_nonneg fun _ _ => localMean_nonneg _ _ _ ) ];
+  · rw [ ← h_prefactor ] ; ring;
+    rw [ mul_assoc, ← Finset.prod_sdiff hT_sub ] ; ring;
+  · exact mul_nonneg ( one_div_nonneg.mpr ( Nat.cast_nonneg _ ) ) ( Finset.prod_nonneg fun _ _ => localMean_nonneg _ _ _ )
+
+/-
+When every prime `p ∈ T` satisfies `p > B_max`, the per-T deviation bound follows
 from the pointwise `WellDistributed` first component.
 
 For each box lattice point `h`, the tuple `Fin.cons 0 h` is injective modulo every
@@ -127,7 +235,8 @@ For each box lattice point `h`, the tuple `Fin.cons 0 h` is injective modulo eve
 `|∏_{p∈T} (N_p(h) − μ_p)| ≤ ∏_T |N_p − μ_p| ≤ ∏_T (cEW_p · μ_p)`
 
 Summing over `h` and using the prefactor absorption:
-`|inner_T| ≤ (|S|/|Ω_q|) · ∏_T cEW · ∏_q μ ≤ (vol + C_lp) · ∏_T cEW` -/
+`|inner_T| ≤ (|S|/|Ω_q|) · ∏_T cEW · ∏_q μ ≤ (vol + C_lp) · ∏_T cEW`
+-/
 lemma all_large_per_T_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
@@ -159,7 +268,25 @@ lemma all_large_per_T_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
             localMean k Ω p)) *
           ∏ p ∈ q.primeFactors \ T, localMean k Ω p)| ≤
     (X.volume + C_lp) * ∏ p ∈ T, combinedEulerWeight ε k Ω p := by
-  sorry
+  refine' le_trans ( Finset.abs_sum_le_sum_abs _ _ ) _;
+  refine' le_trans ( Finset.sum_le_sum fun x hx => _ ) _;
+  use fun x => ( ∏ p ∈ T, combinedEulerWeight ε k Ω p ) * ( ( crtSubset q Ω |> Finset.card : ℝ ) / q ) ^ ( k - 1 : ℕ );
+  · convert per_h_bound ε k hk Ω hΩ hWD q hq_sq X T ( Finset.mem_powerset.mp ( Finset.mem_filter.mp hT |>.1 ) ) ( q / ( crtSubset q Ω |> Finset.card : ℝ ) ) ( div_pos ( Nat.cast_pos.mpr <| NeZero.pos q ) <| Nat.cast_pos.mpr <| Nat.pos_of_ne_zero <| ?_ ) hT_large x <| Finset.mem_filter.mp hx |>.2 using 1;
+    exact Nat.ne_of_gt <| PoissonCRT.crtSubset_card_pos_aux Ω ( fun p hp => hΩ p hp ) q;
+  · by_cases hq : q = 0 <;> by_cases hΩ : ( crtSubset q Ω ).card = 0 <;> simp_all +decide [ division_def ];
+    · rcases k with ( _ | _ | k ) <;> simp_all +decide [ Finset.prod_eq_zero_iff ];
+      refine' mul_nonneg _ _;
+      · exact add_nonneg ( Finset.prod_nonneg fun _ _ => le_of_lt ( X.sides_pos _ ) ) hC_lp_pos.le;
+      · refine' Finset.prod_nonneg fun p hp => _;
+        exact mul_nonneg ( sub_nonneg.2 <| div_le_one_of_le₀ ( mod_cast omega_card_le_prime q Ω p <| hT.1 hp ) <| Nat.cast_nonneg _ ) <| Real.rpow_nonneg ( Nat.cast_nonneg _ ) _;
+    · convert mul_le_mul_of_nonneg_right ( scaled_box_card_le hk X C_lp hC_lp_pos hC_lp ( q / ( crtSubset q Ω |> Finset.card : ℝ ) ) ?_ ) ( show 0 ≤ ( ∏ p ∈ T, combinedEulerWeight ε k Ω p ) * ( ( crtSubset q Ω |> Finset.card : ℝ ) / q ) ^ ( k - 1 : ℕ ) from ?_ ) using 1;
+      · field_simp [ div_eq_mul_inv, mul_assoc, mul_comm, mul_left_comm, hq, hΩ ];
+        simp +decide [ mul_assoc, ← mul_pow, hq, hΩ ];
+      · rw [ one_le_div ] <;> norm_cast;
+        · exact le_trans ( Finset.card_le_univ _ ) ( by norm_num );
+        · exact Finset.card_pos.mpr ( Finset.nonempty_of_ne_empty hΩ );
+      · refine' mul_nonneg ( Finset.prod_nonneg fun p hp => _ ) ( pow_nonneg ( div_nonneg ( Nat.cast_nonneg _ ) ( Nat.cast_nonneg _ ) ) _ );
+        exact mul_nonneg ( sub_nonneg.2 <| div_le_one_of_le₀ ( mod_cast omega_card_le_prime q Ω p <| hT.1 hp ) <| Nat.cast_nonneg _ ) <| Real.rpow_nonneg ( Nat.cast_nonneg _ ) _
 
 /-! ## 5. Per-T Deviation Bound (Complete) -/
 

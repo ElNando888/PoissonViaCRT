@@ -188,7 +188,7 @@ the residue multiplicity deviation bound
 `|localCount − localMean| ≤ (1 − |Ω_p|/p) · p^{−ε} · localMean`.
 This follows from the `WellDistributed` hypothesis applied to
 the injective tuple from `fin_cons_castHom_injective`. -/
-lemma localCount_deviation_weil (ε : ℝ) {n : ℕ} (hn : 1 ≤ n)
+public lemma localCount_deviation_weil (ε : ℝ) {n : ℕ} (hn : 1 ≤ n)
     (Ω : ∀ p : ℕ, Finset (ZMod p)) (q : ℕ) [NeZero q]
     (X : Box n) (s : ℝ) (hs : 0 < s)
     (p : ℕ) (hp_prime : Nat.Prime p) (hp_factor : p ∈ q.primeFactors)
