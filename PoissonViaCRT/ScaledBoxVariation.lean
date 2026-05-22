@@ -14,6 +14,18 @@ To cite Aristotle, tag @Aristotle-Harmonic on GitHub PRs/issues, and add as co-a
 Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
+/-
+# ⚠️ DEAD END / ABANDONED MODULE ⚠️
+
+This module has been identified as a mathematical or structural dead end in the
+current proof strategy. It contains no public lemmas or definitions that are used
+by the main proof path.
+
+**DO NOT USE or import this file for new theorems.** It is preserved solely for
+historical reference and on the unlikely chance that its internal machinery proves
+useful in a different context in the future.
+-/
+
 module
 import PoissonViaCRT.HardCaseSynthesis
 import PoissonViaCRT.LatticePointBound
