@@ -110,7 +110,7 @@ public noncomputable def combinedEulerWeight (ε : ℝ) (_k : ℕ)
 
 /-- `combinedEulerWeight` is nonneg for primes `p`, since `|Ω_p| ≤ p`
 (giving `1 − |Ω_p|/p ≥ 0`) and `p^{−ε} ≥ 0`. -/
-lemma combinedEulerWeight_nonneg (ε : ℝ) (k : ℕ) (Ω : ∀ p : ℕ, Finset (ZMod p))
+public lemma combinedEulerWeight_nonneg (ε : ℝ) (k : ℕ) (Ω : ∀ p : ℕ, Finset (ZMod p))
     (p : ℕ) (hp : p.Prime) :
     0 ≤ combinedEulerWeight ε k Ω p := by
   refine mul_nonneg ?_ (Real.rpow_nonneg (Nat.cast_nonneg _) _)

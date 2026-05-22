@@ -288,7 +288,68 @@ lemma all_large_per_T_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
       · refine' mul_nonneg ( Finset.prod_nonneg fun p hp => _ ) ( pow_nonneg ( div_nonneg ( Nat.cast_nonneg _ ) ( Nat.cast_nonneg _ ) ) _ );
         exact mul_nonneg ( sub_nonneg.2 <| div_le_one_of_le₀ ( mod_cast omega_card_le_prime q Ω p <| hT.1 hp ) <| Nat.cast_nonneg _ ) <| Real.rpow_nonneg ( Nat.cast_nonneg _ ) _
 
-/-! ## 5. Per-T Deviation Bound (Complete) -/
+
+/-! ## 5. Variance Bound and Cauchy-Schwarz Machinery -/
+
+/-- **Variance bound for the per-T product.** The L2 norm (sum of squares) of the
+product `∏_{p∈T} (N_p(h) - μ_p)` over lattice points `h` is bounded by
+`C_var · s^{k-1} · (∏_T (cEW · μ))²`. This is the core second-moment estimate
+that controls the fluctuations of the counting function. -/
+private lemma variance_per_T_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
+    (X : Box (k - 1)) (C_lp : ℝ) :
+    ∃ C_var : ℝ, 0 < C_var ∧ ∀ (q : ℕ) [NeZero q] (T : Finset ℕ) (_ : T ⊆ q.primeFactors)
+      (s : ℝ) (_ : 1 ≤ s),
+      ∑ h ∈ ((Fintype.piFinset fun _ => Finset.Icc (1:ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+        (fun h => inScaledBox X s (fun _ => 0) h)),
+        (∏ p ∈ T, (localCount Ω q (Fin.cons 0 (fun i => (h i : ZMod q))) p -
+          localMean k Ω p)) ^ 2
+      ≤ C_var * s ^ (k - 1 : ℕ) *
+        (∏ p ∈ T, (combinedEulerWeight ε k Ω p * localMean k Ω p)) ^ 2 := by
+  sorry
+
+/-
+**Cauchy-Schwarz with cardinality and variance bounds.**
+If `|S| ≤ A · s^n` and `∑_{S} g² ≤ B · s^n · D²`, then
+`|∑_S g| ≤ √(A·B) · s^n · D`.
+-/
+private lemma cs_with_bounds {ι : Type*} (S : Finset ι) (g : ι → ℝ)
+    (A B D s : ℝ) (n : ℕ)
+    (hA : 0 ≤ A) (hB : 0 ≤ B) (hD : 0 ≤ D) (hs : 0 ≤ s)
+    (hcard : (S.card : ℝ) ≤ A * s ^ n)
+    (hvar : ∑ i ∈ S, g i ^ 2 ≤ B * s ^ n * D ^ 2) :
+    |∑ i ∈ S, g i| ≤ Real.sqrt (A * B) * s ^ n * D := by
+      refine' le_trans ( deviation_L1_le_L2 _ _ ) _;
+      refine' le_trans ( mul_le_mul ( Real.sqrt_le_sqrt hcard ) ( Real.sqrt_le_sqrt hvar ) ( by positivity ) ( by positivity ) ) _;
+      rw [ ← Real.sqrt_mul ( by positivity ) ] ; ring_nf;
+      rw [ Real.sqrt_le_iff ] ; ring_nf ; norm_num [ hA, hB, hD, hs ] ; ring_nf ;
+      exact ⟨ by positivity, by rw [ Real.sq_sqrt hA, Real.sq_sqrt hB ] ⟩
+
+/-
+**Prefactor absorption and cancellation.**
+The constant `(1/|Ω_q|) · ∏_{q\T} μ`, when multiplied by `s^{k-1} · ∏_T(cEW · μ)`,
+simplifies to `∏_T cEW`. Uses `prefactor_localMean_collapse'` and `s = q/|Ω_q|`.
+-/
+private lemma prefactor_product_cancel (ε : ℝ) (k : ℕ) (hk : 1 ≤ k) (q : ℕ) [NeZero q]
+    (hq : Squarefree q) (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (T : Finset ℕ) (hT : T ⊆ q.primeFactors) :
+    (1 / ((crtSubset q Ω).card : ℝ)) *
+      (∏ p ∈ q.primeFactors \ T, localMean k Ω p) *
+      (((q : ℝ) / (crtSubset q Ω).card) ^ (k - 1 : ℕ) *
+        ∏ p ∈ T, (combinedEulerWeight ε k Ω p * localMean k Ω p)) =
+    ∏ p ∈ T, combinedEulerWeight ε k Ω p := by
+      by_cases h : ( crtSubset q Ω ).card = 0 <;> simp_all +decide [ Finset.prod_mul_distrib, mul_assoc, mul_comm, mul_left_comm ];
+      · exact absurd h <| ne_of_apply_ne Finset.card <| ne_of_gt <| PoissonCRT.crtSubset_card_pos_aux _ hΩ _;
+      · have := prefactor_localMean_collapse' k hk q hq Ω ( Nat.pos_of_ne_zero <| by simpa using h ) ; simp_all +decide [ div_eq_mul_inv, mul_assoc, mul_comm, mul_left_comm, Finset.prod_mul_distrib ] ;
+        simp_all +decide [ mul_pow, mul_assoc, mul_comm, mul_left_comm, Finset.prod_sdiff hT ];
+        simp_all +decide [ ← mul_assoc, ← Finset.prod_sdiff hT ];
+        convert congr_arg ( fun x : ℝ => x * ( q ^ ( k - 1 ) * ∏ p ∈ T, combinedEulerWeight ε k Ω p ) / ( # ( crtSubset q Ω ) ^ ( k - 1 ) ) ) this using 1 <;> ring;
+        simp +decide [ NeZero.ne, mul_assoc, mul_comm, mul_left_comm ];
+        rw [ mul_inv_cancel₀ ( pow_ne_zero _ ( Nat.cast_ne_zero.mpr ( Finset.card_ne_zero_of_mem ( Classical.choose_spec ( Finset.nonempty_of_ne_empty h ) ) ) ) ), mul_one ]
+
+/-! ## 6. Per-T Deviation Bound (Complete) -/
 
 /-- **Per-T deviation bound.**
 For any nonempty `T ⊆ primeFactors(q)`, the absolute value of the per-T
@@ -296,10 +357,14 @@ inclusion-exclusion contribution is bounded by
 `C · ∏_{p ∈ T} combinedEulerWeight ε k Ω p`,
 where `C` depends on `X`, `C_lp`, `k`, `ε` but not on `q` or `T`.
 
-The proof splits into two cases:
-- **All-large T**: every `p ∈ T` has `p > B_max`; use `all_large_per_T_bound`.
-- **Mixed T**: at least one `p ∈ T` has `p ≤ B_max`; use the mean-zero
-  cancellation + CRT variance decomposition + Cauchy-Schwarz. -/
+The proof uses Cauchy-Schwarz and the variance bound (`variance_per_T_bound`)
+to handle all subsets T uniformly (including those with small primes).
+The key steps are:
+1. Factor out the nonneg constant `c = (1/|Ω_q|) · ∏_{q\T} μ_p` from the sum.
+2. Apply Cauchy-Schwarz: `|∑_h g(h)| ≤ √|S| · √(∑_h g(h)²)`.
+3. Bound `|S| ≤ (vol + C_lp) · s^{k-1}` and variance by `C_var · s^{k-1} · (∏_T cEW·μ)²`.
+4. Use `prefactor_product_cancel` to collapse: `c · s^{k-1} · ∏_T(cEW·μ) = ∏_T cEW`.
+5. Set `C_T = √((vol + C_lp) · C_var)`. -/
 public lemma per_T_deviation_le_combinedEulerWeight (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
@@ -328,6 +393,93 @@ public lemma per_T_deviation_le_combinedEulerWeight (ε : ℝ) (hε : 0 < ε) (k
               localMean k Ω p)) *
             ∏ p ∈ q.primeFactors \ T, localMean k Ω p)| ≤
       C_T * ∏ p ∈ T, combinedEulerWeight ε k Ω p := by
-  sorry
+  -- Obtain the variance constant
+  obtain ⟨C_var, hC_var_pos, hvar⟩ := variance_per_T_bound ε hε k hk Ω hWD X C_lp
+  -- Volume is positive
+  have hvol_pos : 0 < X.volume := Finset.prod_pos fun i _ => X.sides_pos i
+  -- Set C_T = √((X.volume + C_lp) * C_var)
+  refine ⟨Real.sqrt ((X.volume + C_lp) * C_var),
+    Real.sqrt_pos_of_pos (mul_pos (by linarith) hC_var_pos), ?_⟩
+  intro q _ hq_sq T hT
+  -- Extract T ⊆ q.primeFactors from the filter membership
+  have hT_sub : T ⊆ q.primeFactors := Finset.mem_powerset.mp (Finset.mem_filter.mp hT).1
+  -- Abbreviations
+  set Ω_q := crtSubset q Ω with hΩ_q_def
+  set s := (q : ℝ) / Ω_q.card with hs_def
+  set S := ((Fintype.piFinset fun _ : Fin (k - 1) =>
+    Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+    (fun h => inScaledBox X s (fun _ => 0) h)) with hS_def
+  -- The h-dependent function
+  set g : (Fin (k - 1) → ℤ) → ℝ := fun h =>
+    ∏ p ∈ T, (localCount Ω q (Fin.cons (0 : ZMod q) (fun i => (h i : ZMod q))) p -
+      localMean k Ω p) with hg_def
+  -- The constant prefactor
+  set c : ℝ := (1 / (Ω_q.card : ℝ)) *
+    ∏ p ∈ q.primeFactors \ T, localMean k Ω p with hc_def
+  -- s ≥ 1
+  have hs_card_pos : (0 : ℝ) < Ω_q.card :=
+    Nat.cast_pos.mpr (crtSubset_card_pos_aux Ω hΩ q)
+  have hs_pos : 0 < s := div_pos (Nat.cast_pos.mpr (NeZero.pos q)) hs_card_pos
+  have hs_ge : 1 ≤ s := by
+    rw [hs_def, one_le_div hs_card_pos]
+    have := Finset.card_le_univ Ω_q
+    simp only [ZMod.card] at this
+    exact_mod_cast this
+  -- c ≥ 0
+  have hc_nn : 0 ≤ c := by
+    exact mul_nonneg (one_div_nonneg.mpr (Nat.cast_nonneg _))
+      (Finset.prod_nonneg fun _ _ => localMean_nonneg _ _ _)
+  -- Step 1: Factor out c from the absolute sum
+  have h_summand_eq : ∀ h, (1 / (Ω_q.card : ℝ)) *
+      ((g h) * ∏ p ∈ q.primeFactors \ T, localMean k Ω p) = c * g h := by
+    intro h; simp only [hc_def]; ring
+  have h_factor : |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) *
+      ((g h) * ∏ p ∈ q.primeFactors \ T, localMean k Ω p)| =
+      c * |∑ h ∈ S, g h| := by
+    rw [show (∑ h ∈ S, (1 / (Ω_q.card : ℝ)) *
+      ((g h) * ∏ p ∈ q.primeFactors \ T, localMean k Ω p)) =
+      ∑ h ∈ S, c * g h from Finset.sum_congr rfl (fun h _ => h_summand_eq h)]
+    rw [← Finset.mul_sum, abs_mul, abs_of_nonneg hc_nn]
+  -- Step 2: Lattice point count bound
+  have hcard : (S.card : ℝ) ≤ (X.volume + C_lp) * s ^ (k - 1 : ℕ) :=
+    scaled_box_card_le hk X C_lp hC_lp_pos hC_lp s hs_ge
+  -- Step 3: Variance bound
+  have hvariance : ∑ h ∈ S, (g h) ^ 2 ≤
+      C_var * s ^ (k - 1 : ℕ) *
+        (∏ p ∈ T, (combinedEulerWeight ε k Ω p * localMean k Ω p)) ^ 2 :=
+    hvar q T hT_sub s hs_ge
+  -- D ≥ 0
+  have hD_nn : (0 : ℝ) ≤ ∏ p ∈ T, (combinedEulerWeight ε k Ω p * localMean k Ω p) :=
+    Finset.prod_nonneg fun p hp =>
+      mul_nonneg (combinedEulerWeight_nonneg _ _ _ _
+        (Nat.prime_of_mem_primeFactors (hT_sub hp))) (localMean_nonneg _ _ _)
+  -- Step 4: Apply Cauchy-Schwarz with bounds
+  have h_cs : |∑ h ∈ S, g h| ≤
+      Real.sqrt ((X.volume + C_lp) * C_var) * s ^ (k - 1 : ℕ) *
+        ∏ p ∈ T, (combinedEulerWeight ε k Ω p * localMean k Ω p) :=
+    cs_with_bounds S g (X.volume + C_lp) C_var _ s (k - 1)
+      (by linarith) hC_var_pos.le hD_nn hs_pos.le hcard hvariance
+  -- Step 5: Prefactor cancellation
+  have h_cancel : c * (Real.sqrt ((X.volume + C_lp) * C_var) * s ^ (k - 1 : ℕ) *
+      ∏ p ∈ T, (combinedEulerWeight ε k Ω p * localMean k Ω p)) =
+      Real.sqrt ((X.volume + C_lp) * C_var) *
+        ∏ p ∈ T, combinedEulerWeight ε k Ω p := by
+    rw [show c * (Real.sqrt ((X.volume + C_lp) * C_var) * s ^ (k - 1 : ℕ) *
+        ∏ p ∈ T, (combinedEulerWeight ε k Ω p * localMean k Ω p)) =
+      Real.sqrt ((X.volume + C_lp) * C_var) *
+        ((1 / (Ω_q.card : ℝ)) * (∏ p ∈ q.primeFactors \ T, localMean k Ω p) *
+          (s ^ (k - 1 : ℕ) *
+            ∏ p ∈ T, (combinedEulerWeight ε k Ω p * localMean k Ω p))) from by
+      simp only [hc_def]; ring]
+    rw [prefactor_product_cancel ε k (by omega) q hq_sq Ω hΩ T hT_sub]
+  -- Combine everything
+  calc |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) *
+        ((g h) * ∏ p ∈ q.primeFactors \ T, localMean k Ω p)|
+      = c * |∑ h ∈ S, g h| := h_factor
+    _ ≤ c * (Real.sqrt ((X.volume + C_lp) * C_var) * s ^ (k - 1 : ℕ) *
+          ∏ p ∈ T, (combinedEulerWeight ε k Ω p * localMean k Ω p)) :=
+        mul_le_mul_of_nonneg_left h_cs hc_nn
+    _ = Real.sqrt ((X.volume + C_lp) * C_var) *
+          ∏ p ∈ T, combinedEulerWeight ε k Ω p := h_cancel
 
 end PoissonCRT
