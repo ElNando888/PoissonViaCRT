@@ -178,7 +178,8 @@ private lemma prefactor_localMean_collapse' (k : ℕ) (hk : 1 ≤ k) (q : ℕ) [
   have h_globalMean : ((crtSubset q Ω).card : ℝ) ^ k / (q : ℝ) ^ (k - 1) = ∏ p ∈ q.primeFactors, localMean k Ω p := by
     convert globalMean_eq_prod_localMean k q hq Ω using 1;
   rw [ ← h_globalMean, one_div, inv_mul_eq_div, div_pow ];
-  rw [ div_eq_iff ( by positivity ) ] ; cases k <;> simp_all +decide [ pow_succ', mul_assoc, mul_comm, mul_left_comm, div_eq_mul_inv ]
+  rw [ div_eq_iff ( by positivity ) ] ; cases k <;> simp_all +decide [pow_succ', mul_comm,
+    mul_left_comm, div_eq_mul_inv]
 
 /-
 Helper: algebraic cancellation S · (1/s)^n ≤ V + C given S ≤ (V + C) · s^n.
@@ -220,9 +221,9 @@ private lemma per_h_bound (ε : ℝ) (k : ℕ) (hk : 2 ≤ k)
     convert PoissonCRT.crtSubset_card_pos_aux Ω hΩ q using 1;
   convert mul_le_mul_of_nonneg_left h_abs_prod _ using 1;
   any_goals exact ( 1 / ( # ( crtSubset q Ω ) : ℝ ) ) * ( ∏ p ∈ q.primeFactors \ T, localMean k Ω p );
-  · rw [ abs_mul, abs_mul, abs_of_nonneg ( by positivity ) ] ; ring;
+  · rw [ abs_mul, abs_mul, abs_of_nonneg ( by positivity ) ] ; ring_nf;
     rw [ abs_of_nonneg ( Finset.prod_nonneg fun _ _ => localMean_nonneg _ _ _ ) ];
-  · rw [ ← h_prefactor ] ; ring;
+  · rw [ ← h_prefactor ] ; ring_nf;
     rw [ mul_assoc, ← Finset.prod_sdiff hT_sub ] ; ring;
   · exact mul_nonneg ( one_div_nonneg.mpr ( Nat.cast_nonneg _ ) ) ( Finset.prod_nonneg fun _ _ => localMean_nonneg _ _ _ )
 
@@ -274,7 +275,7 @@ lemma all_large_per_T_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
   · convert per_h_bound ε k hk Ω hΩ hWD q hq_sq X T ( Finset.mem_powerset.mp ( Finset.mem_filter.mp hT |>.1 ) ) ( q / ( crtSubset q Ω |> Finset.card : ℝ ) ) ( div_pos ( Nat.cast_pos.mpr <| NeZero.pos q ) <| Nat.cast_pos.mpr <| Nat.pos_of_ne_zero <| ?_ ) hT_large x <| Finset.mem_filter.mp hx |>.2 using 1;
     exact Nat.ne_of_gt <| PoissonCRT.crtSubset_card_pos_aux Ω ( fun p hp => hΩ p hp ) q;
   · by_cases hq : q = 0 <;> by_cases hΩ : ( crtSubset q Ω ).card = 0 <;> simp_all +decide [ division_def ];
-    · rcases k with ( _ | _ | k ) <;> simp_all +decide [ Finset.prod_eq_zero_iff ];
+    · rcases k with ( _ | _ | k ) <;> simp_all +decide;
       refine' mul_nonneg _ _;
       · exact add_nonneg ( Finset.prod_nonneg fun _ _ => le_of_lt ( X.sides_pos _ ) ) hC_lp_pos.le;
       · refine' Finset.prod_nonneg fun p hp => _;
@@ -291,10 +292,111 @@ lemma all_large_per_T_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
 
 /-! ## 5. Variance Bound and Cauchy-Schwarz Machinery -/
 
-/-- **Variance bound for the per-T product.** The L2 norm (sum of squares) of the
-product `∏_{p∈T} (N_p(h) - μ_p)` over lattice points `h` is bounded by
-`C_var · s^{k-1} · (∏_T (cEW · μ))²`. This is the core second-moment estimate
-that controls the fluctuations of the counting function. -/
+/-! ### Helper lemmas for the variance bound
+
+The proof of `variance_per_T_bound` uses a six-step decomposition that
+correctly tracks the Γ-structure collision indicator:
+
+1. **Pointwise collision bound** (`local_variance_pointwise_bound`): For each lattice
+   point `h` and prime `p`, bound `(N_p − μ_p)²` by `(cEW_p · μ_p)²` plus a `p²`
+   term gated by the collision indicator `𝟙[Fin.cons 0 h̄ not injective mod p]`.
+
+2. **Powerset expansion** (`swap_variance_sum`): Expand the product over `T` into
+   a sum over subsets `U ⊆ T`, swapping the sum over `h` inside.
+
+3. **Γ-structure collision sum** (`box_collision_sum_bound`): The sum of
+   `∏_{p ∈ U} 𝟙_collision` over lattice points is bounded by
+   `C_gamma · s^{k-1} / ∏_{p ∈ U} p`. This is the key `1/p` decay from
+   the Γ-structure: non-injective tuples mod `p` are rare.
+
+4. **Algebraic factorization** (`variance_factorization`): After substituting
+   the collision sum bound, the powerset sum collapses into
+   `C_gamma · s^{k-1} · ∏_T ((cEW·μ)² + p)`.
+
+5. **Absorption** (`variance_product_absorption`): Since `(cEW·μ)² ∼ p^{2-2ε}`
+   and `p ≪ p^{2-2ε}` for `ε < 1/2`, we absorb the `+p` terms:
+   `∏_T ((cEW·μ)² + p) ≤ K · (∏_T (cEW·μ))²`.
+
+6. **Assembly** (`variance_per_T_bound`): Chain the above steps.
+-/
+
+/-
+**Step 1: Pointwise collision bound with indicator.**
+For each lattice point `h` and prime `p`, the squared deviation satisfies:
+  `(N_p(h) − μ_p)² ≤ (cEW_p · μ_p)² + p² · 𝟙[collision]`
+where the collision indicator is 0 when `Fin.cons 0 h̄` is injective mod `p`
+(giving the WellDistributed bound) and 1 otherwise (giving the trivial `p²` bound).
+-/
+private lemma local_variance_pointwise_bound (ε : ℝ) (k : ℕ)
+    (Ω : ∀ p : ℕ, Finset (ZMod p)) (q : ℕ) [NeZero q] (p : ℕ) (h : Fin (k - 1) → ℤ) :
+    (localCount Ω q (Fin.cons 0 (fun i => (h i : ZMod q))) p - localMean k Ω p)^2 ≤
+      (combinedEulerWeight ε k Ω p * localMean k Ω p)^2 +
+      (p : ℝ)^2 * (if Function.Injective (Fin.cons (0 : ZMod p) (fun i => (h i : ZMod p))) then 0 else 1) := by
+  sorry
+
+/-
+**Step 2: Powerset expansion and sum swap.**
+A general identity: expanding `∑_h ∏_T (A_p + B_p(h))` via the binomial/powerset
+expansion and swapping the sum over `h` inside gives
+`∑_{U ⊆ T} (∏_{T\U} A_p) · (∑_h ∏_{p ∈ U} B_p(h))`.
+-/
+private lemma swap_variance_sum {ι : Type*} (T : Finset ℕ) (A : ℕ → ℝ) (B : ℕ → ι → ℝ) (S : Finset ι) :
+  ∑ h ∈ S, ∏ p ∈ T, (A p + B p h) =
+  ∑ U ∈ T.powerset, (∏ p ∈ T \ U, A p) * ∑ h ∈ S, ∏ p ∈ U, B p h := by
+  sorry
+
+/-
+**Step 3: Γ-structure collision sum bound.**
+The sum of `∏_{p ∈ U} 𝟙[Fin.cons 0 h̄ not injective mod p]` over lattice points
+`h` in the scaled box is bounded by `C_gamma · s^{k-1} / ∏_{p ∈ U} p`.
+This is the essential Γ-structure estimate: requiring a collision mod each `p ∈ U`
+costs a factor of `1/p` per prime, because the set of `h` with `h_i ≡ h_j (mod p)`
+for some `i ≠ j` has density `O(1/p)` in the box.
+-/
+private lemma box_collision_sum_bound (k : ℕ) (X : Box (k - 1)) :
+    ∃ C_box C_gamma : ℝ, 0 < C_box ∧ 0 < C_gamma ∧ ∀ (s : ℝ) (_ : 1 ≤ s) (U : Finset ℕ),
+    ∑ h ∈ ((Fintype.piFinset fun _ => Finset.Icc (1:ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+        (fun h => inScaledBox X s (fun _ => 0) h)),
+      (∏ p ∈ U, if Function.Injective (Fin.cons (0 : ZMod p) (fun i => (h i : ZMod p))) then (0:ℝ) else 1)
+    ≤ C_box * s ^ (k - 1 : ℕ) * ∏ p ∈ U, (C_gamma / (p : ℝ)) := by
+  sorry
+
+/-
+**Step 4: Algebraic factorization.**
+After applying the collision sum bound, the powerset sum becomes
+`C_box · s^{k-1} · ∏_T ((cEW·μ)² + C_gamma · p)`.
+This is a purely algebraic identity distributing `∏_{U} p² / ∏_{U} p = ∏_{U} p`.
+-/
+private lemma variance_factorization (ε : ℝ) (k : ℕ) (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (T : Finset ℕ) (s : ℝ) (C_box C_gamma : ℝ) :
+    ∑ U ∈ T.powerset, (∏ p ∈ T \ U, (combinedEulerWeight ε k Ω p * localMean k Ω p)^2) *
+      (∏ p ∈ U, (p : ℝ)^2) * (C_box * s ^ (k - 1 : ℕ) * ∏ p ∈ U, C_gamma / (p : ℝ)) =
+    C_box * s ^ (k - 1 : ℕ) * ∏ p ∈ T, ((combinedEulerWeight ε k Ω p * localMean k Ω p)^2 + C_gamma * (p : ℝ)) := by
+  sorry
+
+/-- **Step 5: Absorption bound.** The product `∏_{p ∈ T} ((cEW_p · μ_p)² + C_gamma · p)` is bounded by
+a constant `K` times `(∏_{p ∈ T} (cEW_p · μ_p))²`.
+Note: we absorb `p`, NOT `p²`. Since `(cEW·μ)² ∼ p^{2-2ε}` and `2-2ε > 1` for `ε < 1/2`,
+the ratio `p / (cEW·μ)²` decays, so the product `∏_T (1 + C_gamma·p/(cEW·μ)²)` converges. -/
+private lemma variance_product_absorption (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k) (C_gamma : ℝ) :
+    ∃ K : ℝ, 0 < K ∧ ∀ (q : ℕ) [NeZero q] (T : Finset ℕ) (_ : T ⊆ q.primeFactors),
+    ∏ p ∈ T, ((combinedEulerWeight ε k Ω p * localMean k Ω p) ^ 2 + C_gamma * (p : ℝ)) ≤
+    K * (∏ p ∈ T, (combinedEulerWeight ε k Ω p * localMean k Ω p)) ^ 2 := by
+  sorry
+
+/-- **Step 6: Variance bound for the per-T product.**
+The L2 norm (sum of squares) of `∏_{p∈T} (N_p(h) - μ_p)` over lattice points `h`
+is bounded by `C_var · s^{k-1} · (∏_T (cEW · μ))²`.
+
+**Proof outline:**
+1. Apply `local_variance_pointwise_bound` per prime to get `(cEW·μ)² + p²·𝟙_collision`.
+2. Apply `swap_variance_sum` to expand via powerset and move `∑_h` inside.
+3. Factor `∏_{U} p²` from inner sum; apply `box_collision_sum_bound` for `1/∏p` decay.
+4. Apply `variance_factorization` to collapse powerset into `∏_T ((cEW·μ)² + C_gamma · p)`.
+5. Apply `variance_product_absorption` to get `K · (∏_T cEW·μ)²`.
+-/
 private lemma variance_per_T_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
@@ -307,7 +409,65 @@ private lemma variance_per_T_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 �
           localMean k Ω p)) ^ 2
       ≤ C_var * s ^ (k - 1 : ℕ) *
         (∏ p ∈ T, (combinedEulerWeight ε k Ω p * localMean k Ω p)) ^ 2 := by
-  sorry
+  -- Obtain uniform Gamma-structure constants
+  obtain ⟨C_box, C_gamma, hC_box_pos, hC_gamma_pos, hC_bound⟩ := box_collision_sum_bound k X
+  -- Obtain absorption constant K
+  obtain ⟨K, hK_pos, hK_bound⟩ := variance_product_absorption ε hε k hk Ω hWD C_gamma
+  -- Set C_var = C_box * K.
+  refine ⟨C_box * K, mul_pos hC_box_pos hK_pos, ?_⟩
+  intro q _ T hT_sub s hs
+  -- Abbreviations for readability.
+  set S := ((Fintype.piFinset fun _ => Finset.Icc (1:ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+      (fun h => inScaledBox X s (fun _ => 0) h)) with hS_def
+  set A : ℕ → ℝ := fun p => (combinedEulerWeight ε k Ω p * localMean k Ω p) ^ 2 with hA_def
+  set B : ℕ → (Fin (k - 1) → ℤ) → ℝ :=
+    fun p h => (p : ℝ)^2 * (if Function.Injective (Fin.cons (0 : ZMod p)
+        (fun i => (h i : ZMod p))) then (0:ℝ) else 1) with hB_def
+  -- The calc chain implements the 6-step decomposition.
+  calc ∑ h ∈ S, (∏ p ∈ T, (localCount Ω q (Fin.cons 0 (fun i => (h i : ZMod q))) p -
+            localMean k Ω p)) ^ 2
+      -- Step 1: Apply local_variance_pointwise_bound.
+      _ ≤ ∑ h ∈ S, ∏ p ∈ T, (A p + B p h) := by
+        apply Finset.sum_le_sum; intro h _
+        rw [← Finset.prod_pow]
+        apply Finset.prod_le_prod (fun p _ => sq_nonneg _)
+        intro p hp
+        exact local_variance_pointwise_bound ε k Ω q p h
+      -- Step 2: Apply swap_variance_sum with A(p) = (cEW·μ)² and B(p,h) = p²·𝟙_collision.
+      _ = ∑ U ∈ T.powerset, (∏ p ∈ T \ U, A p) *
+            ∑ h ∈ S, ∏ p ∈ U, B p h := by
+        exact swap_variance_sum T A B S
+      -- Step 3: Factor out ∏_U p² from the inner sum over h, and apply box_collision_sum_bound.
+      _ ≤ ∑ U ∈ T.powerset, (∏ p ∈ T \ U, A p) *
+            (∏ p ∈ U, (p : ℝ)^2) *
+            (C_box * s ^ (k - 1 : ℕ) * ∏ p ∈ U, (C_gamma / (p : ℝ))) := by
+        apply Finset.sum_le_sum; intro U _
+        rw [mul_assoc]
+        have H : ∑ h ∈ S, ∏ p ∈ U, B p h ≤ (∏ p ∈ U, (p : ℝ)^2) * (C_box * s ^ (k - 1 : ℕ) * ∏ p ∈ U, (C_gamma / (p : ℝ))) := by
+          calc ∑ h ∈ S, ∏ p ∈ U, B p h
+            _ = ∑ h ∈ S, ∏ p ∈ U, ((p : ℝ)^2 * (if Function.Injective (Fin.cons (0 : ZMod p) (fun i => (h i : ZMod p))) then (0:ℝ) else 1)) := rfl
+            _ = ∑ h ∈ S, (∏ p ∈ U, (p : ℝ)^2) * ∏ p ∈ U, (if Function.Injective (Fin.cons (0 : ZMod p) (fun i => (h i : ZMod p))) then (0:ℝ) else 1) := by
+              simp_rw [Finset.prod_mul_distrib]
+            _ = (∏ p ∈ U, (p : ℝ)^2) * ∑ h ∈ S, ∏ p ∈ U, (if Function.Injective (Fin.cons (0 : ZMod p) (fun i => (h i : ZMod p))) then (0:ℝ) else 1) := by
+              rw [← Finset.mul_sum]
+            _ ≤ (∏ p ∈ U, (p : ℝ)^2) * (C_box * s ^ (k - 1 : ℕ) * ∏ p ∈ U, (C_gamma / (p : ℝ))) := by
+              gcongr
+              exact hC_bound s hs U
+        apply mul_le_mul_of_nonneg_left H
+        exact Finset.prod_nonneg (fun p _ => sq_nonneg _)
+      -- Step 4: Apply variance_factorization to collapse the powerset sum.
+      _ = C_box * s ^ (k - 1 : ℕ) *
+            ∏ p ∈ T, (A p + C_gamma * (p : ℝ)) := by
+        simp only [hA_def]
+        exact variance_factorization ε k Ω T s C_box C_gamma
+      -- Step 5: Apply variance_product_absorption.
+      _ ≤ C_box * s ^ (k - 1 : ℕ) *
+            (K * (∏ p ∈ T, (combinedEulerWeight ε k Ω p * localMean k Ω p)) ^ 2) := by
+        gcongr
+        exact hK_bound q T hT_sub
+      -- Step 6: Rearrange to match the goal.
+      _ = C_box * K * s ^ (k - 1 : ℕ) *
+            (∏ p ∈ T, (combinedEulerWeight ε k Ω p * localMean k Ω p)) ^ 2 := by ring_nf
 
 /-
 **Cauchy-Schwarz with cardinality and variance bounds.**
@@ -342,11 +502,12 @@ private lemma prefactor_product_cancel (ε : ℝ) (k : ℕ) (hk : 1 ≤ k) (q : 
     ∏ p ∈ T, combinedEulerWeight ε k Ω p := by
       by_cases h : ( crtSubset q Ω ).card = 0 <;> simp_all +decide [ Finset.prod_mul_distrib, mul_assoc, mul_comm, mul_left_comm ];
       · exact absurd h <| ne_of_apply_ne Finset.card <| ne_of_gt <| PoissonCRT.crtSubset_card_pos_aux _ hΩ _;
-      · have := prefactor_localMean_collapse' k hk q hq Ω ( Nat.pos_of_ne_zero <| by simpa using h ) ; simp_all +decide [ div_eq_mul_inv, mul_assoc, mul_comm, mul_left_comm, Finset.prod_mul_distrib ] ;
-        simp_all +decide [ mul_pow, mul_assoc, mul_comm, mul_left_comm, Finset.prod_sdiff hT ];
+      · have := prefactor_localMean_collapse' k hk q hq Ω ( Nat.pos_of_ne_zero <| by simpa using h ) ; simp_all +decide [div_eq_mul_inv,
+        mul_comm, mul_left_comm] ;
+        simp_all +decide [mul_pow, mul_assoc, mul_left_comm];
         simp_all +decide [ ← mul_assoc, ← Finset.prod_sdiff hT ];
-        convert congr_arg ( fun x : ℝ => x * ( q ^ ( k - 1 ) * ∏ p ∈ T, combinedEulerWeight ε k Ω p ) / ( # ( crtSubset q Ω ) ^ ( k - 1 ) ) ) this using 1 <;> ring;
-        simp +decide [ NeZero.ne, mul_assoc, mul_comm, mul_left_comm ];
+        convert congr_arg ( fun x : ℝ => x * ( q ^ ( k - 1 ) * ∏ p ∈ T, combinedEulerWeight ε k Ω p ) / ( # ( crtSubset q Ω ) ^ ( k - 1 ) ) ) this using 1 <;> ring_nf;
+        simp +decide [NeZero.ne, mul_assoc, mul_comm];
         rw [ mul_inv_cancel₀ ( pow_ne_zero _ ( Nat.cast_ne_zero.mpr ( Finset.card_ne_zero_of_mem ( Classical.choose_spec ( Finset.nonempty_of_ne_empty h ) ) ) ) ), mul_one ]
 
 /-! ## 6. Per-T Deviation Bound (Complete) -/
