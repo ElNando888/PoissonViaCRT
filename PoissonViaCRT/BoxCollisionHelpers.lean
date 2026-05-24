@@ -159,12 +159,40 @@ lemma collision_indicator_le_sum_pairs {m : ℕ} (p : ℕ) (hp : 1 ≤ p)
     simp_all +decide [ ← ZMod.intCast_zmod_eq_zero_iff_dvd ];
     cases i using Fin.inductionOn <;> cases j using Fin.inductionOn <;> aesop
 
-/-! ## 3. Counting bound for the full collision sum -/
+/-! ## 3. Helper: indicator vanishes for large primes -/
+
+/-- When a prime `p` exceeds `⌈s * ∑ sides⌉`, the collision indicator is `0` for every
+`h` in the scaled box. This is the key lemma that makes the sum vanish when `U` contains
+a large prime. -/
+lemma indicator_zero_of_large_prime {m : ℕ} (X : Box m) (s : ℝ) (hs : 1 ≤ s)
+    (h : Fin m → ℤ) (hbox : inScaledBox X s (fun _ => 0) h)
+    (p : ℕ) (hp : Nat.Prime p) (hlarge : (⌈s * ∑ j, X.sides j⌉ : ℤ) < p) :
+    (if Function.Injective (Fin.cons (0 : ZMod p) (fun i => (h i : ZMod p)))
+     then (0 : ℝ) else 1) = 0 := by
+  haveI : NeZero p := ⟨hp.ne_zero⟩
+  simp [injective_fin_cons_of_large X s hs h hbox p hlarge]
+
+/-! ## 4. Helper: product vanishes when any factor does -/
+
+/-- If any factor in a product over `U` vanishes, the whole product is `0`. -/
+lemma prod_eq_zero_of_mem_zero {U : Finset ℕ}
+    (f : ℕ → (Fin m → ℤ) → ℝ) (h : Fin m → ℤ)
+    (p : ℕ) (hp : p ∈ U) (hf : f p h = 0) :
+    ∏ q ∈ U, f q h = 0 :=
+  Finset.prod_eq_zero hp hf
+
+/-! ## 5. Counting bound for the full collision sum -/
 
 /-- The collision sum bound: for `h` in the scaled box with offset `v = 0`, the sum
-`∑_h ∏_{p ∈ U} f_p(h)` is bounded by `C_box · s^m · ∏_{p ∈ U} (C_gamma / p)`. -/
+`∑_h ∏_{p ∈ U} f_p(h)` is bounded by `C_box · s^m · ∏_{p ∈ U} (C_gamma / p)`.
+
+**Note:** The hypothesis `∀ p ∈ U, Nat.Prime p` is necessary; without it,
+composite or prime-power elements can violate the bound. The downstream usage
+in `L1DeviationSynthesis` always supplies subsets of `q.primeFactors` for
+squarefree `q`, so all elements are indeed prime. -/
 public lemma box_collision_sum_bound (m : ℕ) (X : Box m) :
-    ∃ C_box C_gamma : ℝ, 0 < C_box ∧ 0 < C_gamma ∧ ∀ (s : ℝ) (_ : 1 ≤ s) (U : Finset ℕ),
+    ∃ C_box C_gamma : ℝ, 0 < C_box ∧ 0 < C_gamma ∧ ∀ (s : ℝ) (_ : 1 ≤ s) (U : Finset ℕ)
+    (_ : ∀ p ∈ U, Nat.Prime p),
     ∑ h ∈ ((Fintype.piFinset fun _ => Finset.Icc (1:ℤ) ⌈s * ∑ i, X.sides i⌉).filter
         (fun h => inScaledBox X s (fun _ => 0) h)),
       (∏ p ∈ U, if Function.Injective (Fin.cons (0 : ZMod p) (fun i => (h i : ZMod p)))

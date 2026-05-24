@@ -302,8 +302,9 @@ public lemma per_T_deviation_le_modifiedEulerWeight (ε : ℝ) (hε : 0 < ε) (k
     exact local_deviation_pointwise_L1_bound ε k hk Ω hWD hrp q p (hT_sub hp) h
   have h_swap : ∑ h ∈ S, ∏ p ∈ T, (A p + B p h) = ∑ U ∈ T.powerset, (∏ p ∈ T \ U, A p) * ∑ h ∈ S, ∏ p ∈ U, B p h := swap_L1_sum T A B S
   have h_collide : ∑ U ∈ T.powerset, (∏ p ∈ T \ U, A p) * ∑ h ∈ S, ∏ p ∈ U, B p h ≤ ∑ U ∈ T.powerset, (∏ p ∈ T \ U, A p) * (∏ p ∈ U, (k : ℝ)^2) * (C_box * s ^ (k - 1 : ℕ) * ∏ p ∈ U, (C_gamma0 / (p : ℝ))) := by
-    apply Finset.sum_le_sum; intro U _
+    apply Finset.sum_le_sum; intro U hU_mem
     rw [mul_assoc]
+    have hU_sub : U ⊆ T := Finset.mem_powerset.mp hU_mem
     have H : ∑ h ∈ S, ∏ p ∈ U, B p h ≤ (∏ p ∈ U, (k : ℝ)^2) * (C_box * s ^ (k - 1 : ℕ) * ∏ p ∈ U, (C_gamma0 / (p : ℝ))) := by
       calc ∑ h ∈ S, ∏ p ∈ U, B p h
         _ = ∑ h ∈ S, ∏ p ∈ U, ((k : ℝ)^2 * (if Function.Injective (Fin.cons (0 : ZMod p) (fun i => (h i : ZMod p))) then (0:ℝ) else 1)) := rfl
@@ -312,7 +313,8 @@ public lemma per_T_deviation_le_modifiedEulerWeight (ε : ℝ) (hε : 0 < ε) (k
         _ = (∏ p ∈ U, (k : ℝ)^2) * ∑ h ∈ S, ∏ p ∈ U, (if Function.Injective (Fin.cons (0 : ZMod p) (fun i => (h i : ZMod p))) then (0:ℝ) else 1) := by
           exact Finset.mul_sum _ _ _ |>.symm
         _ ≤ (∏ p ∈ U, (k : ℝ)^2) * (C_box * s ^ (k - 1 : ℕ) * ∏ p ∈ U, (C_gamma0 / (p : ℝ))) := by
-          gcongr; exact hC_bound s hs_ge U
+          gcongr
+          exact hC_bound s hs_ge U (fun p hp => Nat.prime_of_mem_primeFactors (hT_sub (hU_sub hp)))
     apply mul_le_mul_of_nonneg_left H (Finset.prod_nonneg fun p hp => mul_nonneg (combinedEulerWeight_nonneg _ _ _ _ (Nat.prime_of_mem_primeFactors (hT_sub (Finset.sdiff_subset hp)))) (localMean_nonneg _ _ _))
   have h_fact : ∑ U ∈ T.powerset, (∏ p ∈ T \ U, A p) * ((∏ p ∈ U, (k : ℝ)^2) * (C_box * s ^ (k - 1 : ℕ) * ∏ p ∈ U, (C_gamma0 / (p : ℝ)))) = C_box * s ^ (k - 1 : ℕ) * ∏ p ∈ T, (A p + (k : ℝ)^2 * (C_gamma0 / (p : ℝ))) := L1_factorization ε k Ω T s C_box C_gamma0
   have h_fact2 : ∑ U ∈ T.powerset, ((∏ p ∈ T \ U, A p) * ∏ p ∈ U, (k : ℝ)^2) * (C_box * s ^ (k - 1 : ℕ) * ∏ p ∈ U, (C_gamma0 / (p : ℝ))) = C_box * s ^ (k - 1 : ℕ) * ∏ p ∈ T, (A p + (k : ℝ)^2 * (C_gamma0 / (p : ℝ))) := by
