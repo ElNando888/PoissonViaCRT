@@ -229,4 +229,99 @@ public lemma tail_sum_decay (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     · rw [mul_comm]; gcongr
       exact h_exp.trans (Real.exp_le_exp.mpr h_combined)
 
+
+/-- **Modified Euler weight.** The combined Euler weight plus the collision density bound. -/
+@[expose]
+public noncomputable def modifiedEulerWeight (ε : ℝ) (k : ℕ) (C_gamma : ℝ)
+    (Ω : ∀ p : ℕ, Finset (ZMod p)) (p : ℕ) : ℝ :=
+  combinedEulerWeight ε k Ω p + (k : ℝ)^2 * C_gamma * (p : ℝ) ^ (-2 : ℝ)
+
+/-- `modifiedEulerWeight` is nonneg for primes `p`, since both terms are nonneg. -/
+public lemma modifiedEulerWeight_nonneg (ε : ℝ) (k : ℕ) (C_gamma : ℝ) (hC_gamma : 0 ≤ C_gamma)
+    (Ω : ∀ p : ℕ, Finset (ZMod p)) (p : ℕ) (hp : p.Prime) :
+    0 ≤ modifiedEulerWeight ε k C_gamma Ω p := by
+  unfold modifiedEulerWeight
+  apply add_nonneg (combinedEulerWeight_nonneg ε k Ω p hp)
+  positivity
+
+/-- `modifiedEulerWeight` is bounded by `(k + k^2 C_gamma) * p^{-1-ε}` if `ε ≤ 1`. -/
+public lemma modifiedEulerWeight_le (ε : ℝ) (hε : 0 < ε) (hε2 : ε ≤ 1) (k : ℕ)
+    (C_gamma : ℝ) (hC_gamma : 0 ≤ C_gamma)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hrp : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ))
+    (p : ℕ) (hp : p.Prime) :
+    modifiedEulerWeight ε k C_gamma Ω p ≤ (k + k^2 * C_gamma : ℝ) * (p : ℝ) ^ (-(1 + ε)) := by
+  have h_p : 1 ≤ (p : ℝ) := by norm_cast; exact Nat.Prime.one_lt hp |>.le
+  unfold modifiedEulerWeight
+  have h1 : combinedEulerWeight ε k Ω p ≤ (k : ℝ) * (p : ℝ) ^ (-(1 + ε)) :=
+    combinedEulerWeight_le ε hε k Ω hrp p hp
+  have h_pow : (p : ℝ) ^ (-2 : ℝ) ≤ (p : ℝ) ^ (-(1 + ε)) := by
+    apply Real.rpow_le_rpow_of_exponent_le h_p
+    linarith
+  have h2 : (k : ℝ)^2 * C_gamma * (p : ℝ) ^ (-2 : ℝ) ≤ (k : ℝ)^2 * C_gamma * (p : ℝ) ^ (-(1 + ε)) := by
+    apply mul_le_mul_of_nonneg_left h_pow
+    positivity
+  rw [add_mul]
+  exact add_le_add h1 h2
+
+
+
+/-- **Modified Tail-sum decay.**
+The sum over nonempty subsets `T ⊆ q.primeFactors` with `∏ T > s` of the
+modified Euler weight decays as `O(s^{−ε/2})`. -/
+public lemma modified_tail_sum_decay (ε : ℝ) (hε : 0 < ε) (hε2 : ε ≤ 1) (k : ℕ) (hk : 2 ≤ k)
+    (C_gamma : ℝ) (hC_gamma : 0 ≤ C_gamma)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hrp : ∀ p, p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ)) :
+    ∃ K : ℝ, 0 < K ∧ ∀ (q : ℕ) [NeZero q] (s : ℝ) (_ : 1 ≤ s),
+      ∑ T ∈ (q.primeFactors.powerset.filter (· ≠ ∅)).filter
+            (fun (T : Finset ℕ) => ¬((∏ p ∈ T, (p : ℝ)) ≤ s)),
+        ∏ p ∈ T, modifiedEulerWeight ε k C_gamma Ω p ≤
+        K * s ^ (-(ε / 2)) := by
+  refine ⟨Real.exp ((k + (k : ℝ)^2 * C_gamma) * ∑' n : ℕ, (n : ℝ) ^ (-(1 + ε / 2))), ?_, ?_⟩
+  · positivity
+  · intro q hq s hs
+    have h_rankin : ∑ T ∈ (q.primeFactors.powerset.filter
+        (fun (T : Finset ℕ) => ¬(∏ p ∈ T, (p : ℝ) ≤ s))),
+        ∏ p ∈ T, modifiedEulerWeight ε k C_gamma Ω p ≤
+        s ^ (-(ε / 2)) * ∏ p ∈ q.primeFactors,
+          (1 + modifiedEulerWeight ε k C_gamma Ω p * (p : ℝ) ^ (ε / 2)) := by
+      convert rankin_powerset_bound q.primeFactors
+        (fun p => modifiedEulerWeight ε k C_gamma Ω p) _ s (by positivity) (ε / 2)
+        (by positivity) using 1
+      exact fun p hp => modifiedEulerWeight_nonneg ε k C_gamma hC_gamma Ω p (Nat.prime_of_mem_primeFactors hp)
+    have h_exp : ∏ p ∈ q.primeFactors,
+        (1 + modifiedEulerWeight ε k C_gamma Ω p * (p : ℝ) ^ (ε / 2)) ≤
+        Real.exp (∑ p ∈ q.primeFactors,
+          modifiedEulerWeight ε k C_gamma Ω p * (p : ℝ) ^ (ε / 2)) := by
+      convert prod_one_add_le_exp_sum q.primeFactors _ _ using 1
+      exact fun p hp => mul_nonneg
+        (modifiedEulerWeight_nonneg ε k C_gamma hC_gamma Ω p (Nat.prime_of_mem_primeFactors hp))
+        (Real.rpow_nonneg (Nat.cast_nonneg _) _)
+    have h_combined : ∑ p ∈ q.primeFactors,
+        modifiedEulerWeight ε k C_gamma Ω p * (p : ℝ) ^ (ε / 2) ≤
+        (k + (k : ℝ)^2 * C_gamma) * ∑' n : ℕ, (n : ℝ) ^ (-(1 + ε / 2)) := by
+      have h_combined : ∑ p ∈ q.primeFactors,
+          modifiedEulerWeight ε k C_gamma Ω p * (p : ℝ) ^ (ε / 2) ≤
+          ∑ p ∈ q.primeFactors, (k + (k : ℝ)^2 * C_gamma) * (p : ℝ) ^ (-(1 + ε / 2)) := by
+        apply Finset.sum_le_sum
+        intro p hp
+        have hp_pos : 0 < (p : ℝ) := Nat.cast_pos.mpr (Nat.pos_of_mem_primeFactors hp)
+        calc modifiedEulerWeight ε k C_gamma Ω p * (p : ℝ) ^ (ε / 2)
+          _ ≤ ((k + (k : ℝ)^2 * C_gamma) * (p : ℝ) ^ (-(1 + ε))) * (p : ℝ) ^ (ε / 2) := mul_le_mul_of_nonneg_right (modifiedEulerWeight_le ε hε hε2 k C_gamma hC_gamma Ω hrp p (Nat.prime_of_mem_primeFactors hp)) (Real.rpow_nonneg hp_pos.le (ε / 2))
+          _ = (k + (k : ℝ)^2 * C_gamma) * ((p : ℝ) ^ (-(1 + ε)) * (p : ℝ) ^ (ε / 2)) := by ring
+          _ = (k + (k : ℝ)^2 * C_gamma) * (p : ℝ) ^ (-(1 + ε) + ε / 2) := by rw [← Real.rpow_add hp_pos]
+          _ = (k + (k : ℝ)^2 * C_gamma) * (p : ℝ) ^ (-(1 + ε / 2)) := by congr 2; ring
+      refine le_trans h_combined ?_
+      rw [← Finset.mul_sum _ _ _]
+      exact mul_le_mul_of_nonneg_left
+        (Summable.sum_le_tsum (q.primeFactors)
+          (fun _ _ => Real.rpow_nonneg (Nat.cast_nonneg _) _)
+          (by exact Real.summable_nat_rpow.2 (by linarith)))
+        (by positivity)
+    refine le_trans ?_ (h_rankin.trans ?_)
+    · refine Finset.sum_le_sum_of_subset_of_nonneg ?_ ?_ <;> grind
+    · rw [mul_comm]; gcongr
+      exact h_exp.trans (Real.exp_le_exp.mpr h_combined)
+
 end PoissonCRT

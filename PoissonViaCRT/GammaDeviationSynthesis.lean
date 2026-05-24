@@ -22,7 +22,7 @@ Gamma-structure counting to the pointwise absolute deviation, which loses
 cancellation and mathematically diverges.
 
 **DO NOT USE or import this file for new theorems.**
-👉 See `PoissonViaCRT/L2DeviationSynthesis.lean` for the correct
+👉 See `PoissonViaCRT/L1DeviationSynthesis.lean` for the correct
 Second Moment Method (Cauchy-Schwarz) approach that preserves cancellation.
 -/
 

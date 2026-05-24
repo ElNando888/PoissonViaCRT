@@ -22,7 +22,7 @@ import PoissonViaCRT.LargeDivisorHelpers
 import PoissonViaCRT.SmallDivisorHelpers
 import PoissonViaCRT.TupleCount
 import PoissonViaCRT.EulerWeights
-import PoissonViaCRT.L2DeviationSynthesis
+import PoissonViaCRT.L1DeviationSynthesis
 
 set_option linter.unusedVariables false
 
@@ -303,7 +303,7 @@ lemma prod_diff_ne_zero_implies_dvd {k : ℕ} (hk : 1 ≤ k) (q : ℕ) [NeZero q
 /-! ### Large-divisor bounds
 
   **Status:** `deviation_large_divisors` is now proved using the per-T L2 bound
-  (`per_T_deviation_le_combinedEulerWeight` from `L2DeviationSynthesis.lean`)
+  (`per_T_deviation_le_combinedEulerWeight` from `L1DeviationSynthesis.lean`)
   combined with `tail_sum_decay` (relocated to `EulerWeights.lean`).
 
   The per-T bound reduces each `|inner_T|` to `C · ∏_{p ∈ T} combinedEulerWeight`,
@@ -324,15 +324,18 @@ more complex summand involving a `T_small / T_large` prime-factor split, the CRT
 prefactor absorption), but the number of contributing subsets grows as `2^{ω(q)}`, which
 exceeds any fixed `K · s^{−ε/2}`. The correct approach uses `combinedEulerWeight` directly,
 which vanishes when `|Ω_p| = p` and is summable via the Rankin trick otherwise. -/
-private lemma large_divisor_series_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+private lemma modified_large_divisor_series_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+    (hε_lt : ε < lambdaExponent k)
+    (C_gamma : ℝ) (hC_gamma : 0 ≤ C_gamma)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hrp : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ)) :
     ∃ K_large : ℝ, 0 < K_large ∧ ∀ (q : ℕ) [NeZero q] (s : ℝ) (_ : 1 ≤ s),
       ∑ T ∈ (q.primeFactors.powerset.filter (· ≠ ∅)).filter
             (fun (T : Finset ℕ) => ¬((∏ p ∈ T, (p : ℝ)) ≤ s)),
-        ∏ p ∈ T, combinedEulerWeight ε k Ω p ≤
+        ∏ p ∈ T, modifiedEulerWeight ε k C_gamma Ω p ≤
         K_large * s ^ (-(ε / 2)) :=
-  tail_sum_decay ε hε k hk Ω hrp
+  have hε2 : ε ≤ 1 := hε_lt.le.trans (lambdaExponent_le_one k)
+  modified_tail_sum_decay ε hε hε2 k hk C_gamma hC_gamma Ω hrp
 
 /-
 Per-`T` pointwise bound for the large-divisor case.
@@ -436,18 +439,18 @@ private lemma deviation_large_divisors (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk :
               (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p -
               localMean k Ω p)) *
             ∏ p ∈ q.primeFactors \ T, localMean k Ω p)| ≤ K₂ * s ^ (-(ε / 2)) := by
-  -- Step 1: Obtain the per-T L2 bound from L2DeviationSynthesis.
-  obtain ⟨C_T, hC_T_pos, hC_T⟩ :=
-    per_T_deviation_le_combinedEulerWeight ε hε k hk Ω hΩ hWD hsp hrp hε_lt X C_lp hC_lp_pos hC_lp
-  -- Step 2: Obtain the tail-sum decay bound on ∑_T ∏_T combinedEulerWeight.
-  obtain ⟨K_large, hK_large_pos, hK_large⟩ := large_divisor_series_bound ε hε k hk Ω hrp
+  -- Step 1: Obtain the per-T L1 bound from L1DeviationSynthesis.
+  obtain ⟨C_gamma, hC_gamma, C_T, hC_T_pos, hC_T⟩ :=
+    per_T_deviation_le_modifiedEulerWeight ε hε k hk Ω hΩ hWD hsp hrp hε_lt X C_lp hC_lp_pos
+  -- Step 2: Obtain the tail-sum decay bound on ∑_T ∏_T modifiedEulerWeight.
+  obtain ⟨K_large, hK_large_pos, hK_large⟩ := modified_large_divisor_series_bound ε hε k hk hε_lt C_gamma hC_gamma Ω hrp
   -- Step 3: Combine: the total is bounded by C_T · K_large · s^{-ε/2}.
   refine ⟨C_T * K_large, mul_pos hC_T_pos hK_large_pos, fun q _ hq_sq => ?_⟩
   have hs_ge : 1 ≤ (q : ℝ) / (crtSubset q Ω).card := by
     rw [one_le_div (Nat.cast_pos.mpr (Nat.pos_of_ne_zero (by
       have := crtSubset_card_pos_aux Ω hΩ q; aesop)))]
     norm_cast; exact le_trans (Finset.card_le_univ _) (by norm_num)
-  -- Each |inner_T| ≤ C_T · ∏_T cEW, so ∑_T |inner_T| ≤ C_T · ∑_T ∏ cEW ≤ C_T · K · s^{-ε/2}.
+  -- Each |inner_T| ≤ C_T · ∏_T mEW, so ∑_T |inner_T| ≤ C_T · ∑_T ∏ mEW ≤ C_T · K · s^{-ε/2}.
   calc ∑ T ∈ (q.primeFactors.powerset.filter (· ≠ ∅)).filter
             (fun (T : Finset ℕ) => ¬((∏ p ∈ T, (p : ℝ)) ≤ (q : ℝ) / (crtSubset q Ω).card)),
         |∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
@@ -460,13 +463,13 @@ private lemma deviation_large_divisors (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk :
             ∏ p ∈ q.primeFactors \ T, localMean k Ω p)|
       ≤ ∑ T ∈ (q.primeFactors.powerset.filter (· ≠ ∅)).filter
             (fun (T : Finset ℕ) => ¬((∏ p ∈ T, (p : ℝ)) ≤ (q : ℝ) / (crtSubset q Ω).card)),
-          C_T * ∏ p ∈ T, combinedEulerWeight ε k Ω p := by
+          C_T * ∏ p ∈ T, modifiedEulerWeight ε k C_gamma Ω p := by
         apply Finset.sum_le_sum
         intro T hT
         exact hC_T q hq_sq T (Finset.mem_filter.mp hT |>.1)
     _ = C_T * ∑ T ∈ (q.primeFactors.powerset.filter (· ≠ ∅)).filter
             (fun (T : Finset ℕ) => ¬((∏ p ∈ T, (p : ℝ)) ≤ (q : ℝ) / (crtSubset q Ω).card)),
-          ∏ p ∈ T, combinedEulerWeight ε k Ω p := by
+          ∏ p ∈ T, modifiedEulerWeight ε k C_gamma Ω p := by
         rw [← Finset.mul_sum]
     _ ≤ C_T * (K_large * ((q : ℝ) / (crtSubset q Ω).card) ^ (-(ε / 2))) := by
         gcongr; exact hK_large q ((q : ℝ) / (crtSubset q Ω).card) hs_ge

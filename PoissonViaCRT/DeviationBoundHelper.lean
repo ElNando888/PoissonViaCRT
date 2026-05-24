@@ -131,14 +131,14 @@ public noncomputable def localCount {m : ℕ} (Ω : ∀ p : ℕ, Finset (ZMod p)
   else 1
 
 /-- `localCount` is nonneg (it is a natural number cast to `ℝ`). -/
-lemma localCount_nonneg {Ω : ∀ p : ℕ, Finset (ZMod p)} {q : ℕ} [NeZero q]
+public lemma localCount_nonneg {Ω : ∀ p : ℕ, Finset (ZMod p)} {q : ℕ} [NeZero q]
     {h : Fin k → ZMod q} {p : ℕ} :
     0 ≤ localCount Ω q h p := by
   unfold localCount; split_ifs <;> norm_cast ;
   exact Nat.zero_le _
 
 /-- `localCount` at a prime factor is at most `p`. -/
-lemma localCount_le {q : ℕ} [NeZero q]
+public lemma localCount_le {q : ℕ} [NeZero q]
     (p : ℕ) (hp : p ∈ q.primeFactors) (Ω : ∀ p : ℕ, Finset (ZMod p))
     (h : Fin k → ZMod q) :
     localCount Ω q h p ≤ (p : ℝ) := by
@@ -153,7 +153,7 @@ public lemma localMean_nonneg (k : ℕ) (Ω : ∀ p : ℕ, Finset (ZMod p)) (p :
   exact div_nonneg ( pow_nonneg ( Nat.cast_nonneg _ ) _ ) ( pow_nonneg ( Nat.cast_nonneg _ ) _ )
 
 /-- `localMean` is at most `p` when `k ≥ 1` and `p` is prime. -/
-lemma localMean_le (k : ℕ) (hk : 1 ≤ k) (Ω : ∀ p : ℕ, Finset (ZMod p)) (p : ℕ)
+public lemma localMean_le (k : ℕ) (hk : 1 ≤ k) (Ω : ∀ p : ℕ, Finset (ZMod p)) (p : ℕ)
     (hp : p.Prime) :
     localMean k Ω p ≤ (p : ℝ) := by
   unfold localMean;

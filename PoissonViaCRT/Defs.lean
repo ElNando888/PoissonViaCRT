@@ -355,4 +355,23 @@ public noncomputable def gammaProdOfBoxPoint (T : Finset ℕ) {n : ℕ} (h : Fin
   ∏ j : Fin (n + 1), (Finset.Iio j).lcm
     (fun i => Nat.gcd c (Int.natAbs (h' j - h' i)))
 
+
+public lemma lambdaExponent_le_one (k : ℕ) : lambdaExponent k ≤ 1 := by
+  unfold lambdaExponent
+  split_ifs
+  · rfl
+  · next h1 h2 => 
+    have : Real.sqrt 17 ≤ 5 := by
+      have h5 : (5 : ℝ) = Real.sqrt 25 := by norm_num
+      rw [h5]
+      exact Real.sqrt_le_sqrt (by norm_num)
+    linarith
+  · next h1 h2 h3 => linarith
+  · next h1 h2 h3 => 
+    have hk : 4 ≤ k := by omega
+    have hk_r : (4 : ℝ) ≤ (k : ℝ) := by exact_mod_cast hk
+    have h1 : (1 : ℝ) ≤ (k : ℝ) - 1 := by linarith
+    have hpos : (0 : ℝ) ≤ (k : ℝ) - 1 := by linarith
+    exact div_le_one_of_le₀ h1 hpos
+
 end PoissonCRT
