@@ -336,6 +336,25 @@ public noncomputable def lambdaExponent (k : ℕ) : ℝ :=
   else if k = 3 then 1 / 3
   else 1 / (k - 1 : ℝ)
 
+/-- `lambdaExponent k` is less than or equal to 1. -/
+public lemma lambdaExponent_le_one (k : ℕ) : lambdaExponent k ≤ 1 := by
+  unfold lambdaExponent
+  split_ifs
+  · rfl
+  · next h1 h2 =>
+    have : Real.sqrt 17 ≤ 5 := by
+      have h5 : (5 : ℝ) = Real.sqrt 25 := by norm_num
+      rw [h5]
+      exact Real.sqrt_le_sqrt (by norm_num)
+    linarith
+  · next h1 h2 h3 => linarith
+  · next h1 h2 h3 =>
+    have hk : 4 ≤ k := by omega
+    have hk_r : (4 : ℝ) ≤ (k : ℝ) := by exact_mod_cast hk
+    have h1 : (1 : ℝ) ≤ (k : ℝ) - 1 := by linarith
+    have hpos : (0 : ℝ) ≤ (k : ℝ) - 1 := by linarith
+    exact div_le_one_of_le₀ h1 hpos
+
 /-! ### Gamma product of a box point -/
 
 /-- The gamma product of a box point `h ∈ ℤ^n` with respect to a set `T`
@@ -354,24 +373,5 @@ public noncomputable def gammaProdOfBoxPoint (T : Finset ℕ) {n : ℕ} (h : Fin
   let h' := Fin.cons (0 : ℤ) h
   ∏ j : Fin (n + 1), (Finset.Iio j).lcm
     (fun i => Nat.gcd c (Int.natAbs (h' j - h' i)))
-
-
-public lemma lambdaExponent_le_one (k : ℕ) : lambdaExponent k ≤ 1 := by
-  unfold lambdaExponent
-  split_ifs
-  · rfl
-  · next h1 h2 => 
-    have : Real.sqrt 17 ≤ 5 := by
-      have h5 : (5 : ℝ) = Real.sqrt 25 := by norm_num
-      rw [h5]
-      exact Real.sqrt_le_sqrt (by norm_num)
-    linarith
-  · next h1 h2 h3 => linarith
-  · next h1 h2 h3 => 
-    have hk : 4 ≤ k := by omega
-    have hk_r : (4 : ℝ) ≤ (k : ℝ) := by exact_mod_cast hk
-    have h1 : (1 : ℝ) ≤ (k : ℝ) - 1 := by linarith
-    have hpos : (0 : ℝ) ≤ (k : ℝ) - 1 := by linarith
-    exact div_le_one_of_le₀ h1 hpos
 
 end PoissonCRT

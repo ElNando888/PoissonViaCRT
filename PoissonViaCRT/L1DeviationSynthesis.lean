@@ -18,6 +18,7 @@ public import PoissonViaCRT.SmallDivisorHelpers
 public import PoissonViaCRT.EulerWeights
 public import Mathlib
 import PoissonViaCRT.LargeDivisorHelpers
+import PoissonViaCRT.BoxCollisionHelpers
 
 set_option linter.unusedVariables false
 
@@ -188,13 +189,7 @@ private lemma swap_L1_sum {ι : Type*} (T : Finset ℕ) (A : ℕ → ℝ) (B : �
   · exact fun b hb => ⟨ T \ b, by aesop ⟩
   · exact fun a ha => by rw [ Finset.inter_eq_right.mpr ha ]
 
-private lemma box_collision_sum_bound (k : ℕ) (X : Box (k - 1)) :
-    ∃ C_box C_gamma : ℝ, 0 < C_box ∧ 0 < C_gamma ∧ ∀ (s : ℝ) (_ : 1 ≤ s) (U : Finset ℕ),
-    ∑ h ∈ ((Fintype.piFinset fun _ => Finset.Icc (1:ℤ) ⌈s * ∑ i, X.sides i⌉).filter
-        (fun h => inScaledBox X s (fun _ => 0) h)),
-      (∏ p ∈ U, if Function.Injective (Fin.cons (0 : ZMod p) (fun i => (h i : ZMod p))) then (0:ℝ) else 1)
-    ≤ C_box * s ^ (k - 1 : ℕ) * ∏ p ∈ U, (C_gamma / (p : ℝ)) := by
-  sorry
+
 
 private lemma L1_factorization (ε : ℝ) (k : ℕ) (Ω : ∀ p : ℕ, Finset (ZMod p))
     (T : Finset ℕ) (s : ℝ) (C_box C_gamma : ℝ) :
@@ -223,7 +218,18 @@ private lemma inv_mu_le_C_div_p (k : ℕ) (hk : 2 ≤ k)
     (hrp : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ)) :
     ∃ C > 0, ∀ (p : ℕ) (hp : p.Prime),
       1 / localMean k Ω p ≤ C / (p : ℝ) := by
-  sorry
+  -- We need to show there exists C > 0 such that for all primes p, (p/|Ω_p|)^k ≤ C.
+  have h_bound : ∃ C > 0, ∀ p : ℕ, Nat.Prime p → (p / ((Ω p).card : ℝ)) ^ k ≤ C := by
+    -- For primes $p \geq 2k$, we have $|Ω_p| \geq p - k \geq p/2$, so $p/|Ω_p| \leq 2$.
+    have h_bound_large : ∀ p : ℕ, Nat.Prime p → 2 * k ≤ p → (p / ((Ω p).card : ℝ)) ≤ 2 := by
+      intro p hp hp'; specialize hrp p hp; rw [ sub_div', div_le_div_iff₀ ] at hrp <;> norm_num at * <;> try linarith [ hp.two_le ] ;
+      rw [ div_le_iff₀ ] <;> nlinarith [ show ( k : ℝ ) ≥ 2 by norm_cast, show ( p : ℝ ) ≥ 2 * k by norm_cast, show ( ( Ω p |> Finset.card ) : ℝ ) ≥ 1 by exact_mod_cast Finset.card_pos.mpr ( hΩ p hp ) ];
+    -- For primes $p < 2k$, we have $|Ω_p| \geq 1$, so $p/|Ω_p| \leq p < 2k$.
+    have h_bound_small : ∀ p : ℕ, Nat.Prime p → p < 2 * k → (p / ((Ω p).card : ℝ)) ≤ 2 * k := by
+      intro p hp hp'; rw [ div_le_iff₀ ] <;> norm_cast <;> nlinarith [ show ( Ω p |> Finset.card ) ≥ 1 from Finset.card_pos.mpr ( hΩ p hp ) ] ;
+    exact ⟨ ( 2 * k ) ^ k, by positivity, fun p hp => pow_le_pow_left₀ ( by positivity ) ( if h : p < 2 * k then h_bound_small p hp h else h_bound_large p hp ( le_of_not_gt h ) |> le_trans <| by norm_cast; linarith ) _ ⟩;
+  obtain ⟨ C, hC₀, hC ⟩ := h_bound; use C; refine ⟨ hC₀, fun p hp ↦ ?_ ⟩ ; specialize hC p hp; rw [ localMean ] ; simp_all +decide [div_pow] ;
+  rw [ le_div_iff₀ ( Nat.cast_pos.mpr hp.pos ) ] ; rw [ show ( p : ℝ ) ^ k = p ^ ( k - 1 ) * p by rw [ ← pow_succ, Nat.sub_add_cancel ( by linarith ) ] ] at hC; convert hC using 1 ; ring;
 
 private lemma prefactor_localMean_collapse' (k : ℕ) (hk : 1 ≤ k) (q : ℕ) [NeZero q]
     (hq : Squarefree q) (Ω : ∀ p : ℕ, Finset (ZMod p))
@@ -259,7 +265,7 @@ public lemma per_T_deviation_le_modifiedEulerWeight (ε : ℝ) (hε : 0 < ε) (k
               localMean k Ω p)) *
             ∏ p ∈ q.primeFactors \ T, localMean k Ω p)| ≤
       C_T * ∏ p ∈ T, modifiedEulerWeight ε k C_gamma Ω p := by
-  obtain ⟨C_box, C_gamma0, hC_box_pos, hC_gamma0_pos, hC_bound⟩ := box_collision_sum_bound k X
+  obtain ⟨C_box, C_gamma0, hC_box_pos, hC_gamma0_pos, hC_bound⟩ := box_collision_sum_bound (k - 1) X
   obtain ⟨C_mu, hC_mu_pos, hC_mu_bound⟩ := inv_mu_le_C_div_p k hk Ω hΩ hrp
   set C_gamma := C_gamma0 * C_mu
   refine ⟨C_gamma, by positivity, C_box, hC_box_pos, ?_⟩
