@@ -17,6 +17,8 @@ Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 module
 public import Mathlib.Analysis.SpecialFunctions.Pow.Real
 import Mathlib.Analysis.PSeries
+import Mathlib.Data.Nat.Squarefree
+public import PoissonViaCRT.Utils.SqfreeNatOrderIso
 
 set_option linter.unusedVariables false
 
@@ -323,5 +325,177 @@ public lemma modified_tail_sum_decay (ε : ℝ) (hε : 0 < ε) (hε2 : ε ≤ 1)
     · refine Finset.sum_le_sum_of_subset_of_nonneg ?_ ?_ <;> grind
     · rw [mul_comm]; gcongr
       exact h_exp.trans (Real.exp_le_exp.mpr h_combined)
+
+/-! ## Global Euler Weights and Divisor-Sum Reformulation
+
+This section bundles the local Euler weights into global multiplicative
+weight functions on natural numbers, and provides transport lemmas that
+reformulate the powerset sums from `tail_sum_decay` /
+`modified_tail_sum_decay` as sums over squarefree divisors of `q`.
+
+The key bridge is `sqfreeNatOrderIso` from
+`PoissonViaCRT.Utils.SqfreeNatOrderIso`, which witnesses the
+order-isomorphism between `SquarefreeNat` and `Finset Nat.Primes`.
+-/
+
+/-- **Global combined Euler weight.** For a natural number `d`, the product of
+local `combinedEulerWeight` values over its prime factors. When `d` is a
+squarefree divisor of `q`, this equals `∏ p ∈ T, combinedEulerWeight ε k Ω p`
+for the subset `T = d.primeFactors` of `q.primeFactors`. -/
+@[expose]
+public noncomputable def globalCombinedEulerWeight (ε : ℝ) (k : ℕ)
+    (Ω : ∀ p : ℕ, Finset (ZMod p)) (d : ℕ) : ℝ :=
+  ∏ p ∈ d.primeFactors, combinedEulerWeight ε k Ω p
+
+/-- **Global modified Euler weight.** For a natural number `d`, the product of
+local `modifiedEulerWeight` values over its prime factors. -/
+@[expose]
+public noncomputable def globalModifiedEulerWeight (ε : ℝ) (k : ℕ) (C_gamma : ℝ)
+    (Ω : ∀ p : ℕ, Finset (ZMod p)) (d : ℕ) : ℝ :=
+  ∏ p ∈ d.primeFactors, modifiedEulerWeight ε k C_gamma Ω p
+
+/-- All elements of `q.primeFactors` are prime. -/
+lemma primeFactors_subset_prime (q : ℕ) (T : Finset ℕ)
+    (hT : T ⊆ q.primeFactors) (p : ℕ) (hp : p ∈ T) : p.Prime :=
+  Nat.prime_of_mem_primeFactors (hT hp)
+
+/-
+For `T ⊆ q.primeFactors` and squarefree `q`, the product `∏ p ∈ T, p`
+is a divisor of `q`.
+-/
+lemma prod_mem_divisors_of_subset (q : ℕ) (hq : Squarefree q)
+    (T : Finset ℕ) (hT : T ⊆ q.primeFactors) :
+    (∏ p ∈ T, p) ∈ q.divisors := by
+  apply Nat.mem_divisors.mpr;
+  exact ⟨ Nat.prod_primeFactors_dvd q |> fun x => dvd_trans ( by apply_rules [ Finset.prod_dvd_prod_of_subset ] ) x, hq.ne_zero ⟩
+
+/-
+For two subsets of `q.primeFactors`, equal products imply equal sets.
+-/
+lemma prod_injective_on_primeFactors (q : ℕ)
+    (T₁ T₂ : Finset ℕ) (hT₁ : T₁ ⊆ q.primeFactors) (hT₂ : T₂ ⊆ q.primeFactors)
+    (h : ∏ p ∈ T₁, p = ∏ p ∈ T₂, p) : T₁ = T₂ := by
+  apply_fun fun x => x.primeFactors at h;
+  -- Since the prime factors of a product of primes is just the set of those primes, we can conclude that T₁ = T₂.
+  have h_prime_factors : ∀ (T : Finset ℕ), (∀ p ∈ T, Nat.Prime p) → (∏ p ∈ T, p).primeFactors = T := by
+    intros T hT_prime; induction T using Finset.induction <;> simp_all +decide;
+    rw [ Nat.primeFactors_mul, ‹ ( ∏ p ∈ _, p |> Nat.primeFactors ) = _› ] <;> aesop;
+  rw [ h_prime_factors T₁ fun p hp => Nat.prime_of_mem_primeFactors ( hT₁ hp ), h_prime_factors T₂ fun p hp => Nat.prime_of_mem_primeFactors ( hT₂ hp ) ] at h ; aesop
+
+/-- Every divisor of squarefree `q` is the product of its prime factors,
+which form a subset of `q.primeFactors`. -/
+lemma divisor_eq_prod_primeFactors (q : ℕ) (hq : Squarefree q)
+    (d : ℕ) (hd : d ∈ q.divisors) :
+    d.primeFactors ∈ q.primeFactors.powerset ∧ ∏ p ∈ d.primeFactors, p = d := by
+  have hd_dvd := Nat.dvd_of_mem_divisors hd
+  exact ⟨Finset.mem_powerset.mpr (Nat.primeFactors_mono hd_dvd hq.ne_zero),
+         Nat.prod_primeFactors_of_squarefree (hq.squarefree_of_dvd hd_dvd)⟩
+
+/-
+For squarefree `q`, the map `T ↦ ∏ p ∈ T, p` bijects
+`q.primeFactors.powerset` with `q.divisors`, and summands of the form
+`∏ p ∈ T, f p` are preserved. This is the core transport lemma used to
+rewrite powerset sums as divisor sums.
+-/
+lemma sum_powerset_eq_sum_divisors (q : ℕ) (hq : Squarefree q) (f : ℕ → ℝ) :
+    ∑ T ∈ q.primeFactors.powerset, ∏ p ∈ T, f p =
+      ∑ d ∈ q.divisors, ∏ p ∈ d.primeFactors, f p := by
+  apply Finset.sum_bij (fun T _ => ∏ p ∈ T, p);
+  · exact fun T hT => prod_mem_divisors_of_subset q hq T ( Finset.mem_powerset.mp hT );
+  · exact fun T₁ hT₁ T₂ hT₂ h => prod_injective_on_primeFactors q T₁ T₂ ( Finset.mem_powerset.mp hT₁ ) ( Finset.mem_powerset.mp hT₂ ) h;
+  · intro d hd;
+    have := divisor_eq_prod_primeFactors q hq d hd; aesop;
+  · intro T hT
+    have h_prime_factors : (∏ p ∈ T, p).primeFactors = T := by
+      have h_prime_factors : ∀ {T : Finset ℕ}, (∀ p ∈ T, Nat.Prime p) → (∏ p ∈ T, p).primeFactors = T := by
+        intros T hT; induction T using Finset.induction <;> simp_all +decide;
+        rw [ Nat.primeFactors_mul, ‹ ( ∏ p ∈ _, p |> Nat.primeFactors ) = _› ] <;> simp_all +decide [ Nat.Prime.ne_zero, Finset.prod_eq_zero_iff ];
+        exact fun h => Nat.not_prime_zero ( hT.2 _ h );
+      exact h_prime_factors fun p hp => Nat.prime_of_mem_primeFactors <| Finset.mem_powerset.mp hT hp
+    rw [h_prime_factors]
+
+/-
+Variant of `sum_powerset_eq_sum_divisors` restricted to nonempty subsets
+(equivalently, nontrivial divisors `1 < d`).
+-/
+lemma sum_powerset_nonempty_eq_sum_divisors_gt_one (q : ℕ) (hq : Squarefree q) (f : ℕ → ℝ) :
+    ∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅), ∏ p ∈ T, f p =
+      ∑ d ∈ q.divisors.filter (1 < ·), ∏ p ∈ d.primeFactors, f p := by
+  convert congr_arg ( fun x : ℝ => x - 1 ) ( sum_powerset_eq_sum_divisors q hq ( fun p => f p ) ) using 1;
+  · simp +decide [ Finset.filter_ne' ];
+  · rw [ Finset.sum_eq_add_sum_diff_singleton ( Nat.one_mem_divisors.mpr <| by rintro rfl; simp_all +decide ) ];
+    rw [ show q.divisors \ { 1 } = Finset.filter ( fun x => 1 < x ) q.divisors from ?_ ];
+    · norm_num +zetaDelta at *;
+    · ext ( _ | _ | x ) <;> simp +arith +decide
+
+/-
+For a nonempty subset `T` of primes, `∏ p ∈ T, (p : ℝ) = ((∏ p ∈ T, p : ℕ) : ℝ)`,
+and the product is the corresponding squarefree divisor.  In particular,
+the threshold condition `¬(∏ p ∈ T, (p : ℝ) ≤ s)` transports to `¬((d : ℝ) ≤ s)`.
+-/
+lemma sum_powerset_nonempty_filtered_eq (q : ℕ) (hq : Squarefree q)
+    (f : ℕ → ℝ) (s : ℝ) :
+    ∑ T ∈ (q.primeFactors.powerset.filter (· ≠ ∅)).filter
+          (fun (T : Finset ℕ) => ¬((∏ p ∈ T, (p : ℝ)) ≤ s)),
+      ∏ p ∈ T, f p =
+    ∑ d ∈ (q.divisors.filter (1 < ·)).filter (fun (d : ℕ) => ¬((d : ℝ) ≤ s)),
+      ∏ p ∈ d.primeFactors, f p := by
+  apply Finset.sum_bij (fun T hT => ∏ p ∈ T, p);
+  · simp +zetaDelta at *;
+    intro T hT_sub hT_nonempty hT_prod
+    have hT_div : ∏ p ∈ T, p ∣ q := by
+      convert prod_mem_divisors_of_subset q hq T hT_sub |> Nat.dvd_of_mem_divisors
+    have hT_pos : 1 < ∏ p ∈ T, p := by
+      exact lt_of_lt_of_le ( Nat.Prime.one_lt ( Nat.prime_of_mem_primeFactors ( hT_sub ( Classical.choose_spec ( Finset.nonempty_of_ne_empty hT_nonempty ) ) ) ) ) ( Nat.le_of_dvd ( Finset.prod_pos fun p hp => Nat.pos_of_mem_primeFactors ( hT_sub hp ) ) ( Finset.dvd_prod_of_mem _ ( Classical.choose_spec ( Finset.nonempty_of_ne_empty hT_nonempty ) ) ) )
+    exact ⟨⟨⟨hT_div, by
+      aesop⟩, hT_pos⟩, hT_prod⟩;
+  · grind +suggestions;
+  · intro d hd;
+    use d.primeFactors;
+    have := divisor_eq_prod_primeFactors q hq d ( by aesop );
+    simp_all +decide;
+    exact ⟨ ⟨ by linarith, by linarith ⟩, by rw [ ← Nat.cast_prod, this.2 ] ; exact hd.2 ⟩;
+  · have h_prod_prime_factors : ∀ T ∈ q.primeFactors.powerset, (∏ p ∈ T, p).primeFactors = T := by
+      intro T hT; induction T using Finset.induction <;> simp_all +decide;
+      rw [ Nat.primeFactors_mul, Finset.insert_eq ] <;> simp_all +decide [ Finset.subset_iff ];
+      · exact hT.1.1.ne_zero;
+      · exact Finset.prod_ne_zero_iff.mpr fun x hx => Nat.Prime.ne_zero ( hT.2 x hx |>.1 );
+    grind
+
+/-
+**Tail-sum decay (divisor formulation).**
+Equivalent to `tail_sum_decay`, but the sum ranges over squarefree
+divisors `d ∣ q` with `d > 1` and `(d : ℝ) > s`, instead of
+powerset filters.
+-/
+public lemma tail_sum_decay' (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hrp : ∀ p, p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ)) :
+    ∃ K : ℝ, 0 < K ∧ ∀ (q : ℕ) (_ : NeZero q) (_ : Squarefree q) (s : ℝ) (_ : 1 ≤ s),
+      ∑ d ∈ (q.divisors.filter (1 < ·)).filter (fun (d : ℕ) => ¬((d : ℝ) ≤ s)),
+        globalCombinedEulerWeight ε k Ω d ≤
+        K * s ^ (-(ε / 2)) := by
+  obtain ⟨ K, hK ⟩ := tail_sum_decay ε hε k hk Ω hrp;
+  use K;
+  refine' ⟨ hK.1, fun q hq hq' s hs => le_trans _ ( hK.2 q s hs ) ⟩;
+  convert sum_powerset_nonempty_filtered_eq q hq' ( combinedEulerWeight ε k Ω ) s |> fun h => h.symm.le using 1
+
+/-
+**Modified tail-sum decay (divisor formulation).**
+Equivalent to `modified_tail_sum_decay`, but the sum ranges over squarefree
+divisors `d ∣ q` with `d > 1` and `(d : ℝ) > s`.
+-/
+public lemma modified_tail_sum_decay' (ε : ℝ) (hε : 0 < ε) (hε2 : ε ≤ 1) (k : ℕ) (hk : 2 ≤ k)
+    (C_gamma : ℝ) (hC_gamma : 0 ≤ C_gamma)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hrp : ∀ p, p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ)) :
+    ∃ K : ℝ, 0 < K ∧ ∀ (q : ℕ) (_ : NeZero q) (_ : Squarefree q) (s : ℝ) (_ : 1 ≤ s),
+      ∑ d ∈ (q.divisors.filter (1 < ·)).filter (fun (d : ℕ) => ¬((d : ℝ) ≤ s)),
+        globalModifiedEulerWeight ε k C_gamma Ω d ≤
+        K * s ^ (-(ε / 2)) := by
+  obtain ⟨ K, hK₁, hK₂ ⟩ := modified_tail_sum_decay ε hε hε2 k hk C_gamma hC_gamma Ω hrp;
+  refine' ⟨ K, hK₁, fun q hq₁ hq₂ s hs => _ ⟩;
+  convert hK₂ q s hs using 1;
+  convert sum_powerset_nonempty_filtered_eq q hq₂ ( fun p => modifiedEulerWeight ε k C_gamma Ω p ) s |> Eq.symm using 1
 
 end PoissonCRT
