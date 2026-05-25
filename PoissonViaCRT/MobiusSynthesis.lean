@@ -81,41 +81,43 @@ lemma tupleCount_eq_prod_localCount {k : ℕ} (q : ℕ) [NeZero q] (hq : Squaref
 
 /-! ## 1. Product-Difference Decomposition -/
 
-/-- **Product-difference decomposition of the counting function deviation.**
+/-- **Product-difference decomposition of the counting function deviation (divisor formulation).**
 For squarefree `q`, the deviation `N_k(h, Ω_q) - μ` at each element `h` decomposes
-as a sum over nonempty subsets `T` of the prime factors of `q`:
+as a sum over squarefree divisors `d ∣ q` with `d > 1`:
 
-$$N_k(h) - \mu = \sum_{\emptyset \neq T \subseteq \mathrm{primeFactors}(q)}
-  \prod_{p \in T} (N_k(h \bmod p) - \mu_p) \cdot \prod_{p \notin T} \mu_p$$
+$N_k(h) - \mu = \sum_{d \mid q,\, d > 1}
+  \prod_{p \mid d} (N_k(h \bmod p) - \mu_p) \cdot \prod_{p \mid q,\, p \nmid d} \mu_p$
 
 This is a strict algebraic rewrite combining `counting_function_multiplicative`
-with `prod_sub_prod_expansion`. No inequalities are used. -/
+with `prod_sub_prod_expansion`, transported to divisor sums via
+`sum_nonempty_powerset_eq_sum_nontrivial_divisors`. -/
 theorem deviation_product_difference {k : ℕ} (q : ℕ) [NeZero q]
     (hq : Squarefree q)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (h : Fin k → ZMod q) :
     (tupleCount (crtSubset q Ω) h : ℝ) -
       ∏ p ∈ q.primeFactors, localMean k Ω p =
-    ∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅),
-      (∏ p ∈ T, (localCount Ω q h p - localMean k Ω p)) *
-      ∏ p ∈ q.primeFactors \ T, localMean k Ω p := by
+    ∑ d ∈ q.divisors.filter (1 < ·),
+      (∏ p ∈ d.primeFactors, (localCount Ω q h p - localMean k Ω p)) *
+      ∏ p ∈ q.primeFactors \ d.primeFactors, localMean k Ω p := by
   rw [tupleCount_eq_prod_localCount q hq Ω h]
-  exact prod_sub_prod_expansion (localCount Ω q h) (localMean k Ω) q.primeFactors
+  rw [prod_sub_prod_expansion (localCount Ω q h) (localMean k Ω) q.primeFactors]
+  exact sum_nonempty_powerset_eq_sum_nontrivial_divisors q hq _
 
 /-! ## 2. Triangle Inequality Bound -/
 
-/-- **Triangle inequality on the product-difference expansion.**
+/-- **Triangle inequality on the product-difference expansion (divisor formulation).**
 The absolute value of the deviation is bounded by the sum of absolute values
-of the individual subset terms. -/
+of the individual divisor terms. -/
 theorem deviation_triangle_bound {k : ℕ} (q : ℕ) [NeZero q]
     (hq : Squarefree q)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (h : Fin k → ZMod q) :
     |(tupleCount (crtSubset q Ω) h : ℝ) -
       ∏ p ∈ q.primeFactors, localMean k Ω p| ≤
-    ∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅),
-      |(∏ p ∈ T, (localCount Ω q h p - localMean k Ω p))| *
-      |∏ p ∈ q.primeFactors \ T, localMean k Ω p| := by
+    ∑ d ∈ q.divisors.filter (1 < ·),
+      |(∏ p ∈ d.primeFactors, (localCount Ω q h p - localMean k Ω p))| *
+      |∏ p ∈ q.primeFactors \ d.primeFactors, localMean k Ω p| := by
   rw [deviation_product_difference q hq Ω h]
   exact le_trans (Finset.abs_sum_le_sum_abs _ _)
     (Finset.sum_le_sum fun T _ => le_of_eq (abs_mul _ _))
@@ -310,32 +312,31 @@ lemma prod_diff_ne_zero_implies_dvd {k : ℕ} (hk : 1 ≤ k) (q : ℕ) [NeZero q
   after which the Rankin-trick tail sum gives the `O(s^{-ε/2})` decay.
 -/
 
-/-- **Combined Euler weight tail-sum bound.**
+/-- **Combined Euler weight tail-sum bound (divisor formulation).**
 
-The sum of `∏_{p ∈ T} combinedEulerWeight` over nonempty subsets `T ⊆ q.primeFactors`
-whose prime product exceeds `s` is bounded by `K · s^{−ε/2}`. This is the Rankin-trick
-argument from `tail_sum_decay` in `GammaDeviationSynthesis.lean`, using the spacing
-hypothesis `hrp` to control the Euler product.
+The sum of `globalModifiedEulerWeight d` over squarefree divisors `d ∣ q` with `d > 1` and
+`(d : ℝ) > s` is bounded by `K · s^{−ε/2}`. This is the divisor-sum reformulation of the
+Rankin-trick tail-sum bound, using `modified_tail_sum_decay` from `EulerWeights.lean`.
 
 **Note on the previous formulation:** An earlier version of this lemma attempted to bound a
 more complex summand involving a `T_small / T_large` prime-factor split, the CRT prefactor
 `q^{k−1} / |Ω_q|^k`, and the complement product `∏_{q ∖ T} localMean`. That formulation is
 **mathematically false**: when `|Ω_p| = p` for all primes `p`, each summand equals 1 (after
 prefactor absorption), but the number of contributing subsets grows as `2^{ω(q)}`, which
-exceeds any fixed `K · s^{−ε/2}`. The correct approach uses `combinedEulerWeight` directly,
-which vanishes when `|Ω_p| = p` and is summable via the Rankin trick otherwise. -/
+exceeds any fixed `K · s^{−ε/2}`. The correct approach uses `globalModifiedEulerWeight`
+directly, which vanishes when `|Ω_p| = p` and is summable via the Rankin trick otherwise. -/
 private lemma modified_large_divisor_series_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (hε_lt : ε < lambdaExponent k)
     (C_gamma : ℝ) (hC_gamma : 0 ≤ C_gamma)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hrp : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ)) :
-    ∃ K_large : ℝ, 0 < K_large ∧ ∀ (q : ℕ) [NeZero q] (s : ℝ) (_ : 1 ≤ s),
-      ∑ T ∈ (q.primeFactors.powerset.filter (· ≠ ∅)).filter
-            (fun (T : Finset ℕ) => ¬((∏ p ∈ T, (p : ℝ)) ≤ s)),
-        ∏ p ∈ T, modifiedEulerWeight ε k C_gamma Ω p ≤
-        K_large * s ^ (-(ε / 2)) :=
+    ∃ K_large : ℝ, 0 < K_large ∧ ∀ (q : ℕ) [NeZero q] (_ : Squarefree q) (s : ℝ) (_ : 1 ≤ s),
+      ∑ d ∈ (q.divisors.filter (1 < ·)).filter (fun (d : ℕ) => ¬((d : ℝ) ≤ s)),
+        globalModifiedEulerWeight ε k C_gamma Ω d ≤
+        K_large * s ^ (-(ε / 2)) := by
   have hε2 : ε ≤ 1 := hε_lt.le.trans (lambdaExponent_le_one k)
-  modified_tail_sum_decay ε hε hε2 k hk C_gamma hC_gamma Ω hrp
+  simp only [globalModifiedEulerWeight]
+  exact modified_tail_sum_decay ε hε hε2 k hk C_gamma hC_gamma Ω hrp
 
 /-
 Per-`T` pointwise bound for the large-divisor case.
@@ -410,7 +411,12 @@ private lemma large_divisor_per_T_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk 
       · refine' Finset.prod_nonneg fun p hp => _;
         exact localMean_nonneg k Ω p
 
-/-- **Large-divisor contribution bound.** -/
+/-- **Large-divisor contribution bound (divisor formulation).**
+
+The sum of per-divisor deviation contributions over squarefree divisors `d ∣ q`
+with `d > 1` and `(d : ℝ) > s` is bounded by `K₂ · s^{−ε/2}`. This formulation
+replaces the earlier powerset-based version, using `globalModifiedEulerWeight`
+and the transport lemma `sum_powerset_nonempty_filtered_eq`. -/
 private lemma deviation_large_divisors (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
@@ -429,20 +435,21 @@ private lemma deviation_large_divisors (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk :
     ∃ K₂ : ℝ, 0 < K₂ ∧ ∀ (q : ℕ) [NeZero q] (hq_sq : Squarefree q),
       let Ω_q := crtSubset q Ω
       let s := (q : ℝ) / Ω_q.card
-      ∑ T ∈ (q.primeFactors.powerset.filter (· ≠ ∅)).filter
-            (fun (T : Finset ℕ) => ¬((∏ p ∈ T, (p : ℝ)) ≤ s)),
+      ∑ d ∈ (q.divisors.filter (1 < ·)).filter
+            (fun (d : ℕ) => ¬((d : ℝ) ≤ s)),
         |∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
             Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
           (fun h => inScaledBox X s (fun _ => 0) h)),
         (1 / (Ω_q.card : ℝ)) *
-          ((∏ p ∈ T, (localCount Ω q
+          ((∏ p ∈ d.primeFactors, (localCount Ω q
               (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p -
               localMean k Ω p)) *
-            ∏ p ∈ q.primeFactors \ T, localMean k Ω p)| ≤ K₂ * s ^ (-(ε / 2)) := by
+            ∏ p ∈ q.primeFactors \ d.primeFactors, localMean k Ω p)| ≤ K₂ * s ^ (-(ε / 2)) := by
   -- Step 1: Obtain the per-T L1 bound from L1DeviationSynthesis.
   obtain ⟨C_gamma, hC_gamma, C_T, hC_T_pos, hC_T⟩ :=
     per_T_deviation_le_modifiedEulerWeight ε hε k hk Ω hΩ hWD hsp hrp hε_lt X C_lp hC_lp_pos
-  -- Step 2: Obtain the tail-sum decay bound on ∑_T ∏_T modifiedEulerWeight.
+  -- Step 2: Obtain the tail-sum decay bound on ∑_d globalModifiedEulerWeight d
+  -- (divisor formulation via modified_tail_sum_decay).
   obtain ⟨K_large, hK_large_pos, hK_large⟩ := modified_large_divisor_series_bound ε hε k hk hε_lt C_gamma hC_gamma Ω hrp
   -- Step 3: Combine: the total is bounded by C_T · K_large · s^{-ε/2}.
   refine ⟨C_T * K_large, mul_pos hC_T_pos hK_large_pos, fun q _ hq_sq => ?_⟩
@@ -450,7 +457,18 @@ private lemma deviation_large_divisors (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk :
     rw [one_le_div (Nat.cast_pos.mpr (Nat.pos_of_ne_zero (by
       have := crtSubset_card_pos_aux Ω hΩ q; aesop)))]
     norm_cast; exact le_trans (Finset.card_le_univ _) (by norm_num)
-  -- Each |inner_T| ≤ C_T · ∏_T mEW, so ∑_T |inner_T| ≤ C_T · ∑_T ∏ mEW ≤ C_T · K · s^{-ε/2}.
+  -- Transport the divisor sum to powerset sum, apply per-T bounds, transport back.
+  dsimp only []
+  rw [← sum_nonempty_powerset_filtered_not_le_eq q hq_sq
+    (fun T => |∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+            Finset.Icc (1 : ℤ) ⌈(q : ℝ) / (crtSubset q Ω).card * ∑ i, X.sides i⌉).filter
+          (fun h => inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) (fun _ => 0) h)),
+        (1 / ((crtSubset q Ω).card : ℝ)) *
+          ((∏ p ∈ T, (localCount Ω q
+              (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p -
+              localMean k Ω p)) *
+            ∏ p ∈ q.primeFactors \ T, localMean k Ω p)|)
+    ((q : ℝ) / (crtSubset q Ω).card)]
   calc ∑ T ∈ (q.primeFactors.powerset.filter (· ≠ ∅)).filter
             (fun (T : Finset ℕ) => ¬((∏ p ∈ T, (p : ℝ)) ≤ (q : ℝ) / (crtSubset q Ω).card)),
         |∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
@@ -471,8 +489,16 @@ private lemma deviation_large_divisors (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk :
             (fun (T : Finset ℕ) => ¬((∏ p ∈ T, (p : ℝ)) ≤ (q : ℝ) / (crtSubset q Ω).card)),
           ∏ p ∈ T, modifiedEulerWeight ε k C_gamma Ω p := by
         rw [← Finset.mul_sum]
+    _ = C_T * ∑ d ∈ (q.divisors.filter (1 < ·)).filter
+            (fun (d : ℕ) => ¬((d : ℝ) ≤ (q : ℝ) / (crtSubset q Ω).card)),
+          globalModifiedEulerWeight ε k C_gamma Ω d := by
+        -- Transport: powerset sum → divisor sum via sum_powerset_nonempty_filtered_eq
+        congr 1
+        convert sum_powerset_nonempty_filtered_eq q hq_sq
+          (fun p => modifiedEulerWeight ε k C_gamma Ω p)
+          ((q : ℝ) / (crtSubset q Ω).card) using 1
     _ ≤ C_T * (K_large * ((q : ℝ) / (crtSubset q Ω).card) ^ (-(ε / 2))) := by
-        gcongr; exact hK_large q ((q : ℝ) / (crtSubset q Ω).card) hs_ge
+        gcongr; exact hK_large q hq_sq ((q : ℝ) / (crtSubset q Ω).card) hs_ge
     _ = C_T * K_large * ((q : ℝ) / (crtSubset q Ω).card) ^ (-(ε / 2)) := by ring
 
 /-! ### Core deviation bound assembly -/
@@ -510,10 +536,10 @@ private lemma deviation_expression_fixed_delta (ε : ℝ) (hε : 0 < ε) (k : �
   obtain ⟨K₂, hK₂_pos, hK₂⟩ :=
     deviation_large_divisors ε hε k hk Ω hΩ hWD hsp hrp hε_lt X C_lp hC_lp_pos hC_lp;
   refine' ⟨ K₁ + K₂, add_pos hK₁_pos hK₂_pos, fun q _ hq ↦ _ ⟩;
-  -- Apply the triangle inequality to the sum.
-  have h_triangle : |(1 / (crtSubset q Ω).card : ℝ) * ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈(q : ℝ) / (crtSubset q Ω).card * ∑ i, X.sides i⌉).filter (fun h => inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) (fun _ => 0) h)), ((tupleCount (crtSubset q Ω) (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) - ∏ p ∈ q.primeFactors, localMean k Ω p)| ≤ ∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅), |∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈(q : ℝ) / (crtSubset q Ω).card * ∑ i, X.sides i⌉).filter (fun h => inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) (fun _ => 0) h)), (1 / (crtSubset q Ω).card : ℝ) * ((∏ p ∈ T, (localCount Ω q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p - localMean k Ω p)) * ∏ p ∈ q.primeFactors \ T, localMean k Ω p)| := by
-    have h_triangle : |∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈(q : ℝ) / (crtSubset q Ω).card * ∑ i, X.sides i⌉).filter (fun h => inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) (fun _ => 0) h)), ((tupleCount (crtSubset q Ω) (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) - ∏ p ∈ q.primeFactors, localMean k Ω p)| ≤ ∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅), |∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈(q : ℝ) / (crtSubset q Ω).card * ∑ i, X.sides i⌉).filter (fun h => inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) (fun _ => 0) h)), ((∏ p ∈ T, (localCount Ω q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p - localMean k Ω p)) * ∏ p ∈ q.primeFactors \ T, localMean k Ω p)| := by
-      have h_triangle : ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈(q : ℝ) / (crtSubset q Ω).card * ∑ i, X.sides i⌉).filter (fun h => inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) (fun _ => 0) h)), ((tupleCount (crtSubset q Ω) (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) - ∏ p ∈ q.primeFactors, localMean k Ω p) = ∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅), ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈(q : ℝ) / (crtSubset q Ω).card * ∑ i, X.sides i⌉).filter (fun h => inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) (fun _ => 0) h)), ((∏ p ∈ T, (localCount Ω q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p - localMean k Ω p)) * ∏ p ∈ q.primeFactors \ T, localMean k Ω p) := by
+  -- Apply the triangle inequality to the sum, using divisor sums directly.
+  have h_triangle : |(1 / (crtSubset q Ω).card : ℝ) * ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈(q : ℝ) / (crtSubset q Ω).card * ∑ i, X.sides i⌉).filter (fun h => inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) (fun _ => 0) h)), ((tupleCount (crtSubset q Ω) (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) - ∏ p ∈ q.primeFactors, localMean k Ω p)| ≤ ∑ d ∈ q.divisors.filter (1 < ·), |∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈(q : ℝ) / (crtSubset q Ω).card * ∑ i, X.sides i⌉).filter (fun h => inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) (fun _ => 0) h)), (1 / (crtSubset q Ω).card : ℝ) * ((∏ p ∈ d.primeFactors, (localCount Ω q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p - localMean k Ω p)) * ∏ p ∈ q.primeFactors \ d.primeFactors, localMean k Ω p)| := by
+    have h_triangle : |∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈(q : ℝ) / (crtSubset q Ω).card * ∑ i, X.sides i⌉).filter (fun h => inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) (fun _ => 0) h)), ((tupleCount (crtSubset q Ω) (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) - ∏ p ∈ q.primeFactors, localMean k Ω p)| ≤ ∑ d ∈ q.divisors.filter (1 < ·), |∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈(q : ℝ) / (crtSubset q Ω).card * ∑ i, X.sides i⌉).filter (fun h => inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) (fun _ => 0) h)), ((∏ p ∈ d.primeFactors, (localCount Ω q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p - localMean k Ω p)) * ∏ p ∈ q.primeFactors \ d.primeFactors, localMean k Ω p)| := by
+      have h_triangle : ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈(q : ℝ) / (crtSubset q Ω).card * ∑ i, X.sides i⌉).filter (fun h => inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) (fun _ => 0) h)), ((tupleCount (crtSubset q Ω) (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) - ∏ p ∈ q.primeFactors, localMean k Ω p) = ∑ d ∈ q.divisors.filter (1 < ·), ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈(q : ℝ) / (crtSubset q Ω).card * ∑ i, X.sides i⌉).filter (fun h => inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) (fun _ => 0) h)), ((∏ p ∈ d.primeFactors, (localCount Ω q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p - localMean k Ω p)) * ∏ p ∈ q.primeFactors \ d.primeFactors, localMean k Ω p) := by
         rw [ ← Finset.sum_comm ];
         refine' Finset.sum_congr rfl fun x hx => _;
         convert deviation_product_difference q hq Ω ( Fin.cons 0 fun i => ( x i : ZMod q ) ) using 1;
@@ -527,7 +553,9 @@ private lemma deviation_expression_fixed_delta (ε : ℝ) (hε : 0 < ε) (k : �
           abs_of_nonneg (by positivity : (0 : ℝ) ≤ 1 / (#(crtSubset q Ω)))];
   convert h_triangle.trans _ using 1;
   · rw [ globalMean_eq_prod_localMean k q hq Ω ];
-  · convert add_le_add ( hK₁ q hq ) ( hK₂ q hq ) using 1;
+  · -- Split the d-sum by (d : ℝ) ≤ s via sum_filter_add_sum_filter_not,
+    -- matching deviation_small_divisors (≤ s) and deviation_large_divisors (> s).
+    convert add_le_add ( hK₁ q hq ) ( hK₂ q hq ) using 1;
     · rw [ Finset.sum_filter_add_sum_filter_not ];
     · ring
 

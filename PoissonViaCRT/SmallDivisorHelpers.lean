@@ -1127,9 +1127,9 @@ number of contributing subsets in the inclusion-exclusion
 expansion. -/
 lemma small_divisor_series_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) :
     ∃ K_series : ℝ, 0 < K_series ∧ ∀ (q : ℕ) (s : ℝ) (_ : 1 ≤ s),
-      ∑ T ∈ (q.primeFactors.powerset.filter (· ≠ ∅)).filter
-            (fun (T : Finset ℕ) => (∏ p ∈ T, (p : ℝ)) ≤ s),
-        (∏ p ∈ T, (k : ℝ) * (p : ℝ) ^ (-ε)) ≤ K_series * s ^ (1 - ε / 2) := by
+      ∑ d ∈ (q.divisors.filter (1 < ·)).filter
+            (fun (d : ℕ) => (d : ℝ) ≤ s),
+        (∏ p ∈ d.primeFactors, (k : ℝ) * (p : ℝ) ^ (-ε)) ≤ K_series * s ^ (1 - ε / 2) := by
   sorry
 
 /-! ### Small-divisor contribution bound -/
@@ -1158,23 +1158,38 @@ public lemma deviation_small_divisors (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 
     ∃ K₁ : ℝ, 0 < K₁ ∧ ∀ (q : ℕ) [NeZero q] (_ : Squarefree q),
       let Ω_q := crtSubset q Ω
       let s := (q : ℝ) / Ω_q.card
-      ∑ T ∈ (q.primeFactors.powerset.filter (· ≠ ∅)).filter
-            (fun (T : Finset ℕ) => (∏ p ∈ T, (p : ℝ)) ≤ s),
+      ∑ d ∈ (q.divisors.filter (1 < ·)).filter
+            (fun (d : ℕ) => (d : ℝ) ≤ s),
         |∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
             Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
           (fun h => inScaledBox X s (fun _ => 0) h)),
         (1 / (Ω_q.card : ℝ)) *
-          ((∏ p ∈ T, (localCount Ω q
+          ((∏ p ∈ d.primeFactors, (localCount Ω q
               (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p -
               localMean k Ω p)) *
-            ∏ p ∈ q.primeFactors \ T, localMean k Ω p)| ≤ K₁ * s ^ (-(ε / 2)) := by
+            ∏ p ∈ q.primeFactors \ d.primeFactors, localMean k Ω p)| ≤ K₁ * s ^ (-(ε / 2)) := by
   obtain ⟨K_series, hK_series_pos, hK_series⟩ := small_divisor_series_bound ε hε k;
   refine ⟨ C_lp * K_series, mul_pos hC_lp_pos hK_series_pos, fun q _ hq_sq => ?_ ⟩;
-  refine' le_trans ( Finset.sum_le_sum fun T hT => _ ) _;
-  use fun T => C_lp * ( ∏ p ∈ T, ( k : ℝ ) * ( p : ℝ ) ^ ( -ε ) ) / ( q / ( crtSubset q Ω |> Finset.card ) );
-  · refine' le_trans ( _ : _ ≤ _ ) ( div_le_div_of_nonneg_right ( mul_le_mul_of_nonneg_left ( prod_local_factor_le T ε k q Ω ( by aesop ) hrp ) hC_lp_pos.le ) ( by positivity ) );
+  -- Work directly with divisor sums: for each d, apply inner_bound_small_divisor with T = d.primeFactors.
+  dsimp only []
+  refine' le_trans ( Finset.sum_le_sum fun d hd => _ ) _;
+  use fun d => C_lp * ( ∏ p ∈ d.primeFactors, ( k : ℝ ) * ( p : ℝ ) ^ ( -ε ) ) / ( q / ( crtSubset q Ω |> Finset.card ) );
+  · -- Per-d bound via inner_bound_small_divisor with T = d.primeFactors
+    have hd_mem := Finset.mem_filter.mp (Finset.mem_filter.mp hd |>.1)
+    have hd_gt1 : 1 < d := hd_mem.2
+    have hd_dvd : d ∣ q := Nat.dvd_of_mem_divisors hd_mem.1
+    have hd_sq : Squarefree d := hq_sq.squarefree_of_dvd hd_dvd
+    have hd_pf_sub : d.primeFactors ⊆ q.primeFactors :=
+      Nat.primeFactors_mono hd_dvd (Squarefree.ne_zero hq_sq)
+    have hd_pf_ne : d.primeFactors ≠ ∅ := by
+      intro h; simp [Nat.primeFactors_eq_empty] at h; omega
+    have hd_prod_eq : ∏ p ∈ d.primeFactors, (p : ℝ) = (d : ℝ) := by
+      rw [← Nat.cast_prod]; exact congrArg _ (Nat.prod_primeFactors_of_squarefree hd_sq)
+    have hd_le_s : ∏ p ∈ d.primeFactors, (p : ℝ) ≤ (q : ℝ) / (crtSubset q Ω).card := by
+      rw [hd_prod_eq]; exact (Finset.mem_filter.mp hd).2
+    refine' le_trans ( _ : _ ≤ _ ) ( div_le_div_of_nonneg_right ( mul_le_mul_of_nonneg_left ( prod_local_factor_le d.primeFactors ε k q Ω ( fun p hp => hd_pf_sub hp ) hrp ) hC_lp_pos.le ) ( by positivity ) );
     have := inner_bound_small_divisor ε hε k ( by linarith ) Ω hΩ hWD hsp X C_lp hC_lp_pos hC_lp q hq_sq ( by
-      exact ne_of_gt ( crtSubset_card_pos_aux Ω hΩ q ) ) T ( by grind ) ( by grind ) ( by grind );
+      exact ne_of_gt ( crtSubset_card_pos_aux Ω hΩ q ) ) d.primeFactors hd_pf_sub hd_pf_ne hd_le_s;
     rw [ le_div_iff₀ ];
     · convert this using 1;
     · exact div_pos ( Nat.cast_pos.mpr ( NeZero.pos q ) ) ( Nat.cast_pos.mpr ( Finset.card_pos.mpr
