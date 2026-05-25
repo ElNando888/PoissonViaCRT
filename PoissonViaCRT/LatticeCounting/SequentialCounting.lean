@@ -11,6 +11,7 @@ References:
 - Iwaniec & Kowalski, Analytic Number Theory
 -/
 
+module
 import Mathlib
 
 /-!

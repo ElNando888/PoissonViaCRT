@@ -11,11 +11,12 @@ References:
 - Iwaniec & Kowalski, Analytic Number Theory
 -/
 
-import Mathlib
+module
 import PoissonViaCRT.LatticeCounting.ProdSumExpansion
 import PoissonViaCRT.LatticeCounting.SimultaneousCongruences
 import PoissonViaCRT.LatticeCounting.OneDimCounting
 import PoissonViaCRT.LatticeCounting.SequentialCounting
+import Mathlib
 
 /-!
 # Module 5: BoxCollisionIntegration

@@ -17,7 +17,7 @@ Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 module
 public import Mathlib.Algebra.Squarefree.Basic
 public import Mathlib.Data.Nat.PrimeFin
-import Mathlib.Tactic
+import Mathlib.Tactic -- shake: keep
 
 /-- The type of squarefree natural numbers, ordered by divisibility. -/
 @[expose]
@@ -52,13 +52,13 @@ The product of a finite set of primes is squarefree.
 -/
 public lemma prod_primes_squarefree (s : Finset Nat.Primes) :
     Squarefree (s.prod (fun p => (p : ℕ))) := by
-      induction' s using Finset.induction with p s h ih;
-      · norm_num;
-      · rw [ Finset.prod_insert h ];
-        rw [ Nat.squarefree_mul_iff ];
-        refine' ⟨ Nat.Coprime.prod_right fun q hq => _, p.2.squarefree, ih ⟩;
-        have := Nat.coprime_primes p.2 q.2;
-        exact this.mpr fun con => h <| by convert hq; exact Subtype.ext con;
+  induction' s using Finset.induction with p s h ih
+  · norm_num
+  · rw [ Finset.prod_insert h ]
+    rw [ Nat.squarefree_mul_iff ]
+    refine ⟨ Nat.Coprime.prod_right fun q hq => ?_, p.2.squarefree, ih ⟩
+    have := Nat.coprime_primes p.2 q.2
+    exact this.mpr fun con => h <| by convert hq; exact Subtype.ext con
 
 /-- Inverse map: a `Finset Nat.Primes` ↦ product of the primes, which is squarefree. -/
 @[expose]
@@ -70,43 +70,48 @@ Left inverse: taking prime factors of the product recovers the original set.
 -/
 public lemma left_inv (s : Finset Nat.Primes) :
     sqfreeToFactors (factorsToSqfree s) = s := by
-      convert Nat.primeFactors_prod;
-      convert Iff.rfl;
-      swap;
-      exact s.image Subtype.val;
-      simp +decide [ Finset.ext_iff, sqfreeToFactors, factorsToSqfree ];
-      grind
+  convert Nat.primeFactors_prod
+  convert Iff.rfl
+  swap
+  exact s.image Subtype.val
+  simp +decide [ Finset.ext_iff, sqfreeToFactors, factorsToSqfree ]
+  grind
 
 /-
 Right inverse: the product of the prime factors recovers the original number.
 -/
 public lemma right_inv (q : SquarefreeNat) :
     factorsToSqfree (sqfreeToFactors q) = q := by
-      -- By definition of prime factors, the product of the prime factors of q is equal to q.
-      have h_prod_factors : (q.val.primeFactors.subtype Nat.Prime).prod (fun p => (p : ℕ)) = q.val := by
-        convert Nat.prod_primeFactors_of_squarefree q.prop;
-        refine' Finset.prod_bij ( fun p hp => p ) _ _ _ _ <;> simp +decide;
-        tauto;
-      exact Subtype.ext h_prod_factors
+  -- By definition of prime factors, the product of the prime factors of q is equal to q.
+  have h_prod_factors : (q.val.primeFactors.subtype Nat.Prime).prod (fun p => (p : ℕ)) = q.val := by
+    convert Nat.prod_primeFactors_of_squarefree q.prop
+    refine Finset.prod_bij ( fun p hp => p ) ?_ ?_ ?_ ?_ <;> simp +decide
+    tauto
+  exact Subtype.ext h_prod_factors
 
 /-
 The map preserves and reflects the order.
 -/
 public lemma map_le_map_iff' (a b : SquarefreeNat) :
     sqfreeToFactors a ≤ sqfreeToFactors b ↔ a ≤ b := by
-      constructor <;> intro h;
-      · -- By the definition of `sqfreeToFactors`, if `sqfreeToFactors a ≤ sqfreeToFactors b`, then `a.val.primeFactors.subtype Nat.Prime ⊆ b.val.primeFactors.subtype Nat.Prime`.
-        have h_subset : a.val.primeFactors.subtype Nat.Prime ⊆ b.val.primeFactors.subtype Nat.Prime := by
-          convert h using 1;
-        -- Since the prime factors of `a` are a subset of the prime factors of `b`, we can conclude that `a` divides `b`.
-        have h_div : a.val ∣ b.val := by
-          rw [ ← Nat.prod_primeFactors_of_squarefree a.2, ← Nat.prod_primeFactors_of_squarefree b.2 ];
-          apply_rules [ Finset.prod_dvd_prod_of_subset ];
-          intro p hp; specialize h_subset ( show ⟨ p, by aesop ⟩ ∈ Finset.subtype Nat.Prime ( a.val.primeFactors ) from by aesop ) ; aesop;
-        exact h_div;
-      · convert Nat.primeFactors_mono h ( SquarefreeNat.ne_zero b ) using 1
-        generalize_proofs at *; (
-        simp +decide [ sqfreeToFactors, Finset.subset_iff ])
+  constructor <;> intro h;
+  · -- By the definition of `sqfreeToFactors`, if `sqfreeToFactors a ≤ sqfreeToFactors b`,
+    -- then `a.val.primeFactors.subtype Nat.Prime ⊆ b.val.primeFactors.subtype Nat.Prime`.
+    have h_subset : a.val.primeFactors.subtype Nat.Prime ⊆ b.val.primeFactors.subtype Nat.Prime := by
+      convert h using 1;
+    -- Since the prime factors of `a` are a subset of the prime factors of `b`, we can conclude
+    -- that `a` divides `b`.
+    have h_div : a.val ∣ b.val := by
+      rw [ ← Nat.prod_primeFactors_of_squarefree a.2, ← Nat.prod_primeFactors_of_squarefree b.2 ]
+      apply_rules [ Finset.prod_dvd_prod_of_subset ]
+      intro p hp
+      specialize h_subset
+        ( show ⟨ p, by aesop ⟩ ∈ Finset.subtype Nat.Prime ( a.val.primeFactors ) from by aesop )
+      aesop
+    exact h_div
+  · convert Nat.primeFactors_mono h ( SquarefreeNat.ne_zero b ) using 1
+    generalize_proofs at *
+    simp +decide [ sqfreeToFactors, Finset.subset_iff ]
 
 /-- The order isomorphism between squarefree natural numbers (ordered by divisibility)
 and finite sets of primes (ordered by inclusion). -/
