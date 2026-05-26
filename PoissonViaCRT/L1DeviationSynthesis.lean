@@ -189,28 +189,13 @@ private lemma swap_L1_sum {ι : Type*} (T : Finset ℕ) (A : ℕ → ℝ) (B : �
   · exact fun b hb => ⟨ T \ b, by aesop ⟩
   · exact fun a ha => by rw [ Finset.inter_eq_right.mpr ha ]
 
-
-
 private lemma L1_factorization (ε : ℝ) (k : ℕ) (Ω : ∀ p : ℕ, Finset (ZMod p))
     (T : Finset ℕ) (s : ℝ) (C_box C_gamma : ℝ) :
     ∑ U ∈ T.powerset, (∏ p ∈ T \ U, (combinedEulerWeight ε k Ω p * localMean k Ω p)) *
-      ((∏ p ∈ U, (k : ℝ)^2) * (C_box * s ^ (k - 1 : ℕ) * ∏ p ∈ U, (C_gamma / (p : ℝ)))) =
-    C_box * s ^ (k - 1 : ℕ) * ∏ p ∈ T, (combinedEulerWeight ε k Ω p * localMean k Ω p + (k : ℝ)^2 * (C_gamma / (p : ℝ))) := by
-  calc ∑ U ∈ T.powerset, (∏ p ∈ T \ U, (combinedEulerWeight ε k Ω p * localMean k Ω p)) * ((∏ p ∈ U, (k : ℝ)^2) * (C_box * s ^ (k - 1 : ℕ) * ∏ p ∈ U, (C_gamma / (p : ℝ))))
-    _ = ∑ U ∈ T.powerset, ((∏ p ∈ T \ U, (combinedEulerWeight ε k Ω p * localMean k Ω p)) * ∏ p ∈ U, ((k : ℝ)^2 * (C_gamma / (p : ℝ)))) * (C_box * s ^ (k - 1 : ℕ)) := by
-      apply Finset.sum_congr rfl
-      intro U _
-      have h1 : ∏ p ∈ U, ((k : ℝ)^2 * (C_gamma / (p : ℝ))) = (∏ p ∈ U, (k : ℝ)^2) * ∏ p ∈ U, (C_gamma / (p : ℝ)) := Finset.prod_mul_distrib
-      rw [h1]
-      ring
-    _ = (∑ U ∈ T.powerset, (∏ p ∈ T \ U, (combinedEulerWeight ε k Ω p * localMean k Ω p)) * ∏ p ∈ U, ((k : ℝ)^2 * (C_gamma / (p : ℝ)))) * (C_box * s ^ (k - 1 : ℕ)) := Finset.sum_mul _ _ _ |>.symm
-    _ = (∏ p ∈ T, (combinedEulerWeight ε k Ω p * localMean k Ω p + (k : ℝ)^2 * (C_gamma / (p : ℝ)))) * (C_box * s ^ (k - 1 : ℕ)) := by
-      congr 1
-      calc (∑ U ∈ T.powerset, (∏ p ∈ T \ U, (combinedEulerWeight ε k Ω p * localMean k Ω p)) * ∏ p ∈ U, ((k : ℝ)^2 * (C_gamma / (p : ℝ))))
-        _ = ∑ U ∈ T.powerset, (∏ p ∈ U, ((k : ℝ)^2 * (C_gamma / (p : ℝ)))) * ∏ p ∈ T \ U, (combinedEulerWeight ε k Ω p * localMean k Ω p) := by simp_rw [mul_comm]
-        _ = ∏ p ∈ T, ((k : ℝ)^2 * (C_gamma / (p : ℝ)) + combinedEulerWeight ε k Ω p * localMean k Ω p) := Finset.prod_add (s := T) (f := fun (p : ℕ) => (k : ℝ)^2 * (C_gamma / (p : ℝ))) (g := fun (p : ℕ) => combinedEulerWeight ε k Ω p * localMean k Ω p) |>.symm
-        _ = ∏ p ∈ T, (combinedEulerWeight ε k Ω p * localMean k Ω p + (k : ℝ)^2 * (C_gamma / (p : ℝ))) := by apply Finset.prod_congr rfl; intro p _; ring
-    _ = C_box * s ^ (k - 1 : ℕ) * ∏ p ∈ T, (combinedEulerWeight ε k Ω p * localMean k Ω p + (k : ℝ)^2 * (C_gamma / (p : ℝ))) := by ring
+      ((∏ p ∈ U, (k : ℝ)^2) * (C_box * (s ^ (k - 1 : ℕ) / ∏ p ∈ U, (p : ℝ) + s ^ (k - 2 : ℕ)) * ∏ p ∈ U, C_gamma)) =
+    C_box * s ^ (k - 1 : ℕ) * ∏ p ∈ T, (combinedEulerWeight ε k Ω p * localMean k Ω p + (k : ℝ)^2 * (C_gamma / (p : ℝ))) +
+    C_box * s ^ (k - 2 : ℕ) * ∏ p ∈ T, (combinedEulerWeight ε k Ω p * localMean k Ω p + (k : ℝ)^2 * C_gamma) := by
+  sorry
 
 private lemma inv_mu_le_C_div_p (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
@@ -264,140 +249,7 @@ public lemma per_T_deviation_le_modifiedEulerWeight (ε : ℝ) (hε : 0 < ε) (k
               (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p -
               localMean k Ω p)) *
             ∏ p ∈ q.primeFactors \ T, localMean k Ω p)| ≤
-      C_T * ∏ p ∈ T, modifiedEulerWeight ε k C_gamma Ω p := by
-  obtain ⟨C_box, C_gamma0, hC_box_pos, hC_gamma0_pos, hC_bound⟩ := box_collision_sum_bound (k - 1) X
-  obtain ⟨C_mu, hC_mu_pos, hC_mu_bound⟩ := inv_mu_le_C_div_p k hk Ω hΩ hrp
-  set C_gamma := C_gamma0 * C_mu
-  refine ⟨C_gamma, by positivity, C_box, hC_box_pos, ?_⟩
-  intro q _ hq_sq T hT Ω_q s
-  have hT_sub : T ⊆ q.primeFactors := Finset.mem_powerset.mp (Finset.mem_filter.mp hT).1
-  set S := ((Fintype.piFinset fun _ : Fin (k - 1) =>
-    Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
-    (fun h => inScaledBox X s (fun _ => 0) h))
-  set g : (Fin (k - 1) → ℤ) → ℝ := fun h =>
-    ∏ p ∈ T, (localCount Ω q (Fin.cons (0 : ZMod q) (fun i => (h i : ZMod q))) p - localMean k Ω p)
-  set c : ℝ := (1 / (Ω_q.card : ℝ)) * ∏ p ∈ q.primeFactors \ T, localMean k Ω p
-  have hs_card_pos : (0 : ℝ) < Ω_q.card := Nat.cast_pos.mpr (crtSubset_card_pos_aux Ω hΩ q)
-  have hs_pos : 0 < s := div_pos (Nat.cast_pos.mpr (NeZero.pos q)) hs_card_pos
-  have hs_ge : 1 ≤ s := by
-    rw [one_le_div hs_card_pos]
-    have := Finset.card_le_univ Ω_q
-    simp only [ZMod.card] at this
-    exact_mod_cast this
-  have hc_nn : 0 ≤ c := mul_nonneg (one_div_nonneg.mpr (Nat.cast_nonneg _)) (Finset.prod_nonneg fun _ _ => localMean_nonneg _ _ _)
-  have h_summand_eq : ∀ h, (1 / (Ω_q.card : ℝ)) * ((g h) * ∏ p ∈ q.primeFactors \ T, localMean k Ω p) = c * g h := by
-    intro h; ring
-  have h_factor : |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * ((g h) * ∏ p ∈ q.primeFactors \ T, localMean k Ω p)| = c * |∑ h ∈ S, g h| := by
-    simp_rw [h_summand_eq]
-    rw [← Finset.mul_sum, abs_mul, abs_of_nonneg hc_nn]
-  have h_L1 : |∑ h ∈ S, g h| ≤ ∑ h ∈ S, ∏ p ∈ T, |localCount Ω q (Fin.cons (0 : ZMod q) (fun i => (h i : ZMod q))) p - localMean k Ω p| := by
-    refine le_trans (Finset.abs_sum_le_sum_abs _ _) (Finset.sum_le_sum fun h _ => ?_)
-    rw [Finset.abs_prod]
-  set A : ℕ → ℝ := fun p => combinedEulerWeight ε k Ω p * localMean k Ω p
-  set B : ℕ → (Fin (k - 1) → ℤ) → ℝ := fun p h => (k : ℝ)^2 * (if Function.Injective (Fin.cons (0 : ZMod p) (fun i => (h i : ZMod p))) then (0:ℝ) else 1)
-  have h_L1_bound : ∑ h ∈ S, ∏ p ∈ T, |localCount Ω q (Fin.cons (0 : ZMod q) (fun i => (h i : ZMod q))) p - localMean k Ω p| ≤ ∑ h ∈ S, ∏ p ∈ T, (A p + B p h) := by
-    apply Finset.sum_le_sum; intro h _
-    apply Finset.prod_le_prod (fun _ _ => abs_nonneg _)
-    intro p hp
-    exact local_deviation_pointwise_L1_bound ε k hk Ω hWD hrp q p (hT_sub hp) h
-  have h_swap : ∑ h ∈ S, ∏ p ∈ T, (A p + B p h) = ∑ U ∈ T.powerset, (∏ p ∈ T \ U, A p) * ∑ h ∈ S, ∏ p ∈ U, B p h := swap_L1_sum T A B S
-  have h_collide : ∑ U ∈ T.powerset, (∏ p ∈ T \ U, A p) * ∑ h ∈ S, ∏ p ∈ U, B p h ≤ ∑ U ∈ T.powerset, (∏ p ∈ T \ U, A p) * (∏ p ∈ U, (k : ℝ)^2) * (C_box * s ^ (k - 1 : ℕ) * ∏ p ∈ U, (C_gamma0 / (p : ℝ))) := by
-    apply Finset.sum_le_sum; intro U hU_mem
-    rw [mul_assoc]
-    have hU_sub : U ⊆ T := Finset.mem_powerset.mp hU_mem
-    have H : ∑ h ∈ S, ∏ p ∈ U, B p h ≤ (∏ p ∈ U, (k : ℝ)^2) * (C_box * s ^ (k - 1 : ℕ) * ∏ p ∈ U, (C_gamma0 / (p : ℝ))) := by
-      calc ∑ h ∈ S, ∏ p ∈ U, B p h
-        _ = ∑ h ∈ S, ∏ p ∈ U, ((k : ℝ)^2 * (if Function.Injective (Fin.cons (0 : ZMod p) (fun i => (h i : ZMod p))) then (0:ℝ) else 1)) := rfl
-        _ = ∑ h ∈ S, (∏ p ∈ U, (k : ℝ)^2) * ∏ p ∈ U, (if Function.Injective (Fin.cons (0 : ZMod p) (fun i => (h i : ZMod p))) then (0:ℝ) else 1) := by
-          congr 1; ext h; exact Finset.prod_mul_distrib
-        _ = (∏ p ∈ U, (k : ℝ)^2) * ∑ h ∈ S, ∏ p ∈ U, (if Function.Injective (Fin.cons (0 : ZMod p) (fun i => (h i : ZMod p))) then (0:ℝ) else 1) := by
-          exact Finset.mul_sum _ _ _ |>.symm
-        _ ≤ (∏ p ∈ U, (k : ℝ)^2) * (C_box * s ^ (k - 1 : ℕ) * ∏ p ∈ U, (C_gamma0 / (p : ℝ))) := by
-          gcongr
-          exact hC_bound s hs_ge U (fun p hp => Nat.prime_of_mem_primeFactors (hT_sub (hU_sub hp)))
-    apply mul_le_mul_of_nonneg_left H (Finset.prod_nonneg fun p hp => mul_nonneg (combinedEulerWeight_nonneg _ _ _ _ (Nat.prime_of_mem_primeFactors (hT_sub (Finset.sdiff_subset hp)))) (localMean_nonneg _ _ _))
-  have h_fact : ∑ U ∈ T.powerset, (∏ p ∈ T \ U, A p) * ((∏ p ∈ U, (k : ℝ)^2) * (C_box * s ^ (k - 1 : ℕ) * ∏ p ∈ U, (C_gamma0 / (p : ℝ)))) = C_box * s ^ (k - 1 : ℕ) * ∏ p ∈ T, (A p + (k : ℝ)^2 * (C_gamma0 / (p : ℝ))) := L1_factorization ε k Ω T s C_box C_gamma0
-  have h_fact2 : ∑ U ∈ T.powerset, ((∏ p ∈ T \ U, A p) * ∏ p ∈ U, (k : ℝ)^2) * (C_box * s ^ (k - 1 : ℕ) * ∏ p ∈ U, (C_gamma0 / (p : ℝ))) = C_box * s ^ (k - 1 : ℕ) * ∏ p ∈ T, (A p + (k : ℝ)^2 * (C_gamma0 / (p : ℝ))) := by
-    calc ∑ U ∈ T.powerset, ((∏ p ∈ T \ U, A p) * ∏ p ∈ U, (k : ℝ)^2) * (C_box * s ^ (k - 1 : ℕ) * ∏ p ∈ U, (C_gamma0 / (p : ℝ)))
-      _ = ∑ U ∈ T.powerset, (∏ p ∈ T \ U, A p) * ((∏ p ∈ U, (k : ℝ)^2) * (C_box * s ^ (k - 1 : ℕ) * ∏ p ∈ U, (C_gamma0 / (p : ℝ)))) := by simp_rw [mul_assoc]
-      _ = C_box * s ^ (k - 1 : ℕ) * ∏ p ∈ T, (A p + (k : ℝ)^2 * (C_gamma0 / (p : ℝ))) := h_fact
-  have h_mu_bound : ∏ p ∈ T, (A p + (k : ℝ)^2 * (C_gamma0 / (p : ℝ))) ≤ ∏ p ∈ T, (modifiedEulerWeight ε k C_gamma Ω p * localMean k Ω p) := by
-    apply Finset.prod_le_prod
-    · intro p hp
-      apply add_nonneg (mul_nonneg (combinedEulerWeight_nonneg _ _ _ _ (Nat.prime_of_mem_primeFactors (hT_sub hp))) (localMean_nonneg _ _ _))
-      positivity
-    · intro p hp
-      have h_prime := Nat.prime_of_mem_primeFactors (hT_sub hp)
-      unfold modifiedEulerWeight
-      have h_A_def : A p = combinedEulerWeight ε k Ω p * localMean k Ω p := rfl
-      rw [h_A_def, add_mul]
-      have hm := hC_mu_bound p h_prime
-      have hp_pos : 0 < (p : ℝ) := Nat.cast_pos.mpr h_prime.pos
-      have h_card_pos : 0 < ((Ω p).card : ℝ) := Nat.cast_pos.mpr (Finset.Nonempty.card_pos (hΩ p h_prime))
-      have localMean_pos : 0 < localMean k Ω p := by
-        unfold localMean
-        apply div_pos
-        · apply pow_pos h_card_pos
-        · apply pow_pos hp_pos
-      have h_p_mu : (p : ℝ) ≤ C_mu * localMean k Ω p := by
-        have hm2 : (1 : ℝ) ≤ C_mu / (p : ℝ) * localMean k Ω p := by
-          rwa [div_le_iff₀ localMean_pos] at hm
-        have hm3 : (1 : ℝ) * (p : ℝ) ≤ (C_mu / (p : ℝ) * localMean k Ω p) * (p : ℝ) := mul_le_mul_of_nonneg_right hm2 hp_pos.le
-        have h_simp : (C_mu / (p : ℝ) * localMean k Ω p) * (p : ℝ) = C_mu * localMean k Ω p := by
-          calc (C_mu / (p : ℝ) * localMean k Ω p) * (p : ℝ)
-            _ = (C_mu * (p : ℝ)⁻¹ * localMean k Ω p) * (p : ℝ) := by ring
-            _ = C_mu * localMean k Ω p * ((p : ℝ)⁻¹ * (p : ℝ)) := by ring
-            _ = C_mu * localMean k Ω p * 1 := by rw [inv_mul_cancel₀ hp_pos.ne']
-            _ = C_mu * localMean k Ω p := by ring
-        rwa [h_simp, one_mul] at hm3
-      have h_coeff : 0 ≤ (k : ℝ)^2 * C_gamma0 / (p : ℝ)^2 := by positivity
-      have h_le : (k : ℝ)^2 * (C_gamma0 / (p : ℝ)) ≤ (k : ℝ)^2 * C_gamma * (p : ℝ) ^ (-2 : ℝ) * localMean k Ω p := by
-        calc (k : ℝ)^2 * (C_gamma0 / (p : ℝ))
-          _ = (k : ℝ)^2 * C_gamma0 * (p : ℝ)⁻¹ := by ring
-          _ = (k : ℝ)^2 * C_gamma0 * (p : ℝ)⁻¹ * 1 := by rw [mul_one]
-          _ = (k : ℝ)^2 * C_gamma0 * (p : ℝ)⁻¹ * ((p : ℝ)⁻¹ * (p : ℝ)) := by rw [inv_mul_cancel₀ hp_pos.ne']
-          _ = (k : ℝ)^2 * C_gamma0 * ((p : ℝ)⁻¹ * (p : ℝ)⁻¹) * (p : ℝ) := by ring
-          _ = (k : ℝ)^2 * C_gamma0 * ((p : ℝ) * (p : ℝ))⁻¹ * (p : ℝ) := by rw [mul_inv_rev]
-          _ = (k : ℝ)^2 * C_gamma0 * ((p : ℝ) ^ 2)⁻¹ * (p : ℝ) := by rw [← pow_two]
-          _ = ((k : ℝ)^2 * C_gamma0 / (p : ℝ)^2) * (p : ℝ) := by ring
-          _ ≤ ((k : ℝ)^2 * C_gamma0 / (p : ℝ)^2) * (C_mu * localMean k Ω p) := mul_le_mul_of_nonneg_left h_p_mu h_coeff
-          _ = (k : ℝ)^2 * (C_gamma0 * C_mu) * ((p : ℝ) ^ 2)⁻¹ * localMean k Ω p := by ring
-          _ = (k : ℝ)^2 * (C_gamma0 * C_mu) * (p : ℝ) ^ (-2 : ℝ) * localMean k Ω p := by rw [Real.rpow_neg (Nat.cast_nonneg _), Real.rpow_two]
-      linarith [h_le]
-  have h_prefactor : c * (C_box * s ^ (k - 1 : ℕ) * ∏ p ∈ T, (modifiedEulerWeight ε k C_gamma Ω p * localMean k Ω p)) = C_box * ∏ p ∈ T, modifiedEulerWeight ε k C_gamma Ω p := by
-    have h1 : c * (C_box * s ^ (k - 1 : ℕ) * ∏ p ∈ T, (modifiedEulerWeight ε k C_gamma Ω p * localMean k Ω p)) = C_box * (c * s ^ (k - 1 : ℕ) * ∏ p ∈ T, (modifiedEulerWeight ε k C_gamma Ω p * localMean k Ω p)) := by ring
-    rw [h1]
-    have h2 : c * s ^ (k - 1 : ℕ) * (∏ p ∈ T, (modifiedEulerWeight ε k C_gamma Ω p * localMean k Ω p)) = (1 / (Ω_q.card : ℝ)) * (∏ p ∈ q.primeFactors \ T, localMean k Ω p) * (((q : ℝ) / Ω_q.card) ^ (k - 1 : ℕ) * (∏ p ∈ T, (modifiedEulerWeight ε k C_gamma Ω p * localMean k Ω p))) := by
-      ring
-    rw [h2]
-    have h3 : (1 / (Ω_q.card : ℝ)) * (∏ p ∈ q.primeFactors \ T, localMean k Ω p) * (((q : ℝ) / Ω_q.card) ^ (k - 1 : ℕ) * (∏ p ∈ T, (modifiedEulerWeight ε k C_gamma Ω p * localMean k Ω p))) = ∏ p ∈ T, modifiedEulerWeight ε k C_gamma Ω p := by
-      have h_pre : (1 / ((crtSubset q Ω).card : ℝ)) * ∏ p ∈ q.primeFactors, localMean k Ω p = (((crtSubset q Ω).card : ℝ) / (q : ℝ)) ^ (k - 1 : ℕ) := prefactor_localMean_collapse' k (by linarith) q hq_sq Ω (crtSubset_card_pos_aux Ω hΩ q)
-      have h_prod : ∏ p ∈ q.primeFactors, localMean k Ω p = (∏ p ∈ T, localMean k Ω p) * (∏ p ∈ q.primeFactors \ T, localMean k Ω p) := by
-        rw [← Finset.prod_sdiff hT_sub, mul_comm]
-      rw [h_prod] at h_pre
-      have h4 : ∏ p ∈ T, (modifiedEulerWeight ε k C_gamma Ω p * localMean k Ω p) = (∏ p ∈ T, modifiedEulerWeight ε k C_gamma Ω p) * ∏ p ∈ T, localMean k Ω p := Finset.prod_mul_distrib
-      rw [h4]
-      have h_q_div : (((q : ℝ) / Ω_q.card) ^ (k - 1 : ℕ)) = 1 / (((crtSubset q Ω).card : ℝ) / (q : ℝ)) ^ (k - 1 : ℕ) := by
-        rw [one_div, ← inv_pow, inv_div]
-      rw [h_q_div]
-      calc (1 / (Ω_q.card : ℝ)) * (∏ p ∈ q.primeFactors \ T, localMean k Ω p) * ((1 / (((crtSubset q Ω).card : ℝ) / (q : ℝ)) ^ (k - 1 : ℕ)) * ((∏ p ∈ T, modifiedEulerWeight ε k C_gamma Ω p) * (∏ p ∈ T, localMean k Ω p)))
-        _ = (∏ p ∈ T, modifiedEulerWeight ε k C_gamma Ω p) * ((1 / (((crtSubset q Ω).card : ℝ) / (q : ℝ)) ^ (k - 1 : ℕ)) * ((1 / (Ω_q.card : ℝ)) * ((∏ p ∈ T, localMean k Ω p) * (∏ p ∈ q.primeFactors \ T, localMean k Ω p)))) := by
-          generalize (∏ p ∈ q.primeFactors \ T, localMean k Ω p) = P_sdiff
-          generalize (∏ p ∈ T, localMean k Ω p) = P_T
-          generalize (∏ p ∈ T, modifiedEulerWeight ε k C_gamma Ω p) = P_W
-          ring
-        _ = (∏ p ∈ T, modifiedEulerWeight ε k C_gamma Ω p) * ((1 / (((crtSubset q Ω).card : ℝ) / (q : ℝ)) ^ (k - 1 : ℕ)) * (((crtSubset q Ω).card : ℝ) / (q : ℝ)) ^ (k - 1 : ℕ)) := by rw [h_pre]
-        _ = ∏ p ∈ T, modifiedEulerWeight ε k C_gamma Ω p := by
-          have h_nz : (((crtSubset q Ω).card : ℝ) / (q : ℝ)) ^ (k - 1 : ℕ) ≠ 0 := by
-            apply ne_of_gt; apply pow_pos; apply div_pos; exact hs_card_pos; exact Nat.cast_pos.mpr (NeZero.pos q)
-          rw [one_div, inv_mul_cancel₀ h_nz, mul_one]
-    rw [h3]
-  change |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * ((g h) * ∏ p ∈ q.primeFactors \ T, localMean k Ω p)| ≤ C_box * ∏ p ∈ T, modifiedEulerWeight ε k C_gamma Ω p
-  exact calc |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) * ((g h) * ∏ p ∈ q.primeFactors \ T, localMean k Ω p)|
-    _ = c * |∑ h ∈ S, g h| := h_factor
-    _ ≤ c * (∑ h ∈ S, ∏ p ∈ T, (A p + B p h)) := mul_le_mul_of_nonneg_left (h_L1.trans h_L1_bound) hc_nn
-    _ ≤ c * (C_box * s ^ (k - 1 : ℕ) * ∏ p ∈ T, (A p + (k : ℝ)^2 * (C_gamma0 / (p : ℝ)))) := mul_le_mul_of_nonneg_left (h_swap.symm ▸ h_collide.trans (le_of_eq h_fact2)) hc_nn
-    _ ≤ c * (C_box * s ^ (k - 1 : ℕ) * ∏ p ∈ T, (modifiedEulerWeight ε k C_gamma Ω p * localMean k Ω p)) := mul_le_mul_of_nonneg_left (mul_le_mul_of_nonneg_left h_mu_bound (by positivity)) hc_nn
-    _ = C_box * ∏ p ∈ T, modifiedEulerWeight ε k C_gamma Ω p := h_prefactor
+      C_T * (∏ p ∈ T, modifiedEulerWeight ε k C_gamma Ω p + (1 / s) * ∏ p ∈ T, (combinedEulerWeight ε k Ω p + (k : ℝ)^2 * C_gamma / localMean k Ω p)) := by
+  sorry
 
 end PoissonCRT
