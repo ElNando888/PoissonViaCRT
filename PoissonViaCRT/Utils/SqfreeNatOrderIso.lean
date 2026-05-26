@@ -16,8 +16,36 @@ Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 
 module
 public import Mathlib.Algebra.Squarefree.Basic
+public import Mathlib.Data.Finset.NatDivisors
 public import Mathlib.Data.Nat.PrimeFin
-import Mathlib.Tactic -- shake: keep
+import Mathlib.Tactic
+
+/-!
+# Squarefree Natural Numbers and the Divisor–Powerset Correspondence
+
+A squarefree natural number `q` has the distinctive property that its
+divisors are in bijection with subsets of its prime factors — equivalently,
+the divisor lattice of `q` is isomorphic to the powerset lattice of
+`q.primeFactors`.
+
+This file develops:
+
+1. **`SquarefreeNat`** — the type of squarefree naturals, ordered by
+   divisibility.  An `OrderIso` to `Finset Nat.Primes` makes the
+   lattice structure explicit.
+2. **`SquarefreeNat.nontrivialDivisors`** — the `Finset ℕ` of divisors
+   `d ∣ q` with `d > 1`. This is the natural indexing set for
+   inclusion-exclusion sums over squarefree moduli.
+3. **Transport lemmas** — `sum_powerset_eq_nontrivialDivisors` and variants
+   that convert sums indexed by `T ⊆ q.primeFactors` into sums indexed by
+   `d ∈ q.nontrivialDivisors`, preserving the summand via `d ↦ d.primeFactors`.
+
+The goal is to let downstream code write mathematician-friendly statements
+like `∑ d ∈ q.nontrivialDivisors, f d` instead of raw
+`∑ T ∈ q.val.primeFactors.powerset.filter (· ≠ ∅), f (∏ p ∈ T, p)`.
+-/
+
+open Finset BigOperators
 
 /-- The type of squarefree natural numbers, ordered by divisibility. -/
 @[expose]
@@ -38,9 +66,34 @@ instance : PartialOrder SquarefreeNat where
   le_antisymm _ _ h1 h2 := Subtype.ext (Nat.dvd_antisymm h1 h2)
 
 /-- A squarefree natural number is nonzero. -/
-theorem ne_zero (q : SquarefreeNat) : q.val ≠ 0 := Squarefree.ne_zero q.prop
+public theorem ne_zero (q : SquarefreeNat) : q.val ≠ 0 := Squarefree.ne_zero q.prop
+
+/-- `NeZero` instance for the underlying `ℕ` value of a `SquarefreeNat`.
+This lets downstream code use `[NeZero q.val]` without manual proofs. -/
+public instance neZero (q : SquarefreeNat) : NeZero q.val := ⟨q.ne_zero⟩
+
+/-- Build a `SquarefreeNat` from `q : ℕ` and a proof of `Squarefree q`. -/
+@[inline] public def mk' (q : ℕ) (hq : Squarefree q) : SquarefreeNat := ⟨q, hq⟩
+
+/-! ### Divisor API -/
+
+/-- The nontrivial divisors of `q`: divisors `d ∣ q` with `d > 1`.
+For squarefree `q`, these are exactly the squarefree divisors greater than 1.
+This is the natural indexing set for inclusion-exclusion sums. -/
+@[expose]
+public abbrev nontrivialDivisors (q : SquarefreeNat) : Finset ℕ :=
+  q.val.divisors.filter (1 < ·)
+
+@[simp] public lemma nontrivialDivisors_val (q : SquarefreeNat) :
+    q.nontrivialDivisors = q.val.divisors.filter (1 < ·) := rfl
+
+@[simp] public lemma mem_nontrivialDivisors {q : SquarefreeNat} {d : ℕ} :
+    d ∈ q.nontrivialDivisors ↔ d ∣ q.val ∧ 1 < d := by
+  simp [nontrivialDivisors, Nat.mem_divisors, q.ne_zero]
 
 end SquarefreeNat
+
+/-! ## The Order Isomorphism -/
 
 /-- Forward map: squarefree nat ↦ its set of prime factors as a `Finset Nat.Primes`. -/
 @[expose]
@@ -52,13 +105,13 @@ The product of a finite set of primes is squarefree.
 -/
 public lemma prod_primes_squarefree (s : Finset Nat.Primes) :
     Squarefree (s.prod (fun p => (p : ℕ))) := by
-  induction' s using Finset.induction with p s h ih
-  · norm_num
-  · rw [ Finset.prod_insert h ]
-    rw [ Nat.squarefree_mul_iff ]
-    refine ⟨ Nat.Coprime.prod_right fun q hq => ?_, p.2.squarefree, ih ⟩
-    have := Nat.coprime_primes p.2 q.2
-    exact this.mpr fun con => h <| by convert hq; exact Subtype.ext con
+  induction' s using Finset.induction with p s h ih;
+  · norm_num;
+  · rw [ Finset.prod_insert h ];
+    rw [ Nat.squarefree_mul_iff ];
+    refine' ⟨ Nat.Coprime.prod_right fun q hq => _, p.2.squarefree, ih ⟩;
+    have := Nat.coprime_primes p.2 q.2;
+    exact this.mpr fun con => h <| by convert hq; exact Subtype.ext con;
 
 /-- Inverse map: a `Finset Nat.Primes` ↦ product of the primes, which is squarefree. -/
 @[expose]
@@ -70,11 +123,11 @@ Left inverse: taking prime factors of the product recovers the original set.
 -/
 public lemma left_inv (s : Finset Nat.Primes) :
     sqfreeToFactors (factorsToSqfree s) = s := by
-  convert Nat.primeFactors_prod
-  convert Iff.rfl
-  swap
-  exact s.image Subtype.val
-  simp +decide [ Finset.ext_iff, sqfreeToFactors, factorsToSqfree ]
+  convert Nat.primeFactors_prod;
+  convert Iff.rfl;
+  swap;
+  exact s.image Subtype.val;
+  simp +decide [ Finset.ext_iff, sqfreeToFactors, factorsToSqfree ];
   grind
 
 /-
@@ -84,9 +137,9 @@ public lemma right_inv (q : SquarefreeNat) :
     factorsToSqfree (sqfreeToFactors q) = q := by
   -- By definition of prime factors, the product of the prime factors of q is equal to q.
   have h_prod_factors : (q.val.primeFactors.subtype Nat.Prime).prod (fun p => (p : ℕ)) = q.val := by
-    convert Nat.prod_primeFactors_of_squarefree q.prop
-    refine Finset.prod_bij ( fun p hp => p ) ?_ ?_ ?_ ?_ <;> simp +decide
-    tauto
+    convert Nat.prod_primeFactors_of_squarefree q.prop;
+    refine' Finset.prod_bij ( fun p hp => p ) _ _ _ _ <;> simp +decide;
+    tauto;
   exact Subtype.ext h_prod_factors
 
 /-
@@ -95,23 +148,18 @@ The map preserves and reflects the order.
 public lemma map_le_map_iff' (a b : SquarefreeNat) :
     sqfreeToFactors a ≤ sqfreeToFactors b ↔ a ≤ b := by
   constructor <;> intro h;
-  · -- By the definition of `sqfreeToFactors`, if `sqfreeToFactors a ≤ sqfreeToFactors b`,
-    -- then `a.val.primeFactors.subtype Nat.Prime ⊆ b.val.primeFactors.subtype Nat.Prime`.
+  · -- By the definition of `sqfreeToFactors`, if `sqfreeToFactors a ≤ sqfreeToFactors b`, then `a.val.primeFactors.subtype Nat.Prime ⊆ b.val.primeFactors.subtype Nat.Prime`.
     have h_subset : a.val.primeFactors.subtype Nat.Prime ⊆ b.val.primeFactors.subtype Nat.Prime := by
       convert h using 1;
-    -- Since the prime factors of `a` are a subset of the prime factors of `b`, we can conclude
-    -- that `a` divides `b`.
+    -- Since the prime factors of `a` are a subset of the prime factors of `b`, we can conclude that `a` divides `b`.
     have h_div : a.val ∣ b.val := by
-      rw [ ← Nat.prod_primeFactors_of_squarefree a.2, ← Nat.prod_primeFactors_of_squarefree b.2 ]
-      apply_rules [ Finset.prod_dvd_prod_of_subset ]
-      intro p hp
-      specialize h_subset
-        ( show ⟨ p, by aesop ⟩ ∈ Finset.subtype Nat.Prime ( a.val.primeFactors ) from by aesop )
-      aesop
-    exact h_div
+      rw [ ← Nat.prod_primeFactors_of_squarefree a.2, ← Nat.prod_primeFactors_of_squarefree b.2 ];
+      apply_rules [ Finset.prod_dvd_prod_of_subset ];
+      intro p hp; specialize h_subset ( show ⟨ p, by aesop ⟩ ∈ Finset.subtype Nat.Prime ( a.val.primeFactors ) from by aesop ) ; aesop;
+    exact h_div;
   · convert Nat.primeFactors_mono h ( SquarefreeNat.ne_zero b ) using 1
-    generalize_proofs at *
-    simp +decide [ sqfreeToFactors, Finset.subset_iff ]
+    generalize_proofs at *; (
+    simp +decide [ sqfreeToFactors, Finset.subset_iff ])
 
 /-- The order isomorphism between squarefree natural numbers (ordered by divisibility)
 and finite sets of primes (ordered by inclusion). -/
@@ -127,3 +175,103 @@ public noncomputable def sqfreeNatOrderIso : SquarefreeNat ≃o Finset Nat.Prime
 finite sets of primes satisfies `OrderIsoClass`. -/
 example : OrderIsoClass (SquarefreeNat ≃o Finset Nat.Primes)
     SquarefreeNat (Finset Nat.Primes) := inferInstance
+
+/-! ## Divisor–Powerset Transport Lemmas
+
+The bijection `T ↦ ∏ p ∈ T, p` (with inverse `d ↦ d.primeFactors`) between
+subsets of `q.primeFactors` and divisors of squarefree `q` lets us freely
+convert sums over one indexing set to sums over the other.
+
+These transport lemmas are the workhorses used in the inclusion-exclusion
+analysis of squarefree moduli. -/
+
+section Transport
+
+variable {M : Type*}
+
+/-- For `T ⊆ q.primeFactors` and squarefree `q`, the product `∏ p ∈ T, p`
+is a divisor of `q`. -/
+public lemma prod_mem_divisors_of_subset (q : SquarefreeNat)
+    (T : Finset ℕ) (hT : T ⊆ q.val.primeFactors) :
+    (∏ p ∈ T, p) ∈ q.val.divisors := by
+  apply Nat.mem_divisors.mpr
+  exact ⟨dvd_trans (Finset.prod_dvd_prod_of_subset T q.val.primeFactors (fun x => x) hT)
+    (Nat.prod_primeFactors_dvd q.val), q.ne_zero⟩
+
+/-- For two subsets of `q.primeFactors`, equal products imply equal sets. -/
+public lemma prod_injective_on_primeFactors (q : SquarefreeNat)
+    (T₁ T₂ : Finset ℕ) (hT₁ : T₁ ⊆ q.val.primeFactors) (hT₂ : T₂ ⊆ q.val.primeFactors)
+    (h : ∏ p ∈ T₁, p = ∏ p ∈ T₂, p) : T₁ = T₂ := by
+  apply_fun fun x => x.primeFactors at h
+  have h_pf : ∀ (T : Finset ℕ), (∀ p ∈ T, Nat.Prime p) → (∏ p ∈ T, p).primeFactors = T := by
+    intros T hT_prime; induction T using Finset.induction <;> simp_all +decide;
+    rw [Nat.primeFactors_mul, ‹(∏ p ∈ _, p |> Nat.primeFactors) = _›] <;> aesop
+  rw [h_pf T₁ (fun p hp => Nat.prime_of_mem_primeFactors (hT₁ hp)),
+      h_pf T₂ (fun p hp => Nat.prime_of_mem_primeFactors (hT₂ hp))] at h
+  exact h
+
+/-- Every divisor of squarefree `q` is the product of its prime factors,
+which form a subset of `q.primeFactors`. -/
+public lemma divisor_eq_prod_primeFactors (q : SquarefreeNat)
+    (d : ℕ) (hd : d ∈ q.val.divisors) :
+    d.primeFactors ∈ q.val.primeFactors.powerset ∧ ∏ p ∈ d.primeFactors, p = d := by
+  have hd_dvd := Nat.dvd_of_mem_divisors hd
+  exact ⟨Finset.mem_powerset.mpr (Nat.primeFactors_mono hd_dvd q.ne_zero),
+         Nat.prod_primeFactors_of_squarefree (q.prop.squarefree_of_dvd hd_dvd)⟩
+
+/-
+**Core transport (general summand):** any function `g : Finset ℕ → M` summed
+over nonempty subsets of `q.primeFactors` equals the same function composed
+with `d ↦ d.primeFactors` summed over `q.nontrivialDivisors`.
+
+This is the fundamental bridge that lets us write inclusion-exclusion sums
+in terms of divisors rather than powerset subsets.
+-/
+public lemma sum_powerset_eq_nontrivialDivisors [AddCommMonoid M]
+    (q : SquarefreeNat) (g : Finset ℕ → M) :
+    ∑ T ∈ q.val.primeFactors.powerset.filter (· ≠ ∅), g T =
+      ∑ d ∈ q.nontrivialDivisors, g d.primeFactors := by
+  refine' Finset.sum_bij ( fun T hT => ∏ p ∈ T, p ) _ _ _ _ <;> simp +decide;
+  · intro T hT hne₂;
+    refine' ⟨ ⟨ _, q.ne_zero ⟩, _ ⟩;
+    · have h_prod_div : ∏ p ∈ T, p ∣ ∏ p ∈ q.val.primeFactors, p := by
+        apply_rules [ Finset.prod_dvd_prod_of_subset ];
+      convert h_prod_div using 1;
+      exact Eq.symm ( Nat.prod_primeFactors_of_squarefree q.2 );
+    · exact lt_of_lt_of_le ( Nat.Prime.one_lt ( Nat.prime_of_mem_primeFactors ( hT ( Classical.choose_spec ( Finset.nonempty_of_ne_empty hne₂ ) ) ) ) ) ( Nat.le_of_dvd ( Finset.prod_pos fun p hp => Nat.pos_of_mem_primeFactors ( hT hp ) ) ( Finset.dvd_prod_of_mem _ ( Classical.choose_spec ( Finset.nonempty_of_ne_empty hne₂ ) ) ) );
+  · grind +suggestions;
+  · intro b hb hq hb'; use Nat.primeFactors b; simp_all +decide [ Finset.subset_iff ] ;
+    exact ⟨ ⟨ fun x hx hx' hx'' => dvd_trans hx' hb, by linarith, by linarith ⟩, Nat.prod_primeFactors_of_squarefree ( q.2.squarefree_of_dvd hb ) ⟩;
+  · grind +suggestions
+
+end Transport
+
+/-! ## Nat-level API
+
+Convenience definitions on `ℕ` that give dot-notation access to
+the divisor sets defined above, without requiring a `SquarefreeNat`
+wrapper at every call site. -/
+
+namespace Nat
+
+/-- The nontrivial divisors of `q` (divisors `d ∣ q` with `d > 1`).
+For squarefree `q`, these are in bijection with nonempty subsets of
+`q.primeFactors` via the divisor–powerset correspondence.
+
+This gives dot-notation `q.nontrivDivisors` in theorem signatures. -/
+@[expose]
+public abbrev nontrivDivisors (q : ℕ) : Finset ℕ := q.divisors.filter (1 < ·)
+
+@[simp] public lemma mem_nontrivDivisors {q d : ℕ} :
+    d ∈ q.nontrivDivisors ↔ d ∣ q ∧ q ≠ 0 ∧ 1 < d := by
+  simp [nontrivDivisors, Nat.mem_divisors, and_assoc]
+
+public lemma nontrivDivisors_eq (q : ℕ) :
+    q.nontrivDivisors = q.divisors.filter (1 < ·) := rfl
+
+end Nat
+
+/-- Connection: `SquarefreeNat.nontrivialDivisors` agrees with the
+`Nat.nontrivDivisors` of the underlying value. -/
+lemma SquarefreeNat.nontrivialDivisors_eq_nontrivDivisors (q : SquarefreeNat) :
+    q.nontrivialDivisors = q.val.nontrivDivisors := rfl
