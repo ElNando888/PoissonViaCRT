@@ -15,7 +15,7 @@ Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
 module
-public import Mathlib.Algebra.Squarefree.Basic
+public import PoissonViaCRT.Utils.SqfreeNatOrderIso
 public import Mathlib.Analysis.SpecialFunctions.Pow.Real
 import Mathlib.Analysis.PSeries
 import Mathlib.Data.Nat.Squarefree
@@ -42,7 +42,7 @@ of each prime factor to the residue multiplicity estimate.
 * `tail_sum_decay`: Tail-sum decay via Rankin's trick.
 -/
 
-open Finset BigOperators Classical
+open Nat Finset BigOperators Classical
 
 namespace PoissonCRT
 
@@ -232,7 +232,7 @@ Variant of `sum_powerset_eq_sum_divisors` restricted to nonempty subsets
 -/
 public lemma sum_powerset_nonempty_eq_sum_divisors_gt_one (q : ℕ) (hq : Squarefree q) (f : ℕ → ℝ) :
     ∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅), ∏ p ∈ T, f p =
-      ∑ d ∈ q.divisors.filter (1 < ·), ∏ p ∈ d.primeFactors, f p := by
+      ∑ d ∈ nontrivDivisors q, ∏ p ∈ d.primeFactors, f p := by
   convert congr_arg ( fun x : ℝ => x - 1 ) ( sum_powerset_eq_sum_divisors q hq ( fun p => f p ) ) using 1;
   · simp +decide [ Finset.filter_ne' ];
   · rw [ Finset.sum_eq_add_sum_diff_singleton ( Nat.one_mem_divisors.mpr <| by rintro rfl; simp_all +decide ) ];
@@ -250,7 +250,7 @@ public lemma sum_powerset_nonempty_filtered_eq (q : ℕ) (hq : Squarefree q)
     ∑ T ∈ (q.primeFactors.powerset.filter (· ≠ ∅)).filter
           (fun (T : Finset ℕ) => ¬((∏ p ∈ T, (p : ℝ)) ≤ s)),
       ∏ p ∈ T, f p =
-    ∑ d ∈ (q.divisors.filter (1 < ·)).filter (fun (d : ℕ) => ¬((d : ℝ) ≤ s)),
+    ∑ d ∈ (nontrivDivisors q).filter (fun (d : ℕ) => ¬((d : ℝ) ≤ s)),
       ∏ p ∈ d.primeFactors, f p := by
   apply Finset.sum_bij (fun T hT => ∏ p ∈ T, p);
   · simp +zetaDelta at *;
@@ -282,7 +282,7 @@ can equivalently be summed over nontrivial squarefree divisors of `q` via
 public lemma sum_nonempty_powerset_eq_sum_nontrivial_divisors (q : ℕ) (hq : Squarefree q)
     (g : Finset ℕ → ℝ) :
     ∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅), g T =
-      ∑ d ∈ q.divisors.filter (1 < ·), g d.primeFactors := by
+      ∑ d ∈ nontrivDivisors q, g d.primeFactors := by
   apply Finset.sum_bij (fun T hT => ∏ p ∈ T, p);
   · simp +zetaDelta at *;
     intro a ha₁ ha₂; refine' ⟨ ⟨ _, _ ⟩, _ ⟩;
@@ -303,7 +303,7 @@ public lemma sum_nonempty_powerset_filtered_le_eq (q : ℕ) (hq : Squarefree q)
     (g : Finset ℕ → ℝ) (s : ℝ) :
     ∑ T ∈ (q.primeFactors.powerset.filter (· ≠ ∅)).filter
           (fun (T : Finset ℕ) => (∏ p ∈ T, (p : ℝ)) ≤ s), g T =
-    ∑ d ∈ (q.divisors.filter (1 < ·)).filter (fun (d : ℕ) => (d : ℝ) ≤ s),
+    ∑ d ∈ (nontrivDivisors q).filter (fun (d : ℕ) => (d : ℝ) ≤ s),
       g d.primeFactors := by
   apply Finset.sum_bij (fun T hT => ∏ p ∈ T, p)
   · intro T hT
@@ -341,7 +341,7 @@ public lemma sum_nonempty_powerset_filtered_not_le_eq (q : ℕ) (hq : Squarefree
     (g : Finset ℕ → ℝ) (s : ℝ) :
     ∑ T ∈ (q.primeFactors.powerset.filter (· ≠ ∅)).filter
           (fun (T : Finset ℕ) => ¬((∏ p ∈ T, (p : ℝ)) ≤ s)), g T =
-    ∑ d ∈ (q.divisors.filter (1 < ·)).filter (fun (d : ℕ) => ¬((d : ℝ) ≤ s)),
+    ∑ d ∈ (nontrivDivisors q).filter (fun (d : ℕ) => ¬((d : ℝ) ≤ s)),
       g d.primeFactors := by
   have h_all := sum_nonempty_powerset_eq_sum_nontrivial_divisors q hq g
   have h_le := sum_nonempty_powerset_filtered_le_eq q hq g s
@@ -349,7 +349,7 @@ public lemma sum_nonempty_powerset_filtered_not_le_eq (q : ℕ) (hq : Squarefree
     (q.primeFactors.powerset.filter (· ≠ ∅))
     (fun (T : Finset ℕ) => (∏ p ∈ T, (p : ℝ)) ≤ s) g
   have h_split_div := Finset.sum_filter_add_sum_filter_not
-    (q.divisors.filter (1 < ·))
+    (nontrivDivisors q)
     (fun (d : ℕ) => (d : ℝ) ≤ s)
     (fun d => g d.primeFactors)
   linarith
@@ -369,14 +369,14 @@ public lemma tail_sum_decay (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hrp : ∀ p, p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ)) :
     ∃ K : ℝ, 0 < K ∧ ∀ (q : ℕ) (_ : NeZero q) (_ : Squarefree q) (s : ℝ) (_ : 1 ≤ s),
-      ∑ d ∈ (q.divisors.filter (1 < ·)).filter (fun (d : ℕ) => ¬((d : ℝ) ≤ s)),
+      ∑ d ∈ (nontrivDivisors q).filter (fun (d : ℕ) => ¬((d : ℝ) ≤ s)),
         ∏ p ∈ d.primeFactors, combinedEulerWeight ε k Ω p ≤
         K * s ^ (-(ε / 2)) := by
   refine ⟨Real.exp (k * ∑' n : ℕ, (n : ℝ) ^ (-(1 + ε / 2))), ?_, ?_⟩
   · positivity
   · intro q hq hq_sf s hs
     -- Transport: rewrite divisor sum as powerset sum
-    rw [show ∑ d ∈ (q.divisors.filter (1 < ·)).filter (fun (d : ℕ) => ¬((d : ℝ) ≤ s)),
+    rw [show ∑ d ∈ (nontrivDivisors q).filter (fun (d : ℕ) => ¬((d : ℝ) ≤ s)),
           ∏ p ∈ d.primeFactors, combinedEulerWeight ε k Ω p =
         ∑ T ∈ (q.primeFactors.powerset.filter (· ≠ ∅)).filter
               (fun (T : Finset ℕ) => ¬((∏ p ∈ T, (p : ℝ)) ≤ s)),
@@ -469,14 +469,14 @@ public lemma modified_tail_sum_decay (ε : ℝ) (hε : 0 < ε) (hε2 : ε ≤ 1)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hrp : ∀ p, p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ)) :
     ∃ K : ℝ, 0 < K ∧ ∀ (q : ℕ) (_ : NeZero q) (_ : Squarefree q) (s : ℝ) (_ : 1 ≤ s),
-      ∑ d ∈ (q.divisors.filter (1 < ·)).filter (fun (d : ℕ) => ¬((d : ℝ) ≤ s)),
+      ∑ d ∈ (nontrivDivisors q).filter (fun (d : ℕ) => ¬((d : ℝ) ≤ s)),
         ∏ p ∈ d.primeFactors, modifiedEulerWeight ε k C_gamma Ω p ≤
         K * s ^ (-(ε / 2)) := by
   refine ⟨Real.exp ((k + (k : ℝ)^2 * C_gamma) * ∑' n : ℕ, (n : ℝ) ^ (-(1 + ε / 2))), ?_, ?_⟩
   · positivity
   · intro q hq hq_sf s hs
     -- Transport: rewrite divisor sum as powerset sum
-    rw [show ∑ d ∈ (q.divisors.filter (1 < ·)).filter (fun (d : ℕ) => ¬((d : ℝ) ≤ s)),
+    rw [show ∑ d ∈ (nontrivDivisors q).filter (fun (d : ℕ) => ¬((d : ℝ) ≤ s)),
           ∏ p ∈ d.primeFactors, modifiedEulerWeight ε k C_gamma Ω p =
         ∑ T ∈ (q.primeFactors.powerset.filter (· ≠ ∅)).filter
               (fun (T : Finset ℕ) => ¬((∏ p ∈ T, (p : ℝ)) ≤ s)),
