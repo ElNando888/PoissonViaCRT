@@ -16,8 +16,9 @@ Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 
 module
 public import PoissonViaCRT.Defs
-public import PoissonViaCRT.LatticePointBoundHelpers
-public import Mathlib
+import Mathlib.Algebra.Order.Ring.Star
+import Mathlib.Data.Int.Star
+import Mathlib.Data.Real.StarOrdered
 
 set_option linter.unusedVariables false
 
@@ -41,7 +42,7 @@ public noncomputable def extendH (m : ℕ) (h : Fin m → ℤ) : Fin (m + 1) →
 For `h` in the scaled box with offset `v = 0`, the extended sequence
 `extendH m h` is strictly monotone: `0 < h(0) < h(1) < ⋯ < h(m-1)`.
 -/
-lemma inScaledBox_cons_strictMono {m : ℕ} (X : Box m) (s : ℝ) (hs : 1 ≤ s)
+public lemma inScaledBox_cons_strictMono {m : ℕ} (X : Box m) (s : ℝ) (hs : 1 ≤ s)
     (h : Fin m → ℤ)
     (hbox : inScaledBox X s (fun _ => 0) h) :
     StrictMono (extendH m h) := by
@@ -61,7 +62,7 @@ lemma inScaledBox_cons_strictMono {m : ℕ} (X : Box m) (s : ℝ) (hs : 1 ≤ s)
 /-
 The extended values are bounded: `extendH m h i ≤ ⌈s * ∑ X.sides⌉` for all `i`.
 -/
-lemma inScaledBox_cons_le_ceil {m : ℕ} (X : Box m) (s : ℝ) (hs : 1 ≤ s)
+public lemma inScaledBox_cons_le_ceil {m : ℕ} (X : Box m) (s : ℝ) (hs : 1 ≤ s)
     (h : Fin m → ℤ)
     (hbox : inScaledBox X s (fun _ => 0) h) (i : Fin (m + 1)) :
     extendH m h i ≤ ⌈s * ∑ j, X.sides j⌉ := by
@@ -88,7 +89,7 @@ lemma inScaledBox_cons_le_ceil {m : ℕ} (X : Box m) (s : ℝ) (hs : 1 ≤ s)
 /-
 The extended values are nonneg.
 -/
-lemma inScaledBox_cons_nonneg {m : ℕ} (X : Box m) (s : ℝ) (hs : 1 ≤ s)
+public lemma inScaledBox_cons_nonneg {m : ℕ} (X : Box m) (s : ℝ) (hs : 1 ≤ s)
     (h : Fin m → ℤ)
     (hbox : inScaledBox X s (fun _ => 0) h) (i : Fin (m + 1)) :
     (0 : ℤ) ≤ extendH m h i := by
@@ -104,7 +105,7 @@ lemma inScaledBox_cons_nonneg {m : ℕ} (X : Box m) (s : ℝ) (hs : 1 ≤ s)
 /-
 For `p = 0` (i.e., `ZMod 0 = ℤ`), the extended map is injective.
 -/
-lemma injective_fin_cons_zero {m : ℕ} (X : Box m) (s : ℝ) (hs : 1 ≤ s)
+public lemma injective_fin_cons_zero {m : ℕ} (X : Box m) (s : ℝ) (hs : 1 ≤ s)
     (h : Fin m → ℤ)
     (hbox : inScaledBox X s (fun _ => 0) h) :
     Function.Injective (Fin.cons (0 : ZMod 0) (fun i => (h i : ZMod 0))) := by
@@ -114,7 +115,7 @@ lemma injective_fin_cons_zero {m : ℕ} (X : Box m) (s : ℝ) (hs : 1 ≤ s)
 /-
 For `p > ⌈s * ∑ X.sides⌉`, the extended map mod `p` is injective.
 -/
-lemma injective_fin_cons_of_large {m : ℕ} (X : Box m) (s : ℝ) (hs : 1 ≤ s)
+public lemma injective_fin_cons_of_large {m : ℕ} (X : Box m) (s : ℝ) (hs : 1 ≤ s)
     (h : Fin m → ℤ)
     (hbox : inScaledBox X s (fun _ => 0) h)
     (p : ℕ) [NeZero p] (hp : (⌈s * ∑ j, X.sides j⌉ : ℤ) < p) :
@@ -137,14 +138,14 @@ lemma injective_fin_cons_of_large {m : ℕ} (X : Box m) (s : ℝ) (hs : 1 ≤ s)
 /-! ## 2. Non-injectivity implies divisibility of some difference -/
 
 /-- The set of ordered pairs `(i, j)` with `i < j` in `Fin (m + 1)`. -/
-noncomputable def pairsBelow (m : ℕ) : Finset (Fin (m + 1) × Fin (m + 1)) :=
+public noncomputable def pairsBelow (m : ℕ) : Finset (Fin (m + 1) × Fin (m + 1)) :=
   Finset.univ.filter fun ij => ij.1 < ij.2
 
 /-
 The non-injectivity indicator is at most the sum of divisibility indicators
 over all pairs `(i, j)` with `i < j`.
 -/
-lemma collision_indicator_le_sum_pairs {m : ℕ} (p : ℕ) (hp : 1 ≤ p)
+public lemma collision_indicator_le_sum_pairs {m : ℕ} (p : ℕ) (hp : 1 ≤ p)
     (h : Fin m → ℤ) :
     (if Function.Injective (Fin.cons (0 : ZMod p) (fun i => (h i : ZMod p)))
      then (0 : ℝ) else 1) ≤
@@ -164,7 +165,7 @@ lemma collision_indicator_le_sum_pairs {m : ℕ} (p : ℕ) (hp : 1 ≤ p)
 /-- When a prime `p` exceeds `⌈s * ∑ sides⌉`, the collision indicator is `0` for every
 `h` in the scaled box. This is the key lemma that makes the sum vanish when `U` contains
 a large prime. -/
-lemma indicator_zero_of_large_prime {m : ℕ} (X : Box m) (s : ℝ) (hs : 1 ≤ s)
+public lemma indicator_zero_of_large_prime {m : ℕ} (X : Box m) (s : ℝ) (hs : 1 ≤ s)
     (h : Fin m → ℤ) (hbox : inScaledBox X s (fun _ => 0) h)
     (p : ℕ) (hp : Nat.Prime p) (hlarge : (⌈s * ∑ j, X.sides j⌉ : ℤ) < p) :
     (if Function.Injective (Fin.cons (0 : ZMod p) (fun i => (h i : ZMod p)))
@@ -175,29 +176,10 @@ lemma indicator_zero_of_large_prime {m : ℕ} (X : Box m) (s : ℝ) (hs : 1 ≤ 
 /-! ## 4. Helper: product vanishes when any factor does -/
 
 /-- If any factor in a product over `U` vanishes, the whole product is `0`. -/
-lemma prod_eq_zero_of_mem_zero {U : Finset ℕ}
+public lemma prod_eq_zero_of_mem_zero {U : Finset ℕ}
     (f : ℕ → (Fin m → ℤ) → ℝ) (h : Fin m → ℤ)
     (p : ℕ) (hp : p ∈ U) (hf : f p h = 0) :
     ∏ q ∈ U, f q h = 0 :=
   Finset.prod_eq_zero hp hf
-
-/-! ## 5. Counting bound for the full collision sum -/
-
-/-- The collision sum bound: for `h` in the scaled box with offset `v = 0`, the sum
-`∑_h ∏_{p ∈ U} f_p(h)` is bounded by `C_box · s^m · ∏_{p ∈ U} (C_gamma / p)`.
-
-**Note:** The hypothesis `∀ p ∈ U, Nat.Prime p` is necessary; without it,
-composite or prime-power elements can violate the bound. The downstream usage
-in `L1DeviationSynthesis` always supplies subsets of `q.primeFactors` for
-squarefree `q`, so all elements are indeed prime. -/
-public lemma box_collision_sum_bound (m : ℕ) (X : Box m) :
-    ∃ C_box C_gamma : ℝ, 0 < C_box ∧ 0 < C_gamma ∧ ∀ (s : ℝ) (_ : 1 ≤ s) (U : Finset ℕ)
-    (_ : ∀ p ∈ U, Nat.Prime p),
-    ∑ h ∈ ((Fintype.piFinset fun _ => Finset.Icc (1:ℤ) ⌈s * ∑ i, X.sides i⌉).filter
-        (fun h => inScaledBox X s (fun _ => 0) h)),
-      (∏ p ∈ U, if Function.Injective (Fin.cons (0 : ZMod p) (fun i => (h i : ZMod p)))
-       then (0:ℝ) else 1)
-    ≤ C_box * s ^ m * ∏ p ∈ U, (C_gamma / (p : ℝ)) := by
-  sorry
 
 end PoissonCRT

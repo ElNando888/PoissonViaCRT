@@ -12,13 +12,13 @@ Mathlib version: 8f9d9cff6bd728b17a24e163c9402775d9e6a365
 -/
 
 module
-public import PoissonViaCRT.Defs
 public import PoissonViaCRT.DeviationBoundHelper
-public import PoissonViaCRT.SmallDivisorHelpers
 public import PoissonViaCRT.EulerWeights
-public import Mathlib
-import PoissonViaCRT.LargeDivisorHelpers
-import PoissonViaCRT.BoxCollisionHelpers
+import PoissonViaCRT.BoxCollisionIntegration
+import PoissonViaCRT.SmallDivisorHelpers
+import Mathlib.Algebra.Order.Ring.Star
+import Mathlib.Data.Int.Star
+import Mathlib.Data.Real.StarOrdered
 
 set_option linter.unusedVariables false
 
