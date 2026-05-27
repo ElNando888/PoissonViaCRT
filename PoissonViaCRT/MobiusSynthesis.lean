@@ -23,6 +23,7 @@ import PoissonViaCRT.SmallDivisorHelpers
 import PoissonViaCRT.TupleCount
 import PoissonViaCRT.EulerWeights
 import PoissonViaCRT.L1DeviationSynthesis
+import PoissonViaCRT.L2DeviationSynthesis
 
 set_option linter.unusedVariables false
 
@@ -445,12 +446,13 @@ private lemma deviation_large_divisors (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk :
               (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p -
               localMean k Ω p)) *
             ∏ p ∈ q.primeFactors \ d.primeFactors, localMean k Ω p)| ≤ K₂ * s ^ (-(ε / 2)) := by
-  -- Step 1: Obtain the per-T L1 bound from L1DeviationSynthesis.
-  obtain ⟨C_gamma, hC_gamma, C_T, hC_T_pos, hC_T⟩ :=
-    per_T_deviation_le_modifiedEulerWeight ε hε k hk Ω hΩ hWD hsp hrp hε_lt X C_lp hC_lp_pos
-  -- Step 2: Obtain the tail-sum decay bound on ∑_d globalModifiedEulerWeight d
-  -- (divisor formulation via modified_tail_sum_decay).
-  obtain ⟨K_large, hK_large_pos, hK_large⟩ := modified_large_divisor_series_bound ε hε k hk hε_lt C_gamma hC_gamma Ω hrp
+  -- Step 1: Obtain the per-T L2 bound from L2DeviationSynthesis.
+  obtain ⟨C_T, hC_T_pos, hC_T⟩ :=
+    per_T_deviation_le_combinedEulerWeight ε hε k hk Ω hΩ hWD hsp hrp hε_lt X C_lp hC_lp_pos hC_lp
+  -- Let C_gamma be an arbitrary non-negative constant for the modified weight. 0 works.
+  have hC_gamma : 0 ≤ (0 : ℝ) := le_refl _
+  -- Step 2: Obtain the tail-sum decay bound on ∑_d globalModifiedEulerWeight d.
+  obtain ⟨K_large, hK_large_pos, hK_large⟩ := modified_large_divisor_series_bound ε hε k hk hε_lt 0 hC_gamma Ω hrp
   -- Step 3: Combine: the total is bounded by C_T · K_large · s^{-ε/2}.
   refine ⟨C_T * K_large, mul_pos hC_T_pos hK_large_pos, fun q _ hq_sq => ?_⟩
   have hs_ge : 1 ≤ (q : ℝ) / (crtSubset q Ω).card := by
@@ -479,7 +481,43 @@ private lemma deviation_large_divisors (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk :
               (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p -
               localMean k Ω p)) *
             ∏ p ∈ q.primeFactors \ T, localMean k Ω p)|
-      ≤ C_T * K_large * ((q : ℝ) / (crtSubset q Ω).card) ^ (-(ε / 2)) := by sorry
+      ≤ ∑ T ∈ (q.primeFactors.powerset.filter (· ≠ ∅)).filter
+            (fun (T : Finset ℕ) => ¬((∏ p ∈ T, (p : ℝ)) ≤ (q : ℝ) / (crtSubset q Ω).card)),
+          C_T * ∏ p ∈ T, combinedEulerWeight ε k Ω p := by
+        apply Finset.sum_le_sum
+        intro T hT
+        exact hC_T q hq_sq T (Finset.mem_filter.mp hT |>.1)
+    _ ≤ ∑ T ∈ (q.primeFactors.powerset.filter (· ≠ ∅)).filter
+            (fun (T : Finset ℕ) => ¬((∏ p ∈ T, (p : ℝ)) ≤ (q : ℝ) / (crtSubset q Ω).card)),
+          C_T * ∏ p ∈ T, modifiedEulerWeight ε k 0 Ω p := by
+        apply Finset.sum_le_sum
+        intro T hT
+        apply mul_le_mul_of_nonneg_left
+        · apply Finset.prod_le_prod
+          · intro p hp
+            have hp_prime : p.Prime := Nat.prime_of_mem_primeFactors (Finset.mem_powerset.mp (Finset.mem_filter.mp (Finset.mem_filter.mp hT |>.1) |>.1) hp)
+            exact combinedEulerWeight_nonneg ε k Ω p hp_prime
+          · intro p hp
+            have hp_prime : p.Prime := Nat.prime_of_mem_primeFactors (Finset.mem_powerset.mp (Finset.mem_filter.mp (Finset.mem_filter.mp hT |>.1) |>.1) hp)
+            unfold modifiedEulerWeight
+            have h1 := combinedEulerWeight_nonneg ε k Ω p hp_prime
+            have h2 := sq_nonneg (k : ℝ)
+            linarith
+        · exact hC_T_pos.le
+    _ = C_T * ∑ T ∈ (q.primeFactors.powerset.filter (· ≠ ∅)).filter
+            (fun (T : Finset ℕ) => ¬((∏ p ∈ T, (p : ℝ)) ≤ (q : ℝ) / (crtSubset q Ω).card)),
+          ∏ p ∈ T, modifiedEulerWeight ε k 0 Ω p := by
+        rw [← Finset.mul_sum]
+    _ = C_T * ∑ d ∈ (q.divisors.filter (1 < ·)).filter
+            (fun (d : ℕ) => ¬((d : ℝ) ≤ (q : ℝ) / (crtSubset q Ω).card)),
+          globalModifiedEulerWeight ε k 0 Ω d := by
+        congr 1
+        convert sum_powerset_nonempty_filtered_eq q hq_sq
+          (fun p => modifiedEulerWeight ε k 0 Ω p)
+          ((q : ℝ) / (crtSubset q Ω).card) using 1
+    _ ≤ C_T * (K_large * ((q : ℝ) / (crtSubset q Ω).card) ^ (-(ε / 2))) := by
+        gcongr; exact hK_large q hq_sq ((q : ℝ) / (crtSubset q Ω).card) hs_ge
+    _ = C_T * K_large * ((q : ℝ) / (crtSubset q Ω).card) ^ (-(ε / 2)) := by ring
 
 /-! ### Core deviation bound assembly -/
 
