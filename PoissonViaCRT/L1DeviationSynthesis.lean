@@ -195,7 +195,12 @@ private lemma L1_factorization (ε : ℝ) (k : ℕ) (Ω : ∀ p : ℕ, Finset (Z
       ((∏ p ∈ U, (k : ℝ)^2) * (C_box * (s ^ (k - 1 : ℕ) / ∏ p ∈ U, (p : ℝ) + s ^ (k - 2 : ℕ)) * ∏ p ∈ U, C_gamma)) =
     C_box * s ^ (k - 1 : ℕ) * ∏ p ∈ T, (combinedEulerWeight ε k Ω p * localMean k Ω p + (k : ℝ)^2 * (C_gamma / (p : ℝ))) +
     C_box * s ^ (k - 2 : ℕ) * ∏ p ∈ T, (combinedEulerWeight ε k Ω p * localMean k Ω p + (k : ℝ)^2 * C_gamma) := by
-  sorry
+  simp +decide [Finset.prod_add, Finset.prod_mul_distrib, div_eq_mul_inv, mul_assoc, mul_comm,
+    mul_left_comm, Finset.mul_sum _ _ _];
+  rw [ ← Finset.sum_add_distrib ] ; refine' Finset.sum_bij ( fun U _ => T \ U ) _ _ _ _ <;> simp +decide ;
+  · intro a₁ ha₁ a₂ ha₂ h; rw [ ← Finset.sdiff_sdiff_eq_self ha₁, h, Finset.sdiff_sdiff_eq_self ha₂ ] ;
+  · exact fun b hb => ⟨ T \ b, by aesop_cat, by aesop_cat ⟩;
+  · intro a ha; rw [ Finset.inter_eq_right.mpr ha ] ; ring;
 
 private lemma inv_mu_le_C_div_p (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
@@ -227,6 +232,222 @@ private lemma prefactor_localMean_collapse' (k : ℕ) (hk : 1 ≤ k) (q : ℕ) [
   rw [ div_eq_iff ( by positivity ) ] ; cases k <;> simp_all +decide [pow_succ', mul_comm,
     mul_left_comm, div_eq_mul_inv]
 
+/-! ## Helper: The raw L1 deviation sum bound -/
+
+/-
+The sum of the collision indicator product over box points is bounded,
+after factoring out `k^2` per prime.
+-/
+private lemma collision_indicator_sum_bound (k : ℕ) (hk : 2 ≤ k)
+    (X : Box (k - 1))
+    (C_box C_γ : ℝ) (hC_box : 0 < C_box) (hC_γ : 0 < C_γ)
+    (h_coll : ∀ (s : ℝ), 1 ≤ s → ∀ (U : Finset ℕ), (∀ p ∈ U, Nat.Prime p) →
+      ∑ h ∈ ((Fintype.piFinset fun _ => Finset.Icc (1:ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+          (fun h => inScaledBox X s (fun _ => 0) h)),
+        (∏ p ∈ U, if Function.Injective (Fin.cons (0 : ZMod p) (fun i => (h i : ZMod p)))
+         then (0:ℝ) else 1)
+      ≤ C_box * (s ^ (k - 1) / ∏ p ∈ U, (p : ℝ) + s ^ ((k - 1) - 1)) * ∏ p ∈ U, C_γ)
+    (s : ℝ) (hs : 1 ≤ s) (U : Finset ℕ) (hU_primes : ∀ p ∈ U, Nat.Prime p) :
+    ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1:ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+        (fun h => inScaledBox X s (fun _ => 0) h)),
+      ∏ p ∈ U, ((k : ℝ)^2 * (if Function.Injective (Fin.cons (0 : ZMod p)
+        (fun i => (h i : ZMod p))) then (0:ℝ) else 1)) ≤
+    (∏ p ∈ U, (k : ℝ)^2) *
+      (C_box * (s ^ (k - 1) / ∏ p ∈ U, (p : ℝ) + s ^ ((k - 1) - 1)) * ∏ p ∈ U, C_γ) := by
+  convert mul_le_mul_of_nonneg_left ( h_coll s hs U hU_primes ) ( show 0 ≤ ( ∏ p ∈ U, ( k : ℝ ) ^ 2 ) by exact Finset.prod_nonneg fun _ _ => sq_nonneg _ ) using 1 ; ring_nf!;
+  simp +decide only [Finset.mul_sum _ _ _, prod_mul_distrib]
+
+/-- The inner sum bound: `∑_h ∏_T |dev_p| ≤ factorized_bound`. -/
+private lemma inner_sum_bound (ε : ℝ) (k : ℕ) (hk : 2 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
+    (hrp : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ))
+    (X : Box (k - 1))
+    (C_box C_γ : ℝ) (hC_box : 0 < C_box) (hC_γ : 0 < C_γ)
+    (h_coll : ∀ (s : ℝ), 1 ≤ s → ∀ (U : Finset ℕ), (∀ p ∈ U, Nat.Prime p) →
+      ∑ h ∈ ((Fintype.piFinset fun _ => Finset.Icc (1:ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+          (fun h => inScaledBox X s (fun _ => 0) h)),
+        (∏ p ∈ U, if Function.Injective (Fin.cons (0 : ZMod p) (fun i => (h i : ZMod p)))
+         then (0:ℝ) else 1)
+      ≤ C_box * (s ^ (k - 1) / ∏ p ∈ U, (p : ℝ) + s ^ ((k - 1) - 1)) * ∏ p ∈ U, C_γ)
+    (q : ℕ) [NeZero q]
+    (T : Finset ℕ) (hT_sub : T ⊆ q.primeFactors)
+    (s : ℝ) (hs : 1 ≤ s) (hs_eq : s = (q : ℝ) / (crtSubset q Ω).card) :
+    ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+          Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+        (fun h => inScaledBox X s (fun _ => 0) h)),
+      ∏ p ∈ T, |localCount Ω q
+          (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p - localMean k Ω p| ≤
+    C_box * s ^ (k - 1) *
+        ∏ p ∈ T, (combinedEulerWeight ε k Ω p * localMean k Ω p + (k : ℝ)^2 * (C_γ / (p : ℝ))) +
+      C_box * s ^ (k - 2) *
+        ∏ p ∈ T, (combinedEulerWeight ε k Ω p * localMean k Ω p + (k : ℝ)^2 * C_γ) := by
+  set S := ((Fintype.piFinset fun _ : Fin (k - 1) =>
+        Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+      (fun h => inScaledBox X s (fun _ => 0) h))
+  set A : ℕ → ℝ := fun p => combinedEulerWeight ε k Ω p * localMean k Ω p
+  set B : ℕ → (Fin (k - 1) → ℤ) → ℝ := fun p h =>
+    (k : ℝ) ^ 2 * (if Function.Injective (Fin.cons (0 : ZMod p) (fun i => (h i : ZMod p)))
+      then (0:ℝ) else 1)
+  -- Stage 1: Pointwise bound → sum bound
+  have stage1 : ∑ h ∈ S, ∏ p ∈ T, |localCount Ω q
+      (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p - localMean k Ω p| ≤
+      ∑ h ∈ S, ∏ p ∈ T, (A p + B p h) := by
+    apply Finset.sum_le_sum; intro h _
+    apply Finset.prod_le_prod (fun p _ => abs_nonneg _)
+    intro p hp
+    exact local_deviation_pointwise_L1_bound ε k hk Ω hWD hrp q p (hT_sub hp) h
+  -- Stage 2: Apply swap_L1_sum
+  have stage2 : ∑ h ∈ S, ∏ p ∈ T, (A p + B p h) =
+      ∑ U ∈ T.powerset, (∏ p ∈ T \ U, A p) * ∑ h ∈ S, ∏ p ∈ U, B p h := by
+    exact swap_L1_sum T A B S
+  -- Stage 3: Bound collision sums per U using collision_indicator_sum_bound
+  have stage3 : ∀ U ∈ T.powerset,
+      ∑ h ∈ S, ∏ p ∈ U, B p h ≤
+      (∏ p ∈ U, (k : ℝ)^2) *
+        (C_box * (s ^ (k - 1) / ∏ p ∈ U, (p : ℝ) + s ^ ((k - 1) - 1)) * ∏ p ∈ U, C_γ) := by
+    intro U hU
+    exact collision_indicator_sum_bound k hk X C_box C_γ hC_box hC_γ h_coll s hs U
+      (fun p hp => Nat.prime_of_mem_primeFactors (hT_sub (Finset.mem_powerset.mp hU hp)))
+  -- Stage 4: Combine using L1_factorization
+  have stage4 : ∑ U ∈ T.powerset, (∏ p ∈ T \ U, A p) *
+      ((∏ p ∈ U, (k : ℝ)^2) * (C_box * (s ^ (k - 1 : ℕ) / ∏ p ∈ U, (p : ℝ) +
+        s ^ (k - 2 : ℕ)) * ∏ p ∈ U, C_γ)) =
+      C_box * s ^ (k - 1) * ∏ p ∈ T, (A p + (k : ℝ)^2 * (C_γ / (p : ℝ))) +
+      C_box * s ^ (k - 2) * ∏ p ∈ T, (A p + (k : ℝ)^2 * C_γ) := by
+    exact L1_factorization ε k Ω T s C_box C_γ
+  -- Assemble: stages 1-4
+  have step3_bound : ∑ U ∈ T.powerset, (∏ p ∈ T \ U, A p) * ∑ h ∈ S, ∏ p ∈ U, B p h ≤
+      ∑ U ∈ T.powerset, (∏ p ∈ T \ U, A p) *
+        ((∏ p ∈ U, (k : ℝ)^2) * (C_box * (s ^ (k - 1) / ∏ p ∈ U, (p : ℝ) +
+          s ^ ((k - 1) - 1)) * ∏ p ∈ U, C_γ)) := by
+    apply Finset.sum_le_sum; intro U hU
+    exact mul_le_mul_of_nonneg_left (stage3 U hU)
+      (Finset.prod_nonneg fun p hp =>
+        mul_nonneg (combinedEulerWeight_nonneg ε k Ω p
+          (Nat.prime_of_mem_primeFactors (hT_sub (Finset.mem_sdiff.mp hp).1)))
+          (localMean_nonneg k Ω p))
+  have step4_eq : ∑ U ∈ T.powerset, (∏ p ∈ T \ U, A p) *
+      ((∏ p ∈ U, (k : ℝ)^2) * (C_box * (s ^ (k - 1) / ∏ p ∈ U, (p : ℝ) +
+        s ^ ((k - 1) - 1)) * ∏ p ∈ U, C_γ)) =
+      C_box * s ^ (k - 1) * ∏ p ∈ T, (A p + (k : ℝ)^2 * (C_γ / (p : ℝ))) +
+      C_box * s ^ (k - 2) * ∏ p ∈ T, (A p + (k : ℝ)^2 * C_γ) := by
+    convert stage4 using 2
+  linarith [stage1, stage2.le, step3_bound, step4_eq]
+
+/-- The full L1 deviation bound including the prefactor. -/
+private lemma L1_deviation_raw_bound (ε : ℝ) (k : ℕ) (hk : 2 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
+    (hrp : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ))
+    (X : Box (k - 1))
+    (C_box C_γ : ℝ) (hC_box : 0 < C_box) (hC_γ : 0 < C_γ)
+    (h_coll : ∀ (s : ℝ), 1 ≤ s → ∀ (U : Finset ℕ), (∀ p ∈ U, Nat.Prime p) →
+      ∑ h ∈ ((Fintype.piFinset fun _ => Finset.Icc (1:ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+          (fun h => inScaledBox X s (fun _ => 0) h)),
+        (∏ p ∈ U, if Function.Injective (Fin.cons (0 : ZMod p) (fun i => (h i : ZMod p)))
+         then (0:ℝ) else 1)
+      ≤ C_box * (s ^ (k - 1) / ∏ p ∈ U, (p : ℝ) + s ^ ((k - 1) - 1)) * ∏ p ∈ U, C_γ)
+    (q : ℕ) [NeZero q] (hq : Squarefree q)
+    (T : Finset ℕ) (hT_sub : T ⊆ q.primeFactors) (hT_ne : T ≠ ∅) :
+    let Ω_q := crtSubset q Ω
+    let s := (q : ℝ) / Ω_q.card
+    let S := ((Fintype.piFinset fun _ : Fin (k - 1) =>
+          Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+        (fun h => inScaledBox X s (fun _ => 0) h))
+    (1 / (Ω_q.card : ℝ)) * (∏ p ∈ q.primeFactors \ T, localMean k Ω p) *
+      (∑ h ∈ S, ∏ p ∈ T, |localCount Ω q
+          (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p - localMean k Ω p|) ≤
+    (1 / (Ω_q.card : ℝ)) * (∏ p ∈ q.primeFactors \ T, localMean k Ω p) *
+      (C_box * s ^ (k - 1) *
+          ∏ p ∈ T, (combinedEulerWeight ε k Ω p * localMean k Ω p + (k : ℝ)^2 * (C_γ / (p : ℝ))) +
+        C_box * s ^ (k - 2) *
+          ∏ p ∈ T, (combinedEulerWeight ε k Ω p * localMean k Ω p + (k : ℝ)^2 * C_γ)) := by
+  intro Ω_q s S
+  have hc_pos := crtSubset_card_pos_aux Ω hΩ q
+  have hs_ge : 1 ≤ s := by
+    rw [one_le_div (by positivity)]
+    norm_cast; exact le_trans (Finset.card_le_univ _) (by norm_num)
+  gcongr
+  · exact mul_nonneg (by positivity) (Finset.prod_nonneg fun p hp => localMean_nonneg k Ω p)
+  · exact inner_sum_bound ε k hk Ω hWD hrp X C_box C_γ hC_box hC_γ h_coll q T hT_sub s hs_ge rfl
+
+/-
+The prefactor `(1/|Ω_q|) * (∏_{Q\T} μ_p) * C_box * s^(k-1)` collapses to
+`C_box / (∏_T μ_p)` using the global mean factorization.
+-/
+private lemma prefactor_main_collapse (k : ℕ) (hk : 2 ≤ k) (q : ℕ) [NeZero q]
+    (hq : Squarefree q) (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hc : 0 < (crtSubset q Ω).card)
+    (T : Finset ℕ) (hT_sub : T ⊆ q.primeFactors)
+    (C_box : ℝ) :
+    let s := (q : ℝ) / (crtSubset q Ω).card
+    (1 / ((crtSubset q Ω).card : ℝ)) * (∏ p ∈ q.primeFactors \ T, localMean k Ω p) *
+      (C_box * s ^ (k - 1)) =
+    C_box / (∏ p ∈ T, localMean k Ω p) := by
+  -- Apply the prefactor_localMean_collapse' lemma to simplify the expression.
+  have h_simplify : (1 / ((crtSubset q Ω).card : ℝ)) * (∏ p ∈ q.primeFactors, localMean k Ω p) = (((crtSubset q Ω).card : ℝ) / (q : ℝ)) ^ (k - 1 : ℕ) := by
+    grind +suggestions;
+  -- Using the fact that the product over Q is the product over Q\T times the product over T, we can rewrite the left-hand side.
+  have h_prod_split : (∏ p ∈ q.primeFactors, localMean k Ω p) = (∏ p ∈ q.primeFactors \ T, localMean k Ω p) * (∏ p ∈ T, localMean k Ω p) := by
+    rw [ Finset.prod_sdiff hT_sub ];
+  by_cases h : ∏ p ∈ T, localMean k Ω p = 0 <;> simp_all +decide [ division_def, mul_assoc, mul_comm, mul_left_comm ];
+  · exact absurd h_simplify.symm ( pow_ne_zero _ ( mul_ne_zero ( inv_ne_zero ( Nat.cast_ne_zero.mpr ( NeZero.ne q ) ) ) ( Nat.cast_ne_zero.mpr ( Finset.card_ne_zero_of_mem ( Classical.choose_spec hc ) ) ) ) );
+  · field_simp at *;
+    simp_all +decide [ mul_assoc, mul_comm, mul_left_comm, div_eq_mul_inv ];
+    simp +decide [← mul_pow, mul_assoc, mul_left_comm, NeZero.ne];
+    rw [ mul_inv_cancel₀ ( Nat.cast_ne_zero.mpr hc.card_pos.ne' ), one_pow, mul_one ] ; norm_num
+
+/-
+The prefactor `(1/|Ω_q|) * (∏_{Q\T} μ_p) * C_box * s^(k-2)` collapses to
+`C_box / (s * ∏_T μ_p)` using the global mean factorization.
+-/
+private lemma prefactor_error_collapse (k : ℕ) (hk : 2 ≤ k) (q : ℕ) [NeZero q]
+    (hq : Squarefree q) (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hc : 0 < (crtSubset q Ω).card)
+    (T : Finset ℕ) (hT_sub : T ⊆ q.primeFactors)
+    (C_box : ℝ) :
+    let s := (q : ℝ) / (crtSubset q Ω).card
+    (1 / ((crtSubset q Ω).card : ℝ)) * (∏ p ∈ q.primeFactors \ T, localMean k Ω p) *
+      (C_box * s ^ (k - 2)) =
+    C_box / (s * ∏ p ∈ T, localMean k Ω p) := by
+  convert congr_arg ( fun x : ℝ => x * C_box * ( q / ( crtSubset q Ω |> Finset.card ) ) ^ ( k - 2 ) / ( ∏ p ∈ T, localMean k Ω p ) ) ( prefactor_localMean_collapse' k ( by linarith ) q ( by assumption ) ( by assumption ) ( by assumption ) ) using 1 ; ring_nf;
+  · field_simp;
+    rw [ eq_div_iff ];
+    · rw [ ← Finset.prod_sdiff hT_sub ] ; ring;
+    · refine' Finset.prod_ne_zero_iff.mpr _;
+      intro p hp; have := hT_sub hp; simp_all +decide [ localMean ] ;
+      constructor <;> intro h <;> have := hT_sub hp <;> simp_all +decide;
+      contrapose! hc; simp_all +decide [ crtSubset ] ;
+      exact fun x => ⟨ p, this.1, this.2.1, by simp +decide [ h ] ⟩;
+  · rcases k with ( _ | _ | k ) <;> simp_all +decide [pow_succ, mul_comm, mul_left_comm];
+    simp +decide [ ← mul_pow, mul_assoc, mul_comm, mul_left_comm, div_eq_mul_inv, NeZero.ne ];
+    exact Or.inl <| Or.inl <| by rw [ mul_inv_cancel₀ <| Nat.cast_ne_zero.mpr hc.card_pos.ne', one_pow, one_mul ] ;
+
+/-
+Per-factor bound: `combinedEulerWeight * μ + k²*C_γ/p ≤ modifiedEulerWeight(C_γ*C_μ) * μ`
+when `1/μ ≤ C_μ/p`.
+-/
+private lemma per_factor_modifiedEulerWeight_bound (ε : ℝ) (k : ℕ)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (C_γ C_μ : ℝ) (hC_γ : 0 ≤ C_γ) (hC_μ : 0 < C_μ)
+    (p : ℕ) (hp : p.Prime)
+    (h_inv : 1 / localMean k Ω p ≤ C_μ / (p : ℝ)) :
+    (combinedEulerWeight ε k Ω p * localMean k Ω p + (k : ℝ)^2 * (C_γ / (p : ℝ))) /
+      localMean k Ω p ≤
+    modifiedEulerWeight ε k (C_γ * C_μ) Ω p := by
+  by_cases h : localMean k Ω p = 0 <;> simp_all +decide [ div_eq_mul_inv ];
+  · refine' add_nonneg _ _;
+    · exact combinedEulerWeight_nonneg ε k Ω p hp
+    · positivity;
+  · have h_div : (k : ℝ)^2 * C_γ * (p : ℝ)⁻¹ * (localMean k Ω p)⁻¹ ≤ (k : ℝ)^2 * C_γ * (p : ℝ)⁻¹ * C_μ * (p : ℝ)⁻¹ := by
+      convert mul_le_mul_of_nonneg_left h_inv ( show 0 ≤ ( k : ℝ ) ^ 2 * C_γ * ( p : ℝ ) ⁻¹ by positivity ) using 1 ; ring;
+    convert add_le_add_left h_div ( combinedEulerWeight ε k Ω p ) using 1 <;> ring_nf;
+    · rw [ mul_assoc, mul_inv_cancel₀ h, mul_one ];
+    · unfold modifiedEulerWeight combinedEulerWeight; ring_nf;
+      norm_cast ; norm_num ; ring
+
 public lemma per_T_deviation_le_modifiedEulerWeight (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
@@ -250,6 +471,110 @@ public lemma per_T_deviation_le_modifiedEulerWeight (ε : ℝ) (hε : 0 < ε) (k
               localMean k Ω p)) *
             ∏ p ∈ q.primeFactors \ T, localMean k Ω p)| ≤
       C_T * (∏ p ∈ T, modifiedEulerWeight ε k C_gamma Ω p + (1 / s) * ∏ p ∈ T, (combinedEulerWeight ε k Ω p + (k : ℝ)^2 * C_gamma / localMean k Ω p)) := by
-  sorry
+  -- Step 1: Obtain constants
+  obtain ⟨C_box, C_γ, hC_box, hC_γ, h_coll⟩ := box_collision_sum_bound (k - 1) (by omega) X
+  obtain ⟨C_μ, hC_μ, h_inv_μ⟩ := inv_mu_le_C_div_p k hk Ω hΩ hrp
+  -- Step 2: Choose witnesses
+  refine ⟨C_γ * C_μ, mul_nonneg (le_of_lt hC_γ) (le_of_lt hC_μ), C_box, hC_box, ?_⟩
+  intro q _ hq T hT
+  -- Step 3: Setup
+  have hT_sub : T ⊆ q.primeFactors := Finset.mem_powerset.mp (Finset.mem_filter.mp hT).1
+  have hT_ne : T ≠ ∅ := (Finset.mem_filter.mp hT).2
+  have hT_primes : ∀ p ∈ T, p.Prime := fun p hp => Nat.prime_of_mem_primeFactors (hT_sub hp)
+  set Ω_q := crtSubset q Ω
+  set s := (q : ℝ) / Ω_q.card
+  have hc_pos : 0 < Ω_q.card := crtSubset_card_pos_aux Ω hΩ q
+  have hs_ge : 1 ≤ s := by
+    rw [one_le_div (by positivity)]
+    norm_cast; exact le_trans (Finset.card_le_univ _) (by norm_num)
+  set S := ((Fintype.piFinset fun _ : Fin (k - 1) =>
+        Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+      (fun h => inScaledBox X s (fun _ => 0) h))
+  -- Step 4: The LHS factors as prefactor * |∑ ∏ dev|
+  -- |sum (c * (prod_T * prod_rest))| = c * prod_rest * |sum prod_T|
+  -- where c = 1/|Omega_q|, prod_rest = prod_{Q\T} mu_p (both nonneg)
+  -- Then |sum prod_T| ≤ sum prod_T |dev| ≤ sum prod |dev|
+  -- Then apply L1_deviation_raw_bound
+  have h_prefactor_nonneg : 0 ≤ 1 / (Ω_q.card : ℝ) * ∏ p ∈ q.primeFactors \ T, localMean k Ω p :=
+    mul_nonneg (by positivity) (Finset.prod_nonneg fun p _ => localMean_nonneg k Ω p)
+  -- Step 5: Factor and bound
+  have h_abs_factored : |∑ h ∈ S, (1 / (Ω_q.card : ℝ)) *
+      ((∏ p ∈ T, (localCount Ω q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p -
+        localMean k Ω p)) * ∏ p ∈ q.primeFactors \ T, localMean k Ω p)| ≤
+    (1 / (Ω_q.card : ℝ)) * (∏ p ∈ q.primeFactors \ T, localMean k Ω p) *
+      (∑ h ∈ S, ∏ p ∈ T, |localCount Ω q
+        (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p - localMean k Ω p|) := by
+    rw [ Finset.mul_sum _ _ _ ];
+    convert Finset.abs_sum_le_sum_abs _ _ using 2 ; norm_num [ abs_mul, abs_div, abs_of_pos ( show 0 < ( #Ω_q : ℝ ) by positivity ) ] ; ring_nf;
+    · rw [ Finset.abs_prod, abs_of_nonneg ( show 0 ≤ ∏ p ∈ q.primeFactors \ T, localMean k Ω p from _ ) ] ; ring;
+      contrapose! h_prefactor_nonneg;
+      exact mul_neg_of_pos_of_neg ( by positivity ) h_prefactor_nonneg;
+    · infer_instance
+  -- Step 6: Apply L1_deviation_raw_bound
+  have h_raw := L1_deviation_raw_bound ε k hk Ω hΩ hWD hrp X C_box C_γ hC_box hC_γ h_coll
+    q hq T hT_sub hT_ne
+  -- Step 7: Main term bound
+  have h_main_term : (1 / (Ω_q.card : ℝ)) * (∏ p ∈ q.primeFactors \ T, localMean k Ω p) *
+      (C_box * s ^ (k - 1) *
+        ∏ p ∈ T, (combinedEulerWeight ε k Ω p * localMean k Ω p + (k : ℝ)^2 * (C_γ / (p : ℝ)))) ≤
+    C_box * ∏ p ∈ T, modifiedEulerWeight ε k (C_γ * C_μ) Ω p := by
+    have h_main : (1 / (Ω_q.card : ℝ)) * (∏ p ∈ q.primeFactors \ T, localMean k Ω p) * (C_box * s ^ (k - 1)) = C_box / (∏ p ∈ T, localMean k Ω p) := by
+      exact prefactor_main_collapse k hk q hq Ω hc_pos T hT_sub C_box
+    rw [ ← mul_assoc, h_main ];
+    rw [ div_mul_eq_mul_div, div_le_iff₀ ];
+    · rw [ mul_assoc, ← Finset.prod_mul_distrib ];
+      gcongr with p hp;
+      · intro p hp
+        apply add_nonneg;
+        · exact mul_nonneg (combinedEulerWeight_nonneg ε k Ω p (hT_primes p hp)) (localMean_nonneg k Ω p)
+        · positivity;
+      · have := per_factor_modifiedEulerWeight_bound ε k Ω C_γ C_μ ( by positivity ) hC_μ p ( hT_primes p hp ) ( h_inv_μ p ( hT_primes p hp ) );
+        rwa [ div_le_iff₀ ( show 0 < localMean k Ω p from ?_ ) ] at this;
+        exact div_pos ( pow_pos ( Nat.cast_pos.mpr ( Finset.card_pos.mpr ( hΩ p ( hT_primes p hp ) ) ) ) _ ) ( pow_pos ( Nat.cast_pos.mpr ( Nat.Prime.pos ( hT_primes p hp ) ) ) _ );
+    · refine' Finset.prod_pos fun p hp => _;
+      refine' div_pos _ _;
+      · exact pow_pos ( Nat.cast_pos.mpr ( Finset.card_pos.mpr ( hΩ p ( hT_primes p hp ) ) ) ) _;
+      · exact_mod_cast pow_pos ( Nat.Prime.pos ( hT_primes p hp ) ) _
+  -- Step 8: Error term bound
+  have h_error_term : (1 / (Ω_q.card : ℝ)) * (∏ p ∈ q.primeFactors \ T, localMean k Ω p) *
+      (C_box * s ^ (k - 2) *
+        ∏ p ∈ T, (combinedEulerWeight ε k Ω p * localMean k Ω p + (k : ℝ)^2 * C_γ)) ≤
+    C_box * (1 / s) * ∏ p ∈ T, (combinedEulerWeight ε k Ω p + (k : ℝ)^2 * (C_γ * C_μ) / localMean k Ω p) := by
+    have h_error_term : (1 / (Ω_q.card : ℝ)) * (∏ p ∈ q.primeFactors \ T, localMean k Ω p) * (C_box * s ^ (k - 2)) = C_box / (s * ∏ p ∈ T, localMean k Ω p) := by
+      convert prefactor_error_collapse k hk q hq Ω hc_pos T hT_sub C_box using 1;
+    rw [ ← mul_assoc, h_error_term ];
+    have h_error_term : ∀ p ∈ T, (combinedEulerWeight ε k Ω p * localMean k Ω p + (k : ℝ)^2 * C_γ) / localMean k Ω p ≤ combinedEulerWeight ε k Ω p + (k : ℝ)^2 * (C_γ * C_μ) / localMean k Ω p := by
+      intro p hp
+      have h_pos : 0 < localMean k Ω p := by
+        exact div_pos ( pow_pos ( Nat.cast_pos.mpr ( Finset.card_pos.mpr ( hΩ p ( hT_primes p hp ) ) ) ) _ ) ( pow_pos ( Nat.cast_pos.mpr ( Nat.Prime.pos ( hT_primes p hp ) ) ) _ );
+      rw [ add_div, mul_div_cancel_right₀ _ h_pos.ne' ];
+      gcongr;
+      have := h_inv_μ p ( hT_primes p hp );
+      rw [ div_le_div_iff₀ ] at this <;> nlinarith [ show ( p : ℝ ) ≥ 1 by exact_mod_cast Nat.Prime.pos ( hT_primes p hp ), show ( localMean k Ω p : ℝ ) ≤ p by exact_mod_cast localMean_le k ( by linarith ) Ω p ( hT_primes p hp ) ];
+    convert mul_le_mul_of_nonneg_left ( Finset.prod_le_prod ?_ h_error_term ) ( show 0 ≤ C_box / s by positivity ) using 1;
+    · simp +decide [div_eq_mul_inv, mul_assoc, mul_comm, Finset.prod_mul_distrib];
+    · ring;
+    · intro p hp; exact div_nonneg ( add_nonneg ( mul_nonneg ( combinedEulerWeight_nonneg ε k Ω p ( hT_primes p hp ) ) ( localMean_nonneg k Ω p ) ) ( mul_nonneg ( sq_nonneg _ ) hC_γ.le ) ) ( localMean_nonneg k Ω p ) ;
+  -- Step 9: Assemble
+  have h_combined : (1 / (Ω_q.card : ℝ)) * (∏ p ∈ q.primeFactors \ T, localMean k Ω p) *
+      (C_box * s ^ (k - 1) *
+        ∏ p ∈ T, (combinedEulerWeight ε k Ω p * localMean k Ω p + (k : ℝ)^2 * (C_γ / (p : ℝ))) +
+       C_box * s ^ (k - 2) *
+        ∏ p ∈ T, (combinedEulerWeight ε k Ω p * localMean k Ω p + (k : ℝ)^2 * C_γ)) ≤
+    C_box * (∏ p ∈ T, modifiedEulerWeight ε k (C_γ * C_μ) Ω p +
+    (1 / s) * ∏ p ∈ T, (combinedEulerWeight ε k Ω p + (k : ℝ)^2 * (C_γ * C_μ) / localMean k Ω p)) := by
+    have : (1 / (Ω_q.card : ℝ)) * (∏ p ∈ q.primeFactors \ T, localMean k Ω p) *
+        (C_box * s ^ (k - 1) *
+          ∏ p ∈ T, (combinedEulerWeight ε k Ω p * localMean k Ω p + (k : ℝ)^2 * (C_γ / (p : ℝ))) +
+         C_box * s ^ (k - 2) *
+          ∏ p ∈ T, (combinedEulerWeight ε k Ω p * localMean k Ω p + (k : ℝ)^2 * C_γ)) =
+      ((1 / (Ω_q.card : ℝ)) * (∏ p ∈ q.primeFactors \ T, localMean k Ω p) *
+        (C_box * s ^ (k - 1) *
+          ∏ p ∈ T, (combinedEulerWeight ε k Ω p * localMean k Ω p + (k : ℝ)^2 * (C_γ / (p : ℝ))))) +
+      ((1 / (Ω_q.card : ℝ)) * (∏ p ∈ q.primeFactors \ T, localMean k Ω p) *
+        (C_box * s ^ (k - 2) *
+          ∏ p ∈ T, (combinedEulerWeight ε k Ω p * localMean k Ω p + (k : ℝ)^2 * C_γ))) := by ring
+    linarith [h_main_term, h_error_term]
+  exact le_trans h_abs_factored (le_trans h_raw h_combined)
 
 end PoissonCRT

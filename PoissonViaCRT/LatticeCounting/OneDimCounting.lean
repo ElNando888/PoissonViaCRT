@@ -23,7 +23,7 @@ module
 public import Mathlib.Data.Int.Interval
 public import Mathlib.Data.Int.ModEq
 public import Mathlib.Data.Real.Basic
-public import Mathlib.Tactic
+public import Mathlib.Tactic -- shake: keep
 import Mathlib.Algebra.Order.Ring.Star
 import Mathlib.Data.Int.Star
 

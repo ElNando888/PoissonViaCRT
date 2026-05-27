@@ -34,6 +34,7 @@ open Finset BigOperators Classical
 namespace PoissonCRT
 
 /-- Extend `h : Fin m → ℤ` to `Fin (m+1) → ℤ` by prepending `0`. -/
+@[expose]
 public noncomputable def extendH (m : ℕ) (h : Fin m → ℤ) : Fin (m + 1) → ℤ := Fin.cons 0 h
 
 /-! ## 1. Strict monotonicity and injectivity from box membership -/
@@ -138,6 +139,7 @@ public lemma injective_fin_cons_of_large {m : ℕ} (X : Box m) (s : ℝ) (hs : 1
 /-! ## 2. Non-injectivity implies divisibility of some difference -/
 
 /-- The set of ordered pairs `(i, j)` with `i < j` in `Fin (m + 1)`. -/
+@[expose]
 public noncomputable def pairsBelow (m : ℕ) : Finset (Fin (m + 1) × Fin (m + 1)) :=
   Finset.univ.filter fun ij => ij.1 < ij.2
 

@@ -23,7 +23,7 @@ module
 public import Mathlib.Algebra.BigOperators.Group.Finset.Basic
 public import Mathlib.Data.Finset.Card
 public import Mathlib.Data.Fintype.Basic
-import Mathlib.Tactic
+import Mathlib.Tactic -- shake: keep
 
 /-!
 # Module 4: SequentialCounting
