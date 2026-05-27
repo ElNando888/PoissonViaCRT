@@ -18,6 +18,7 @@ module
 import PoissonViaCRT.Defs
 import PoissonViaCRT.CRTMultiplicativity
 import PoissonViaCRT.DeviationBoundHelper
+import Mathlib.Analysis.SpecialFunctions.Trigonometric.Bounds
 
 set_option linter.unusedVariables false
 
@@ -882,9 +883,244 @@ lemma deviation_dft_q1_q2_bound (k : ℕ) (hk : 2 ≤ k) (ε : ℝ) (hε : 0 < �
         · exact Finset.prod_nonneg fun _ _ => Real.rpow_nonneg ( Nat.cast_nonneg _ ) _;
       · exact Finset.disjoint_filter.mpr fun _ _ _ _ => by tauto;
 
+/-! ### Helpers for the DFT interval L¹ bound -/
+
+/-
+**Jordan's inequality**: `sin x ≥ (2/π) x` for `x ∈ [0, π/2]`.
+-/
+private lemma jordan_inequality {x : ℝ} (hx0 : 0 ≤ x) (hx1 : x ≤ Real.pi / 2) :
+    Real.sin x ≥ 2 / Real.pi * x := by
+  exact le_trans ( by ring_nf; norm_num ) ( Real.mul_le_sin hx0 hx1 )
+
+/-
+The harmonic sum `∑_{j=1}^{n} 1/j ≤ log(n) + 1` for `n ≥ 1`.
+-/
+private lemma harmonic_sum_le_log_add_one {n : ℕ} (hn : 1 ≤ n) :
+    ∑ j ∈ Finset.Icc 1 n, (1 / (j : ℝ)) ≤ Real.log n + 1 := by
+  induction' hn with n hn ih <;> norm_num [ Finset.sum_Ioc_succ_top, (Nat.succ_eq_succ ▸ Finset.Icc_succ_left_eq_Ioc) ] at *;
+  rw [ show ( n : ℝ ) + 1 = n * ( 1 + ( n : ℝ ) ⁻¹ ) by nlinarith only [ mul_inv_cancel₀ ( by positivity : ( n : ℝ ) ≠ 0 ) ], Real.log_mul ( by positivity ) ( by positivity ) ];
+  nlinarith [ inv_pos.mpr ( by positivity : 0 < ( n : ℝ ) * ( 1 + ( n : ℝ ) ⁻¹ ) ), mul_inv_cancel₀ ( by positivity : ( n : ℝ ) * ( 1 + ( n : ℝ ) ⁻¹ ) ≠ 0 ), Real.log_inv ( 1 + ( n : ℝ ) ⁻¹ ), Real.log_le_sub_one_of_pos ( inv_pos.mpr ( by positivity : 0 < ( 1 + ( n : ℝ ) ⁻¹ ) ) ), mul_inv_cancel₀ ( by positivity : ( n : ℝ ) ≠ 0 ), mul_inv_cancel₀ ( by positivity : ( 1 + ( n : ℝ ) ⁻¹ ) ≠ 0 ) ]
+
+/-
+The norm of `1 - exp(iθ)` equals `2 |sin(θ/2)|`.
+-/
+private lemma norm_one_sub_cexp_mul_I (θ : ℝ) :
+    ‖1 - Complex.exp (↑θ * Complex.I)‖ = 2 * |Real.sin (θ / 2)| := by
+  norm_num [ Complex.norm_def, Complex.normSq, Complex.exp_re, Complex.exp_im ];
+  rw [ Real.sqrt_eq_iff_mul_self_eq ] <;> ring_nf <;> norm_num [ Real.sin_sq, Real.cos_sq ] <;> ring_nf ; norm_num [ abs_mul, abs_of_nonneg ];
+  exact Real.cos_le_one _
+
+/-
+For `z` on the unit circle with `z ≠ 1`,
+    `‖∑_{j=0}^{n-1} z^j‖ ≤ 2 / ‖1 - z‖`.
+-/
+private lemma geom_partial_sum_norm_le {z : ℂ} (hz : ‖z‖ = 1) (hz1 : z ≠ 1) (n : ℕ) :
+    ‖∑ j ∈ Finset.range n, z ^ j‖ ≤ 2 / ‖1 - z‖ := by
+  -- By geom_sum_eq (since z ≠ 1), ∑ z^j = (z^n - 1)/(z - 1) = (1 - z^n)/(1 - z).
+  have h_sum : ∑ j ∈ Finset.range n, z ^ j = (1 - z^n) / (1 - z) := by
+    rw [ ← neg_div_neg_eq, geom_sum_eq ] <;> aesop;
+  rw [ h_sum, norm_div ];
+  gcongr;
+  exact le_trans ( norm_sub_le _ _ ) ( by norm_num [ hz ] )
+
+/-
+The sum `∑_{j=1}^{q-1} 1/(q |sin(π j / q)|)` is at most `log(q) + 1`.
+-/
+set_option maxHeartbeats 800000 in
+private lemma sum_inv_sin_le_log_add_one (q : ℕ) (hq : 1 ≤ q) :
+    ∑ j ∈ Finset.Icc 1 (q - 1), (1 / ((q : ℝ) * |Real.sin (Real.pi * (j : ℝ) / q)|)) ≤
+      Real.log q + 1 := by
+  -- Pair terms j and q-j. The sum over j=1 to q-1 of 1/(q|sin(πj/q)|) equals ∑_{j=1}^{⌊q/2⌋} (1/(q|sin(πj/q)|) + 1/(q|sin(π(q-j)/q)|)) plus possibly a middle term.
+  have h_pair : ∑ j ∈ Finset.Icc 1 (q - 1), 1 / (q * |Real.sin (Real.pi * j / q)|) ≤ ∑ j ∈ Finset.Icc 1 (q / 2), 2 / (q * |Real.sin (Real.pi * j / q)|) := by
+    rcases Nat.even_or_odd' q with ⟨ k, rfl | rfl ⟩ <;> norm_num [ Nat.add_div ] at *; (
+    -- By pairing terms $j$ and $k-j$, we can simplify the sum.
+    have h_pair : ∑ j ∈ Finset.Icc 1 (2 * k - 1), |Real.sin (Real.pi * j / (2 * k))|⁻¹ * ((k : ℝ)⁻¹ * (1 / 2)) = ∑ j ∈ Finset.Icc 1 (k - 1), |Real.sin (Real.pi * j / (2 * k))|⁻¹ * ((k : ℝ)⁻¹ * (1 / 2)) + ∑ j ∈ Finset.Icc 1 (k - 1), |Real.sin (Real.pi * (2 * k - j) / (2 * k))|⁻¹ * ((k : ℝ)⁻¹ * (1 / 2)) + |Real.sin (Real.pi * k / (2 * k))|⁻¹ * ((k : ℝ)⁻¹ * (1 / 2)) := by
+      have h_pair : Finset.Icc 1 (2 * k - 1) = Finset.Icc 1 (k - 1) ∪ Finset.image (fun j => 2 * k - j) (Finset.Icc 1 (k - 1)) ∪ {k} := by
+        ext j
+        simp [Finset.mem_Icc, Finset.mem_image];
+        exact ⟨ fun h => if hj : j = k then Or.inl hj else if hj' : j ≤ k - 1 then Or.inr <| Or.inl ⟨ h.1, hj' ⟩ else Or.inr <| Or.inr ⟨ 2 * k - j, ⟨ by omega, by omega ⟩, by omega ⟩, fun h => by rcases h with ( rfl | ⟨ hj₁, hj₂ ⟩ | ⟨ a, ⟨ ha₁, ha₂ ⟩, rfl ⟩ ) <;> omega ⟩ ;
+      rw [ h_pair, Finset.sum_union, Finset.sum_union ] <;> norm_num [ Finset.disjoint_right ];
+      · rw [ Finset.sum_image ] <;> norm_num;
+        · exact Finset.sum_congr rfl fun x hx => by rw [ Nat.cast_sub ( by linarith [ Finset.mem_Icc.mp hx, Nat.sub_add_cancel ( by linarith : 1 ≤ k ) ] ) ] ; push_cast; ring;
+        · exact fun x hx y hy hxy => by rw [ tsub_right_inj ] at hxy <;> linarith [ hx.1, hx.2, hy.1, hy.2, Nat.sub_add_cancel ( by linarith : 1 ≤ k ) ] ;
+      · intros; omega;
+      · exact ⟨ fun _ => by linarith, fun x hx₁ hx₂ => by omega ⟩;
+    rcases k with ( _ | k ) <;> simp_all +decide;
+    rw [ show ( Finset.Icc 1 ( k + 1 ) ) = Finset.Icc 1 k ∪ { ( k + 1 ) } from ?_, Finset.sum_union ] <;> norm_num [ Nat.cast_add_one_ne_zero ];
+    · norm_num [ div_eq_mul_inv, mul_assoc, mul_comm, mul_left_comm, Finset.mul_sum _ _ _ ] at *;
+      norm_num [ ← mul_assoc, ← Finset.sum_add_distrib ] at *;
+      refine' add_le_add _ _;
+      · refine' Finset.sum_le_sum fun x hx => _;
+        rw [ show Real.pi * ( k + 1 : ℝ ) ⁻¹ * ( 1 / 2 ) * ( ( k + 1 : ℝ ) * 2 - x ) = Real.pi - Real.pi * x * ( k + 1 : ℝ ) ⁻¹ * ( 1 / 2 ) by nlinarith [ Real.pi_pos, mul_inv_cancel_left₀ ( by linarith : ( k + 1 : ℝ ) ≠ 0 ) Real.pi ] ] ; norm_num [ Real.sin_pi_sub ] ; ring_nf ; norm_num;
+      · exact mul_le_mul_of_nonneg_right ( mul_le_of_le_one_right ( by positivity ) ( by norm_num ) ) ( by positivity );
+    · grind +splitIndPred);
+    -- By pairing terms $j$ and $2k+1-j$, we can simplify the sum.
+    have h_pair : ∑ j ∈ Finset.Icc 1 (2 * k), |Real.sin (Real.pi * j / (2 * k + 1))|⁻¹ * (2 * k + 1 : ℝ)⁻¹ = ∑ j ∈ Finset.Icc 1 k, (|Real.sin (Real.pi * j / (2 * k + 1))|⁻¹ * (2 * k + 1 : ℝ)⁻¹ + |Real.sin (Real.pi * (2 * k + 1 - j) / (2 * k + 1))|⁻¹ * (2 * k + 1 : ℝ)⁻¹) := by
+      have h_pair : Finset.Icc 1 (2 * k) = Finset.image (fun j => j) (Finset.Icc 1 k) ∪ Finset.image (fun j => 2 * k + 1 - j) (Finset.Icc 1 k) := by
+        ext j
+        simp [Finset.mem_union, Finset.mem_image];
+        exact ⟨ fun h => if h' : j ≤ k then Or.inl ⟨ h.1, h' ⟩ else Or.inr ⟨ 2 * k + 1 - j, ⟨ by omega, by omega ⟩, by omega ⟩, fun h => h.elim ( fun h => ⟨ h.1, by linarith ⟩ ) fun ⟨ a, ⟨ ha₁, ha₂ ⟩, ha₃ ⟩ => ⟨ by omega, by omega ⟩ ⟩;
+      rw [ h_pair, Finset.sum_union, Finset.sum_image, Finset.sum_image ] <;> norm_num;
+      · rw [ ← Finset.sum_add_distrib ] ; refine' Finset.sum_congr rfl fun x hx => _ ; rw [ Nat.cast_sub ( by linarith [ Finset.mem_Icc.mp hx ] ) ] ; push_cast ; ring;
+      · exact fun x hx y hy hxy => by rw [ tsub_right_inj ] at hxy <;> linarith [ hx.1, hx.2, hy.1, hy.2 ] ;
+      · exact Finset.disjoint_left.mpr fun x hx₁ hx₂ => by obtain ⟨ y, hy₁, hy₂ ⟩ := Finset.mem_image.mp hx₂; rw [ tsub_eq_iff_eq_add_of_le ] at hy₂ <;> linarith [ Finset.mem_Icc.mp hx₁, Finset.mem_Icc.mp hy₁ ] ;
+    rw [ h_pair ] ; refine Finset.sum_le_sum fun i hi => ?_; rw [ show Real.pi * ( 2 * k + 1 - i ) / ( 2 * k + 1 ) = Real.pi - Real.pi * i / ( 2 * k + 1 ) by rw [ sub_div' ] <;> ring ; positivity ] ; norm_num [ Real.sin_pi_sub ] ; ring_nf ; norm_num;
+    rw [ ← mul_inv ] ; ring_nf ; norm_num;
+  -- Use jordan_inequality to get |sin(πj/q)| ≥ 2(πj/q)/π = 2j/q for j ≤ q/2.
+  have h_jordan : ∀ j ∈ Finset.Icc 1 (q / 2), |Real.sin (Real.pi * j / q)| ≥ 2 * j / q := by
+    intro j hj; rw [ abs_of_nonneg ( Real.sin_nonneg_of_nonneg_of_le_pi ( by positivity ) ( by rw [ div_le_iff₀ ( by positivity ) ] ; nlinarith [ Real.pi_pos, show ( j : ℝ ) ≤ q / 2 by exact le_div_iff₀' ( by positivity ) |>.2 <| by norm_cast; linarith [ Finset.mem_Icc.mp hj, Nat.div_mul_le_self q 2 ] ] ) ) ] ; convert jordan_inequality _ _ using 1 <;> ring_nf <;> norm_num [ show q ≠ 0 by positivity ] ;
+    · positivity;
+    · rw [ ← div_eq_mul_inv, div_le_iff₀ ( by positivity ) ] ; nlinarith [ Real.pi_pos, show ( j : ℝ ) ≤ q / 2 by exact le_div_iff₀' ( by positivity ) |>.2 <| by norm_cast; linarith [ Finset.mem_Icc.mp hj, Nat.div_mul_le_self q 2 ] ];
+  -- Therefore, 2/(q sin(πj/q)) ≤ 2/(q * 2j/q) = 1/j.
+  have h_bound : ∑ j ∈ Finset.Icc 1 (q / 2), 2 / (q * |Real.sin (Real.pi * j / q)|) ≤ ∑ j ∈ Finset.Icc 1 (q / 2), (1 / (j : ℝ)) := by
+    apply Finset.sum_le_sum fun j hj => ?_;
+    rw [ div_le_div_iff₀ ] <;> nlinarith [ h_jordan j hj, show ( j : ℝ ) ≥ 1 by exact_mod_cast Finset.mem_Icc.mp hj |>.1, show ( q : ℝ ) ≥ 2 * j by norm_cast; linarith [ Finset.mem_Icc.mp hj |>.2, Nat.div_mul_le_self q 2 ], mul_div_cancel₀ ( 2 * ( j : ℝ ) ) ( by positivity : ( q : ℝ ) ≠ 0 ) ];
+  refine le_trans h_pair <| h_bound.trans ?_;
+  have h_harmonic : ∀ n : ℕ, 1 ≤ n → ∑ j ∈ Finset.Icc 1 n, (1 / (j : ℝ)) ≤ Real.log n + 1 :=
+    fun n hn => harmonic_sum_le_log_add_one hn;
+  exact if h : 1 ≤ q / 2 then le_trans ( h_harmonic _ h ) ( by gcongr ; omega ) else by interval_cases q / 2 ; norm_num ; positivity;
+
+/-
+At frequency `ξ = 0`, the DFT of the interval indicator has norm at most `1`.
+-/
+private lemma dft_interval_norm_at_zero (q : ℕ) [NeZero q] (L : ℕ) :
+    ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 L then (1 : ℂ) else 0)
+      (fun _ => (0 : ZMod q))‖ ≤ 1 := by
+  unfold dft;
+  simp +decide [ character ];
+  rw [ inv_mul_le_iff₀ ] <;> norm_cast <;> norm_num;
+  · convert Finset.card_le_card ( show Finset.univ.filter ( fun x : Fin 1 → ZMod q => 1 ≤ ( x 0 ).val ∧ ( x 0 ).val ≤ L ) ⊆ Finset.univ from Finset.filter_subset _ _ ) using 1;
+    simp +decide [ Finset.card_univ ];
+  · exact NeZero.pos q
+
+/-
+The 1D DFT factors through a sum over `ZMod q`.
+-/
+private lemma dft_one_dim_eq (q : ℕ) [NeZero q]
+    (f : ZMod q → ℂ) (ξ : ZMod q) :
+    dft q 1 (fun x => f (x 0)) (fun _ => ξ) =
+      (1 / (q : ℂ)) * ∑ a : ZMod q, f a * starRingEnd ℂ (additiveChar q ξ a) := by
+  -- By definition of DFT, we can rewrite the sum over `Fin 1 → ZMod q` as a sum over `ZMod q`.
+  have h_sum_eq : ∑ x : Fin 1 → ZMod q, f (x 0) * starRingEnd ℂ (character q 1 (fun _ => ξ) x) = ∑ a : ZMod q, f a * starRingEnd ℂ (additiveChar q ξ a) := by
+    refine' Finset.sum_bij ( fun x _ => x 0 ) _ _ _ _ <;> simp +decide;
+    · exact fun a₁ a₂ h => funext fun i => by fin_cases i; exact h;
+    · exact fun b => ⟨ fun _ => b, rfl ⟩;
+    · exact fun a => Or.inl ( by unfold character; simp +decide );
+  convert congr_arg ( fun x : ℂ => ( 1 / ( q : ℂ ) ) * x ) h_sum_eq using 1;
+  convert rfl using 2 ; norm_num [ dft, character ]
+
+/-
+`conj(additiveChar q ξ a) = (conj(additiveChar q ξ 1))^(a.val)`.
+-/
+private lemma star_additiveChar_eq_pow (q : ℕ) [NeZero q] (ξ a : ZMod q) :
+    starRingEnd ℂ (additiveChar q ξ a) =
+      (starRingEnd ℂ (additiveChar q ξ 1)) ^ a.val := by
+  convert congr_arg ( starRingEnd ℂ ) ( additiveChar_eq_exp_pow q ξ a ) using 1;
+  rw [ additiveChar_eq_exp_pow ];
+  rcases q with ( _ | _ | q ) <;> norm_num [ ZMod.val ] at *
+
+/-
+`‖conj(additiveChar q ξ 1)‖ = 1`.
+-/
+private lemma norm_star_additiveChar_one (q : ℕ) [NeZero q] (ξ : ZMod q) :
+    ‖starRingEnd ℂ (additiveChar q ξ 1)‖ = 1 := by
+  convert norm_additiveChar q ξ 1 using 1;
+  convert norm_star ( additiveChar q ξ 1 ) using 1
+
+/-
+For `ξ ≠ 0`, `conj(additiveChar q ξ 1) ≠ 1`.
+-/
+private lemma star_additiveChar_one_ne_one (q : ℕ) [NeZero q]
+    (ξ : ZMod q) (hξ : ξ ≠ 0) :
+    starRingEnd ℂ (additiveChar q ξ 1) ≠ 1 := by
+  refine' fun h => hξ _;
+  -- If $additiveChar q ξ 1 = 1$, then $2πi (ξ.val / q) = 2πin$ for some integer $n$, implying $ξ.val = nq$.
+  have h_exp_eq : ∃ n : ℤ, ξ.val = n * q := by
+    have h_exp_eq : ∃ n : ℤ, (2 * Real.pi * ξ.val / q : ℝ) = 2 * Real.pi * n := by
+      have h_arg : Complex.exp (2 * Real.pi * Complex.I * (ξ.val : ℝ) / (q : ℝ)) = 1 := by
+        convert congr_arg Star.star h using 1 ; norm_num [ additiveChar ];
+        · cases q <;> aesop;
+        · norm_num [ Complex.ext_iff ];
+      rw [ Complex.exp_eq_one_iff ] at h_arg;
+      obtain ⟨ n, hn ⟩ := h_arg; use n; norm_num [ Complex.ext_iff ] at hn ⊢; ring_nf at *; aesop;
+    exact ⟨ h_exp_eq.choose, by rw [ ← @Int.cast_inj ℝ ] ; push_cast; nlinarith [ Real.pi_pos, mul_div_cancel₀ ( 2 * Real.pi * ξ.val : ℝ ) ( show ( q : ℝ ) ≠ 0 by exact Nat.cast_ne_zero.mpr <| NeZero.ne q ), h_exp_eq.choose_spec ] ⟩;
+  cases' h_exp_eq with n hn; have := congr_arg ( fun x : ℤ => x : ℤ → ZMod q ) hn; norm_num at this; aesop;
+
+/-
+`‖1 - conj(additiveChar q ξ 1)‖ = 2 * |sin(π * ξ.val / q)|`.
+-/
+private lemma norm_one_sub_star_additiveChar (q : ℕ) [NeZero q] (ξ : ZMod q) :
+    ‖1 - starRingEnd ℂ (additiveChar q ξ 1)‖ =
+      2 * |Real.sin (Real.pi * (ξ.val : ℝ) / q)| := by
+  convert norm_one_sub_cexp_mul_I ( - ( 2 * Real.pi * ξ.val / q ) ) using 1;
+  · norm_num [ Complex.norm_def, Complex.normSq, Complex.exp_re, Complex.exp_im, additiveChar ];
+    norm_num [ ZMod.cast, ZMod.val ];
+    cases q <;> norm_num at *;
+  · ring_nf; norm_num [ mul_div ] ;
+
+/-
+At frequency `ξ ≠ 0`, the DFT of the interval indicator has norm at most
+    `1 / (q * |sin(π ξ / q)|)`.
+-/
+private lemma dft_interval_norm_at_nonzero (q : ℕ) [NeZero q] (L : ℕ)
+    (ξ : ZMod q) (hξ : ξ ≠ 0) :
+    ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 L then (1 : ℂ) else 0)
+      (fun _ => ξ)‖ ≤
+      1 / ((q : ℝ) * |Real.sin (Real.pi * (ξ.val : ℝ) / q)|) := by
+  -- Apply the results from the provided solution to bound the DFT.
+  have h_dft_bound : ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 L then (1 : ℂ) else 0) (fun _ => ξ)‖ ≤ (1 / (q : ℝ)) * (2 / ‖1 - starRingEnd ℂ (additiveChar q ξ 1)‖) := by
+    have h_dft_bound : ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 L then (1 : ℂ) else 0) (fun _ => ξ)‖ ≤ (1 / (q : ℝ)) * ‖∑ j ∈ Finset.Icc 1 (min L (q - 1)), (starRingEnd ℂ (additiveChar q ξ 1)) ^ j‖ := by
+      have h_dft_bound : dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 L then (1 : ℂ) else 0) (fun _ => ξ) = (1 / (q : ℂ)) * ∑ j ∈ Finset.Icc 1 (min L (q - 1)), (starRingEnd ℂ (additiveChar q ξ 1)) ^ j := by
+        convert dft_one_dim_eq q ( fun x => if x.val ∈ Finset.Icc 1 L then ( 1 : ℂ ) else 0 ) ξ using 1;
+        rw [ ← Finset.sum_subset ( show Finset.image ( fun x : ℕ => x : ℕ → ZMod q ) ( Finset.Icc 1 ( min L ( q - 1 ) ) ) ⊆ Finset.univ from Finset.subset_univ _ ) ];
+        · rw [ Finset.sum_image ] <;> norm_num;
+          · refine Or.inl <| Finset.sum_congr rfl fun x hx => ?_;
+            rw [ if_pos ];
+            · convert star_additiveChar_eq_pow q ξ x |> Eq.symm using 1;
+              rw [ ZMod.val_cast_of_lt ] ; linarith [ Finset.mem_Icc.mp hx, min_le_left L ( q - 1 ), min_le_right L ( q - 1 ), Nat.sub_add_cancel ( show 1 ≤ q from NeZero.pos q ) ];
+            · exact ⟨ Nat.pos_of_ne_zero fun h => by have := Nat.dvd_of_mod_eq_zero h; exact absurd this ( Nat.not_dvd_of_pos_of_lt ( Finset.mem_Icc.mp hx |>.1 ) ( lt_of_le_of_lt ( Finset.mem_Icc.mp hx |>.2 ) ( lt_of_le_of_lt ( min_le_right _ _ ) ( Nat.pred_lt ( NeZero.ne q ) ) ) ) ), Nat.le_trans ( Nat.mod_le _ _ ) ( Finset.mem_Icc.mp hx |>.2.trans ( min_le_left _ _ ) ) ⟩;
+          · intro x hx y hy; simp_all +decide [ ZMod.natCast_eq_natCast_iff' ] ;
+            exact fun h => Nat.mod_eq_of_lt ( show x < q from lt_of_le_of_lt hx.2.2 ( Nat.pred_lt ( NeZero.ne q ) ) ) ▸ Nat.mod_eq_of_lt ( show y < q from lt_of_le_of_lt hy.2.2 ( Nat.pred_lt ( NeZero.ne q ) ) ) ▸ h;
+        · intro x hx hx'; split_ifs <;> simp_all +decide ;
+          exact False.elim <| hx' x.val ( by linarith ) ( by linarith ) ( Nat.le_sub_one_of_lt <| by linarith [ x.val_lt ] ) <| by simp +decide ;
+      rw [ h_dft_bound, norm_mul, norm_div, norm_one, Complex.norm_natCast ];
+    refine le_trans h_dft_bound ?_;
+    gcongr;
+    erw [ Finset.sum_Ico_eq_sum_range ];
+    convert geom_partial_sum_norm_le ( norm_star_additiveChar_one q ξ ) ( star_additiveChar_one_ne_one q ξ hξ ) ( min L ( q - 1 ) ) using 1 ; norm_num [ pow_add, Finset.mul_sum _ _ _ ];
+    rw [ ← Finset.mul_sum _ _ _, norm_mul ] ; norm_num [ norm_star_additiveChar_one ];
+    rw [ norm_additiveChar ] ; norm_num;
+  convert h_dft_bound using 1 ; rw [ norm_one_sub_star_additiveChar ] ; ring
+
+/-
+The sum over `ZMod q` of the pointwise norm bound matches `sum_inv_sin_le_log_add_one`.
+-/
+private lemma sum_dft_bound_le_log_add_two (q : ℕ) [NeZero q] :
+    1 + ∑ j ∈ Finset.Icc 1 (q - 1),
+      (1 / ((q : ℝ) * |Real.sin (Real.pi * (j : ℝ) / q)|)) ≤
+      Real.log q + 2 := by
+  convert add_le_add_left ( sum_inv_sin_le_log_add_one q ( NeZero.pos q ) ) ( 1 : ℝ ) using 1 ; ring;
+  ring
+
 lemma dft_interval_l1_bound (q : ℕ) [NeZero q] (L : ℕ) :
     ∑ ξ : ZMod q, ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 L then (1 : ℂ) else 0) (fun _ => ξ)‖ ≤
       Real.log (q : ℝ) + 2 := by
-  sorry
+  have h_split : ∑ ξ : ZMod q, ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 L then (1 : ℂ) else 0) (fun _ => ξ)‖ = 1 * ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 L then (1 : ℂ) else 0) (fun _ => 0)‖ + ∑ j ∈ Finset.Icc 1 (q - 1), ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 L then (1 : ℂ) else 0) (fun _ => (j : ZMod q))‖ := by
+    -- The sum over all ξ in ZMod q can be split into the sum over 0 and the sum over the non-zero elements.
+    have h_split : ∑ ξ : ZMod q, ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 L then (1 : ℂ) else 0) (fun _ => ξ)‖ = ∑ ξ ∈ Finset.image (fun j : ℕ => (j : ZMod q)) (Finset.Icc 0 (q - 1)), ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 L then (1 : ℂ) else 0) (fun _ => ξ)‖ := by
+      rw [ show ( Finset.image ( fun j : ℕ => ( j : ZMod q ) ) ( Finset.Icc 0 ( q - 1 ) ) ) = Finset.univ from ?_ ];
+      ext x
+      simp [Finset.mem_image];
+      exact ⟨ x.val, Nat.le_sub_one_of_lt x.val_lt, by simp +decide ⟩;
+    rw [ h_split, Finset.sum_image ];
+    · erw [ Finset.sum_Ico_eq_sub _ _, Finset.sum_Ico_eq_sub _ _ ] <;> norm_num;
+    · intro a ha b hb; simp_all +decide [ ZMod.natCast_eq_natCast_iff' ] ;
+      exact fun h => Nat.mod_eq_of_lt ( lt_of_le_of_lt ha ( Nat.pred_lt ( NeZero.ne q ) ) ) ▸ Nat.mod_eq_of_lt ( lt_of_le_of_lt hb ( Nat.pred_lt ( NeZero.ne q ) ) ) ▸ h;
+  have h_bound : ∑ j ∈ Finset.Icc 1 (q - 1), ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 L then (1 : ℂ) else 0) (fun _ => (j : ZMod q))‖ ≤ ∑ j ∈ Finset.Icc 1 (q - 1), (1 / ((q : ℝ) * |Real.sin (Real.pi * (j : ℝ) / q)|)) := by
+    gcongr;
+    convert dft_interval_norm_at_nonzero q L ( ↑‹ℕ› : ZMod q ) _ using 1;
+    · erw [ ZMod.val_cast_of_lt ] ; linarith [ Finset.mem_Icc.mp ‹_›, Nat.sub_add_cancel ( NeZero.pos q ) ];
+    · rw [ Ne.eq_def, ZMod.natCast_eq_zero_iff ] ; exact Nat.not_dvd_of_pos_of_lt ( by linarith [ Finset.mem_Icc.mp ‹_› ] ) ( by linarith [ Finset.mem_Icc.mp ‹_›, Nat.sub_add_cancel ( NeZero.pos q ) ] );
+  linarith [ sum_dft_bound_le_log_add_two q, dft_interval_norm_at_zero q L ]
 
 end PoissonCRT
