@@ -15,7 +15,16 @@ Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
 module
-import PoissonViaCRT.Defs
+public import PoissonViaCRT.Defs
+public import Mathlib.Algebra.Star.Basic
+public import Mathlib.Analysis.Complex.Exponential
+public import Mathlib.Analysis.Normed.Group.Defs
+public import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
+public import Mathlib.Data.Finset.Defs
+public import Mathlib.Data.Matrix.Mul
+public import Mathlib.Data.Nat.Prime.Defs
+public import Mathlib.Data.ZMod.Defs
+public import Mathlib.Logic.Basic
 import PoissonViaCRT.CRTMultiplicativity
 import PoissonViaCRT.DeviationBoundHelper
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Bounds
@@ -78,13 +87,15 @@ noncomputable def rootOfUnity (q : ℕ) [NeZero q] : ℂ :=
 /-- The additive character $\chi_a(x) = \omega_q^{a \cdot x}$ on `ZMod q`.
 Here `a` and `x` are elements of `ZMod q`, and we lift the product `a * x` to `ℤ`
 via `ZMod.val` before exponentiating. -/
-noncomputable def additiveChar (q : ℕ) [NeZero q] (a : ZMod q) (x : ZMod q) : ℂ :=
+@[expose]
+public noncomputable def additiveChar (q : ℕ) [NeZero q] (a : ZMod q) (x : ZMod q) : ℂ :=
   Complex.exp (2 * Real.pi * Complex.I * ((a * x).val : ℂ) / (q : ℂ))
 
 /-- The product character on `(ZMod q)^m`. Given a frequency vector `ξ : Fin m → ZMod q`
 and a point `x : Fin m → ZMod q`, the character is
 $\chi_\xi(x) = \prod_j \chi_{\xi_j}(x_j) = e^{2\pi i \langle \xi, x \rangle / q}$. -/
-noncomputable def character (q : ℕ) [NeZero q] (m : ℕ)
+@[expose]
+public noncomputable def character (q : ℕ) [NeZero q] (m : ℕ)
     (ξ x : Fin m → ZMod q) : ℂ :=
   ∏ j : Fin m, additiveChar q (ξ j) (x j)
 
@@ -94,7 +105,8 @@ noncomputable def character (q : ℕ) [NeZero q] (m : ℕ)
 
 $$\widehat{f}(\xi) = \frac{1}{q^m} \sum_{x \in (\mathbb{Z}/q\mathbb{Z})^m}
   f(x) \cdot \overline{\chi_\xi(x)}.$$ -/
-noncomputable def dft (q : ℕ) [NeZero q] (m : ℕ)
+@[expose]
+public noncomputable def dft (q : ℕ) [NeZero q] (m : ℕ)
     (f : (Fin m → ZMod q) → ℂ) (ξ : Fin m → ZMod q) : ℂ :=
   (1 / (q : ℂ) ^ m) * ∑ x : Fin m → ZMod q, f x * starRingEnd ℂ (character q m ξ x)
 
@@ -378,7 +390,8 @@ This hypothesis directly asserts the necessary $L^\\infty$ decay on the non-zero
 coefficients of the local deviation function, bypassing the lossy spatial bound.
 Specifically, it asserts that for $\\xi \\neq 0$, the Fourier coefficient is bounded by
 $p^{-\\varepsilon} |\\Omega_p| / p^{k-1}$, which is necessary to offset the dual group volume. -/
-def WellDistributedFourier (ε : ℝ) (p : ℕ) [Fact p.Prime] (Ω : Finset (ZMod p)) (k : ℕ) : Prop :=
+@[expose]
+public def WellDistributedFourier (ε : ℝ) (p : ℕ) [Fact p.Prime] (Ω : Finset (ZMod p)) (k : ℕ) : Prop :=
   ∀ (ξ : Fin (k - 1) → ZMod p), ξ ≠ 0 →
     ‖dft p (k - 1) (fun h => (tupleCount Ω (Fin.cons 0 h) : ℂ)) ξ‖ ≤
     (p : ℝ) ^ (-ε) * ((Ω.card : ℝ) ^ k / (p : ℝ) ^ (k - 1))
@@ -964,7 +977,7 @@ private lemma sum_inv_sin_le_log_add_one (q : ℕ) (hq : 1 ≤ q) :
       · rw [ ← Finset.sum_add_distrib ] ; refine' Finset.sum_congr rfl fun x hx => _ ; rw [ Nat.cast_sub ( by linarith [ Finset.mem_Icc.mp hx ] ) ] ; push_cast ; ring;
       · exact fun x hx y hy hxy => by rw [ tsub_right_inj ] at hxy <;> linarith [ hx.1, hx.2, hy.1, hy.2 ] ;
       · exact Finset.disjoint_left.mpr fun x hx₁ hx₂ => by obtain ⟨ y, hy₁, hy₂ ⟩ := Finset.mem_image.mp hx₂; rw [ tsub_eq_iff_eq_add_of_le ] at hy₂ <;> linarith [ Finset.mem_Icc.mp hx₁, Finset.mem_Icc.mp hy₁ ] ;
-    rw [ h_pair ] ; refine Finset.sum_le_sum fun i hi => ?_; rw [ show Real.pi * ( 2 * k + 1 - i ) / ( 2 * k + 1 ) = Real.pi - Real.pi * i / ( 2 * k + 1 ) by rw [ sub_div' ] <;> ring ; positivity ] ; norm_num [ Real.sin_pi_sub ] ; ring_nf ; norm_num;
+    rw [ h_pair ] ; refine Finset.sum_le_sum fun i hi => ?_; rw [ show Real.pi * ( 2 * k + 1 - i ) / ( 2 * k + 1 ) = Real.pi - Real.pi * i / ( 2 * k + 1 ) by rw [ sub_div' ] <;> ring_nf ; positivity ] ; norm_num [ Real.sin_pi_sub ] ; ring_nf ; norm_num;
     rw [ ← mul_inv ] ; ring_nf ; norm_num;
   -- Use jordan_inequality to get |sin(πj/q)| ≥ 2(πj/q)/π = 2j/q for j ≤ q/2.
   have h_jordan : ∀ j ∈ Finset.Icc 1 (q / 2), |Real.sin (Real.pi * j / q)| ≥ 2 * j / q := by
@@ -1122,5 +1135,17 @@ lemma dft_interval_l1_bound (q : ℕ) [NeZero q] (L : ℕ) :
     · erw [ ZMod.val_cast_of_lt ] ; linarith [ Finset.mem_Icc.mp ‹_›, Nat.sub_add_cancel ( NeZero.pos q ) ];
     · rw [ Ne.eq_def, ZMod.natCast_eq_zero_iff ] ; exact Nat.not_dvd_of_pos_of_lt ( by linarith [ Finset.mem_Icc.mp ‹_› ] ) ( by linarith [ Finset.mem_Icc.mp ‹_›, Nat.sub_add_cancel ( NeZero.pos q ) ] );
   linarith [ sum_dft_bound_le_log_add_two q, dft_interval_norm_at_zero q L ]
+
+/-- Sum of the 1D interval DFT over a subgrid of frequencies. -/
+lemma dft_interval_subgrid_bound (q d : ℕ) [NeZero q] [NeZero d] (hd : d ∣ q) (L : ℕ) :
+    ∑ a : ZMod d, ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 L then (1 : ℂ) else 0) (fun _ => (((a.val * (q / d) : ℕ) : ZMod q)))‖ ≤
+      (L : ℝ) / q + (d : ℝ) / q * Real.log d + 2 := by
+  sorry
+
+/-- Generalization to the (k-1)-dimensional box DFT over a subgrid of frequencies. -/
+lemma dft_box_subgrid_bound (q d : ℕ) [NeZero q] [NeZero d] (hd : d ∣ q) (k : ℕ) (hk : 2 ≤ k) (X : Box (k - 1)) (s : ℝ) :
+    ∑ a : Fin (k - 1) → ZMod d, ‖dft q (k - 1) (fun h => if inScaledBox X s (fun _ => 0) (fun i => (h i).val) then (1 : ℂ) else 0) (fun i => (((a i).val * (q / d) : ℕ) : ZMod q))‖ ≤
+      ((s * X.volume^(1 / (k - 1 : ℝ))) / q + (d : ℝ) / q * Real.log d + 2) ^ (k - 1) := by
+  sorry
 
 end PoissonCRT

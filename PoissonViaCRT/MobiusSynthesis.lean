@@ -24,6 +24,7 @@ import PoissonViaCRT.TupleCount
 import PoissonViaCRT.EulerWeights
 import PoissonViaCRT.L1DeviationSynthesis
 import PoissonViaCRT.L2DeviationSynthesis
+import PoissonViaCRT.FourierANOVA
 
 set_option linter.unusedVariables false
 
@@ -711,5 +712,24 @@ public theorem deviation_uniform_exponent (ε : ℝ) (hε : 0 < ε) (k : ℕ) (h
     -- once and then for each `X` obtain the multiplicative constant `K`.
     refine ⟨ε / 2, half_pos hε, fun X C_lp hC_lp_pos hC_lp => ?_⟩
     exact deviation_expression_fixed_delta ε hε k hk Ω hΩ hWD hsp hrp hlt X C_lp hC_lp_pos hC_lp
+
+
+/-- Replaces the L1/L2 spatial deviation bound with the Fourier Parseval equivalent.
+    The sum is bounded unconditionally over all frequencies using the Fourier-ANOVA decomposition. -/
+private lemma deviation_dft_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributedFourier ε p (Ω p) k)
+    (X : Box (k - 1)) :
+    ∃ K : ℝ, 0 < K ∧ ∀ (q : ℕ) [NeZero q] (hq_sq : Squarefree q),
+      let Ω_q := crtSubset q Ω
+      let s := (q : ℝ) / Ω_q.card
+      |(1 / (Ω_q.card : ℝ)) *
+        ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+            Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+          (fun h => inScaledBox X s (fun _ => 0) h)),
+        ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
+          (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| ≤ K * s ^ (-(ε / 2)) := by
+  sorry
 
 end PoissonCRT
