@@ -377,7 +377,16 @@ private lemma variance_factorization (ε : ℝ) (k : ℕ) (Ω : ∀ p : ℕ, Fin
       (∏ p ∈ U, (k : ℝ)^2) * (C_box * (s ^ (k - 1 : ℕ) / ∏ p ∈ U, (p : ℝ) + s ^ (k - 1 - 1 : ℕ)) * ∏ p ∈ U, C_gamma) =
     C_box * s ^ (k - 1 : ℕ) * ∏ p ∈ T, ((combinedEulerWeight ε k Ω p * localMean k Ω p)^2 + (k : ℝ)^2 * C_gamma / (p : ℝ)) +
     C_box * s ^ (k - 1 - 1 : ℕ) * ∏ p ∈ T, ((combinedEulerWeight ε k Ω p * localMean k Ω p)^2 + (k : ℝ)^2 * C_gamma) := by
-  sorry
+  -- Apply the binomial theorem to expand the product.
+  have h_binom : ∀ (a b : ℕ → ℝ), (∏ p ∈ T, (a p + b p)) = ∑ U ∈ T.powerset, (∏ p ∈ T \ U, a p) * (∏ p ∈ U, b p) := by
+    simp +decide [Finset.prod_add];
+    intro a b; rw [ ← Finset.sum_bij ( fun U _ => T \ U ) ] ; simp +decide ;
+    · simp +contextual [ Finset.ext_iff ];
+      grind;
+    · exact fun b hb => ⟨ T \ b, by aesop ⟩;
+    · simp +contextual;
+  simp +decide [ h_binom, mul_add, add_mul, mul_assoc, mul_comm, mul_left_comm, Finset.mul_sum _ _ _, Finset.sum_add_distrib ];
+  exact congrArg₂ ( · + · ) ( Finset.sum_congr rfl fun _ _ => by ring ) ( Finset.sum_congr rfl fun _ _ => by ring )
 
 /-- **Step 5: Absorption bound.**
 Both terms are absorbed by `K * s^{k-1} * (∏_{p ∈ T} (cEW_p · μ_p))²`.
@@ -654,3 +663,24 @@ public lemma per_T_deviation_le_combinedEulerWeight (ε : ℝ) (hε : 0 < ε) (k
           ∏ p ∈ T, combinedEulerWeight ε k Ω p := h_cancel
 
 end PoissonCRT
+
+/-
+PROVIDED SOLUTION
+
+I have rewritten `L2DeviationSynthesis.lean` to use the correct `box_collision_sum_bound` from `BoxCollisionIntegration.lean` which has the fallback error term `s^{k-2}`.
+This created three sorries:
+1. `local_variance_pointwise_bound`
+2. `variance_factorization`
+3. `variance_product_absorption`
+
+Please fill in these sorries.
+
+**Hints for `variance_product_absorption`:**
+The main challenge here is bounding the product of `A_p + B_p` by `K * (prod A_p)^2`, where `A_p = (cEW * localMean)^2`.
+You have two terms inside the LHS:
+- The first is bounded because `k^2 * C_gamma / p` decays fast enough relative to `A_p`. Since `A_p \approx p^{2-2\varepsilon}` and `2-2\varepsilon > 1` (as `\varepsilon < 1/2`), the product `prod (1 + (k^2 C_gamma / p) / A_p)` converges uniformly across all finite subsets of primes.
+- The second term is also bounded for similar reasons, as `k^2 * C_gamma` divided by `A_p` acts like `1/p^{2-2\varepsilon}`, which also forms a convergent infinite product.
+You can use `Real.prod_le_prod` and summability arguments over primes (using properties of `WellDistributed` and `combinedEulerWeight`) to extract the absolute constant `K`.
+
+Feel free to break it down into helper lemmas if necessary!
+-/
