@@ -778,6 +778,16 @@ lemma dft_tupleCount_norm_le_localMean (k : ℕ) (hk : 2 ≤ k) (ε : ℝ) (hε 
         (by simpa using Real.rpow_le_rpow_of_exponent_le (mod_cast hp.1.one_lt.le) (neg_nonpos.mpr hε.le)))
       (by positivity)
 
+lemma dft_tupleCount_norm_le_decay (k : ℕ) (hk : 2 ≤ k) (ε : ℝ) (hε : 0 < ε)
+    (p : ℕ) [hp : Fact p.Prime] (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hwd : WellDistributedFourier ε p (Ω p) k)
+    (ξ : Fin (k - 1) → ZMod p) (hξ : ξ ≠ 0) :
+    ‖dft p (k - 1) (fun h => (tupleCount (Ω p) (Fin.cons 0 h) : ℂ)) ξ‖ ≤
+      (p : ℝ) ^ (-ε) * localMean k Ω p := by
+  have := hwd ξ hξ
+  unfold localMean
+  exact this
+
 /-! ### Fourier synthesis: the uniform deviation bound -/
 
 lemma deviation_dft_prod_bound (k : ℕ) (hk : 2 ≤ k) (ε : ℝ) (hε : 0 < ε)
@@ -816,5 +826,24 @@ lemma deviation_dft_prod_bound (k : ℕ) (hk : 2 ≤ k) (ε : ℝ) (hε : 0 < ε
     · exact fun _ _ => norm_nonneg _;
     · convert dft_tupleCount_norm_le_localMean k hk ε hε p ( Ω ) ( hwd p p.2 ) _ using 1;
     · conv_rhs => rw [ ← Finset.prod_attach ] ;
+
+/-- The support of a frequency ξ modulo q is the set of prime factors p of q where ξ mod p ≠ 0. -/
+def freqSupport (q m : ℕ) [NeZero q] (ξ : Fin m → ZMod q) : Finset ℕ :=
+  q.primeFactors.filter (fun p =>
+    if hp : p ∈ q.primeFactors then
+      (fun i => ZMod.castHom (Nat.dvd_of_mem_primeFactors hp) (ZMod p) (ξ i)) ≠ 0
+    else False)
+
+lemma deviation_dft_q1_q2_bound (k : ℕ) (hk : 2 ≤ k) (ε : ℝ) (hε : 0 < ε)
+    (q : ℕ) [NeZero q] (hq : Squarefree q)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hwd : ∀ p, (hp : p ∈ q.primeFactors) → haveI : Fact p.Prime :=
+      ⟨(Nat.mem_primeFactors.mp hp).1⟩;
+      WellDistributedFourier ε p (Ω p) k)
+    (ξ : Fin (k - 1) → ZMod q) (hξ : ξ ≠ 0) :
+    ‖dft q (k - 1) (fun h => (tupleCount (crtSubset q Ω) (Fin.cons 0 h) : ℂ) -
+      ↑(∏ p ∈ q.primeFactors, localMean k Ω p)) ξ‖ ≤
+      (∏ p ∈ freqSupport q (k - 1) ξ, (p : ℝ) ^ (-ε)) * ∏ p ∈ q.primeFactors, localMean k Ω p := by
+  sorry
 
 end PoissonCRT
