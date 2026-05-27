@@ -844,6 +844,47 @@ lemma deviation_dft_q1_q2_bound (k : ℕ) (hk : 2 ≤ k) (ε : ℝ) (hε : 0 < �
     ‖dft q (k - 1) (fun h => (tupleCount (crtSubset q Ω) (Fin.cons 0 h) : ℂ) -
       ↑(∏ p ∈ q.primeFactors, localMean k Ω p)) ξ‖ ≤
       (∏ p ∈ freqSupport q (k - 1) ξ, (p : ℝ) ^ (-ε)) * ∏ p ∈ q.primeFactors, localMean k Ω p := by
+  -- By the linearity of the DFT and the orthogonality of the characters, we can express the DFT of the deviation in terms of the DFT of the tuple count and the constant term.
+  have h_dft_linear : dft q (k - 1) (fun h => (tupleCount (crtSubset q Ω) (Fin.cons 0 h) : ℂ) - ↑(∏ p ∈ q.primeFactors, localMean k Ω p)) ξ = dft q (k - 1) (fun h => (tupleCount (crtSubset q Ω) (Fin.cons 0 h) : ℂ)) ξ := by
+    unfold dft;
+    simp +decide [ sub_mul ];
+    rw [ ← Finset.mul_sum _ _ _ ];
+    exact Or.inl <| mul_eq_zero_of_right _ <| sum_star_character_eq_zero q ( k - 1 ) ξ hξ;
+  rw [ h_dft_linear, dft_crt_factorization ];
+  rotate_left;
+  grind;
+  · linarith;
+  · rw [ norm_prod, ← Finset.prod_attach ];
+    refine' le_trans ( Finset.prod_le_prod _ fun x hx => _ ) _;
+    use fun x => if x.val.val ∈ freqSupport q ( k - 1 ) ξ then ( x.val.val : ℝ ) ^ ( -ε ) * localMean k Ω x.val.val else localMean k Ω x.val.val;
+    · exact fun _ _ => norm_nonneg _;
+    · split_ifs with h;
+      · convert dft_tupleCount_norm_le_decay k hk ε hε x.val.val _ _ _ _ using 1;
+        exact ⟨ Nat.prime_of_mem_primeFactors x.1.2 ⟩;
+        · exact hwd _ ( by aesop );
+        · intro H; simp_all +decide [ funext_iff, freqSupport ] ;
+          obtain ⟨ i, hi ⟩ := h.2; specialize H i; simp_all +decide [ crtFrequencyEquiv ] ;
+          haveI := Fact.mk h.1.1; simp_all +decide [ ZMod.natCast_eq_zero_iff ] ;
+          exact absurd ( H.resolve_left ( by rw [ crtRingEquiv_apply_eq_castHom ] ; exact hi ) ) ( by intro h; exact absurd ( hq.squarefree_of_dvd h ) ( by rw [ Nat.squarefree_mul_iff ] ; aesop ) );
+      · convert dft_tupleCount_norm_le_localMean k hk ε hε x.val.val _ _ _ using 1;
+        grind;
+        exact hwd _ ( by simp );
+    · simp +decide [ Finset.prod_ite, Finset.prod_mul_distrib ];
+      rw [ mul_assoc, ← Finset.prod_union ];
+      · refine' mul_le_mul _ _ _ _;
+        · refine' le_of_eq _;
+          refine' Finset.prod_bij ( fun x hx => x.val.val ) _ _ _ _ <;> simp +decide [ freqSupport ];
+          exact fun p hp hpq hq h => ⟨ ⟨ hp, hpq, hq ⟩, h ⟩;
+        · refine' le_of_eq _;
+          refine' Finset.prod_bij ( fun x hx => x.val.val ) _ _ _ _ <;> simp +decide [ freqSupport ];
+          exact fun p hp hpq hq => ⟨ ⟨ hp, hpq, hq ⟩, by tauto ⟩;
+        · exact Finset.prod_nonneg fun _ _ => localMean_nonneg _ _ _;
+        · exact Finset.prod_nonneg fun _ _ => Real.rpow_nonneg ( Nat.cast_nonneg _ ) _;
+      · exact Finset.disjoint_filter.mpr fun _ _ _ _ => by tauto;
+
+lemma dft_interval_l1_bound (q : ℕ) [NeZero q] (L : ℕ) :
+    ∑ ξ : ZMod q, ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 L then (1 : ℂ) else 0) (fun _ => ξ)‖ ≤
+      Real.log (q : ℝ) + 2 := by
   sorry
 
 end PoissonCRT
