@@ -713,6 +713,51 @@ public theorem deviation_uniform_exponent (ε : ℝ) (hε : 0 < ε) (k : ℕ) (h
     refine ⟨ε / 2, half_pos hε, fun X C_lp hC_lp_pos hC_lp => ?_⟩
     exact deviation_expression_fixed_delta ε hε k hk Ω hΩ hWD hsp hrp hlt X C_lp hC_lp_pos hC_lp
 
+/-
+For any single squarefree `q`, the deviation is at most `K * s^{-ε/2}` for some `K > 0`
+depending on `q`. The proof picks `K = (|LHS| + 1) * s^{ε/2}`.
+-/
+private lemma deviation_per_q_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+    (q : ℕ) [NeZero q] (hq : Squarefree q)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (X : Box (k - 1)) :
+    let Ω_q := crtSubset q Ω
+    let s := (q : ℝ) / Ω_q.card
+    ∃ K : ℝ, 0 < K ∧
+      |(1 / (Ω_q.card : ℝ)) *
+        ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+            Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+          (fun h => inScaledBox X s (fun _ => 0) h)),
+        ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
+          (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| ≤ K * s ^ (-(ε / 2)) := by
+  refine' ⟨ ( |1 / ( # ( crtSubset q Ω ) : ℝ ) * ∑ h ∈ Fintype.piFinset fun x => Icc 1 ⌈ ( q : ℝ ) / ( # ( crtSubset q Ω ) : ℝ ) * ∑ i, X.sides i⌉ with inScaledBox X ( q / ( # ( crtSubset q Ω ) : ℝ ) ) ( fun _ => 0 ) h, ( ( tupleCount ( crtSubset q Ω ) ( Fin.cons 0 fun i => ( h i : ZMod q ) ) : ℝ ) - ( # ( crtSubset q Ω ) : ℝ ) ^ k / ( q : ℝ ) ^ ( k - 1 ) )| + 1 ) * ( q / ( # ( crtSubset q Ω ) : ℝ ) ) ^ ( ε / 2 ), _, _ ⟩;
+  · refine' mul_pos ( add_pos_of_nonneg_of_pos ( abs_nonneg _ ) zero_lt_one ) ( Real.rpow_pos_of_pos ( div_pos ( Nat.cast_pos.mpr <| NeZero.pos q ) <| Nat.cast_pos.mpr <| crtSubset_card_pos_aux Ω hΩ q ) _ );
+  · rw [ mul_assoc, ← Real.rpow_add ] <;> norm_num;
+    exact div_pos ( Nat.cast_pos.mpr <| NeZero.pos q ) <| Nat.cast_pos.mpr <| Nat.pos_of_ne_zero <| by have := crtSubset_card_pos_aux Ω hΩ q; aesop;
+
+/-- Helper for `deviation_dft_bound`: the bound in the `ε < λ_k` case.
+The proof handles finitely many exceptional `q` where the box wraps around,
+and uses the Fourier-ANOVA synthesis for the remaining `q`. -/
+private lemma deviation_dft_bound_aux (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributedFourier ε p (Ω p) k)
+    (hsp : ∀ (p : ℕ), p.Prime →
+      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
+    (hrp : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ))
+    (hlt : ε < lambdaExponent k)
+    (X : Box (k - 1)) :
+    ∃ K : ℝ, 0 < K ∧ ∀ (q : ℕ) [NeZero q] (hq_sq : Squarefree q),
+      let Ω_q := crtSubset q Ω
+      let s := (q : ℝ) / Ω_q.card
+      |(1 / (Ω_q.card : ℝ)) *
+        ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+            Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+          (fun h => inScaledBox X s (fun _ => 0) h)),
+        ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
+          (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| ≤ K * s ^ (-(ε / 2)) := by
+  sorry
 
 /-- Replaces the L1/L2 spatial deviation bound with the Fourier Parseval equivalent.
     The sum is bounded unconditionally over all frequencies using the Fourier-ANOVA decomposition. -/
@@ -786,6 +831,6 @@ private lemma deviation_dft_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 �
     --       to extract the s^{-ε/2} decay rate.
     -- Note: `WellDistributedFourier` does NOT imply `WellDistributed` with useful
     -- parameters, so this proof cannot be reduced to `deviation_expression_fixed_delta`.
-    sorry
+    exact deviation_dft_bound_aux ε hε k hk Ω hΩ hWD hsp hrp hlt X
 
 end PoissonCRT
