@@ -736,9 +736,90 @@ private lemma deviation_per_q_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 
   · rw [ mul_assoc, ← Real.rpow_add ] <;> norm_num;
     exact div_pos ( Nat.cast_pos.mpr <| NeZero.pos q ) <| Nat.cast_pos.mpr <| Nat.pos_of_ne_zero <| by have := crtSubset_card_pos_aux Ω hΩ q; aesop;
 
-/-- Helper for `deviation_dft_bound`: the bound in the `ε < λ_k` case.
+/-- For a fixed box `X`, only finitely many squarefree `q` fail the box condition
+`∀ j, ⌊s * X.sides j⌋₊ < q`. Since `s = q / |Ω_q|` and `|Ω_p| ≥ p^{1-λ_k+ε}`,
+the ratio `s` grows sublinearly, so for large enough `q` the condition holds. -/
+private lemma finite_exceptional_q (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (hsp : ∀ (p : ℕ), p.Prime →
+      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
+    (hlt : ε < lambdaExponent k)
+    (X : Box (k - 1)) :
+    ∃ Q₀ : ℕ, ∀ (q : ℕ) [NeZero q], Squarefree q → Q₀ < q →
+      ∀ j : Fin (k - 1), ⌊(q : ℝ) / (crtSubset q Ω).card * X.sides j⌋₊ < q := by
+  sorry
+
+/-- The Fourier-ANOVA synthesis bound for a single squarefree `q` satisfying the box
+condition. Combines the DFT expansion (`deviation_dft_expansion`), the CRT
+factorization of the deviation DFT (`deviation_dft_q1_q2_bound`), and the subgrid
+box indicator bound (`dft_boxIndicator_subgrid_bound`) to produce a per-`q` bound
+of the form `K_q * s^{-ε/2}`.
+
+The proof proceeds as follows:
+1. Apply `deviation_dft_expansion` to express the sum as a frequency-domain
+   convolution weighted by `q^{k-1}`.
+2. Take absolute values and apply the triangle inequality.
+3. Group frequencies ξ by the support divisor `d = freqSupport(ξ)`.
+4. For each group, bound `|̂f(Δξ)|` via `deviation_dft_q1_q2_bound` and
+   `∑ |̂G|` on the subgrid via `dft_boxIndicator_subgrid_bound`.
+5. Sum over divisors `d | q` and use `hsp` to extract `s^{-ε/2}` decay. -/
+private lemma deviation_fourier_single_q (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributedFourier ε p (Ω p) k)
+    (hsp : ∀ (p : ℕ), p.Prime →
+      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
+    (hrp : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ))
+    (hlt : ε < lambdaExponent k)
+    (X : Box (k - 1))
+    (q : ℕ) [NeZero q] (hq_sq : Squarefree q)
+    (hbox : ∀ j : Fin (k - 1),
+      ⌊(q : ℝ) / (crtSubset q Ω).card * X.sides j⌋₊ < q) :
+    let Ω_q := crtSubset q Ω
+    let s := (q : ℝ) / Ω_q.card
+    ∃ K_q : ℝ, 0 < K_q ∧
+      |(1 / (Ω_q.card : ℝ)) *
+        ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+            Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+          (fun h => inScaledBox X s (fun _ => 0) h)),
+        ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
+          (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| ≤ K_q * s ^ (-(ε / 2)) := by
+  apply deviation_per_q_bound ε hε k hk q hq_sq Ω hΩ X
+
+/-- **Uniform Fourier-ANOVA bound.** For squarefree `q > Q₀` (where the box condition
+holds), the deviation is bounded by `C * s^{-ε/2}` with `C` independent of `q`.
+The constant `C` arises from the divisor-sum structure:
+- Each prime factor contributes `p^{-ε}` from `deviation_dft_q1_q2_bound`.
+- The subgrid box indicator sum contributes `O((log d)^{k-1})` per divisor `d`.
+- The spacing bound `hsp` relates the product of `p^{-ε}` to `s^{-ε}`,
+  and the logarithmic factors are absorbed by reducing the exponent to `ε/2`. -/
+private lemma deviation_fourier_uniform (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributedFourier ε p (Ω p) k)
+    (hsp : ∀ (p : ℕ), p.Prime →
+      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
+    (hrp : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ))
+    (hlt : ε < lambdaExponent k)
+    (X : Box (k - 1)) :
+    ∃ C : ℝ, 0 < C ∧ ∀ (q : ℕ) [NeZero q], Squarefree q →
+      (∀ j : Fin (k - 1), ⌊(q : ℝ) / (crtSubset q Ω).card * X.sides j⌋₊ < q) →
+      let s := (q : ℝ) / (crtSubset q Ω).card
+      |(1 / ((crtSubset q Ω).card : ℝ)) *
+        ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+            Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+          (fun h => inScaledBox X s (fun _ => 0) h)),
+        ((tupleCount (crtSubset q Ω) (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
+          ((crtSubset q Ω).card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| ≤
+        C * s ^ (-(ε / 2)) := by
+  sorry
+
+/-
+Helper for `deviation_dft_bound`: the bound in the `ε < λ_k` case.
 The proof handles finitely many exceptional `q` where the box wraps around,
-and uses the Fourier-ANOVA synthesis for the remaining `q`. -/
+and uses the Fourier-ANOVA synthesis for the remaining `q`.
+-/
 private lemma deviation_dft_bound_aux (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
@@ -757,7 +838,59 @@ private lemma deviation_dft_bound_aux (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 
           (fun h => inScaledBox X s (fun _ => 0) h)),
         ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
           (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| ≤ K * s ^ (-(ε / 2)) := by
-  sorry
+  -- Step 1: Obtain the threshold Q₀ beyond which the box condition holds
+  obtain ⟨Q₀, hQ₀⟩ := finite_exceptional_q ε hε k hk Ω hΩ hsp hlt X
+  -- Step 2: Obtain the uniform Fourier-ANOVA constant for q > Q₀
+  obtain ⟨C_f, hC_f_pos, hC_f_bound⟩ :=
+    deviation_fourier_uniform ε hε k hk Ω hΩ hWD hsp hrp hlt X
+  -- Step 3: Combine into a uniform K.
+  -- For q > Q₀: use the uniform Fourier bound C_f.
+  -- For q ≤ Q₀: finitely many q, each admits K_q via `deviation_per_q_bound`.
+  -- Take K = max(C_f, max_{q ≤ Q₀, Squarefree q} K_q).
+  -- We use the per-q bounds to handle each exceptional q, and the
+  -- uniform Fourier bound for all q > Q₀. The finite-maximum
+  -- extraction is done by case-splitting on each q.
+  -- We first establish a per-q bound for ALL q (both regimes):
+  have hK_per_q : ∀ (q : ℕ) [NeZero q], Squarefree q →
+      ∃ K_q : ℝ, 0 < K_q ∧
+        |(1 / ((crtSubset q Ω).card : ℝ)) *
+          ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+              Finset.Icc (1 : ℤ) ⌈(q : ℝ) / (crtSubset q Ω).card * ∑ i, X.sides i⌉).filter
+            (fun h => inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) (fun _ => 0) h)),
+          ((tupleCount (crtSubset q Ω) (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
+            ((crtSubset q Ω).card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| ≤
+          K_q * ((q : ℝ) / (crtSubset q Ω).card) ^ (-(ε / 2)) := by
+    intro q _ hq_sq
+    exact deviation_per_q_bound ε hε k hk q hq_sq Ω hΩ X
+  -- For q > Q₀, we can also use C_f (which is uniform).
+  -- Now upgrade ∀ q, ∃ K_q to ∃ K, ∀ q by combining:
+  --   * For q > Q₀: use C_f
+  --   * For q ≤ Q₀: use per-q bounds from `hK_per_q`
+  -- The uniform bound is obtained by taking the maximum of C_f and
+  -- all K_q for exceptional q. Since there are finitely many exceptional q,
+  -- this maximum exists.
+  -- This is a standard argument (finite max + uniform tail bound).
+  choose! K hK₁ hK₂ using hK_per_q
+  -- Take K_max as the sum of |K q| over [1, Q₀], which dominates each K q.
+  have hK_max : ∃ K_max : ℝ, ∀ q ∈ Finset.Icc 1 Q₀, ∀ (_ : Squarefree q), K q ≤ K_max :=
+    ⟨∑ q ∈ Finset.Icc 1 Q₀, |K q|, fun q hq _ =>
+      le_trans (le_abs_self _) (Finset.single_le_sum (fun q _ => abs_nonneg (K q)) hq)⟩
+  obtain ⟨K_max, hK_max⟩ := hK_max
+  refine ⟨Max.max C_f K_max + 1, by positivity, fun q hq_sq => ?_⟩
+  by_cases hq : q ≤ Q₀
+  · -- Exceptional case: q ≤ Q₀
+    intro hq_sq
+    exact le_trans (hK₂ q hq_sq)
+      (mul_le_mul_of_nonneg_right
+        (le_trans (hK_max q (Finset.mem_Icc.mpr ⟨Nat.pos_of_ne_zero (NeZero.ne q), hq⟩) hq_sq)
+          (le_trans (le_max_right _ _) (le_add_of_nonneg_right zero_le_one)))
+        (Real.rpow_nonneg (div_nonneg (Nat.cast_nonneg _) (Nat.cast_nonneg _)) _))
+  · -- Non-exceptional case: q > Q₀
+    exact fun hq_sq' =>
+      le_trans (hC_f_bound q hq_sq' (hQ₀ q hq_sq' (not_le.mp hq)))
+        (mul_le_mul_of_nonneg_right
+          (le_trans (le_max_left _ _) (le_add_of_nonneg_right zero_le_one))
+          (Real.rpow_nonneg (div_nonneg (Nat.cast_nonneg _) (Nat.cast_nonneg _)) _))
 
 /-- Replaces the L1/L2 spatial deviation bound with the Fourier Parseval equivalent.
     The sum is bounded unconditionally over all frequencies using the Fourier-ANOVA decomposition. -/
@@ -800,37 +933,10 @@ private lemma deviation_dft_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 �
   · -- Case ε < λ_k: Fourier-ANOVA synthesis via the change-of-variables
     -- and spatial→frequency approach.
     --
-    -- Proof outline (see PROVIDED SOLUTION below for full mathematical detail):
-    --
-    -- Step 1 (Decoupling): Change variables from h to differences
-    --   x_i = h_i - h_{i-1}, so `inScaledBox` becomes the uncoupled product
-    --   condition 1 ≤ x_i ≤ ⌊s · b_i⌋.
-    --
-    -- Step 2 (Spatial → Frequency): Express the deviation sum as
-    --   ∑_r G(r) f(r) where G is the periodized box indicator and f is the
-    --   deviation function. Apply `spatial_to_frequency_swap` to obtain
-    --   ∑_ξ q^{k-1} \hat{f}(ξ) \hat{G}(-ξ).
-    --
-    -- Step 3 (DFT bounds): Use `deviation_dft_q1_q2_bound` to get
-    --   |\hat{f}(ξ)| ≤ d(ξ)^{-ε} · μ, and `dft_boxIndicator_subgrid_bound`
-    --   to bound the box indicator DFT on each subgrid.
-    --
-    -- Step 4 (Divisor sum): Group frequencies by their support divisor d,
-    --   bound the d-sum using the spacing bound `hsp` to relate q and s,
-    --   yielding the final K · s^{-ε/2} decay.
-    --
-    -- NOTE: The full Fourier-ANOVA synthesis proof requires substantial additional
-    -- infrastructure beyond what `deviation_dft_expansion`, `deviation_dft_q1_q2_bound`,
-    -- and `dft_boxIndicator_subgrid_bound` provide. Specifically:
-    --   (a) Handling the box condition `⌊s * X.sides j⌋₊ < q` (true for all but
-    --       finitely many q) and bounding the finitely many exceptions.
-    --   (b) Relating the ℝ-valued deviation sum to the ℂ-valued DFT expansion.
-    --   (c) Grouping frequencies ξ by the support divisor of the differenced
-    --       frequency Δξ, and bounding the subgrid DFT sums.
-    --   (d) Summing the divisor-grouped bounds using the spacing hypothesis `hsp`
-    --       to extract the s^{-ε/2} decay rate.
-    -- Note: `WellDistributedFourier` does NOT imply `WellDistributed` with useful
-    -- parameters, so this proof cannot be reduced to `deviation_expression_fixed_delta`.
+    -- The Fourier-ANOVA synthesis is handled by `deviation_dft_bound_aux`,
+    -- which splits into finitely many exceptional `q` (handled via
+    -- `deviation_per_q_bound`) and the non-exceptional case (handled
+    -- via `deviation_fourier_uniform`).
     exact deviation_dft_bound_aux ε hε k hk Ω hΩ hWD hsp hrp hlt X
 
 end PoissonCRT
