@@ -1266,14 +1266,275 @@ lemma dft_boxIndicator_subgrid_bound (q d : ℕ) [NeZero q] [NeZero d] (hd : d �
   · exact fun _ _ => Finset.sum_nonneg fun _ _ => norm_nonneg _
 
 
+/-- The cumulative sum map on `Fin m → ZMod q`. -/
+private noncomputable def cumSum (q : ℕ) [NeZero q] (m : ℕ) (x : Fin m → ZMod q) :
+    Fin m → ZMod q :=
+  fun j => ∑ i ∈ Finset.Iic j, x i
+
+/-- The difference map on `Fin m → ZMod q` (inverse of cumulative sum). -/
+private noncomputable def diffMap (q : ℕ) [NeZero q] (m : ℕ) (y : Fin m → ZMod q) :
+    Fin m → ZMod q :=
+  fun j => y j - if h : (j : ℕ) = 0 then 0 else y ⟨j - 1, by omega⟩
+
+/-
+`diffMap` is a left inverse of `cumSum`.
+-/
+private lemma diffMap_cumSum (q : ℕ) [NeZero q] (m : ℕ) (x : Fin m → ZMod q) :
+    diffMap q m (cumSum q m x) = x := by
+  unfold cumSum diffMap; ext j; induction j ; simp +decide [*] ;
+  induction' ‹ℕ› with n ih <;> simp_all +decide;
+  · rw [ show ( Iic ⟨ 0, by assumption ⟩ : Finset ( Fin m ) ) = { ⟨ 0, by assumption ⟩ } by ext ⟨ i, hi ⟩ ; aesop ] ; norm_num;
+  · rw [ show ( Iic ⟨ n + 1, by linarith ⟩ : Finset ( Fin m ) ) = Iic ⟨ n, by linarith ⟩ ∪ { ⟨ n + 1, by linarith ⟩ } from ?_, Finset.sum_union ] <;> norm_num [ Finset.sum_singleton, Finset.sum_union, Finset.disjoint_singleton_right ];
+    grind +locals
+
+/-
+`cumSum` is a left inverse of `diffMap`.
+-/
+private lemma cumSum_diffMap (q : ℕ) [NeZero q] (m : ℕ) (y : Fin m → ZMod q) :
+    cumSum q m (diffMap q m y) = y := by
+  funext j;
+  induction' j with j ih;
+  induction' j with j ih;
+  · unfold cumSum diffMap; simp +decide ;
+    rw [ show ( Iic ⟨ 0, ih ⟩ : Finset ( Fin m ) ) = { ⟨ 0, ih ⟩ } by ext ⟨ i, hi ⟩ ; aesop ] ; aesop;
+  · unfold cumSum diffMap at *;
+    rw [ show ( Iic ⟨ j + 1, ih ⟩ : Finset ( Fin m ) ) = Finset.Iic ⟨ j, by linarith ⟩ ∪ { ⟨ j + 1, ih ⟩ } from ?_, Finset.sum_union ] <;> norm_num;
+    · rename_i h; specialize h ( Nat.lt_of_succ_lt ih ) ; simp_all +decide [ Finset.sum_sub_distrib ] ;
+    · grind
+
+/-- The cumulative sum map is an equivalence. -/
+private noncomputable def cumSumEquiv (q : ℕ) [NeZero q] (m : ℕ) :
+    (Fin m → ZMod q) ≃ (Fin m → ZMod q) where
+  toFun := cumSum q m
+  invFun := diffMap q m
+  left_inv := diffMap_cumSum q m
+  right_inv := cumSum_diffMap q m
+
+/-- The frequency differencing operator. -/
+private noncomputable def freqDiff (q : ℕ) [NeZero q] (m : ℕ) (ξ : Fin m → ZMod q) :
+    Fin m → ZMod q :=
+  fun j => ξ j - if h_lt : (j : ℕ) + 1 < m then ξ ⟨(j : ℕ) + 1, h_lt⟩ else 0
+
+/-
+Character identity: the character at frequency ξ evaluated at x equals the character
+at frequency `freqDiff ξ` evaluated at `cumSum x`. This is Abel summation by parts.
+-/
+private lemma character_cumSum_eq (q : ℕ) [NeZero q] (m : ℕ)
+    (ξ x : Fin m → ZMod q) :
+    character q m ξ x = character q m (freqDiff q m ξ) (cumSum q m x) := by
+  -- By Abel summation by parts, we can rewrite the sum of the products of ξ and x as the sum of the products of the frequency differences and the cumulative sums.
+  have h_abel : ∑ j : Fin m, (ξ j) * (x j) = ∑ j : Fin m, (freqDiff q m ξ j) * (cumSum q m x j) := by
+    induction' m with m ih;
+    · rfl;
+    · simp +decide [ Fin.sum_univ_castSucc, freqDiff, cumSum ] at *;
+      rw [ show ( Finset.Iic ( Fin.last m ) : Finset ( Fin ( m + 1 ) ) ) = Finset.univ from Finset.eq_univ_of_forall fun i => Finset.mem_Iic.mpr ( Fin.le_last _ ) ] ; simp +decide [Fin.sum_univ_castSucc] ; ring_nf;
+      rw [ add_comm, Finset.sum_sub_distrib ];
+      simp +decide [add_assoc, Finset.mul_sum _ _ _, ih];
+      rw [ ← Finset.sum_sub_distrib ] ; rw [ ← Finset.sum_add_distrib ] ; congr ; ext i ; split_ifs <;> simp_all +decide [add_comm] ; ring_nf;
+      · rw [ ← Finset.sum_sub_distrib ];
+        exact?;
+      · cases ‹m ≤ i + 1›.eq_or_lt <;> simp_all +decide [Fin.last];
+        · repeat rw [ show ( Iic i.castSucc : Finset ( Fin ( m + 1 ) ) ) = Finset.image ( Fin.castSucc ) ( Iic i ) from ?_, Finset.sum_image ] <;> norm_num [ Fin.ext_iff ];
+        · linarith [ Fin.is_lt i ];
+  unfold character;
+  unfold additiveChar; simp_all +decide ;
+  convert Complex.exp_eq_exp_iff_exists_int.mpr _ using 1;
+  rw [ ← Complex.exp_sum ];
+  rw [ ← Complex.exp_sum ];
+  use ( ∑ j : Fin m, ( ξ j * x j |> ZMod.val ) - ∑ j : Fin m, ( freqDiff q m ξ j * cumSum q m x j |> ZMod.val ) ) / q;
+  rw [ Int.cast_div ] <;> norm_num [ ← Finset.sum_div _ _ _, h_abel ];
+  · simp +decide [← Finset.mul_sum _ _ _] ; ring;
+  · simp_all +decide [ ← ZMod.intCast_zmod_eq_zero_iff_dvd ];
+  · exact NeZero.out
+
 private lemma dft_sum_transform (q : ℕ) [NeZero q] (m : ℕ)
     (g : (Fin m → ZMod q) → ℂ) (ξ : Fin m → ZMod q) :
     dft q m (fun x => g (fun j => ∑ i ∈ Finset.Iic j, x i)) ξ =
     dft q m g (fun j => ξ j - if h_lt : (j : ℕ) + 1 < m then ξ ⟨(j : ℕ) + 1, h_lt⟩ else 0) := by
-  sorry
+  -- By changing variables using the equivalence between the sum over x and the sum over y, we can rewrite the left-hand side.
+  have h_change_var : ∑ x : Fin m → ZMod q, g (cumSum q m x) * starRingEnd ℂ (character q m ξ x) = ∑ y : Fin m → ZMod q, g y * starRingEnd ℂ (character q m (freqDiff q m ξ) y) := by
+    apply Finset.sum_bij (fun x _ => cumSum q m x);
+    · grind;
+    · intro a₁ _ a₂ _ h; have := diffMap_cumSum q m a₁; have := diffMap_cumSum q m a₂; aesop;
+    · exact fun b _ => ⟨ diffMap q m b, Finset.mem_univ _, cumSum_diffMap q m b ⟩;
+    · exact fun x _ => by rw [ character_cumSum_eq ] ;
+  unfold dft; aesop;
 
+/-
+The integer-to-ZMod map is injective on {1, ..., n} when n < q.
+-/
+private lemma intCast_injective_on_range (q : ℕ) [NeZero q] {n : ℕ} (hn : n < q)
+    {a b : ℤ} (ha : a ∈ Finset.Icc 1 (n : ℤ)) (hb : b ∈ Finset.Icc 1 (n : ℤ))
+    (heq : (a : ZMod q) = (b : ZMod q)) : a = b := by
+  rw [ ZMod.intCast_eq_intCast_iff ] at heq;
+  rw [ Int.ModEq ] at heq ; rw [ Int.emod_eq_of_lt, Int.emod_eq_of_lt ] at heq <;> linarith [ Finset.mem_Icc.mp ha, Finset.mem_Icc.mp hb ] ;
+
+/-
+The difference map from cumulative h to increments d_j = h_j - h_{j-1} relates
+    `inScaledBox X s 0 h` to the product condition `∀ j, d_j ∈ {1,...,⌊s*b_j⌋}`,
+    which is exactly `boxIndicator`.
+-/
+private lemma inScaledBox_iff_boxIndicator_diffs (q : ℕ) [NeZero q] (k : ℕ) (hk : 2 ≤ k)
+    (X : Box (k - 1)) (s : ℝ) (hs : 0 ≤ s)
+    (h : Fin (k - 1) → ℤ)
+    (hrange : h ∈ (Fintype.piFinset fun _ => Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉)) :
+    inScaledBox X s (fun _ => 0) h ↔
+    ∀ j : Fin (k - 1),
+      let d_j : ℤ := h j - if (j : ℕ) = 0 then 0 else h ⟨j - 1, by omega⟩
+      1 ≤ d_j ∧ d_j ≤ ⌊s * X.sides j⌋ := by
+  constructor <;> intro H <;> simp_all +decide [ inScaledBox ];
+  · intro j; specialize H j; split_ifs at H ⊢ <;> norm_cast at *;
+    · exact ⟨ by linarith, Int.le_of_lt_add_one <| by rw [ ← @Int.cast_lt ℝ ] ; push_cast; linarith [ Int.lt_floor_add_one ( s * X.sides j ) ] ⟩;
+    · exact ⟨ by linarith, Int.le_of_lt_add_one <| by rw [ ← @Int.cast_lt ℝ ] ; push_cast; linarith [ Int.lt_floor_add_one ( s * X.sides j ) ] ⟩;
+  · intro i; specialize H i; split_ifs at * <;> norm_cast at * ;
+    · exact ⟨ by linarith, by linarith [ Int.floor_le ( s * X.sides i ), ( by norm_cast; linarith : ( h i : ℝ ) ≤ ⌊s * X.sides i⌋ ) ] ⟩;
+    · exact ⟨ by linarith, by linarith [ Int.floor_le ( s * X.sides i ), show ( h i : ℝ ) ≤ ⌊s * X.sides i⌋ + h ⟨ i - 1, Nat.lt_of_le_of_lt ( Nat.sub_le _ _ ) i.2 ⟩ by exact_mod_cast H.2 ] ⟩
+
+/-
+Step 1: Change variables from cumulative h to differences d.
+The map `h → d` where `d_j = h_j - h_{j-1}` is a bijection from
+`inScaledBox` lattice points to the product interval `∏_j {1,...,⌊s*b_j⌋}`.
+-/
+set_option maxHeartbeats 800000 in
+private lemma inScaledBox_sum_eq_diff_sum (k : ℕ) (hk : 2 ≤ k)
+    (q : ℕ) [NeZero q] (X : Box (k - 1)) (s : ℝ) (hs : 0 ≤ s)
+    (f : (Fin (k - 1) → ℤ) → ℂ) :
+    ∑ h ∈ (Fintype.piFinset fun _ => Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+        (fun h => inScaledBox X s (fun _ => 0) h),
+      f h =
+    ∑ d ∈ Fintype.piFinset (fun j : Fin (k - 1) => Finset.Icc 1 ⌊s * X.sides j⌋),
+      f (fun j => ∑ i ∈ Finset.Iic j, d i) := by
+  apply Finset.sum_bij (fun h _ => fun j => h j - if j.val = 0 then 0 else h ⟨j.val - 1, by omega⟩) _ _ _ _ <;> simp_all +decide [Finset.mem_filter];
+  · intro a ha hX a_3; specialize hX a_3; split_ifs at * <;> simp_all +decide ;
+    · exact Int.le_floor.2 hX.2;
+    · exact ⟨ by linarith, Int.le_of_lt_add_one <| by rw [ ← @Int.cast_lt ℝ ] ; push_cast; linarith [ Int.lt_floor_add_one ( s * X.sides a_3 ) ] ⟩;
+  · intro a₁ ha₁ ha₂ a₂ ha₃ ha₄ h; ext j; induction' j with j ih; simp_all +decide [ funext_iff ] ;
+    induction' j with j ih <;> simp_all +decide [ Fin.forall_iff ];
+    · simpa using h 0 ih;
+    · grind;
+  · intro b hb
+    use fun j => ∑ i ∈ Finset.Iic j, b i
+    constructor
+    all_goals generalize_proofs at *;
+    · refine' ⟨ _, _ ⟩
+      all_goals generalize_proofs at *;
+      · intro a
+        have h_sum_le : ∑ i ∈ Finset.Iic a, b i ≤ ∑ i, ⌊s * X.sides i⌋ := by
+          exact le_trans ( Finset.sum_le_sum fun _ _ => hb _ |>.2 ) ( Finset.sum_le_sum_of_subset_of_nonneg ( Finset.subset_univ _ ) fun _ _ _ => Int.floor_nonneg.mpr ( mul_nonneg hs ( X.sides_pos _ |> le_of_lt ) ) )
+        have h_sum_ge : 1 ≤ ∑ i ∈ Finset.Iic a, b i := by
+          exact le_trans ( hb a |>.1 ) ( Finset.single_le_sum ( fun i _ => by linarith [ hb i ] ) ( by simp ) )
+        exact ⟨h_sum_ge, by
+          exact le_trans h_sum_le ( Int.le_of_lt_add_one <| by rw [ ← @Int.cast_lt ℝ ] ; push_cast; nlinarith [ Int.le_ceil ( s * ∑ i, X.sides i ), show ( ∑ i : Fin ( k - 1 ), ⌊s * X.sides i⌋ : ℝ ) ≤ s * ∑ i : Fin ( k - 1 ), X.sides i from by rw [ Finset.mul_sum _ _ _ ] ; exact Finset.sum_le_sum fun i _ => Int.floor_le _ ] ) ;⟩;
+      · intro j; specialize hb j; rcases j with ⟨ _ | j, hj ⟩ <;> simp_all +decide ;
+        · rw [ show ( Iic ⟨ 0, hj ⟩ : Finset ( Fin ( k - 1 ) ) ) = { ⟨ 0, hj ⟩ } by ext ⟨ i, hi ⟩ ; aesop ] ; norm_num ; exact ⟨ by norm_cast; linarith, by exact Int.le_floor.mp hb.2 ⟩ ;
+        · rw [ show ( Iic ⟨ j + 1, hj ⟩ : Finset ( Fin ( k - 1 ) ) ) = Iic ⟨ j, by omega ⟩ ∪ { ⟨ j + 1, hj ⟩ } from ?_, Finset.sum_union ] <;> norm_num [ Finset.sum_singleton, Finset.sum_Ioc_succ_top, (Nat.succ_eq_succ ▸ Finset.Icc_succ_left_eq_Ioc) ] at *;
+          · exact ⟨ by linarith, by linarith [ show ( b ⟨ j + 1, hj ⟩ : ℝ ) ≤ s * X.sides ⟨ j + 1, hj ⟩ from le_trans ( mod_cast hb.2 ) ( Int.floor_le _ ) ] ⟩;
+          · grind;
+    · ext j; rcases j with ⟨ _ | j, hj ⟩ <;> simp +decide ; ring_nf;
+      · rw [ show ( Iic ⟨ 0, hj ⟩ : Finset ( Fin ( k - 1 ) ) ) = { ⟨ 0, hj ⟩ } by ext ⟨ i, hi ⟩ ; aesop ] ; norm_num;
+      · rw [ show ( Iic ⟨ j + 1, hj ⟩ : Finset ( Fin ( k - 1 ) ) ) = Iic ⟨ j, by omega ⟩ ∪ { ⟨ j + 1, hj ⟩ } from ?_, Finset.sum_union ] <;> norm_num [ Finset.sum_singleton, Finset.mem_Iic ];
+        ext ⟨ i, hi ⟩ ; simp +decide [le_iff_lt_or_eq] ; omega;
+  · intro a ha h; congr; ext j; rw [ show ( ∑ x ∈ Iic j, a x ) = ∑ x ∈ Iic j, ( if x.val = 0 then 0 else a ⟨ x.val - 1, by omega ⟩ ) + a j from ?_ ] ; ring;
+    induction' j with j ih;
+    induction' j with j ih <;> simp_all +decide [Finset.sum_ite];
+    · rw [ show ( Iic ⟨ 0, ih ⟩ : Finset ( Fin ( k - 1 ) ) ) = { ⟨ 0, ih ⟩ } by ext ⟨ x, hx ⟩ ; aesop ] ; aesop;
+    · rw [ show ( Iic ⟨ j + 1, by linarith ⟩ : Finset ( Fin ( k - 1 ) ) ) = Finset.Iic ⟨ j, by linarith ⟩ ∪ { ⟨ j + 1, by linarith ⟩ } from ?_, Finset.sum_union ] <;> norm_num [ Finset.sum_singleton, Finset.sum_union, Finset.sum_Ioc_succ_top, (Nat.succ_eq_succ ▸ Finset.Icc_succ_left_eq_Ioc) ];
+      · rw [ Finset.sum_filter, Finset.sum_insert ] <;> norm_num [ ih ( by linarith ) ];
+        rw [ add_comm, Finset.sum_ite ] ; aesop;
+      · ext ⟨ x, hx ⟩ ; simp +decide [ Fin.le_iff_val_le_val ] ; omega;
+
+/-
+Step 2: Map integer differences to ZMod q. Under `hbox` (⌊s*b_j⌋₊ < q),
+the map `d_j → (d_j : ZMod q)` is a bijection from the integer interval `{1,...,⌊s*b_j⌋}`
+to ZMod q elements with `val ∈ {1,...,⌊s*b_j⌋₊}`, which is the support of `boxIndicator`.
+-/
+private lemma diff_sum_eq_zmod_sum (k : ℕ) (hk : 2 ≤ k)
+    (q : ℕ) [NeZero q] (X : Box (k - 1)) (s : ℝ) (hs : 0 ≤ s)
+    (hbox : ∀ j : Fin (k - 1), ⌊s * X.sides j⌋₊ < q)
+    (g : (Fin (k - 1) → ZMod q) → ℂ) :
+    ∑ d ∈ Fintype.piFinset (fun j : Fin (k - 1) => Finset.Icc 1 ⌊s * X.sides j⌋),
+      g (fun i => (∑ j ∈ Finset.Iic i, d j : ZMod q)) =
+    ∑ x : Fin (k - 1) → ZMod q,
+      boxIndicator q (k - 1) X s x * g (cumSum q (k - 1) x) := by
+  -- The set of `x : Fin (k - 1) → ZMod q` where `boxIndicator X s x ≠ 0` is exactly the image of `piFinset (fun j => Icc 1 ⌊s * X.sides j⌋)` under the standard map `d ↦ (fun j => (d j : ZMod q))`.
+  have h_image : {x : Fin (k - 1) → ZMod q | boxIndicator q (k - 1) X s x ≠ 0} =
+    Set.image (fun d : Fin (k - 1) → ℤ => fun j => (d j : ZMod q)) (Fintype.piFinset fun j => Icc 1 ⌊s * X.sides j⌋) := by
+      ext x; simp [boxIndicator];
+      constructor <;> intro h;
+      · use fun j => (x j).val;
+        simp_all +decide [Pi.le_def];
+        constructor <;> intro i <;> specialize h i;
+        · rcases q with ( _ | _ | q ) <;> norm_cast;
+          · grind;
+          · grind;
+          · exact Nat.one_le_cast.mpr h.1;
+        · convert Int.ofNat_le.mpr h.2 using 1;
+          · cases q <;> aesop;
+          · exact Eq.symm <| Int.toNat_of_nonneg <| Int.floor_nonneg.2 <| mul_nonneg hs <| le_of_lt <| X.sides_pos i;
+      · rcases h with ⟨ d, ⟨ hd₁, hd₂ ⟩, rfl ⟩ ; simp_all +decide [ Pi.le_def ] ;
+        intro i; specialize hd₁ i; specialize hd₂ i; rcases d_i : d i with ( _ | _ | d_i ) <;> simp_all +decide ;
+        · rw [ Int.le_floor ] at hd₂ ; norm_cast at *;
+          rw [ Nat.mod_eq_of_lt ];
+          · exact ⟨ hd₁, Nat.le_floor <| mod_cast hd₂ ⟩;
+          · exact lt_of_le_of_lt ( Nat.le_floor <| mod_cast hd₂ ) ( hbox i );
+        · tauto;
+  -- By definition of `boxIndicator`, we can restrict the sum to the image of `piFinset (fun j => Icc 1 ⌊s * X.sides j⌋)`.
+  have h_sum_image : ∑ x, boxIndicator q (k - 1) X s x * g (cumSum q (k - 1) x) =
+      ∑ x ∈ Finset.image (fun d : Fin (k - 1) → ℤ => fun j => (d j : ZMod q)) (Fintype.piFinset fun j => Icc 1 ⌊s * X.sides j⌋), g (cumSum q (k - 1) x) := by
+        rw [ ← Finset.sum_subset ];
+        any_goals exact Finset.univ.filter fun x => boxIndicator q ( k - 1 ) X s x ≠ 0;
+        · refine' Finset.sum_bij ( fun x hx => x ) _ _ _ _ <;> simp_all +decide [ Set.ext_iff ];
+          · exact fun a x hx₁ hx₂ hx₃ => ⟨ x, fun i => ⟨ hx₁ i, hx₂ i ⟩, hx₃ ⟩;
+          · exact fun a ha => ⟨ a, ⟨ fun i => ha i |>.1, fun i => ha i |>.2 ⟩, rfl ⟩;
+          · grind +locals;
+        · exact filter_subset (fun x => boxIndicator q (k - 1) X s x ≠ 0) univ;
+        · aesop;
+  rw [ h_sum_image, Finset.sum_image ];
+  · unfold cumSum; aesop;
+  · intros d hd d' hd' h_eq;
+    ext j; specialize h_eq; replace h_eq := congr_fun h_eq j; simp_all +decide [ ZMod.intCast_eq_intCast_iff ] ;
+    rw [ Int.ModEq ] at h_eq;
+    rw [ Int.emod_eq_of_lt, Int.emod_eq_of_lt ] at h_eq;
+    · exact h_eq;
+    · exact le_trans ( by norm_num ) ( hd'.1 j );
+    · exact lt_of_le_of_lt ( hd'.2 j ) ( Int.floor_lt.mpr ( Nat.lt_of_floor_lt ( hbox j ) ) );
+    · exact le_trans ( by norm_num ) ( hd.1 j );
+    · exact lt_of_le_of_lt ( hd.2 j ) ( Int.floor_lt.mpr ( Nat.lt_of_floor_lt ( hbox j ) ) )
+
+/-- The sum over integer lattice points in the scaled box equals the `ZMod q` sum
+weighted by `boxIndicator`, under the change of variables from cumulative
+positions to differences. -/
+private lemma inScaledBox_sum_eq_zmod_sum (k : ℕ) (hk : 2 ≤ k)
+    (q : ℕ) [NeZero q] (X : Box (k - 1)) (s : ℝ) (hs : 0 ≤ s)
+    (hbox : ∀ j : Fin (k - 1), ⌊s * X.sides j⌋₊ < q)
+    (g : (Fin (k - 1) → ZMod q) → ℂ) :
+    ∑ h ∈ (Fintype.piFinset fun _ => Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+        (fun h => inScaledBox X s (fun _ => 0) h),
+      g (fun i => (h i : ZMod q)) =
+    ∑ x : Fin (k - 1) → ZMod q,
+      boxIndicator q (k - 1) X s x * g (cumSum q (k - 1) x) := by
+  rw [inScaledBox_sum_eq_diff_sum k hk q X s hs
+    (fun h => g (fun i => (h i : ZMod q)))]
+  convert diff_sum_eq_zmod_sum k hk q X s hs hbox g using 1
+  congr 1; ext d; congr 1; ext i
+  simp only [Int.cast_sum]
+
+/-
+**Corrected version of deviation_dft_expansion.** The hypothesis `hbox` ensures that
+the integer differences in the scaled box inject into `ZMod q`, so the integer lattice
+sum equals the `ZMod q` sum weighted by `boxIndicator`.
+
+The original statement (without `hbox` and `hs`) was false when `⌊s * X.sides j⌋₊ ≥ q`:
+multiple integer differences would map to the same residue class, creating extra
+terms in the LHS that the RHS does not account for.
+
+**Counterexample:** `q = 3, k = 2, s = 2, b₀ = 2` gives `⌊4⌋ = 4 ≥ 3 = q`.
+  `LHS = g(1) + g(2) + g(0) + g(1) ≠ g(1) + g(2) = RHS`
+  for `g = indicator of {0 : ZMod 3}`.
+-/
 private lemma deviation_dft_expansion (k : ℕ) (hk : 2 ≤ k)
-    (q : ℕ) [NeZero q] (X : Box (k - 1)) (s : ℝ)
+    (q : ℕ) [NeZero q] (X : Box (k - 1)) (s : ℝ) (hs : 0 ≤ s)
+    (hbox : ∀ j : Fin (k - 1), ⌊s * X.sides j⌋₊ < q)
     (g : (Fin (k - 1) → ZMod q) → ℂ) :
     ∑ h ∈ (Fintype.piFinset fun _ => Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
         (fun h => inScaledBox X s (fun _ => 0) h),
@@ -1281,5 +1542,10 @@ private lemma deviation_dft_expansion (k : ℕ) (hk : 2 ≤ k)
     (q : ℂ) ^ (k - 1) * ∑ ξ : Fin (k - 1) → ZMod q,
       dft q (k - 1) g (fun j => ξ j - if h_lt : (j : ℕ) + 1 < k - 1 then ξ ⟨(j : ℕ) + 1, h_lt⟩ else 0) *
       dft q (k - 1) (boxIndicator q (k - 1) X s) (-ξ) := by
-  sorry
+  rw [ inScaledBox_sum_eq_zmod_sum k hk q X s hs hbox g, spatial_to_frequency_swap ];
+  simp +decide only [mul_assoc, Finset.mul_sum _ _ _];
+  convert rfl using 3;
+  congr! 1;
+  convert dft_sum_transform q ( k - 1 ) g _ |> Eq.symm using 1
+
 end PoissonCRT

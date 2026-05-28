@@ -773,6 +773,19 @@ private lemma deviation_dft_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 �
     -- Step 4 (Divisor sum): Group frequencies by their support divisor d,
     --   bound the d-sum using the spacing bound `hsp` to relate q and s,
     --   yielding the final K · s^{-ε/2} decay.
+    --
+    -- NOTE: The full Fourier-ANOVA synthesis proof requires substantial additional
+    -- infrastructure beyond what `deviation_dft_expansion`, `deviation_dft_q1_q2_bound`,
+    -- and `dft_boxIndicator_subgrid_bound` provide. Specifically:
+    --   (a) Handling the box condition `⌊s * X.sides j⌋₊ < q` (true for all but
+    --       finitely many q) and bounding the finitely many exceptions.
+    --   (b) Relating the ℝ-valued deviation sum to the ℂ-valued DFT expansion.
+    --   (c) Grouping frequencies ξ by the support divisor of the differenced
+    --       frequency Δξ, and bounding the subgrid DFT sums.
+    --   (d) Summing the divisor-grouped bounds using the spacing hypothesis `hsp`
+    --       to extract the s^{-ε/2} decay rate.
+    -- Note: `WellDistributedFourier` does NOT imply `WellDistributed` with useful
+    -- parameters, so this proof cannot be reduced to `deviation_expression_fixed_delta`.
     sorry
 
 end PoissonCRT
