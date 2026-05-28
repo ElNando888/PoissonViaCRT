@@ -1332,7 +1332,14 @@ private lemma character_cumSum_eq (q : ℕ) [NeZero q] (m : ℕ)
       simp +decide [add_assoc, Finset.mul_sum _ _ _, ih];
       rw [ ← Finset.sum_sub_distrib ] ; rw [ ← Finset.sum_add_distrib ] ; congr ; ext i ; split_ifs <;> simp_all +decide [add_comm] ; ring_nf;
       · rw [ ← Finset.sum_sub_distrib ];
-        exact?;
+        refine Finset.sum_bij (fun a _ => a.castSucc) ?_ ?_ ?_ ?_
+        · intro a ha; simp [Finset.mem_Iic] at ha ⊢; exact Fin.castSucc_le_castSucc_iff.mpr ha
+        · intro a₁ _ a₂ _ h; exact Fin.castSucc_injective _ h
+        · intro b hb
+          simp [Finset.mem_Iic] at hb
+          have hb_lt : (b : ℕ) < m := Fin.lt_def.mp (lt_of_le_of_lt hb (Fin.castSucc_lt_last i))
+          exact ⟨⟨(b : ℕ), hb_lt⟩, Finset.mem_Iic.mpr (by simp [Fin.le_iff_val_le_val] at hb ⊢; exact hb), by simp⟩
+        · intro a _; rfl;
       · cases ‹m ≤ i + 1›.eq_or_lt <;> simp_all +decide [Fin.last];
         · repeat rw [ show ( Iic i.castSucc : Finset ( Fin ( m + 1 ) ) ) = Finset.image ( Fin.castSucc ) ( Iic i ) from ?_, Finset.sum_image ] <;> norm_num [ Fin.ext_iff ];
         · linarith [ Fin.is_lt i ];
