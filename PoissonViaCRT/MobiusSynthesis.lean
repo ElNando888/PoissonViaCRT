@@ -736,9 +736,91 @@ private lemma deviation_per_q_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 
   · rw [ mul_assoc, ← Real.rpow_add ] <;> norm_num;
     exact div_pos ( Nat.cast_pos.mpr <| NeZero.pos q ) <| Nat.cast_pos.mpr <| Nat.pos_of_ne_zero <| by have := crtSubset_card_pos_aux Ω hΩ q; aesop;
 
-/-- For a fixed box `X`, only finitely many squarefree `q` fail the box condition
+/-! ### Helpers for finite_exceptional_q -/
+
+/-
+The CRT subset cardinality factors as a product over prime factors.
+-/
+private lemma crt_card_eq_prod_local (q : ℕ) [NeZero q] (hq_sq : Squarefree q)
+    (Ω : ∀ p : ℕ, Finset (ZMod p)) :
+    ((crtSubset q Ω).card : ℝ) = ∏ p ∈ q.primeFactors, ((Ω p).card : ℝ) := by
+  have h_card : Fintype.card (crtSubset q Ω) = ∏ p ∈ q.primeFactors, Fintype.card (Ω p) := by
+    convert Fintype.card_congr ( PoissonCRT.crt_domain_equiv q hq_sq Ω ) using 1;
+    simp +decide [ Fintype.card_pi ];
+    conv_lhs => rw [ ← Finset.prod_attach ] ;
+  convert congr_arg ( ( ↑ ) : ℕ → ℝ ) h_card using 1;
+  · rw [ Fintype.card_of_subtype ];
+    exact fun x => Iff.rfl;
+  · simp +decide
+
+/-
+The spacing hypothesis implies a lower bound on `|Ω_p|`.
+-/
+private lemma omega_card_ge_rpow (ε : ℝ) (hε : 0 < ε) (k : ℕ)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (hsp : ∀ (p : ℕ), p.Prime →
+      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
+    (p : ℕ) (hp : p.Prime) :
+    (p : ℝ) ^ (1 - lambdaExponent k + ε) ≤ ((Ω p).card : ℝ) := by
+  have := hsp p hp;
+  rw [ div_le_iff₀ ( Nat.cast_pos.mpr <| Finset.card_pos.mpr <| hΩ p hp ) ] at this;
+  convert mul_le_mul_of_nonneg_left this ( Real.rpow_nonneg ( Nat.cast_nonneg p ) ( -lambdaExponent k + ε ) ) using 1 <;> ring_nf;
+  · rw [ ← Real.rpow_add_one ( Nat.cast_ne_zero.mpr hp.ne_zero ) ] ; ring_nf;
+  · rw [ ← Real.rpow_add ( Nat.cast_pos.mpr hp.pos ) ] ; ring_nf ; norm_num
+
+/-
+For squarefree `q`, `∏_{p | q} p^δ = q^δ`.
+-/
+private lemma prod_rpow_primeFactors (q : ℕ) (hq_sq : Squarefree q)
+    (hq_pos : 0 < q) (δ : ℝ) :
+    ∏ p ∈ q.primeFactors, (p : ℝ) ^ δ = (q : ℝ) ^ δ := by
+  have h_prod : (∏ p ∈ q.primeFactors, (p : ℝ)) = q := by
+    rw [ ← Nat.cast_prod, Nat.prod_primeFactors_of_squarefree hq_sq ];
+  rw [ ← h_prod, Real.finset_prod_rpow _ _ fun p hp => Nat.cast_nonneg _ ]
+
+/-
+For squarefree `q` with the spacing hypothesis, `|Ω_q| ≥ q^{1-λ+ε}`.
+-/
+private lemma crt_card_ge_rpow (ε : ℝ) (hε : 0 < ε) (k : ℕ)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (hsp : ∀ (p : ℕ), p.Prime →
+      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
+    (q : ℕ) [NeZero q] (hq_sq : Squarefree q) :
+    (q : ℝ) ^ (1 - lambdaExponent k + ε) ≤ ((crtSubset q Ω).card : ℝ) := by
+  -- Since $q$ is squarefree, its prime factors are distinct, and we can apply the product of the inequalities for each prime factor.
+  have h_prod : (∏ p ∈ q.primeFactors, (p : ℝ) ^ (1 - lambdaExponent k + ε)) ≤ (∏ p ∈ q.primeFactors, ((Ω p).card : ℝ)) := by
+    exact Finset.prod_le_prod ( fun _ _ => Real.rpow_nonneg ( Nat.cast_nonneg _ ) _ ) fun p hp => omega_card_ge_rpow ε hε k Ω hΩ hsp p ( Nat.prime_of_mem_primeFactors hp );
+  convert h_prod using 1;
+  · convert prod_rpow_primeFactors q hq_sq ( NeZero.pos q ) ( 1 - lambdaExponent k + ε ) |> Eq.symm using 1;
+  · convert PoissonCRT.crt_card_eq_prod_local q hq_sq Ω using 1
+
+/-
+`q^δ` exceeds any fixed bound for large enough `q`, when `δ > 0`.
+-/
+private lemma rpow_eventually_exceeds (δ : ℝ) (hδ : 0 < δ) (M : ℝ) :
+    ∃ Q₀ : ℕ, ∀ q : ℕ, Q₀ < q → M < (q : ℝ) ^ δ := by
+  have h_pow_grows : Filter.Tendsto (fun q : ℕ => (q : ℝ) ^ δ) Filter.atTop Filter.atTop := by
+    exact tendsto_rpow_atTop hδ |> Filter.Tendsto.comp <| tendsto_natCast_atTop_atTop;
+  exact Filter.eventually_atTop.mp ( h_pow_grows.eventually_gt_atTop M ) |> fun ⟨ Q₀, hQ₀ ⟩ => ⟨ Q₀, fun q hq => hQ₀ q hq.le ⟩
+
+/-
+If `b < card` (as reals), then `⌊q / card * b⌋₊ < q`.
+-/
+private lemma floor_ratio_lt_of_card_gt (q : ℕ) (hq_pos : 0 < q)
+    (card : ℕ) (hcard : 0 < card) (hcard_le : card ≤ q)
+    (b : ℝ) (hb : 0 < b) (hb_lt : b < card) :
+    ⌊(q : ℝ) / card * b⌋₊ < q := by
+  rw [ Nat.floor_lt', div_mul_eq_mul_div, div_lt_iff₀ ] <;> norm_cast;
+  · simpa using mul_lt_mul_of_pos_left hb_lt ( Nat.cast_pos.mpr hq_pos );
+  · linarith
+
+/-
+For a fixed box `X`, only finitely many squarefree `q` fail the box condition
 `∀ j, ⌊s * X.sides j⌋₊ < q`. Since `s = q / |Ω_q|` and `|Ω_p| ≥ p^{1-λ_k+ε}`,
-the ratio `s` grows sublinearly, so for large enough `q` the condition holds. -/
+the ratio `s` grows sublinearly, so for large enough `q` the condition holds.
+-/
 private lemma finite_exceptional_q (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
@@ -748,7 +830,18 @@ private lemma finite_exceptional_q (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 �
     (X : Box (k - 1)) :
     ∃ Q₀ : ℕ, ∀ (q : ℕ) [NeZero q], Squarefree q → Q₀ < q →
       ∀ j : Fin (k - 1), ⌊(q : ℝ) / (crtSubset q Ω).card * X.sides j⌋₊ < q := by
-  sorry
+  have h_card_ge_rpow : (lambdaExponent k) ≤ 1 := by
+    exact lambdaExponent_le_one k
+  generalize_proofs at *; (
+  have := rpow_eventually_exceeds ( 1 - lambdaExponent k + ε ) ( by linarith ) ( Finset.univ.sup' ( by
+    exact ⟨ ⟨ 0, Nat.sub_pos_of_lt hk ⟩, Finset.mem_univ _ ⟩ ) ( fun j => X.sides j ) ) ; norm_num at *; (
+  obtain ⟨ Q₀, hQ₀ ⟩ := this; use Q₀; intros q hq_sq hq_pos hq_gt j; specialize hQ₀ q hq_gt j; simp_all +decide [ div_mul_eq_mul_div ] ; (
+  rw [ Nat.floor_lt', div_lt_iff₀ ] <;> norm_num;
+  · gcongr;
+    · exact Nat.cast_pos.mpr hq_sq.pos;
+    · exact hQ₀.trans_le ( by exact_mod_cast PoissonCRT.crt_card_ge_rpow ε hε k Ω hΩ hsp q hq_pos ) ;
+  · exact Finset.card_pos.mp ( crtSubset_card_pos_aux Ω hΩ q );
+  · exact hq_sq.out)))
 
 /-- The Fourier-ANOVA synthesis bound for a single squarefree `q` satisfying the box
 condition. Combines the DFT expansion (`deviation_dft_expansion`), the CRT
