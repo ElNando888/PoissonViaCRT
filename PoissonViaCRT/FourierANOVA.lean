@@ -379,7 +379,8 @@ with side lengths $b_1, \ldots, b_m$ and a scaling parameter `s > 0`, the indica
 $I_S(x) = 1$ if $x$ lies in the scaled box $\{1, \ldots, \lfloor s b_j \rfloor\}^m$
 (identified with elements of `ZMod q` via their canonical representatives), and
 $I_S(x) = 0$ otherwise. -/
-noncomputable def boxIndicator (q : ℕ) [NeZero q] (m : ℕ)
+@[expose]
+public noncomputable def boxIndicator (q : ℕ) [NeZero q] (m : ℕ)
     (B : Box m) (s : ℝ) (x : Fin m → ZMod q) : ℂ :=
   if ∀ j : Fin m, (x j).val ∈ Finset.Icc 1 ⌊s * B.sides j⌋₊ then 1 else 0
 
@@ -1264,4 +1265,21 @@ lemma dft_boxIndicator_subgrid_bound (q d : ℕ) [NeZero q] [NeZero d] (hd : d �
     rw [ norm_prod ];
   · exact fun _ _ => Finset.sum_nonneg fun _ _ => norm_nonneg _
 
+
+private lemma dft_sum_transform (q : ℕ) [NeZero q] (m : ℕ)
+    (g : (Fin m → ZMod q) → ℂ) (ξ : Fin m → ZMod q) :
+    dft q m (fun x => g (fun j => ∑ i ∈ Finset.Iic j, x i)) ξ =
+    dft q m g (fun j => ξ j - if h_lt : (j : ℕ) + 1 < m then ξ ⟨(j : ℕ) + 1, h_lt⟩ else 0) := by
+  sorry
+
+private lemma deviation_dft_expansion (k : ℕ) (hk : 2 ≤ k)
+    (q : ℕ) [NeZero q] (X : Box (k - 1)) (s : ℝ)
+    (g : (Fin (k - 1) → ZMod q) → ℂ) :
+    ∑ h ∈ (Fintype.piFinset fun _ => Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+        (fun h => inScaledBox X s (fun _ => 0) h),
+      g (fun i => (h i : ZMod q)) =
+    (q : ℂ) ^ (k - 1) * ∑ ξ : Fin (k - 1) → ZMod q,
+      dft q (k - 1) g (fun j => ξ j - if h_lt : (j : ℕ) + 1 < k - 1 then ξ ⟨(j : ℕ) + 1, h_lt⟩ else 0) *
+      dft q (k - 1) (boxIndicator q (k - 1) X s) (-ξ) := by
+  sorry
 end PoissonCRT
