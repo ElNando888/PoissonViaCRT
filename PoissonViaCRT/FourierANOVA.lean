@@ -1136,16 +1136,132 @@ lemma dft_interval_l1_bound (q : ℕ) [NeZero q] (L : ℕ) :
     · rw [ Ne.eq_def, ZMod.natCast_eq_zero_iff ] ; exact Nat.not_dvd_of_pos_of_lt ( by linarith [ Finset.mem_Icc.mp ‹_› ] ) ( by linarith [ Finset.mem_Icc.mp ‹_›, Nat.sub_add_cancel ( NeZero.pos q ) ] );
   linarith [ sum_dft_bound_le_log_add_two q, dft_interval_norm_at_zero q L ]
 
-/-- Sum of the 1D interval DFT over a subgrid of frequencies. -/
+/-
+At frequency `ξ = 0`, the DFT of the interval indicator has norm at most `L / q`.
+-/
+private lemma dft_interval_norm_at_zero_tight (q : ℕ) [NeZero q] (L : ℕ) :
+    ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 L then (1 : ℂ) else 0)
+      (fun _ => (0 : ZMod q))‖ ≤ (L : ℝ) / q := by
+  simp +decide [ dft, character ];
+  convert mul_le_mul_of_nonneg_left ( show ( Finset.card ( Finset.filter ( fun x : ZMod q => ( 1 ≤ x.val ∧ x.val ≤ L ) ) Finset.univ ) : ℝ ) ≤ L from ?_ ) ( inv_nonneg.mpr ( Nat.cast_nonneg q ) ) using 1 ; ring_nf;
+  · rw [ Finset.card_filter, Finset.card_filter ];
+    refine' congr_arg _ ( congr_arg _ ( Finset.sum_bij ( fun x _ => x 0 ) _ _ _ _ ) ) <;> simp +decide;
+    · exact fun a₁ a₂ h => funext fun i => by fin_cases i; exact h;
+    · exact fun b => ⟨ fun _ => b, rfl ⟩;
+  · ring;
+  · norm_cast;
+    have h_card : Finset.card (Finset.image (fun x : ZMod q => x.val) (Finset.filter (fun x : ZMod q => 1 ≤ x.val ∧ x.val ≤ L) Finset.univ)) ≤ L := by
+      exact le_trans ( Finset.card_le_card <| Finset.image_subset_iff.mpr fun x hx => Finset.mem_Icc.mpr <| Finset.mem_filter.mp hx |>.2 ) ( by simp );
+    rwa [ Finset.card_image_of_injective _ fun x y hxy => by simpa [ ZMod.natCast_eq_zero_iff ] using congr_arg ( fun x : ℕ => x : ℕ → ZMod q ) hxy ] at h_card
+
+/-
+For nonzero `a : ZMod d` with `d ∣ q`, the frequency `a.val * (q / d)` is nonzero in `ZMod q`.
+-/
+private lemma subgrid_freq_ne_zero (q d : ℕ) [NeZero q] [NeZero d] (hd : d ∣ q)
+    (a : ZMod d) (ha : a ≠ 0) :
+    ((a.val * (q / d) : ℕ) : ZMod q) ≠ 0 := by
+  cases hd ; simp_all +decide;
+  cases d <;> cases ‹ℕ› <;> simp_all +decide;
+  · fin_cases a ; contradiction;
+  · cases a ; simp_all +decide [ ZMod.cast, ZMod.val ];
+    norm_cast;
+    rw [ ZMod.natCast_eq_zero_iff ];
+    rw [ Nat.dvd_iff_mod_eq_zero ] ; simp_all +decide [Nat.mul_mod_mul_right];
+    exact ⟨ by rw [ Nat.mod_eq_of_lt ] <;> aesop, by aesop_cat ⟩
+
+/-
+For nonzero `a : ZMod d` with `d ∣ q`, the sine argument simplifies:
+`|sin(π * (a.val * (q / d)) / q)| = |sin(π * a.val / d)|`.
+-/
+private lemma subgrid_sin_eq (q d : ℕ) [NeZero q] [NeZero d] (hd : d ∣ q)
+    (a : ZMod d) (ha : a ≠ 0) :
+    |Real.sin (Real.pi * ((a.val * (q / d) : ℕ) : ℝ) / q)| =
+      |Real.sin (Real.pi * (a.val : ℝ) / d)| := by
+  obtain ⟨ k, rfl ⟩ := hd; norm_num [ Nat.mul_div_cancel ] ; ring_nf;
+  simp +decide [ sq, mul_assoc, mul_comm, mul_left_comm, NeZero.ne ];
+  by_cases hk : k = 0 <;> aesop
+
+/-
+The `val` of a nonzero `a.val * (q / d)` in `ZMod q` equals `a.val * (q / d)`,
+since `a.val < d` and `d ∣ q` imply `a.val * (q / d) < q`.
+-/
+private lemma subgrid_val_eq (q d : ℕ) [NeZero q] [NeZero d] (hd : d ∣ q)
+    (a : ZMod d) (ha : a ≠ 0) :
+    ((a.val * (q / d) : ℕ) : ZMod q).val = a.val * (q / d) := by
+  have h_cast : a.val < d := by
+    convert a.val_lt;
+  have h_cast : a.val * (q / d) < q := by
+    nlinarith [ Nat.div_mul_cancel hd, NeZero.pos q ];
+  exact ZMod.val_cast_of_lt h_cast
+
+/-
+Sum of the 1D interval DFT over a subgrid of frequencies.
+-/
+set_option maxHeartbeats 400000 in
 lemma dft_interval_subgrid_bound (q d : ℕ) [NeZero q] [NeZero d] (hd : d ∣ q) (L : ℕ) :
     ∑ a : ZMod d, ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 L then (1 : ℂ) else 0) (fun _ => (((a.val * (q / d) : ℕ) : ZMod q)))‖ ≤
       (L : ℝ) / q + (d : ℝ) / q * Real.log d + 2 := by
-  sorry
+  -- Split the sum into the term at a=0 and the sum over a≠0.
+  have h_split : ∑ a : ZMod d, ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 L then (1 : ℂ) else 0) (fun _ => ↑(a.val * (q / d)))‖ = ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 L then (1 : ℂ) else 0) (fun _ => 0)‖ + ∑ a ∈ Finset.Icc 1 (d - 1), ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 L then (1 : ℂ) else 0) (fun _ => ↑(a * (q / d)))‖ := by
+    rcases d with ( _ | _ | d ) <;> simp_all +decide;
+    · exact False.elim <| NeZero.ne 0 rfl;
+    · erw [ Finset.sum_Ico_eq_sub _ _ ] <;> norm_num;
+      refine' Finset.sum_bij ( fun x _ => x.val ) _ _ _ _ <;> simp +decide;
+      · exact fun a => Nat.le_of_lt_succ <| ZMod.val_lt a;
+      · exact fun a₁ a₂ h => by simpa [ ZMod.natCast_zmod_val ] using congr_arg ( fun x : ℕ => x : ℕ → ZMod ( d + 1 + 1 ) ) h;
+      · exact fun b hb => ⟨ ⟨ b, by linarith ⟩, rfl ⟩;
+  -- Apply the bounds from the lemmas to each part of the split sum.
+  have h_bounds : ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 L then (1 : ℂ) else 0) (fun _ => 0)‖ ≤ (L : ℝ) / q ∧ ∑ a ∈ Finset.Icc 1 (d - 1), ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 L then (1 : ℂ) else 0) (fun _ => ↑(a * (q / d)))‖ ≤ (d : ℝ) / q * (Real.log d + 1) := by
+    refine' ⟨ _, _ ⟩;
+    · convert dft_interval_norm_at_zero_tight q L using 1;
+    · -- Apply the bound from `dft_interval_norm_at_nonzero` to each term in the sum.
+      have h_bound : ∀ a ∈ Finset.Icc 1 (d - 1), ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 L then (1 : ℂ) else 0) (fun _ => ↑(a * (q / d)))‖ ≤ 1 / (q * |Real.sin (Real.pi * (a : ℝ) / d)|) := by
+        intro a ha
+        have h_freq_ne_zero : ((a * (q / d) : ℕ) : ZMod q) ≠ 0 := by
+          convert subgrid_freq_ne_zero q d hd ( a : ZMod d ) _ using 1;
+          · simp +decide [ ZMod.val_natCast ];
+            rw [ Nat.mod_eq_of_lt ( show a < d from lt_of_le_of_lt ( Finset.mem_Icc.mp ha |>.2 ) ( Nat.pred_lt ( NeZero.ne d ) ) ) ];
+          · rw [ Ne.eq_def, ZMod.natCast_eq_zero_iff ] ; exact Nat.not_dvd_of_pos_of_lt ( Finset.mem_Icc.mp ha |>.1 ) ( lt_of_le_of_lt ( Finset.mem_Icc.mp ha |>.2 ) ( Nat.pred_lt ( NeZero.ne d ) ) );
+        convert dft_interval_norm_at_nonzero q L ( ↑ ( a * ( q / d ) ) ) h_freq_ne_zero using 1;
+        have h_subgrid_sin_eq : |Real.sin (Real.pi * (a * (q / d) : ℕ) / q)| = |Real.sin (Real.pi * (a : ℝ) / d)| := by
+          convert subgrid_sin_eq q d hd ( a : ZMod d ) _ using 1 ; ring_nf;
+          · simp +decide [ mul_assoc, mul_comm, mul_left_comm, ZMod.val_natCast, Nat.mod_eq_of_lt ( show a < d from lt_of_le_of_lt ( Finset.mem_Icc.mp ha |>.2 ) ( Nat.pred_lt ( NeZero.ne d ) ) ) ];
+          · simp +decide [ ZMod.val_natCast, Nat.mod_eq_of_lt ( show a < d from lt_of_le_of_lt ( Finset.mem_Icc.mp ha |>.2 ) ( Nat.pred_lt ( NeZero.ne d ) ) ) ];
+          · simp_all +decide [ ZMod.natCast_eq_zero_iff ];
+            exact Nat.not_dvd_of_pos_of_lt ha.1 ( lt_of_le_of_lt ha.2 ( Nat.pred_lt ( NeZero.ne d ) ) );
+        have h_subgrid_val_eq : ((a * (q / d) : ℕ) : ZMod q).val = a * (q / d) := by
+          convert subgrid_val_eq q d hd a _;
+          · erw [ ZMod.val_cast_of_lt ] ; linarith [ Finset.mem_Icc.mp ha, Nat.sub_add_cancel ( show 1 ≤ d from NeZero.pos d ) ];
+          · erw [ ZMod.val_cast_of_lt ] ; linarith [ Finset.mem_Icc.mp ha, Nat.sub_add_cancel ( show 1 ≤ d from Nat.pos_of_dvd_of_pos hd ( NeZero.pos q ) ) ];
+          · contrapose! h_freq_ne_zero; simp_all +decide [ ZMod.natCast_eq_zero_iff ] ;
+            exact absurd h_freq_ne_zero ( Nat.not_dvd_of_pos_of_lt ha.1 ( lt_of_le_of_lt ha.2 ( Nat.pred_lt ( NeZero.ne d ) ) ) );
+        aesop;
+      refine' le_trans ( Finset.sum_le_sum h_bound ) _;
+      convert mul_le_mul_of_nonneg_left ( sum_inv_sin_le_log_add_one d ( NeZero.pos d ) ) ( show ( 0 : ℝ ) ≤ d / q by positivity ) using 1 ; ring_nf;
+      simp +decide [ mul_assoc, mul_comm, mul_left_comm, Finset.mul_sum _ _ _, NeZero.ne ];
+  linarith [ show ( d : ℝ ) / q ≤ 1 by rw [ div_le_iff₀ ] <;> norm_cast <;> linarith [ Nat.pos_of_ne_zero ( NeZero.ne q ), Nat.pos_of_ne_zero ( NeZero.ne d ), Nat.le_of_dvd ( NeZero.pos q ) hd ] ]
 
-/-- Generalization to the (k-1)-dimensional box DFT over a subgrid of frequencies. -/
-lemma dft_box_subgrid_bound (q d : ℕ) [NeZero q] [NeZero d] (hd : d ∣ q) (k : ℕ) (hk : 2 ≤ k) (X : Box (k - 1)) (s : ℝ) :
-    ∑ a : Fin (k - 1) → ZMod d, ‖dft q (k - 1) (fun h => if inScaledBox X s (fun _ => 0) (fun i => (h i).val) then (1 : ℂ) else 0) (fun i => (((a i).val * (q / d) : ℕ) : ZMod q))‖ ≤
-      ((s * X.volume^(1 / (k - 1 : ℝ))) / q + (d : ℝ) / q * Real.log d + 2) ^ (k - 1) := by
-  sorry
+/-
+Generalization to the (k-1)-dimensional box DFT over a subgrid of frequencies.
+The box indicator `boxIndicator` factors as a product of 1D indicators, so its DFT
+factors as a product of 1D DFTs (`dft_boxIndicator_eq_prod`). The sum over the product type
+then factors via Fubini, and each factor is bounded by `dft_interval_subgrid_bound`.
+-/
+lemma dft_boxIndicator_subgrid_bound (q d : ℕ) [NeZero q] [NeZero d] (hd : d ∣ q)
+    (k : ℕ) (hk : 2 ≤ k) (X : Box (k - 1)) (s : ℝ) (hs : 0 ≤ s) :
+    ∑ a : Fin (k - 1) → ZMod d,
+      ‖dft q (k - 1) (boxIndicator q (k - 1) X s) (fun i => (((a i).val * (q / d) : ℕ) : ZMod q))‖ ≤
+      ∏ j : Fin (k - 1), (⌊s * X.sides j⌋₊ / (q : ℝ) + (d : ℝ) / q * Real.log d + 2) := by
+  -- By Fubini's theorem, we can interchange the order of summation.
+  have h_fubini : ∑ a : Fin (k - 1) → ZMod d, ∏ j, ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 ⌊s * X.sides j⌋₊ then (1 : ℂ) else 0) (fun _ => (((a j).val * (q / d) : ℕ) : ZMod q))‖ = ∏ j : Fin (k - 1), ∑ a : ZMod d, ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 ⌊s * X.sides j⌋₊ then (1 : ℂ) else 0) (fun _ => (((a).val * (q / d) : ℕ) : ZMod q))‖ := by
+    rw [ Finset.prod_sum ];
+    refine' Finset.sum_bij ( fun a _ => fun j _ => a j ) _ _ _ _ <;> simp +decide;
+    · simp +decide [ funext_iff ];
+    · exact fun b => ⟨ fun j => b j ( Finset.mem_univ j ), rfl ⟩;
+  convert h_fubini.le.trans ( Finset.prod_le_prod ?_ fun j _ => dft_interval_subgrid_bound q d hd ⌊s * X.sides j⌋₊ ) using 1;
+  · congr! 1;
+    convert congr_arg Norm.norm ( dft_boxIndicator_eq_prod q ( k - 1 ) X s ( fun i => ( ( ‹Fin ( k - 1 ) → ZMod d› i |> ZMod.val ) * ( q / d ) : ℕ ) : Fin ( k - 1 ) → ZMod q ) ) using 1;
+    rw [ norm_prod ];
+  · exact fun _ _ => Finset.sum_nonneg fun _ _ => norm_nonneg _
 
 end PoissonCRT

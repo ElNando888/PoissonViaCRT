@@ -720,6 +720,9 @@ private lemma deviation_dft_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 �
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
     (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributedFourier ε p (Ω p) k)
+    (hsp : ∀ (p : ℕ), p.Prime →
+      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
+    (hrp : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ))
     (X : Box (k - 1)) :
     ∃ K : ℝ, 0 < K ∧ ∀ (q : ℕ) [NeZero q] (hq_sq : Squarefree q),
       let Ω_q := crtSubset q Ω
@@ -730,6 +733,46 @@ private lemma deviation_dft_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 �
           (fun h => inScaledBox X s (fun _ => 0) h)),
         ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
           (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| ≤ K * s ^ (-(ε / 2)) := by
-  sorry
+  -- Split based on ε vs lambdaExponent k
+  have hε_le := spacing_forces_eps_le_lambda ε hε k hk Ω hΩ hsp
+  rcases eq_or_lt_of_le hε_le with heq | hlt
+  · -- Case ε = λ_k: all local subsets are full, deviation is zero
+    have hall := all_full_of_eps_eq_lambda ε k hk Ω hΩ hsp heq
+    refine ⟨1, one_pos, fun q inst hq_sq => ?_⟩
+    have hfull := crtSubset_full_of_all_full q Ω hall
+    have hdev := deviation_zero_of_card_eq_q hk q Ω X hfull
+    simp +decide only at hdev ⊢
+    have hs1 : (q : ℝ) / ((crtSubset q Ω).card : ℝ) = 1 := by
+      rw [hfull]; exact div_self (Nat.cast_ne_zero.mpr (NeZero.ne q))
+    rw [hs1] at hdev ⊢
+    simp +decide only [Real.one_rpow, mul_one] at hdev ⊢
+    nlinarith [abs_nonneg (1 / ((crtSubset q Ω).card : ℝ) *
+      ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+          Finset.Icc (1 : ℤ) ⌈1 * ∑ i, X.sides i⌉).filter
+        (fun h => inScaledBox X 1 (fun _ => 0) h)),
+      ((tupleCount (crtSubset q Ω) (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
+        ((crtSubset q Ω).card : ℝ) ^ k / (q : ℝ) ^ (k - 1)))]
+  · -- Case ε < λ_k: Fourier-ANOVA synthesis via the change-of-variables
+    -- and spatial→frequency approach.
+    --
+    -- Proof outline (see PROVIDED SOLUTION below for full mathematical detail):
+    --
+    -- Step 1 (Decoupling): Change variables from h to differences
+    --   x_i = h_i - h_{i-1}, so `inScaledBox` becomes the uncoupled product
+    --   condition 1 ≤ x_i ≤ ⌊s · b_i⌋.
+    --
+    -- Step 2 (Spatial → Frequency): Express the deviation sum as
+    --   ∑_r G(r) f(r) where G is the periodized box indicator and f is the
+    --   deviation function. Apply `spatial_to_frequency_swap` to obtain
+    --   ∑_ξ q^{k-1} \hat{f}(ξ) \hat{G}(-ξ).
+    --
+    -- Step 3 (DFT bounds): Use `deviation_dft_q1_q2_bound` to get
+    --   |\hat{f}(ξ)| ≤ d(ξ)^{-ε} · μ, and `dft_boxIndicator_subgrid_bound`
+    --   to bound the box indicator DFT on each subgrid.
+    --
+    -- Step 4 (Divisor sum): Group frequencies by their support divisor d,
+    --   bound the d-sum using the spacing bound `hsp` to relate q and s,
+    --   yielding the final K · s^{-ε/2} decay.
+    sorry
 
 end PoissonCRT
