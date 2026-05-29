@@ -143,7 +143,7 @@ theorem dft_crt_factorization (q : ℕ) [NeZero q] (hq : Squarefree q)
 The sum of the global counting function over all `h` equals
 `q^(k-1) * ∏_p μ_p` (or equivalently, `∏_p |Ω_p|^k`).
 -/
-lemma sum_global_tupleCount (k : ℕ) (hk : 2 ≤ k)
+public lemma sum_global_tupleCount (k : ℕ) (hk : 2 ≤ k)
     (q : ℕ) [NeZero q] (hq : Squarefree q)
     (Ω : ∀ p : ℕ, Finset (ZMod p)) :
     (∑ h : Fin (k - 1) → ZMod q,
@@ -169,7 +169,7 @@ The DFT of the global counting function at `ξ = 0` equals `μ_q = ∏_p μ_p`.
 This is a consequence of the definition of `dft`, `sum_tupleCount_eq_card_pow`,
 and `counting_function_multiplicative`.
 -/
-lemma dft_tupleCount_zero (k : ℕ) (hk : 2 ≤ k)
+public lemma dft_tupleCount_zero (k : ℕ) (hk : 2 ≤ k)
     (q : ℕ) [NeZero q] (hq : Squarefree q)
     (Ω : ∀ p : ℕ, Finset (ZMod p)) :
     dft q (k - 1) (fun h => (tupleCount (crtSubset q Ω) (Fin.cons 0 h) : ℂ)) 0 =
@@ -185,7 +185,7 @@ lemma dft_tupleCount_zero (k : ℕ) (hk : 2 ≤ k)
 The DFT of a constant function at `ξ ≠ 0` vanishes.
 This follows from character orthogonality.
 -/
-lemma dft_const_nonzero (q : ℕ) [NeZero q] (m : ℕ) (c : ℂ)
+public lemma dft_const_nonzero (q : ℕ) [NeZero q] (m : ℕ) (c : ℂ)
     (ξ : Fin m → ZMod q) (hξ : ξ ≠ 0) :
     dft q m (fun _ => c) ξ = 0 := by
   unfold dft;
@@ -228,7 +228,7 @@ lemma dft_tupleCount_norm_le_decay (k : ℕ) (hk : 2 ≤ k) (ε : ℝ) (hε : 0 
 
 /-! ### Fourier synthesis: the uniform deviation bound -/
 
-lemma deviation_dft_prod_bound (k : ℕ) (hk : 2 ≤ k) (ε : ℝ) (hε : 0 < ε)
+public lemma deviation_dft_prod_bound (k : ℕ) (hk : 2 ≤ k) (ε : ℝ) (hε : 0 < ε)
     (q : ℕ) [NeZero q] (hq : Squarefree q)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hwd : ∀ p, (hp : p ∈ q.primeFactors) → haveI : Fact p.Prime :=
@@ -266,13 +266,13 @@ lemma deviation_dft_prod_bound (k : ℕ) (hk : 2 ≤ k) (ε : ℝ) (hε : 0 < ε
     · conv_rhs => rw [ ← Finset.prod_attach ] ;
 
 /-- The support of a frequency ξ modulo q is the set of prime factors p of q where ξ mod p ≠ 0. -/
-def freqSupport (q m : ℕ) [NeZero q] (ξ : Fin m → ZMod q) : Finset ℕ :=
+public def freqSupport (q m : ℕ) [NeZero q] (ξ : Fin m → ZMod q) : Finset ℕ :=
   q.primeFactors.filter (fun p =>
     if hp : p ∈ q.primeFactors then
       (fun i => ZMod.castHom (Nat.dvd_of_mem_primeFactors hp) (ZMod p) (ξ i)) ≠ 0
     else False)
 
-lemma deviation_dft_q1_q2_bound (k : ℕ) (hk : 2 ≤ k) (ε : ℝ) (hε : 0 < ε)
+public lemma deviation_dft_q1_q2_bound (k : ℕ) (hk : 2 ≤ k) (ε : ℝ) (hε : 0 < ε)
     (q : ℕ) [NeZero q] (hq : Squarefree q)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hwd : ∀ p, (hp : p ∈ q.primeFactors) → haveI : Fact p.Prime :=
@@ -539,7 +539,7 @@ private lemma sum_dft_bound_le_log_add_two (q : ℕ) [NeZero q] :
   convert add_le_add_left ( sum_inv_sin_le_log_add_one q ( NeZero.pos q ) ) ( 1 : ℝ ) using 1 ; ring;
   ring
 
-lemma dft_interval_l1_bound (q : ℕ) [NeZero q] (L : ℕ) :
+public lemma dft_interval_l1_bound (q : ℕ) [NeZero q] (L : ℕ) :
     ∑ ξ : ZMod q, ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 L then (1 : ℂ) else 0) (fun _ => ξ)‖ ≤
       Real.log (q : ℝ) + 2 := by
   have h_split : ∑ ξ : ZMod q, ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 L then (1 : ℂ) else 0) (fun _ => ξ)‖ = 1 * ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 L then (1 : ℂ) else 0) (fun _ => 0)‖ + ∑ j ∈ Finset.Icc 1 (q - 1), ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 L then (1 : ℂ) else 0) (fun _ => (j : ZMod q))‖ := by
@@ -622,7 +622,7 @@ private lemma subgrid_val_eq (q d : ℕ) [NeZero q] [NeZero d] (hd : d ∣ q)
 Sum of the 1D interval DFT over a subgrid of frequencies.
 -/
 set_option maxHeartbeats 400000 in
-lemma dft_interval_subgrid_bound (q d : ℕ) [NeZero q] [NeZero d] (hd : d ∣ q) (L : ℕ) :
+public lemma dft_interval_subgrid_bound (q d : ℕ) [NeZero q] [NeZero d] (hd : d ∣ q) (L : ℕ) :
     ∑ a : ZMod d, ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 L then (1 : ℂ) else 0) (fun _ => (((a.val * (q / d) : ℕ) : ZMod q)))‖ ≤
       (L : ℝ) / q + (d : ℝ) / q * Real.log d + (d : ℝ) / q := by
   -- Split the sum into the term at a=0 and the sum over a≠0.
@@ -671,7 +671,7 @@ The box indicator `boxIndicator` factors as a product of 1D indicators, so its D
 factors as a product of 1D DFTs (`dft_boxIndicator_eq_prod`). The sum over the product type
 then factors via Fubini, and each factor is bounded by `dft_interval_subgrid_bound`.
 -/
-lemma dft_boxIndicator_subgrid_bound (q d : ℕ) [NeZero q] [NeZero d] (hd : d ∣ q)
+public lemma dft_boxIndicator_subgrid_bound (q d : ℕ) [NeZero q] [NeZero d] (hd : d ∣ q)
     (k : ℕ) (hk : 2 ≤ k) (X : Box (k - 1)) (s : ℝ) (hs : 0 ≤ s) :
     ∑ a : Fin (k - 1) → ZMod d,
       ‖dft q (k - 1) (boxIndicator q (k - 1) X s) (fun i => (((a i).val * (q / d) : ℕ) : ZMod q))‖ ≤
@@ -688,7 +688,7 @@ lemma dft_boxIndicator_subgrid_bound (q d : ℕ) [NeZero q] [NeZero d] (hd : d �
     rw [ norm_prod ];
   · exact fun _ _ => Finset.sum_nonneg fun _ _ => norm_nonneg _
 
-private lemma deviation_dft_expansion (k : ℕ) (hk : 2 ≤ k)
+public lemma deviation_dft_expansion (k : ℕ) (hk : 2 ≤ k)
     (q : ℕ) [NeZero q] (X : Box (k - 1)) (s : ℝ) (hs : 0 ≤ s)
     (hbox : ∀ j : Fin (k - 1), ⌊s * X.sides j⌋₊ < q)
     (g : (Fin (k - 1) → ZMod q) → ℂ) :
@@ -707,19 +707,19 @@ private lemma deviation_dft_expansion (k : ℕ) (hk : 2 ≤ k)
 /-! ## Divisor Summation Infrastructure -/
 
 /-- The frequency divisor of `ξ` modulo `q` is the product of primes in its frequency support. -/
-noncomputable def freqDivisor (q m : ℕ) [NeZero q] (ξ : Fin m → ZMod q) : ℕ :=
+public noncomputable def freqDivisor (q m : ℕ) [NeZero q] (ξ : Fin m → ZMod q) : ℕ :=
   ∏ p ∈ freqSupport q m ξ, p
 
-lemma freqSupport_subset_primeFactors (q m : ℕ) [NeZero q] (ξ : Fin m → ZMod q) :
+public lemma freqSupport_subset_primeFactors (q m : ℕ) [NeZero q] (ξ : Fin m → ZMod q) :
     freqSupport q m ξ ⊆ q.primeFactors :=
   Finset.filter_subset _ _
 
-lemma freqDivisor_dvd (q m : ℕ) [NeZero q] (ξ : Fin m → ZMod q) :
+public lemma freqDivisor_dvd (q m : ℕ) [NeZero q] (ξ : Fin m → ZMod q) :
     freqDivisor q m ξ ∣ q := by
   refine' Nat.dvd_trans _ ( Nat.prod_primeFactors_dvd q );
   apply_rules [ Finset.prod_dvd_prod_of_subset, freqSupport_subset_primeFactors ]
 
-lemma freqDivisor_diffMap_eq (q m : ℕ) [NeZero q] (hq : Squarefree q)
+public lemma freqDivisor_diffMap_eq (q m : ℕ) [NeZero q] (hq : Squarefree q)
     (ξ : Fin m → ZMod q) :
     freqDivisor q m (diffMap q m ξ) = freqDivisor q m ξ := by
   refine' Finset.prod_congr _ _;
@@ -832,7 +832,7 @@ private lemma fiber_subset_subgrid_image (q d : ℕ) [NeZero q] [NeZero d] (hd :
   refine' Finset.mem_image.mpr ⟨ a, Finset.mem_univ _, _ ⟩;
   ext i; simp +decide [ ha, Nat.div_mul_cancel ( h_div i ) ] ;
 
-lemma sum_fiber_le_subgrid (q d : ℕ) [NeZero q] [NeZero d] (hd : d ∣ q)
+public lemma sum_fiber_le_subgrid (q d : ℕ) [NeZero q] [NeZero d] (hd : d ∣ q)
     (hq : Squarefree q) (m : ℕ) (F : (Fin m → ZMod q) → ℝ) (hF_nonneg : ∀ ξ, 0 ≤ F ξ) :
     ∑ ξ ∈ Finset.univ.filter (fun ξ => freqDivisor q m ξ = d), F ξ ≤
       ∑ a : Fin m → ZMod d, F (fun i => (((a i).val * (q / d) : ℕ) : ZMod q)) := by
@@ -844,7 +844,7 @@ lemma sum_fiber_le_subgrid (q d : ℕ) [NeZero q] [NeZero d] (hd : d ∣ q)
     convert subgrid_map_injective q d hd hq m using 1;
     simp +decide [ Set.InjOn, Function.Injective ]
 
-lemma sum_over_divisors (q m : ℕ) [NeZero q] (hq : Squarefree q)
+public lemma sum_over_divisors (q m : ℕ) [NeZero q] (hq : Squarefree q)
     (F : (Fin m → ZMod q) → ℝ) (B : ℕ → ℝ)
     (h_bound : ∀ d : ℕ, d ∣ q →
       ∑ ξ ∈ Finset.univ.filter (fun ξ => freqDivisor q m ξ = d), F ξ ≤ B d) :

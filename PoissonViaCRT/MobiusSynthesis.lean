@@ -880,13 +880,145 @@ private lemma deviation_fourier_single_q (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk
           (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| ≤ K_q * s ^ (-(ε / 2)) := by
   apply deviation_per_q_bound ε hε k hk q hq_sq Ω hΩ X
 
+/-! ### Helpers for deviation_fourier_uniform -/
+
+/-
+The product of local means equals the global mean `|Ω_q|^k / q^{k-1}`.
+-/
+private lemma prod_localMean_eq_mean (k : ℕ) (hk : 2 ≤ k) (q : ℕ) [NeZero q]
+    (hq_sq : Squarefree q) (Ω : ∀ p : ℕ, Finset (ZMod p)) :
+    ∏ p ∈ q.primeFactors, localMean k Ω p =
+      ((crtSubset q Ω).card : ℝ) ^ k / (q : ℝ) ^ (k - 1) := by
+  -- By definition of `localMean`, we can rewrite the product as:
+  have h_prod_localMean : ∏ p ∈ q.primeFactors, localMean k Ω p = (∏ p ∈ q.primeFactors, ((Ω p).card : ℝ) ^ k) / (∏ p ∈ q.primeFactors, (p : ℝ) ^ (k - 1)) := by
+    rw [ ← Finset.prod_div_distrib, Finset.prod_congr rfl ] ; aesop;
+  convert h_prod_localMean using 2;
+  · convert congr_arg ( · ^ k ) ( PoissonCRT.crt_card_eq_prod_local q hq_sq Ω ) using 1 ; norm_cast;
+    rw [ Finset.prod_pow ];
+  · rw [ Finset.prod_pow, ← Nat.cast_prod, Nat.prod_primeFactors_of_squarefree hq_sq ]
+
+/-
+**Fourier per-`q` bound via divisor summation.** For a single squarefree `q`
+satisfying the box condition, the deviation is bounded by a sum over proper
+divisors of `q`, where each divisor `d` contributes:
+- A decay factor `d^{-ε}` from `deviation_dft_q1_q2_bound`.
+- The product of local means `∏ μ_p` from the DFT coefficient factorization.
+- A subgrid bound `∏_j (⌊s X_j⌋/q + d log d / q + d/q)` from
+  `dft_boxIndicator_subgrid_bound`.
+
+The proof applies:
+1. `deviation_dft_expansion` to express the sum in frequency domain.
+2. Triangle inequality to pass to norms.
+3. `deviation_dft_q1_q2_bound` to bound each DFT coefficient.
+4. `sum_over_divisors` to group frequencies by `freqDivisor`.
+5. `sum_fiber_le_subgrid` + `dft_boxIndicator_subgrid_bound` for subgrid bounds.
+-/
+private lemma deviation_le_divisor_sum (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+    (q : ℕ) [NeZero q] (hq_sq : Squarefree q)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributedFourier ε p (Ω p) k)
+    (X : Box (k - 1))
+    (hbox : ∀ j : Fin (k - 1), ⌊(q : ℝ) / (crtSubset q Ω).card * X.sides j⌋₊ < q) :
+    let Ω_q := crtSubset q Ω
+    let s := (q : ℝ) / Ω_q.card
+    |(1 / (Ω_q.card : ℝ)) *
+      ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+          Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+        (fun h => inScaledBox X s (fun _ => 0) h)),
+      ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
+        (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| ≤
+    (1 / (Ω_q.card : ℝ)) * (q : ℝ) ^ (k - 1) *
+      ∑ d ∈ q.divisors.erase 1,
+        ((d : ℝ) ^ (-ε) * (∏ p ∈ q.primeFactors, localMean k Ω p) *
+         ∏ j : Fin (k - 1),
+          (↑⌊s * X.sides j⌋₊ / (q : ℝ) +
+           (d : ℝ) / (q : ℝ) * Real.log (d : ℝ) +
+           (d : ℝ) / (q : ℝ))) := by
+  -- Architecture: deviation_dft_expansion → triangle ineq → deviation_dft_q1_q2_bound
+  --   → sum_over_divisors → sum_fiber_le_subgrid → dft_boxIndicator_subgrid_bound.
+  -- Define s explicitly (the let binding in the conclusion is not in scope)
+  set s : ℝ := (q : ℝ) / (crtSubset q Ω).card with hs_def
+  have hs_nonneg : 0 ≤ s := by
+    rw [hs_def]; exact div_nonneg (Nat.cast_nonneg _) (Nat.cast_nonneg _)
+  -- Set up the deviation function in ℂ
+  set g : (Fin (k - 1) → ZMod q) → ℂ := fun h =>
+    (tupleCount (crtSubset q Ω) (Fin.cons 0 h) : ℂ) -
+    ↑(∏ p ∈ q.primeFactors, localMean k Ω p) with hg_def
+  -- (a) Fourier expansion
+  have h_fourier := deviation_dft_expansion k hk q X s hs_nonneg hbox g
+  -- (b) DFT of g vanishes at 0
+  have h_dft_zero : dft q (k - 1) g 0 = 0 := by
+    unfold dft;
+    simp +zetaDelta at *;
+    convert dft_tupleCount_zero k hk q hq_sq Ω using 1;
+    unfold dft; norm_num [ character ] ;
+    rw [ inv_mul_eq_div, div_eq_iff ] <;> norm_cast <;> norm_num [ NeZero.ne ];
+    rw [ sub_eq_zero, mul_comm ]
+  -- (c) DFT coefficient bound (for each nonzero ξ)
+  have h_dft_bound : ∀ (ξ : Fin (k - 1) → ZMod q), ξ ≠ 0 →
+      ‖dft q (k - 1) g ξ‖ ≤
+        (∏ p ∈ freqSupport q (k - 1) ξ, (p : ℝ) ^ (-ε)) *
+        ∏ p ∈ q.primeFactors, localMean k Ω p := by
+    intro ξ hξ
+    exact deviation_dft_q1_q2_bound k hk ε hε q hq_sq Ω
+      (fun p hp => by haveI : Fact p.Prime := ⟨(Nat.mem_primeFactors.mp hp).1⟩; exact hWD p) ξ hξ
+  -- (d) Divisor summation infrastructure
+  have h_sum_div := sum_over_divisors q (k - 1) hq_sq
+  -- (e) Subgrid bounds
+  have h_subgrid : ∀ (d : ℕ) [NeZero d], d ∣ q →
+      ∑ a : Fin (k - 1) → ZMod d,
+        ‖dft q (k - 1) (boxIndicator q (k - 1) X s)
+          (fun i => (((a i).val * (q / d) : ℕ) : ZMod q))‖ ≤
+      ∏ j : Fin (k - 1),
+        (↑⌊s * X.sides j⌋₊ / (q : ℝ) +
+         (d : ℝ) / (q : ℝ) * Real.log (d : ℝ) +
+         (d : ℝ) / (q : ℝ)) :=
+    fun d _ hd => dft_boxIndicator_subgrid_bound q d hd k hk X s hs_nonneg
+  -- (f) freqDivisor is invariant under diffMap
+  have h_freq_inv := freqDivisor_diffMap_eq q (k - 1) hq_sq
+  -- Combine: the glue between ℝ and ℂ, the ξ=0 vanishing, the
+  -- divisor grouping, and the per-divisor bound is sorry'd.
+  sorry
+
+/-- **Uniform divisor-sum bound.** The divisor-sum expression from
+`deviation_le_divisor_sum` is bounded by `C · s^{−ε/2}` independently of `q`.
+The cancellation between `|Ω_q|^{k-1}` from `∏ μ_p / |Ω_q|` and the subgrid
+denominator `q^{k-1}` makes the bound depend only on `s = q / |Ω_q|` (and `X, k, ε`),
+not on `q` itself.  The exponent is halved from `ε` to `ε/2` to absorb the
+logarithmic factors `(d · log d)^{k-1}` coming from the subgrid bound. -/
+private lemma divisor_sum_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (hsp : ∀ (p : ℕ), p.Prime →
+      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
+    (hrp : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ))
+    (hlt : ε < lambdaExponent k)
+    (X : Box (k - 1)) :
+    ∃ C : ℝ, 0 < C ∧ ∀ (q : ℕ) [NeZero q], Squarefree q →
+      (∀ j : Fin (k - 1), ⌊(q : ℝ) / (crtSubset q Ω).card * X.sides j⌋₊ < q) →
+      let Ω_q := crtSubset q Ω
+      let s := (q : ℝ) / Ω_q.card
+      (1 / (Ω_q.card : ℝ)) * (q : ℝ) ^ (k - 1) *
+        ∑ d ∈ q.divisors.erase 1,
+          ((d : ℝ) ^ (-ε) * (∏ p ∈ q.primeFactors, localMean k Ω p) *
+           ∏ j : Fin (k - 1),
+            (↑⌊s * X.sides j⌋₊ / (q : ℝ) +
+             (d : ℝ) / (q : ℝ) * Real.log (d : ℝ) +
+             (d : ℝ) / (q : ℝ))) ≤ C * s ^ (-(ε / 2)) := by
+  sorry
+
 /-- **Uniform Fourier-ANOVA bound.** For squarefree `q > Q₀` (where the box condition
 holds), the deviation is bounded by `C * s^{-ε/2}` with `C` independent of `q`.
 The constant `C` arises from the divisor-sum structure:
 - Each prime factor contributes `p^{-ε}` from `deviation_dft_q1_q2_bound`.
 - The subgrid box indicator sum contributes `O((log d)^{k-1})` per divisor `d`.
 - The spacing bound `hsp` relates the product of `p^{-ε}` to `s^{-ε}`,
-  and the logarithmic factors are absorbed by reducing the exponent to `ε/2`. -/
+  and the logarithmic factors are absorbed by reducing the exponent to `ε/2`.
+
+The proof composes:
+1. `deviation_le_divisor_sum` — Fourier expansion + divisor grouping + subgrid bounds.
+2. `divisor_sum_uniform_bound` — algebraic simplification to extract `C · s^{−ε/2}`. -/
 private lemma deviation_fourier_uniform (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
@@ -906,7 +1038,15 @@ private lemma deviation_fourier_uniform (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk 
         ((tupleCount (crtSubset q Ω) (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
           ((crtSubset q Ω).card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| ≤
         C * s ^ (-(ε / 2)) := by
-  sorry
+  -- Obtain the uniform constant from the divisor-sum bound
+  obtain ⟨C, hC_pos, hC_bound⟩ :=
+    divisor_sum_uniform_bound ε hε k hk Ω hΩ hsp hrp hlt X
+  exact ⟨C, hC_pos, fun q inst hq_sq hbox => by
+    -- Step 1: Apply the Fourier architecture to bound by a divisor sum
+    have h_step1 := deviation_le_divisor_sum ε hε k hk q hq_sq Ω hΩ hWD X hbox
+    -- Step 2: Apply the uniform divisor-sum bound
+    have h_step2 := hC_bound q hq_sq hbox
+    exact le_trans h_step1 h_step2⟩
 
 /-
 Helper for `deviation_dft_bound`: the bound in the `ε < λ_k` case.
