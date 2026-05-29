@@ -96,77 +96,6 @@ theorem local_deviation_fourier_bound (ε : ℝ) (_hε : 0 < ε)
     · simp +decide [ character ];
     · norm_num
 
-/-
-**Additive character CRT splitting.** For squarefree `q`, the additive character
-`exp(2πi (ξ · x).val / q)` decomposes as a product over the prime factors of `q`:
-$\chi_\xi(x) = \prod_{p \mid q} \chi_{\xi_p}(x_p),$
-where `ξ_p = crtFrequencyEquiv q hq ξ p` is the corrected local frequency and
-`x_p = crtRingEquiv q hq x p` is the CRT projection of `x`.
--/
-set_option maxHeartbeats 1600000 in
-lemma additiveChar_crt_split (q : ℕ) [NeZero q] (hq : Squarefree q)
-    (ξ x : ZMod q) :
-    additiveChar q ξ x =
-      ∏ p ∈ q.primeFactors.attach, (
-        haveI : NeZero p.val := ⟨(Nat.mem_primeFactors.mp p.prop).1.ne_zero⟩
-        additiveChar p.val
-          (crtFrequencyEquiv q hq ξ p)
-          (crtRingEquiv q hq x p)
-      ) := by
-  unfold additiveChar; simp +decide [ mul_comm ] ;
-  rw [ ← Complex.exp_sum ];
-  -- By the properties of the exponential function and the definition of `crtFrequencyEquiv`, we can rewrite the right-hand side of the equation.
-  have h_exp : (ξ * x).cast / (q : ℂ) - ∑ p ∈ q.primeFactors.attach, ((crtFrequencyEquiv q hq) ξ p * (crtRingEquiv q hq) x p).val / (p : ℂ) ∈ Set.range (fun n : ℤ => (n : ℂ)) := by
-    -- By the properties of the Chinese Remainder Theorem, we know that
-    have h_crt : (ξ * x).val ≡ ∑ p ∈ q.primeFactors.attach, ((crtFrequencyEquiv q hq) ξ p * (crtRingEquiv q hq) x p).val * (q / p : ℕ) [MOD q] := by
-      have h_crt : ∀ p ∈ q.primeFactors.attach, (ξ * x).val ≡ ((crtFrequencyEquiv q hq ξ p) * (crtRingEquiv q hq x p)).val * (q / p : ℕ) [MOD p] := by
-        intro p hp
-        have h_crt : (ξ * x).val ≡ ((crtRingEquiv q hq (ξ * x) p).val) * (q / p : ℕ) * ((q / p : ℕ)⁻¹ : ZMod p).val [MOD p] := by
-          have h_crt : (q / p : ℕ) * ((q / p : ℕ)⁻¹ : ZMod p).val ≡ 1 [MOD p] := by
-            haveI := Fact.mk ( Nat.prime_of_mem_primeFactors p.2 ) ; simp +decide [ ← ZMod.natCast_eq_natCast_iff ] ;
-            rw [ ZMod.mul_inv_of_unit ];
-            rw [ isUnit_iff_ne_zero ];
-            rw [ Ne.eq_def, ZMod.natCast_eq_zero_iff ];
-            rw [ Nat.dvd_div_iff_mul_dvd ];
-            · exact fun h => absurd ( hq.squarefree_of_dvd h ) ( by rw [ Nat.squarefree_mul_iff ] ; aesop );
-            · exact Nat.dvd_of_mem_primeFactors p.2;
-          simp_all +decide [ ← ZMod.natCast_eq_natCast_iff, mul_assoc ];
-          have h_crt : (ξ * x).cast = ((crtRingEquiv q hq (ξ * x) p).val : ZMod p) := by
-            convert rfl;
-            convert ZMod.natCast_zmod_val _;
-            · convert rfl;
-              convert crtRingEquiv_apply_eq_castHom q hq ( ξ * x ) p using 1;
-            · exact ⟨ Nat.ne_of_gt ( Nat.pos_of_mem_primeFactors p.2 ) ⟩;
-          aesop;
-        simp_all +decide [ ← ZMod.natCast_eq_natCast_iff, mul_assoc ];
-        simp +decide [ mul_assoc, mul_comm, mul_left_comm, crtFrequencyEquiv ];
-        haveI := Fact.mk ( Nat.prime_of_mem_primeFactors p.2 ) ; simp +decide [ ← mul_assoc ] ;
-      have h_crt : ∀ p ∈ q.primeFactors.attach, (ξ * x).val ≡ ∑ p ∈ q.primeFactors.attach, ((crtFrequencyEquiv q hq ξ p) * (crtRingEquiv q hq x p)).val * (q / p : ℕ) [MOD p] := by
-        intro p hp
-        have h_crt : ∑ p ∈ q.primeFactors.attach, ((crtFrequencyEquiv q hq ξ p) * (crtRingEquiv q hq x p)).val * (q / p : ℕ) ≡ ((crtFrequencyEquiv q hq ξ p) * (crtRingEquiv q hq x p)).val * (q / p : ℕ) [MOD p] := by
-          simp +decide [ ← ZMod.natCast_eq_natCast_iff ];
-          rw [ Finset.sum_eq_single p ] <;> simp_all +decide [ Nat.ModEq ];
-          intro a ha ha' ha'' ha'''; have := Nat.dvd_div_of_mul_dvd ( show a * p.val ∣ q from Nat.Coprime.mul_dvd_of_dvd_of_dvd ( by have := Nat.coprime_primes ha ( Nat.prime_of_mem_primeFactors p.2 ) ; aesop ) ha' ( Nat.dvd_of_mem_primeFactors p.2 ) ) ; simp_all +decide [ Nat.dvd_iff_mod_eq_zero ] ;
-          simp_all +decide [ ← ZMod.val_natCast, Nat.dvd_iff_mod_eq_zero ];
-        exact Eq.trans ( by solve_by_elim ) h_crt.symm;
-      rw [ Nat.modEq_iff_dvd ] at *;
-      have h_crt : (∏ p ∈ q.primeFactors.attach, (p : ℤ)) ∣ (∑ p ∈ q.primeFactors.attach, ((crtFrequencyEquiv q hq ξ p) * (crtRingEquiv q hq x p)).val * (q / p : ℕ)) - (ξ * x).val := by
-        convert Finset.prod_dvd_of_coprime _ _;
-        · intros p hp q hq hpq; exact (by
-          have := Nat.coprime_primes ( Nat.prime_of_mem_primeFactors p.2 ) ( Nat.prime_of_mem_primeFactors q.2 ) ; aesop;);
-        · exact fun p hp => by simpa using h_crt p hp |> Nat.ModEq.dvd;
-      convert h_crt using 1;
-      rw [ ← Nat.cast_prod ] ; norm_cast ; rw [ ← Nat.prod_primeFactors_of_squarefree hq ] ;
-      refine' Finset.prod_bij ( fun p hp => ⟨ p, _ ⟩ ) _ _ _ _ <;> simp_all +decide [ Nat.primeFactors_prod ];
-    obtain ⟨ k, hk ⟩ := h_crt.symm.dvd;
-    use k;
-    simp_all +decide [ ← @Int.cast_inj ℂ ];
-    rw [ div_sub', eq_div_iff ] <;> norm_cast at * <;> simp_all +decide [ NeZero.ne ];
-    convert hk.symm using 1 ; ring;
-    rw [ Finset.mul_sum _ _ _ ] ; refine' congr_arg _ ( Finset.sum_congr rfl fun p hp => _ ) ; rw [ Nat.cast_div ( Nat.dvd_of_mem_primeFactors p.2 ) ( Nat.cast_ne_zero.mpr <| Nat.ne_of_gt <| Nat.pos_of_mem_primeFactors p.2 ) ] ; ring;
-  obtain ⟨ n, hn ⟩ := h_exp; simp_all +decide [ Complex.exp_eq_exp_iff_exists_int, mul_div_assoc, mul_assoc, mul_comm, mul_left_comm ] ;
-  exact ⟨ n, by rw [ hn ] ; simp [ Finset.mul_sum _ _ _, mul_sub, mul_comm ] ⟩
-
 /-! ### CRT factorization of Fourier coefficients -/
 
 /-
@@ -209,40 +138,6 @@ theorem dft_crt_factorization (q : ℕ) [NeZero q] (hq : Squarefree q)
         rw [ additiveChar_crt_split q hq ];
         rw [ map_prod ];
         refine' Finset.prod_bij ( fun p hp => ⟨ p, hp ⟩ ) _ _ _ _ <;> aesop
-
-/-! ### Fourier synthesis helper lemmas -/
-
-/-
-The sum of `‖dft I_S (-ξ)‖` over all `ξ` equals the sum of `‖dft I_S ξ‖` by reindexing
-(`ξ ↦ -ξ` is a bijection on the group).
--/
-lemma sum_norm_dft_neg_eq (q : ℕ) [NeZero q] (m : ℕ) (f : (Fin m → ZMod q) → ℂ) :
-    ∑ ξ : Fin m → ZMod q, ‖dft q m f (-ξ)‖ =
-    ∑ ξ : Fin m → ZMod q, ‖dft q m f ξ‖ := by
-  apply Finset.sum_bij (fun ξ _ => -ξ);
-  · exact fun _ _ => Finset.mem_univ _;
-  · aesop;
-  · exact fun b _ => ⟨ -b, Finset.mem_univ _, neg_neg b ⟩;
-  · grind
-
-/-
-**Spatial → Frequency swap.** Using DFT inversion on `f_dev` and swapping sums
-(Fubini), we obtain
-`∑ h, I_S(h) * f(h) = ∑ ξ, q^m * dft(f)(ξ) * dft(I_S)(-ξ)`.
--/
-lemma spatial_to_frequency_swap (q : ℕ) [NeZero q] (m : ℕ)
-    (f g : (Fin m → ZMod q) → ℂ) :
-    ∑ h, g h * f h =
-      ∑ ξ : Fin m → ZMod q,
-        ((q : ℂ) ^ m) * dft q m f ξ * dft q m g (-ξ) := by
-  -- By Fubini's theorem, we can interchange the order of summation.
-  have h_fubini : ∑ h : Fin m → ZMod q, g h * (∑ ξ : Fin m → ZMod q, dft q m f ξ * character q m ξ h) = ∑ ξ : Fin m → ZMod q, dft q m f ξ * (∑ h : Fin m → ZMod q, g h * character q m ξ h) := by
-    simpa only [ mul_assoc, mul_left_comm, Finset.mul_sum _ _ _ ] using Finset.sum_comm;
-  convert h_fubini using 2;
-  · exact congrArg _ ( dft_inversion q m f _ );
-  · unfold dft;
-    field_simp;
-    unfold character; congr! 2; simp +decide [ starRingEnd_additiveChar ] ;
 
 /-
 The sum of the global counting function over all `h` equals
