@@ -633,14 +633,15 @@ public noncomputable def cumSum (q : ℕ) [NeZero q] (m : ℕ) (x : Fin m → ZM
   fun j => ∑ i ∈ Finset.Iic j, x i
 
 /-- The difference map on `Fin m → ZMod q` (inverse of cumulative sum). -/
-private noncomputable def diffMap (q : ℕ) [NeZero q] (m : ℕ) (y : Fin m → ZMod q) :
+@[expose]
+public noncomputable def diffMap (q : ℕ) [NeZero q] (m : ℕ) (y : Fin m → ZMod q) :
     Fin m → ZMod q :=
   fun j => y j - if h : (j : ℕ) = 0 then 0 else y ⟨j - 1, by omega⟩
 
 /-
 `diffMap` is a left inverse of `cumSum`.
 -/
-private lemma diffMap_cumSum (q : ℕ) [NeZero q] (m : ℕ) (x : Fin m → ZMod q) :
+public lemma diffMap_cumSum (q : ℕ) [NeZero q] (m : ℕ) (x : Fin m → ZMod q) :
     diffMap q m (cumSum q m x) = x := by
   unfold cumSum diffMap; ext j; induction j ; simp +decide [*] ;
   induction' ‹ℕ› with n ih <;> simp_all +decide;
@@ -651,7 +652,7 @@ private lemma diffMap_cumSum (q : ℕ) [NeZero q] (m : ℕ) (x : Fin m → ZMod 
 /-
 `cumSum` is a left inverse of `diffMap`.
 -/
-private lemma cumSum_diffMap (q : ℕ) [NeZero q] (m : ℕ) (y : Fin m → ZMod q) :
+public lemma cumSum_diffMap (q : ℕ) [NeZero q] (m : ℕ) (y : Fin m → ZMod q) :
     cumSum q m (diffMap q m y) = y := by
   funext j;
   induction' j with j ih;
@@ -664,7 +665,8 @@ private lemma cumSum_diffMap (q : ℕ) [NeZero q] (m : ℕ) (y : Fin m → ZMod 
     · grind
 
 /-- The cumulative sum map is an equivalence. -/
-private noncomputable def cumSumEquiv (q : ℕ) [NeZero q] (m : ℕ) :
+@[expose]
+public noncomputable def cumSumEquiv (q : ℕ) [NeZero q] (m : ℕ) :
     (Fin m → ZMod q) ≃ (Fin m → ZMod q) where
   toFun := cumSum q m
   invFun := diffMap q m

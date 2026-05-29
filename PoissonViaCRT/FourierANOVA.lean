@@ -704,4 +704,156 @@ private lemma deviation_dft_expansion (k : ℕ) (hk : 2 ≤ k)
   congr! 1;
   convert dft_sum_transform q ( k - 1 ) g _ |> Eq.symm using 1
 
+/-! ## Divisor Summation Infrastructure -/
+
+/-- The frequency divisor of `ξ` modulo `q` is the product of primes in its frequency support. -/
+noncomputable def freqDivisor (q m : ℕ) [NeZero q] (ξ : Fin m → ZMod q) : ℕ :=
+  ∏ p ∈ freqSupport q m ξ, p
+
+lemma freqSupport_subset_primeFactors (q m : ℕ) [NeZero q] (ξ : Fin m → ZMod q) :
+    freqSupport q m ξ ⊆ q.primeFactors :=
+  Finset.filter_subset _ _
+
+lemma freqDivisor_dvd (q m : ℕ) [NeZero q] (ξ : Fin m → ZMod q) :
+    freqDivisor q m ξ ∣ q := by
+  refine' Nat.dvd_trans _ ( Nat.prod_primeFactors_dvd q );
+  apply_rules [ Finset.prod_dvd_prod_of_subset, freqSupport_subset_primeFactors ]
+
+lemma freqDivisor_diffMap_eq (q m : ℕ) [NeZero q] (hq : Squarefree q)
+    (ξ : Fin m → ZMod q) :
+    freqDivisor q m (diffMap q m ξ) = freqDivisor q m ξ := by
+  refine' Finset.prod_congr _ _;
+  · ext p;
+    by_cases hp : p ∈ q.primeFactors <;> simp_all +decide [ freqSupport ];
+    constructor <;> intro h <;> contrapose! h <;> simp_all +decide [funext_iff];
+    · unfold diffMap; aesop;
+    · intro x; induction' x with i ih; simp_all +decide [ diffMap ] ;
+      induction' i with i ih <;> simp_all +decide [ sub_eq_iff_eq_add ];
+      grind +splitIndPred;
+  · grind
+
+/-
+If `p ∉ freqSupport q m ξ` and `p ∈ q.primeFactors`, then every component of `ξ`
+is zero modulo `p`.
+-/
+private lemma component_zero_of_not_in_freqSupport {q m : ℕ} [NeZero q]
+    {ξ : Fin m → ZMod q} {p : ℕ} (hp_pf : p ∈ q.primeFactors)
+    (hp_not : p ∉ freqSupport q m ξ) (i : Fin m) :
+    ZMod.castHom (Nat.dvd_of_mem_primeFactors hp_pf) (ZMod p) (ξ i) = 0 := by
+  unfold freqSupport at hp_not; simp_all +decide ;
+  exact congr_fun ( hp_not ( Nat.prime_of_mem_primeFactors hp_pf ) ( Nat.dvd_of_mem_primeFactors hp_pf ) ( NeZero.ne q ) ) i
+
+/-
+The subgrid injection map `a ↦ (a_i.val * (q/d))` is injective as a map
+from `Fin m → ZMod d` to `Fin m → ZMod q` when `d ∣ q` and `q` is squarefree.
+-/
+private lemma subgrid_map_injective (q d : ℕ) [NeZero q] [NeZero d] (hd : d ∣ q)
+    (hq : Squarefree q) (m : ℕ) :
+    Function.Injective (fun (a : Fin m → ZMod d) (i : Fin m) =>
+      (((a i).val * (q / d) : ℕ) : ZMod q)) := by
+  intro a b hab;
+  -- Since $q$ is squarefree and $d \mid q$, we have $\gcd(q/d, d) = 1$.
+  have h_coprime : Nat.gcd (q / d) d = 1 := by
+    cases hd;
+    simp_all +decide [ Nat.squarefree_mul_iff ];
+    rw [ Nat.mul_div_cancel_left _ ( NeZero.pos d ) ] ; exact hq.1.symm;
+  -- Since $q$ is squarefree and $d \mid q$, we have $\gcd(q/d, d) = 1$. Therefore, for each $i$, $(a i).val * (q / d) \equiv (b i).val * (q / d) \pmod{q}$ implies $(a i).val \equiv (b i).val \pmod{d}$.
+  have h_cong : ∀ i, (a i).val * (q / d) ≡ (b i).val * (q / d) [MOD q] := by
+    simp_all +decide [ funext_iff, ← ZMod.natCast_eq_natCast_iff ];
+  -- Since $q$ is squarefree and $d \mid q$, we have $\gcd(q/d, d) = 1$. Therefore, for each $i$, $(a i).val * (q / d) \equiv (b i).val * (q / d) \pmod{q}$ implies $(a i �).�val \equiv (b i).val \pmod{d}$ by the property of coprime moduli.
+  have h_cong_mod_d : ∀ i, (a i).val ≡ (b i).val [MOD d] := by
+    intro i
+    specialize h_cong i
+    have h_cong_mod_d : (a i).val * (q / d) ≡ (b i).val * (q / d) [MOD d] := by
+      exact h_cong.of_dvd hd;
+    rw [ Nat.modEq_iff_dvd ] at *;
+    simp_all +decide [ ← sub_mul ];
+    exact Int.dvd_of_dvd_mul_left_of_gcd_one h_cong_mod_d ( by simpa [ Int.gcd_natCast_natCast ] using Nat.Coprime.symm h_coprime );
+  ext i; specialize h_cong_mod_d i; simp_all +decide [ ← ZMod.natCast_eq_natCast_iff ] ;
+
+/-
+For squarefree `q`, if `p \in q.primeFactors` and `castHom _ (\xi i) = 0` for all `i`,
+then `p \mid (\xi i).val`.
+-/
+private lemma val_dvd_of_castHom_zero {q : ℕ} [NeZero q] {p : ℕ}
+    (hp_pf : p ∈ q.primeFactors) (ξ : ZMod q)
+    (hzero : ZMod.castHom (Nat.dvd_of_mem_primeFactors hp_pf) (ZMod p) ξ = 0) :
+    p ∣ ξ.val := by
+  rw [ ← ZMod.natCast_eq_zero_iff ] ; aesop;
+
+/-
+The complementary prime product: for squarefree `q`, if `d = ∏ freqSupport`,
+then `q / d = ∏ (q.primeFactors \ freqSupport)`.
+-/
+private lemma complementary_prod_eq_div {q m : ℕ} [NeZero q] (hq : Squarefree q)
+    (ξ : Fin m → ZMod q) :
+    ∏ p ∈ q.primeFactors \ freqSupport q m ξ, p = q / freqDivisor q m ξ := by
+  rw [ Nat.div_eq_of_eq_mul_left ];
+  · exact Finset.prod_pos fun p hp => Nat.pos_of_mem_primeFactors ( Finset.mem_filter.mp hp |>.1 );
+  · convert Nat.prod_primeFactors_of_squarefree hq |> Eq.symm using 1;
+    rw [ mul_comm, ← Finset.prod_sdiff <| freqSupport_subset_primeFactors q m ξ ];
+    exact mul_comm _ _
+
+/-
+For squarefree `q`, if `freqDivisor q m ξ = d`, then `(q/d) ∣ (ξ i).val` for all `i`.
+-/
+private lemma qd_dvd_val_of_freqDivisor_eq {q d m : ℕ} [NeZero q] [NeZero d]
+    (hd : d ∣ q) (hq : Squarefree q) (ξ : Fin m → ZMod q)
+    (hfd : freqDivisor q m ξ = d) (i : Fin m) :
+    (q / d) ∣ (ξ i).val := by
+  rw [ ← hfd, ← complementary_prod_eq_div ];
+  · have h_coprime : ∀ p ∈ q.primeFactors \ freqSupport q m ξ, p ∣ (ξ i).val := by
+      intro p hp; have := component_zero_of_not_in_freqSupport ( Finset.mem_sdiff.mp hp |>.1 ) ( Finset.mem_sdiff.mp hp |>.2 ) i; have := val_dvd_of_castHom_zero ( Finset.mem_sdiff.mp hp |>.1 ) ( ξ i ) this; aesop;
+    have h_coprime : ∀ {S : Finset ℕ}, (∀ p ∈ S, Nat.Prime p) → (∀ p ∈ S, p ∣ (ξ i).val) → (∏ p ∈ S, p) ∣ (ξ i).val := by
+      intros S hS_prime hS_div; induction' S using Finset.induction with p S hpS ih; aesop;
+      rw [ Finset.prod_insert hpS ];
+      exact Nat.Coprime.mul_dvd_of_dvd_of_dvd ( Nat.Coprime.prod_right fun q hq => by have := Nat.coprime_primes ( hS_prime p ( Finset.mem_insert_self _ _ ) ) ( hS_prime q ( Finset.mem_insert_of_mem hq ) ) ; aesop ) ( hS_div p ( Finset.mem_insert_self _ _ ) ) ( ih ( fun q hq => hS_prime q ( Finset.mem_insert_of_mem hq ) ) ( fun q hq => hS_div q ( Finset.mem_insert_of_mem hq ) ) );
+    grind;
+  · assumption
+
+/-
+If `freqDivisor q m ξ = d`, then `ξ` is in the image of the subgrid injection.
+-/
+private lemma fiber_subset_subgrid_image (q d : ℕ) [NeZero q] [NeZero d] (hd : d ∣ q)
+    (hq : Squarefree q) (m : ℕ) :
+    (Finset.univ.filter (fun ξ : Fin m → ZMod q => freqDivisor q m ξ = d)) ⊆
+      Finset.univ.image (fun (a : Fin m → ZMod d) (i : Fin m) =>
+        (((a i).val * (q / d) : ℕ) : ZMod q)) := by
+  intro hξ hξ_eq
+  -- By qd_dvd_val_of_freq �Div�isor_eq, (q/d) | (ξ i).val for all i.
+  have h_div : ∀ i : Fin m, (q / d : ℕ) ∣ (hξ i).val := by
+    exact fun i => qd_dvd_val_of_freqDivisor_eq hd hq hξ ( by aesop ) i;
+  -- Define a : Fin m → ZMod d by a i := ((ξ i).val / (q/d) : ℕ) � (�cast to ZMod d).
+  obtain ⟨a, ha⟩ : ∃ a : Fin m → ZMod d, ∀ i : Fin m, (a i).val = (hξ i).val / (q / d) := by
+    have h_div_lt : ∀ i : Fin m, (hξ i).val / (q / d) < d := by
+      intro i; rw [ Nat.div_lt_iff_lt_mul <| Nat.div_pos ( Nat.le_of_dvd ( NeZero.pos q ) hd ) <| NeZero.pos d ] ;
+      rw [ Nat.mul_div_cancel' hd ] ; exact ZMod.val_lt _;
+    exact ⟨ fun i => ( ( hξ i |> ZMod.val ) / ( q / d ) : ZMod d ), fun i => by simpa [ ZMod.val_natCast ] using Nat.mod_eq_of_lt ( h_div_lt i ) ⟩;
+  refine' Finset.mem_image.mpr ⟨ a, Finset.mem_univ _, _ ⟩;
+  ext i; simp +decide [ ha, Nat.div_mul_cancel ( h_div i ) ] ;
+
+lemma sum_fiber_le_subgrid (q d : ℕ) [NeZero q] [NeZero d] (hd : d ∣ q)
+    (hq : Squarefree q) (m : ℕ) (F : (Fin m → ZMod q) → ℝ) (hF_nonneg : ∀ ξ, 0 ≤ F ξ) :
+    ∑ ξ ∈ Finset.univ.filter (fun ξ => freqDivisor q m ξ = d), F ξ ≤
+      ∑ a : Fin m → ZMod d, F (fun i => (((a i).val * (q / d) : ℕ) : ZMod q)) := by
+  refine' le_trans ( Finset.sum_le_sum_of_subset_of_nonneg _ _ ) _;
+  exact Finset.image ( fun a : Fin m → ZMod d => fun i => ( ( a i |> ZMod.val ) * ( q / d ) : ℕ ) ) Finset.univ;
+  · exact fiber_subset_subgrid_image q d hd hq m;
+  · aesop;
+  · rw [ Finset.sum_image ];
+    convert subgrid_map_injective q d hd hq m using 1;
+    simp +decide [ Set.InjOn, Function.Injective ]
+
+lemma sum_over_divisors (q m : ℕ) [NeZero q] (hq : Squarefree q)
+    (F : (Fin m → ZMod q) → ℝ) (B : ℕ → ℝ)
+    (h_bound : ∀ d : ℕ, d ∣ q →
+      ∑ ξ ∈ Finset.univ.filter (fun ξ => freqDivisor q m ξ = d), F ξ ≤ B d) :
+    ∑ ξ : Fin m → ZMod q, F ξ ≤ ∑ d ∈ Nat.divisors q, B d := by
+  convert Finset.sum_le_sum fun d hd => h_bound d <| Nat.dvd_of_mem_divisors hd;
+  rw [ ← Finset.sum_biUnion ];
+  · congr with;
+    simp +decide [ freqDivisor_dvd ];
+    exact NeZero.ne q;
+  · exact fun x hx y hy hxy => Finset.disjoint_left.mpr fun z hz₁ hz₂ => hxy <| by aesop;
+
 end PoissonCRT
