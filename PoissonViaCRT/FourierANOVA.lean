@@ -624,7 +624,7 @@ Sum of the 1D interval DFT over a subgrid of frequencies.
 set_option maxHeartbeats 400000 in
 lemma dft_interval_subgrid_bound (q d : ℕ) [NeZero q] [NeZero d] (hd : d ∣ q) (L : ℕ) :
     ∑ a : ZMod d, ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 L then (1 : ℂ) else 0) (fun _ => (((a.val * (q / d) : ℕ) : ZMod q)))‖ ≤
-      (L : ℝ) / q + (d : ℝ) / q * Real.log d + 2 := by
+      (L : ℝ) / q + (d : ℝ) / q * Real.log d + (d : ℝ) / q := by
   -- Split the sum into the term at a=0 and the sum over a≠0.
   have h_split : ∑ a : ZMod d, ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 L then (1 : ℂ) else 0) (fun _ => ↑(a.val * (q / d)))‖ = ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 L then (1 : ℂ) else 0) (fun _ => 0)‖ + ∑ a ∈ Finset.Icc 1 (d - 1), ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 L then (1 : ℂ) else 0) (fun _ => ↑(a * (q / d)))‖ := by
     rcases d with ( _ | _ | d ) <;> simp_all +decide;
@@ -675,7 +675,7 @@ lemma dft_boxIndicator_subgrid_bound (q d : ℕ) [NeZero q] [NeZero d] (hd : d �
     (k : ℕ) (hk : 2 ≤ k) (X : Box (k - 1)) (s : ℝ) (hs : 0 ≤ s) :
     ∑ a : Fin (k - 1) → ZMod d,
       ‖dft q (k - 1) (boxIndicator q (k - 1) X s) (fun i => (((a i).val * (q / d) : ℕ) : ZMod q))‖ ≤
-      ∏ j : Fin (k - 1), (⌊s * X.sides j⌋₊ / (q : ℝ) + (d : ℝ) / q * Real.log d + 2) := by
+      ∏ j : Fin (k - 1), (⌊s * X.sides j⌋₊ / (q : ℝ) + (d : ℝ) / q * Real.log d + (d : ℝ) / q) := by
   -- By Fubini's theorem, we can interchange the order of summation.
   have h_fubini : ∑ a : Fin (k - 1) → ZMod d, ∏ j, ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 ⌊s * X.sides j⌋₊ then (1 : ℂ) else 0) (fun _ => (((a j).val * (q / d) : ℕ) : ZMod q))‖ = ∏ j : Fin (k - 1), ∑ a : ZMod d, ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 ⌊s * X.sides j⌋₊ then (1 : ℂ) else 0) (fun _ => (((a).val * (q / d) : ℕ) : ZMod q))‖ := by
     rw [ Finset.prod_sum ];
