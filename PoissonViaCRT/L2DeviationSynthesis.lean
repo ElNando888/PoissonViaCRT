@@ -322,6 +322,19 @@ correctly tracks the Γ-structure collision indicator:
 -/
 
 /-
+Helper: `localCount` at a prime factor equals `tupleCount` after projection.
+-/
+private lemma localCount_eq_tupleCount' (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (q : ℕ) [NeZero q] (p : ℕ) (hp : p ∈ q.primeFactors)
+    {m : ℕ} (h : Fin m → ℤ) :
+    haveI : NeZero p := ⟨(Nat.mem_primeFactors.mp hp).1.ne_zero⟩
+    localCount Ω q (Fin.cons 0 (fun i => (h i : ZMod q))) p =
+      (tupleCount (Ω p) (Fin.cons 0 (fun i => (h i : ZMod p))) : ℝ) := by
+  unfold localCount; split_ifs ; simp_all +decide ;
+  convert rfl;
+  rename_i i; induction i using Fin.inductionOn <;> aesop;
+
+/-
 **Step 1: Pointwise collision bound with indicator.**
 For each lattice point `h` and prime `p`, the squared deviation satisfies:
   `(N_p(h) − μ_p)² ≤ (cEW_p · μ_p)² + p² · 𝟙[collision]`
@@ -336,8 +349,19 @@ private lemma local_variance_pointwise_bound (ε : ℝ) (k : ℕ) (hk : 2 ≤ k)
     (h : Fin (k - 1) → ℤ) :
     (localCount Ω q (Fin.cons 0 (fun i => (h i : ZMod q))) p - localMean k Ω p)^2 ≤
       (combinedEulerWeight ε k Ω p * localMean k Ω p)^2 +
-      (k : ℝ)^2 * (if Function.Injective (Fin.cons (0 : ZMod p) (fun i => (h i : ZMod p))) then 0 else 1) := by
-  sorry
+      (p : ℝ)^2 * (if Function.Injective (Fin.cons (0 : ZMod p) (fun i => (h i : ZMod p))) then 0 else 1) := by
+  by_cases hinj : Function.Injective (Fin.cons (0 : ZMod p) (fun i => (h i : ZMod p)));
+  · have h_bound : |localCount Ω q (Fin.cons 0 (fun i => (h i : ZMod q))) p - localMean k Ω p| ≤ combinedEulerWeight ε k Ω p * localMean k Ω p := by
+      have := localCount_eq_tupleCount' Ω q p hp h;
+      rcases k with ( _ | _ | k ) <;> simp_all +decide [ WellDistributed ];
+      convert hWD p |>.1 _ _ using 1;
+      · exact ⟨ Nat.prime_of_mem_primeFactors hp ⟩;
+      · exact hinj;
+    simpa [ hinj ] using pow_le_pow_left₀ ( abs_nonneg _ ) h_bound 2;
+  · have h_abs : |localCount Ω q (Fin.cons 0 (fun i => (h i : ZMod q))) p - localMean k Ω p| ≤ p := by
+      convert abs_localCount_sub_localMean_le_p ( by linarith : 1 ≤ k - 1 + 1 ) q p hp Ω ( Fin.cons 0 ( fun i => ( h i : ZMod q ) ) ) using 1;
+      grind;
+    rw [ if_neg hinj ] ; nlinarith [ abs_le.mp h_abs ] ;
 
 /-
 **Step 2: Powerset expansion and sum swap.**
@@ -362,10 +386,9 @@ The sum of `∏_{p ∈ U} 𝟙[Fin.cons 0 h̄ not injective mod p]` over lattice
 This is the essential Γ-structure estimate: requiring a collision mod each `p ∈ U`
 costs a factor of `1/p` per prime, because the set of `h` with `h_i ≡ h_j (mod p)`
 for some `i ≠ j` has density `O(1/p)` in the box.
--/
--- The `box_collision_sum_bound` is now imported from `BoxCollisionIntegration.lean`.
 
-/-
+The `box_collision_sum_bound` is now imported from `BoxCollisionIntegration.lean`.
+
 **Step 4: Algebraic factorization.**
 After applying the collision sum bound, the powerset sum becomes
 `C_box · (s^{k-1}/∏ U p + s^{k-2}) · ∏_T ((cEW·μ)² + C_gamma)`.
@@ -374,31 +397,28 @@ This distributes the powerset sum.
 private lemma variance_factorization (ε : ℝ) (k : ℕ) (Ω : ∀ p : ℕ, Finset (ZMod p))
     (T : Finset ℕ) (s : ℝ) (C_box C_gamma : ℝ) :
     ∑ U ∈ T.powerset, (∏ p ∈ T \ U, (combinedEulerWeight ε k Ω p * localMean k Ω p)^2) *
-      (∏ p ∈ U, (k : ℝ)^2) * (C_box * (s ^ (k - 1 : ℕ) / ∏ p ∈ U, (p : ℝ) + s ^ (k - 1 - 1 : ℕ)) * ∏ p ∈ U, C_gamma) =
-    C_box * s ^ (k - 1 : ℕ) * ∏ p ∈ T, ((combinedEulerWeight ε k Ω p * localMean k Ω p)^2 + (k : ℝ)^2 * C_gamma / (p : ℝ)) +
-    C_box * s ^ (k - 1 - 1 : ℕ) * ∏ p ∈ T, ((combinedEulerWeight ε k Ω p * localMean k Ω p)^2 + (k : ℝ)^2 * C_gamma) := by
-  -- Apply the binomial theorem to expand the product.
-  have h_binom : ∀ (a b : ℕ → ℝ), (∏ p ∈ T, (a p + b p)) = ∑ U ∈ T.powerset, (∏ p ∈ T \ U, a p) * (∏ p ∈ U, b p) := by
-    simp +decide [Finset.prod_add];
-    intro a b; rw [ ← Finset.sum_bij ( fun U _ => T \ U ) ] ; simp +decide ;
-    · simp +contextual [ Finset.ext_iff ];
-      grind;
-    · exact fun b hb => ⟨ T \ b, by aesop ⟩;
-    · simp +contextual;
-  simp +decide [ h_binom, mul_add, add_mul, mul_assoc, mul_comm, mul_left_comm, Finset.mul_sum _ _ _, Finset.sum_add_distrib ];
-  exact congrArg₂ ( · + · ) ( Finset.sum_congr rfl fun _ _ => by ring ) ( Finset.sum_congr rfl fun _ _ => by ring )
+      (∏ p ∈ U, (p : ℝ)^2) * (C_box * (s ^ (k - 1 : ℕ) / ∏ p ∈ U, (p : ℝ) + s ^ (k - 1 - 1 : ℕ)) * ∏ p ∈ U, C_gamma) =
+    C_box * s ^ (k - 1 : ℕ) * ∏ p ∈ T, ((combinedEulerWeight ε k Ω p * localMean k Ω p)^2 + (p : ℝ)^2 * C_gamma / (p : ℝ)) +
+    C_box * s ^ (k - 1 - 1 : ℕ) * ∏ p ∈ T, ((combinedEulerWeight ε k Ω p * localMean k Ω p)^2 + (p : ℝ)^2 * C_gamma) := by
+  simp +decide [ Finset.prod_add, Finset.sum_add_distrib, mul_add, add_mul, mul_assoc, mul_comm, mul_left_comm, Finset.mul_sum _ _ _ ];
+  refine' congrArg₂ ( · + · ) ( Finset.sum_bij ( fun U _ => T \ U ) _ _ _ _ ) ( Finset.sum_bij ( fun U _ => T \ U ) _ _ _ _ ) <;> simp +decide [ Finset.prod_mul_distrib ];
+  any_goals intro a ha; use T \ a; simp +decide [ Finset.inter_eq_right.mpr ha ] ;
+  · intro a₁ ha₁ a₂ ha₂ h; rw [ ← Finset.sdiff_sdiff_eq_self ha₁, h, Finset.sdiff_sdiff_eq_self ha₂ ] ;
+  · intro a ha; rw [ Finset.inter_eq_right.mpr ha ] ; ring_nf; aesop;
+  · intro a₁ ha₁ a₂ ha₂ h; rw [ ← Finset.sdiff_sdiff_eq_self ha₁, h, Finset.sdiff_sdiff_eq_self ha₂ ] ;
+  · intro a ha; rw [ Finset.inter_eq_right.mpr ha ] ; ring_nf; aesop;
 
 /-- **Step 5: Absorption bound.**
 Both terms are absorbed by `K * s^{k-1} * (∏_{p ∈ T} (cEW_p · μ_p))²`.
-Note: we absorb `k² · C_gamma / p` into the first term and `k² · C_gamma` into the second.
+Note: we absorb `p² · C_gamma / p` into the first term and `p² · C_gamma` into the second.
 Since `(cEW·μ)² ∼ p^{2-2ε}` and `2-2ε > 1` for `ε < 1/2`, both products converge over all primes.
 The factor `s^{k-2}` is bounded by `s^{k-1}` since `s ≥ 1`. -/
 private lemma variance_product_absorption (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k) (C_gamma : ℝ) :
     ∃ K : ℝ, 0 < K ∧ ∀ (q : ℕ) [NeZero q] (T : Finset ℕ) (_ : T ⊆ q.primeFactors) (s : ℝ) (_ : 1 ≤ s),
-    s ^ (k - 1 : ℕ) * ∏ p ∈ T, ((combinedEulerWeight ε k Ω p * localMean k Ω p) ^ 2 + (k : ℝ)^2 * C_gamma / (p : ℝ)) +
-    s ^ (k - 1 - 1 : ℕ) * ∏ p ∈ T, ((combinedEulerWeight ε k Ω p * localMean k Ω p) ^ 2 + (k : ℝ)^2 * C_gamma) ≤
+    s ^ (k - 1 : ℕ) * ∏ p ∈ T, ((combinedEulerWeight ε k Ω p * localMean k Ω p) ^ 2 + (p : ℝ)^2 * C_gamma / (p : ℝ)) +
+    s ^ (k - 1 - 1 : ℕ) * ∏ p ∈ T, ((combinedEulerWeight ε k Ω p * localMean k Ω p) ^ 2 + (p : ℝ)^2 * C_gamma) ≤
     K * s ^ (k - 1 : ℕ) * (∏ p ∈ T, (combinedEulerWeight ε k Ω p * localMean k Ω p)) ^ 2 := by
   sorry
 
@@ -437,7 +457,7 @@ private lemma variance_per_T_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 �
       (fun h => inScaledBox X s (fun _ => 0) h)) with hS_def
   set A : ℕ → ℝ := fun p => (combinedEulerWeight ε k Ω p * localMean k Ω p) ^ 2 with hA_def
   set B : ℕ → (Fin (k - 1) → ℤ) → ℝ :=
-    fun p h => (k : ℝ)^2 * (if Function.Injective (Fin.cons (0 : ZMod p)
+    fun p h => (p : ℝ)^2 * (if Function.Injective (Fin.cons (0 : ZMod p)
         (fun i => (h i : ZMod p))) then (0:ℝ) else 1) with hB_def
   -- The calc chain implements the 6-step decomposition.
   calc ∑ h ∈ S, (∏ p ∈ T, (localCount Ω q (Fin.cons 0 (fun i => (h i : ZMod q))) p -
@@ -453,33 +473,33 @@ private lemma variance_per_T_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 �
       _ = ∑ U ∈ T.powerset, (∏ p ∈ T \ U, A p) *
             ∑ h ∈ S, ∏ p ∈ U, B p h := by
         exact swap_variance_sum T A B S
-      -- Step 3: Factor out ∏_U k² from the inner sum over h, and apply box_collision_sum_bound.
+      -- Step 3: Factor out ∏_U p² from the inner sum over h, and apply box_collision_sum_bound.
       _ ≤ ∑ U ∈ T.powerset, (∏ p ∈ T \ U, A p) *
-            (∏ p ∈ U, (k : ℝ)^2) *
+            (∏ p ∈ U, (p : ℝ)^2) *
             (C_box * (s ^ (k - 1 : ℕ) / ∏ p ∈ U, (p : ℝ) + s ^ (k - 1 - 1 : ℕ)) * ∏ p ∈ U, C_gamma) := by
         apply Finset.sum_le_sum; intro U hU
         rw [mul_assoc]
-        have H : ∑ h ∈ S, ∏ p ∈ U, B p h ≤ (∏ p ∈ U, (k : ℝ)^2) * (C_box * (s ^ (k - 1 : ℕ) / ∏ p ∈ U, (p : ℝ) + s ^ (k - 1 - 1 : ℕ)) * ∏ p ∈ U, C_gamma) := by
+        have H : ∑ h ∈ S, ∏ p ∈ U, B p h ≤ (∏ p ∈ U, (p : ℝ)^2) * (C_box * (s ^ (k - 1 : ℕ) / ∏ p ∈ U, (p : ℝ) + s ^ (k - 1 - 1 : ℕ)) * ∏ p ∈ U, C_gamma) := by
           calc ∑ h ∈ S, ∏ p ∈ U, B p h
-            _ = ∑ h ∈ S, ∏ p ∈ U, ((k : ℝ)^2 * (if Function.Injective (Fin.cons (0 : ZMod p) (fun i => (h i : ZMod p))) then (0:ℝ) else 1)) := rfl
-            _ = ∑ h ∈ S, (∏ p ∈ U, (k : ℝ)^2) * ∏ p ∈ U, (if Function.Injective (Fin.cons (0 : ZMod p) (fun i => (h i : ZMod p))) then (0:ℝ) else 1) := by
+            _ = ∑ h ∈ S, ∏ p ∈ U, ((p : ℝ)^2 * (if Function.Injective (Fin.cons (0 : ZMod p) (fun i => (h i : ZMod p))) then (0:ℝ) else 1)) := rfl
+            _ = ∑ h ∈ S, (∏ p ∈ U, (p : ℝ)^2) * ∏ p ∈ U, (if Function.Injective (Fin.cons (0 : ZMod p) (fun i => (h i : ZMod p))) then (0:ℝ) else 1) := by
               simp_rw [Finset.prod_mul_distrib]
-            _ = (∏ p ∈ U, (k : ℝ)^2) * ∑ h ∈ S, ∏ p ∈ U, (if Function.Injective (Fin.cons (0 : ZMod p) (fun i => (h i : ZMod p))) then (0:ℝ) else 1) := by
+            _ = (∏ p ∈ U, (p : ℝ)^2) * ∑ h ∈ S, ∏ p ∈ U, (if Function.Injective (Fin.cons (0 : ZMod p) (fun i => (h i : ZMod p))) then (0:ℝ) else 1) := by
               rw [← Finset.mul_sum]
-            _ ≤ (∏ p ∈ U, (k : ℝ)^2) * (C_box * (s ^ (k - 1 : ℕ) / ∏ p ∈ U, (p : ℝ) + s ^ (k - 1 - 1 : ℕ)) * ∏ p ∈ U, C_gamma) := by
+            _ ≤ (∏ p ∈ U, (p : ℝ)^2) * (C_box * (s ^ (k - 1 : ℕ) / ∏ p ∈ U, (p : ℝ) + s ^ (k - 1 - 1 : ℕ)) * ∏ p ∈ U, C_gamma) := by
               gcongr
               have hU_sub : U ⊆ q.primeFactors := Finset.Subset.trans (Finset.mem_powerset.mp hU) hT_sub
               exact hC_bound s hs U (fun p hp => Nat.prime_of_mem_primeFactors (hU_sub hp))
         apply mul_le_mul_of_nonneg_left H
         exact Finset.prod_nonneg (fun p _ => sq_nonneg _)
       -- Step 4: Apply variance_factorization to collapse the powerset sum.
-      _ = C_box * s ^ (k - 1 : ℕ) * ∏ p ∈ T, (A p + (k : ℝ)^2 * C_gamma / (p : ℝ)) +
-          C_box * s ^ (k - 1 - 1 : ℕ) * ∏ p ∈ T, (A p + (k : ℝ)^2 * C_gamma) := by
+      _ = C_box * s ^ (k - 1 : ℕ) * ∏ p ∈ T, (A p + (p : ℝ)^2 * C_gamma / (p : ℝ)) +
+          C_box * s ^ (k - 1 - 1 : ℕ) * ∏ p ∈ T, (A p + (p : ℝ)^2 * C_gamma) := by
         simp only [hA_def]
         exact variance_factorization ε k Ω T s C_box C_gamma
       -- Step 5: Apply variance_product_absorption.
-      _ = C_box * (s ^ (k - 1 : ℕ) * ∏ p ∈ T, (A p + (k : ℝ)^2 * C_gamma / (p : ℝ)) +
-                   s ^ (k - 1 - 1 : ℕ) * ∏ p ∈ T, (A p + (k : ℝ)^2 * C_gamma)) := by ring
+      _ = C_box * (s ^ (k - 1 : ℕ) * ∏ p ∈ T, (A p + (p : ℝ)^2 * C_gamma / (p : ℝ)) +
+                   s ^ (k - 1 - 1 : ℕ) * ∏ p ∈ T, (A p + (p : ℝ)^2 * C_gamma)) := by ring
       _ ≤ C_box * (K * s ^ (k - 1 : ℕ) * (∏ p ∈ T, (combinedEulerWeight ε k Ω p * localMean k Ω p)) ^ 2) := by
         gcongr
         exact hK_bound q T hT_sub s hs
@@ -663,24 +683,3 @@ public lemma per_T_deviation_le_combinedEulerWeight (ε : ℝ) (hε : 0 < ε) (k
           ∏ p ∈ T, combinedEulerWeight ε k Ω p := h_cancel
 
 end PoissonCRT
-
-/-
-PROVIDED SOLUTION
-
-I have rewritten `L2DeviationSynthesis.lean` to use the correct `box_collision_sum_bound` from `BoxCollisionIntegration.lean` which has the fallback error term `s^{k-2}`.
-This created three sorries:
-1. `local_variance_pointwise_bound`
-2. `variance_factorization`
-3. `variance_product_absorption`
-
-Please fill in these sorries.
-
-**Hints for `variance_product_absorption`:**
-The main challenge here is bounding the product of `A_p + B_p` by `K * (prod A_p)^2`, where `A_p = (cEW * localMean)^2`.
-You have two terms inside the LHS:
-- The first is bounded because `k^2 * C_gamma / p` decays fast enough relative to `A_p`. Since `A_p \approx p^{2-2\varepsilon}` and `2-2\varepsilon > 1` (as `\varepsilon < 1/2`), the product `prod (1 + (k^2 C_gamma / p) / A_p)` converges uniformly across all finite subsets of primes.
-- The second term is also bounded for similar reasons, as `k^2 * C_gamma` divided by `A_p` acts like `1/p^{2-2\varepsilon}`, which also forms a convergent infinite product.
-You can use `Real.prod_le_prod` and summability arguments over primes (using properties of `WellDistributed` and `combinedEulerWeight`) to extract the absolute constant `K`.
-
-Feel free to break it down into helper lemmas if necessary!
--/
