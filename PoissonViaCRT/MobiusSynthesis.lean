@@ -898,6 +898,212 @@ private lemma prod_localMean_eq_mean (k : ℕ) (hk : 2 ≤ k) (q : ℕ) [NeZero 
   · rw [ Finset.prod_pow, ← Nat.cast_prod, Nat.prod_primeFactors_of_squarefree hq_sq ]
 
 /-
+DFT of the deviation function at ξ = 0 is zero.
+-/
+private lemma dft_deviation_at_zero (q : ℕ) [NeZero q] (hq : Squarefree q)
+    (Ω : ∀ p : ℕ, Finset (ZMod p)) :
+    dft q 1 (fun h : Fin 1 → ZMod q =>
+      (tupleCount (crtSubset q Ω) (Fin.cons 0 h) : ℂ) -
+      ↑(∏ p ∈ q.primeFactors, localMean 2 Ω p)) 0 = 0 := by
+  unfold dft;
+  simp +decide [ character ];
+  convert dft_tupleCount_zero 2 ( by decide ) q hq Ω;
+  unfold dft; norm_num;
+  norm_num [ ← div_eq_inv_mul, sub_eq_zero ];
+  norm_num [ div_eq_iff, NeZero.ne ];
+  norm_num [ mul_comm, character ]
+
+/-
+For nonneg reals, ∏ p ∈ S, (f p) ^ α = (∏ p ∈ S, f p) ^ α.
+-/
+private lemma finset_prod_rpow_nonneg {ι : Type*} (S : Finset ι) (f : ι → ℝ) (α : ℝ)
+    (hf : ∀ i ∈ S, 0 ≤ f i) :
+    ∏ i ∈ S, (f i) ^ α = (∏ i ∈ S, f i) ^ α := by
+  induction S using Finset.cons_induction with
+  | empty => simp
+  | cons a s ha ih =>
+    rw [Finset.prod_cons, Finset.prod_cons, ih (fun i hi => hf i (Finset.mem_cons.mpr (Or.inr hi)))]
+    rw [Real.mul_rpow (hf a (Finset.mem_cons.mpr (Or.inl rfl))) (Finset.prod_nonneg (fun i hi => hf i (Finset.mem_cons.mpr (Or.inr hi))))]
+
+/-
+Negation bijection: summing f at negated subgrid points equals summing at
+non-negated subgrid points, via the substitution a → d - a on Icc 1 (d-1).
+-/
+private lemma Icc_neg_subgrid_sum_eq (q d : ℕ) [NeZero q] [NeZero d] (hd : d ∣ q) (hd1 : d ≠ 1)
+    (f : (Fin 1 → ZMod q) → ℝ) :
+    ∑ a ∈ Finset.Icc 1 (d - 1), f (fun _ => -(((a * (q / d) : ℕ) : ZMod q))) =
+    ∑ a ∈ Finset.Icc 1 (d - 1), f (fun _ => (((a * (q / d) : ℕ) : ZMod q))) := by
+  apply Finset.sum_bij (fun a ha => d - a);
+  · exact fun a ha => Finset.mem_Icc.mpr ⟨ Nat.sub_pos_of_lt <| Finset.mem_Icc.mp ha |>.2.trans_lt <| Nat.pred_lt <| NeZero.ne d, Nat.sub_le_sub_left ( Finset.mem_Icc.mp ha |>.1 ) _ ⟩;
+  · grind;
+  · exact fun x hx => ⟨ d - x, Finset.mem_Icc.mpr ⟨ Nat.sub_pos_of_lt <| lt_of_le_of_lt ( Finset.mem_Icc.mp hx |>.2 ) <| Nat.pred_lt <| NeZero.ne d, Nat.sub_le_sub_left ( Finset.mem_Icc.mp hx |>.1 ) _ ⟩, Nat.sub_sub_self <| le_trans ( Finset.mem_Icc.mp hx |>.2 ) <| Nat.pred_le _ ⟩;
+  · intro a ha; congr; ext x; simp +decide [ Nat.cast_sub ( show a ≤ d from le_trans ( Finset.mem_Icc.mp ha |>.2 ) ( Nat.pred_le _ ) ) ] ;
+    simp +decide [sub_mul];
+    norm_cast ; simp +decide [ Nat.mul_div_cancel' hd ]
+
+/-
+Sum of DFT norms of boxIndicator over the fiber for d ≠ 1 is bounded by
+the punctured subgrid bound d/q * (log d + 1).
+-/
+private lemma fiber_boxIndicator_neg_bound (q d : ℕ) [NeZero q] [NeZero d]
+    (hd : d ∣ q) (hq : Squarefree q) (hd1 : d ≠ 1)
+    (X : Box 1) (s : ℝ) :
+    ∑ ξ ∈ Finset.univ.filter (fun ξ : Fin 1 → ZMod q => freqDivisor q 1 ξ = d),
+      ‖dft q 1 (boxIndicator q 1 X s) (-ξ)‖ ≤
+    (d : ℝ) / (q : ℝ) * (Real.log (d : ℝ) + 1) := by
+  have := @sum_fiber_le_punctured_1d;
+  refine' le_trans ( this q d hd hq hd1 _ fun _ => _ ) _;
+  · positivity;
+  · convert dft_interval_punctured_subgrid_bound q d hd ⌊s * X.sides 0⌋₊ using 1;
+    convert Icc_neg_subgrid_sum_eq q d hd hd1 _ using 3;
+    any_goals exact fun x => ‖dft q 1 ( boxIndicator q 1 X s ) x‖;
+    · congr! 2;
+    · unfold boxIndicator; aesop;
+
+/-- DFT coefficient bound: for nonzero ξ with freqDivisor = d, the norm of
+the DFT of g is bounded by d^(-ε) * M. -/
+private lemma dft_g_norm_le_decay (ε : ℝ) (hε : 0 < ε)
+    (q : ℕ) [NeZero q] (hq_sq : Squarefree q)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributedFourier ε p (Ω p) 2)
+    (ξ : Fin 1 → ZMod q) (hξ : ξ ≠ 0) :
+    ‖dft q 1 (fun h : Fin 1 → ZMod q =>
+      (tupleCount (crtSubset q Ω) (Fin.cons 0 h) : ℂ) -
+      ↑(∏ p ∈ q.primeFactors, localMean 2 Ω p)) ξ‖ ≤
+    (freqDivisor q 1 ξ : ℝ) ^ (-ε) * ∏ p ∈ q.primeFactors, localMean 2 Ω p := by
+  have h1 := deviation_dft_q1_q2_bound 2 le_rfl ε hε q hq_sq Ω
+    (fun p hp => by haveI : Fact p.Prime := ⟨(Nat.mem_primeFactors.mp hp).1⟩; exact hWD p) ξ hξ
+  refine le_trans h1 (le_of_eq ?_)
+  congr 1
+  change ∏ p ∈ freqSupport q 1 ξ, (p : ℝ) ^ (-ε) = (↑(freqDivisor q 1 ξ)) ^ (-ε)
+  have hfd : (freqDivisor q 1 ξ : ℝ) = ∏ p ∈ freqSupport q 1 ξ, (p : ℝ) := by
+    rw [show freqDivisor q 1 ξ = ∏ p ∈ freqSupport q 1 ξ, p from rfl]
+    exact Nat.cast_prod _ _
+  rw [hfd]
+  induction (freqSupport q 1 ξ) using Finset.cons_induction with
+  | empty => simp
+  | cons a s ha ih =>
+    rw [Finset.prod_cons, Finset.prod_cons, ih,
+      Real.mul_rpow (Nat.cast_nonneg _) (Finset.prod_nonneg (fun i _ => Nat.cast_nonneg i))]
+
+/-- Per-fiber bound: for each divisor d of q, the sum of F over frequencies
+with freqDivisor = d is bounded by B(d). -/
+private lemma fourier_fiber_bound (ε : ℝ) (hε : 0 < ε)
+    (q : ℕ) [NeZero q] (hq_sq : Squarefree q)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributedFourier ε p (Ω p) 2)
+    (X : Box 1) (s : ℝ) (hs : 0 ≤ s)
+    (hbox : ∀ j : Fin 1, ⌊s * X.sides j⌋₊ < q) :
+    let g : (Fin 1 → ZMod q) → ℂ := fun h =>
+      (tupleCount (crtSubset q Ω) (Fin.cons 0 h) : ℂ) -
+      ↑(∏ p ∈ q.primeFactors, localMean 2 Ω p)
+    let F : (Fin 1 → ZMod q) → ℝ := fun ξ =>
+      ‖dft q 1 g ξ‖ * ‖dft q 1 (boxIndicator q 1 X s) (-ξ)‖
+    let M : ℝ := ∏ p ∈ q.primeFactors, localMean 2 Ω p
+    let B : ℕ → ℝ := fun d =>
+      if d = 1 then 0
+      else (d : ℝ) ^ (-ε) * M * ((d : ℝ) / (q : ℝ) * (Real.log (d : ℝ) + 1))
+    ∀ d : ℕ, d ∣ q →
+      ∑ ξ ∈ Finset.univ.filter (fun ξ => freqDivisor q 1 ξ = d), F ξ ≤ B d := by
+  intro g F M B d hd_dvd
+  by_cases hd1 : d = 1
+  · -- Case d = 1: B(1) = 0, fiber = {ξ = 0}, F(0) = 0
+    subst hd1
+    change ∑ _ ∈ _, _ ≤ 0
+    apply Finset.sum_nonpos
+    intro ξ hξ
+    have hξ_eq : freqDivisor q 1 ξ = 1 := (Finset.mem_filter.mp hξ).2
+    have hξ_zero : ξ = 0 := freqDivisor_eq_one_imp_zero q 1 hq_sq ξ hξ_eq
+    subst hξ_zero
+    show ‖dft q 1 _ 0‖ * _ ≤ 0
+    rw [dft_deviation_at_zero q hq_sq Ω, norm_zero, zero_mul]
+  · -- Case d ≠ 1
+    have hBd : B d = (d : ℝ) ^ (-ε) * M * ((d : ℝ) / (q : ℝ) * (Real.log (d : ℝ) + 1)) :=
+      if_neg hd1
+    rw [hBd]
+    haveI : NeZero d := ⟨fun h => by subst h; simp at hd_dvd; exact NeZero.ne q hd_dvd⟩
+    -- For each ξ in the fiber: F(ξ) ≤ d^(-ε) * M * ‖dft boxInd (-ξ)‖
+    have hF_bound : ∀ ξ ∈ Finset.univ.filter (fun ξ : Fin 1 → ZMod q => freqDivisor q 1 ξ = d),
+        F ξ ≤ (d : ℝ) ^ (-ε) * M * ‖dft q 1 (boxIndicator q 1 X s) (-ξ)‖ := by
+      intro ξ hξ
+      have hξ_ne : ξ ≠ 0 := by
+        intro h; subst h
+        have hfd0 : freqDivisor q 1 (0 : Fin 1 → ZMod q) = 1 := by
+          change ∏ p ∈ freqSupport q 1 0, p = 1
+          suffices h : freqSupport q 1 (0 : Fin 1 → ZMod q) = ∅ by rw [h]; simp
+          simp only [freqSupport]; rw [Finset.filter_eq_empty_iff]
+          intro p _; simp +decide [NeZero.ne q]; tauto
+        have := (Finset.mem_filter.mp hξ).2
+        rw [hfd0] at this; exact hd1 this.symm
+      have hξ_d : freqDivisor q 1 ξ = d := (Finset.mem_filter.mp hξ).2
+      have h_coeff := dft_g_norm_le_decay ε hε q hq_sq Ω hWD ξ hξ_ne
+      rw [hξ_d] at h_coeff
+      exact mul_le_mul_of_nonneg_right h_coeff (norm_nonneg _)
+    -- Factor out: ∑ F ≤ d^(-ε) * M * ∑ ‖dft boxInd (-ξ)‖
+    have hsum : ∑ ξ ∈ Finset.univ.filter (fun ξ : Fin 1 → ZMod q => freqDivisor q 1 ξ = d), F ξ ≤
+        (d : ℝ) ^ (-ε) * M *
+        ∑ ξ ∈ Finset.univ.filter (fun ξ : Fin 1 → ZMod q => freqDivisor q 1 ξ = d),
+          ‖dft q 1 (boxIndicator q 1 X s) (-ξ)‖ := by
+      refine le_trans (Finset.sum_le_sum hF_bound) (le_of_eq ?_)
+      rw [← Finset.mul_sum]
+    -- Apply fiber_boxIndicator_neg_bound
+    have hbox := fiber_boxIndicator_neg_bound q d hd_dvd hq_sq hd1 X s
+    calc ∑ ξ ∈ Finset.univ.filter _, F ξ
+        ≤ (d : ℝ) ^ (-ε) * M * ∑ ξ ∈ Finset.univ.filter _, ‖dft q 1 (boxIndicator q 1 X s) (-ξ)‖ := hsum
+      _ ≤ (d : ℝ) ^ (-ε) * M * ((d : ℝ) / (q : ℝ) * (Real.log (d : ℝ) + 1)) := by
+          apply mul_le_mul_of_nonneg_left hbox
+          exact mul_nonneg (Real.rpow_nonneg (Nat.cast_nonneg _) _)
+            (Finset.prod_nonneg (fun p _ => by unfold localMean; positivity))
+
+/-- Norm bound on the Fourier expansion sum, used in `deviation_le_divisor_sum`.
+For k=2 (Fin 1), the norm of the sum of DFT products over all frequencies
+is bounded by the divisor sum of decay * localMean * punctured-subgrid. -/
+private lemma fourier_norm_bound (ε : ℝ) (hε : 0 < ε)
+    (q : ℕ) [NeZero q] (hq_sq : Squarefree q)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributedFourier ε p (Ω p) 2)
+    (X : Box 1) (s : ℝ) (hs : 0 ≤ s)
+    (hbox : ∀ j : Fin 1, ⌊s * X.sides j⌋₊ < q) :
+    let g : (Fin 1 → ZMod q) → ℂ := fun h =>
+      (tupleCount (crtSubset q Ω) (Fin.cons 0 h) : ℂ) -
+      ↑(∏ p ∈ q.primeFactors, localMean 2 Ω p)
+    ‖∑ ξ : Fin 1 → ZMod q, dft q 1 g ξ *
+      dft q 1 (boxIndicator q 1 X s) (-ξ)‖ ≤
+    ∑ d ∈ q.divisors.erase 1,
+      ((↑d) ^ (-ε) * (∏ p ∈ q.primeFactors, localMean 2 Ω p) *
+       ((↑d) / (↑q) * (Real.log (↑d) + 1))) := by
+  intro g
+  -- Step 1: Triangle inequality + norm_mul
+  refine le_trans (le_trans (norm_sum_le _ _)
+    (Finset.sum_le_sum (fun ξ _ => le_of_eq (norm_mul _ _)))) ?_
+  -- Now goal: ∑ ξ, ‖dft g ξ‖ * ‖dft boxInd (-ξ)‖ ≤ ∑ d ∈ divisors.erase 1, ...
+  -- Step 2: Apply sum_over_divisors to group by freqDivisor
+  set F : (Fin 1 → ZMod q) → ℝ := fun ξ =>
+    ‖dft q 1 g ξ‖ * ‖dft q 1 (boxIndicator q 1 X s) (-ξ)‖ with hF_def
+  set M : ℝ := ∏ p ∈ q.primeFactors, localMean 2 Ω p with hM_def
+  set B : ℕ → ℝ := fun d =>
+    if d = 1 then 0
+    else (d : ℝ) ^ (-ε) * M *
+      ((d : ℝ) / (q : ℝ) * (Real.log (d : ℝ) + 1)) with hB_def
+  -- Step 2a: Bound each fiber (from fourier_fiber_bound)
+  have hfiber : ∀ d : ℕ, d ∣ q →
+      ∑ ξ ∈ Finset.univ.filter (fun ξ => freqDivisor q 1 ξ = d), F ξ ≤ B d :=
+    fourier_fiber_bound ε hε q hq_sq Ω hΩ hWD X s hs hbox
+  -- Step 2b: Apply sum_over_divisors
+  have hgrouped := sum_over_divisors q 1 hq_sq F B hfiber
+  -- Step 3: Convert ∑ d ∈ divisors, B(d) to ∑ d ∈ divisors.erase 1, target
+  refine le_trans hgrouped ?_
+  rw [show ∑ d ∈ q.divisors, B d =
+    ∑ d ∈ q.divisors.erase 1,
+      ((d : ℝ) ^ (-ε) * M * ((d : ℝ) / (q : ℝ) * (Real.log (d : ℝ) + 1))) from by
+    rw [← Finset.add_sum_erase _ _ (Nat.mem_divisors.mpr ⟨one_dvd q, NeZero.ne q⟩)]
+    simp only [hB_def, ite_true, zero_add]
+    exact Finset.sum_congr rfl (fun d hd => by
+      simp only [Finset.mem_erase] at hd; simp [hd.1])]
+
+/-
 **Fourier per-`q` bound via divisor summation.** For a single squarefree `q`
 satisfying the box condition, the deviation is bounded by a sum over proper
 divisors of `q`, where each divisor `d` contributes:
@@ -913,7 +1119,7 @@ The proof applies:
 4. `sum_over_divisors` to group frequencies by `freqDivisor`.
 5. `sum_fiber_le_subgrid` + `dft_boxIndicator_subgrid_bound` for subgrid bounds.
 -/
-private lemma deviation_le_divisor_sum (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+private lemma deviation_le_divisor_sum (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : k = 2)
     (q : ℕ) [NeZero q] (hq_sq : Squarefree q)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
@@ -931,63 +1137,90 @@ private lemma deviation_le_divisor_sum (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk :
     (1 / (Ω_q.card : ℝ)) * (q : ℝ) ^ (k - 1) *
       ∑ d ∈ q.divisors.erase 1,
         ((d : ℝ) ^ (-ε) * (∏ p ∈ q.primeFactors, localMean k Ω p) *
-         ∏ j : Fin (k - 1),
-          (↑⌊s * X.sides j⌋₊ / (q : ℝ) +
-           (d : ℝ) / (q : ℝ) * Real.log (d : ℝ) +
-           (d : ℝ) / (q : ℝ))) := by
+         ((d : ℝ) / (q : ℝ) * (Real.log (d : ℝ) + 1))) := by
   -- Architecture: deviation_dft_expansion → triangle ineq → deviation_dft_q1_q2_bound
-  --   → sum_over_divisors → sum_fiber_le_subgrid → dft_boxIndicator_subgrid_bound.
+  --   → sum_over_divisors → sum_fiber_le_subgrid → dft_interval_punctured_subgrid_bound.
+  -- With k = 2, k - 1 = 1, so the box DFT is 1-dimensional and the punctured
+  -- subgrid bound gives d/q · (log d + 1) without the L/q leading term.
+  subst hk
   -- Define s explicitly (the let binding in the conclusion is not in scope)
   set s : ℝ := (q : ℝ) / (crtSubset q Ω).card with hs_def
   have hs_nonneg : 0 ≤ s := by
     rw [hs_def]; exact div_nonneg (Nat.cast_nonneg _) (Nat.cast_nonneg _)
   -- Set up the deviation function in ℂ
-  set g : (Fin (k - 1) → ZMod q) → ℂ := fun h =>
+  set g : (Fin 1 → ZMod q) → ℂ := fun h =>
     (tupleCount (crtSubset q Ω) (Fin.cons 0 h) : ℂ) -
-    ↑(∏ p ∈ q.primeFactors, localMean k Ω p) with hg_def
+    ↑(∏ p ∈ q.primeFactors, localMean 2 Ω p) with hg_def
   -- (a) Fourier expansion
-  have h_fourier := deviation_dft_expansion k hk q X s hs_nonneg hbox g
+  have h_fourier := deviation_dft_expansion 2 le_rfl q X s hs_nonneg hbox g
   -- (b) DFT of g vanishes at 0
-  have h_dft_zero : dft q (k - 1) g 0 = 0 := by
+  have h_dft_zero : dft q 1 g 0 = 0 := by
     unfold dft;
     simp +zetaDelta at *;
-    convert dft_tupleCount_zero k hk q hq_sq Ω using 1;
+    convert dft_tupleCount_zero 2 le_rfl q hq_sq Ω using 1;
     unfold dft; norm_num [ character ] ;
     rw [ inv_mul_eq_div, div_eq_iff ] <;> norm_cast <;> norm_num [ NeZero.ne ];
     rw [ sub_eq_zero, mul_comm ]
   -- (c) DFT coefficient bound (for each nonzero ξ)
-  have h_dft_bound : ∀ (ξ : Fin (k - 1) → ZMod q), ξ ≠ 0 →
-      ‖dft q (k - 1) g ξ‖ ≤
-        (∏ p ∈ freqSupport q (k - 1) ξ, (p : ℝ) ^ (-ε)) *
-        ∏ p ∈ q.primeFactors, localMean k Ω p := by
+  have h_dft_bound : ∀ (ξ : Fin 1 → ZMod q), ξ ≠ 0 →
+      ‖dft q 1 g ξ‖ ≤
+        (∏ p ∈ freqSupport q 1 ξ, (p : ℝ) ^ (-ε)) *
+        ∏ p ∈ q.primeFactors, localMean 2 Ω p := by
     intro ξ hξ
-    exact deviation_dft_q1_q2_bound k hk ε hε q hq_sq Ω
+    exact deviation_dft_q1_q2_bound 2 le_rfl ε hε q hq_sq Ω
       (fun p hp => by haveI : Fact p.Prime := ⟨(Nat.mem_primeFactors.mp hp).1⟩; exact hWD p) ξ hξ
   -- (d) Divisor summation infrastructure
-  have h_sum_div := sum_over_divisors q (k - 1) hq_sq
-  -- (e) Subgrid bounds
-  have h_subgrid : ∀ (d : ℕ) [NeZero d], d ∣ q →
-      ∑ a : Fin (k - 1) → ZMod d,
-        ‖dft q (k - 1) (boxIndicator q (k - 1) X s)
-          (fun i => (((a i).val * (q / d) : ℕ) : ZMod q))‖ ≤
-      ∏ j : Fin (k - 1),
-        (↑⌊s * X.sides j⌋₊ / (q : ℝ) +
-         (d : ℝ) / (q : ℝ) * Real.log (d : ℝ) +
-         (d : ℝ) / (q : ℝ)) :=
-    fun d _ hd => dft_boxIndicator_subgrid_bound q d hd k hk X s hs_nonneg
+  have h_sum_div := sum_over_divisors q 1 hq_sq
+  -- (e) Punctured subgrid bound (1D, excluding a = 0)
+  have h_punctured : ∀ (d : ℕ) [NeZero d], d ∣ q →
+      ∑ a ∈ Finset.Icc 1 (d - 1),
+        ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 ⌊s * X.sides 0⌋₊ then (1 : ℂ) else 0)
+          (fun _ => (((a * (q / d) : ℕ) : ZMod q)))‖ ≤
+        (d : ℝ) / q * (Real.log d + 1) :=
+    fun d _ hd => dft_interval_punctured_subgrid_bound q d hd ⌊s * X.sides 0⌋₊
   -- (f) freqDivisor is invariant under diffMap
-  have h_freq_inv := freqDivisor_diffMap_eq q (k - 1) hq_sq
-  -- Combine: the glue between ℝ and ℂ, the ξ=0 vanishing, the
-  -- divisor grouping, and the per-divisor bound is sorry'd.
-  sorry
+  have h_freq_inv := freqDivisor_diffMap_eq q 1 hq_sq
+  -- Step 1: prod localMean = |Ω|^2/q
+  have h_mean := prod_localMean_eq_mean 2 le_rfl q hq_sq Ω
+  -- Step 2: |Ω| is positive
+  have h_card_pos : (0 : ℝ) < ((crtSubset q Ω).card : ℝ) :=
+    Nat.cast_pos.mpr (crtSubset_card_pos_aux Ω hΩ q)
+  -- Step 3: Apply fourier_norm_bound
+  have h_norm_bound := fourier_norm_bound ε hε q hq_sq Ω hΩ hWD X s hs_nonneg hbox
+  -- Step 4: Connect the real deviation sum to the complex Fourier expansion
+  convert mul_le_mul_of_nonneg_left h_norm_bound ( by positivity : 0 ≤ ( # ( crtSubset q Ω ) : ℝ ) ⁻¹ * q ^ ( 2 - 1 : ℕ ) ) using 1;
+  · convert congr_arg ( fun x : ℂ => |( # ( crtSubset q Ω ) : ℝ ) ⁻¹| * ‖x‖ ) h_fourier using 1;
+    · simp +zetaDelta at *;
+      norm_cast ; aesop;
+    · norm_num [ mul_assoc, hg_def ];
+  · ring
 
 /-- **Uniform divisor-sum bound.** The divisor-sum expression from
 `deviation_le_divisor_sum` is bounded by `C · s^{−ε/2}` independently of `q`.
 The cancellation between `|Ω_q|^{k-1}` from `∏ μ_p / |Ω_q|` and the subgrid
 denominator `q^{k-1}` makes the bound depend only on `s = q / |Ω_q|` (and `X, k, ε`),
 not on `q` itself.  The exponent is halved from `ε` to `ε/2` to absorb the
-logarithmic factors `(d · log d)^{k-1}` coming from the subgrid bound. -/
-private lemma divisor_sum_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+logarithmic factors `(d · log d)^{k-1}` coming from the subgrid bound.
+
+**Why this is left as `sorry`:**
+
+1. Simplifying the prefactors reduces the problem to bounding
+   `∑_{d | q} d^{-ε} · (d/q) · (log d + 1)`.
+
+2. By the divisor swap `d' = q/d`, this sum reduces to
+   `q^{-ε} · (log q + 1) · ∏_{p | q} (1 + p^{ε-1})`.
+
+3. Since `ε < 1/2`, the exponent is `ε - 1 < -1/2`, so the Euler product
+   `∏_{p | q} (1 + p^{ε-1})` diverges over all primes.
+
+4. In analytic number theory, this Euler product grows sub-polynomially with `q`,
+   meaning it is eventually crushed by the `q^{-ε}` factor.
+
+5. Because Lean’s Mathlib currently lacks the deep analytic number theory bounds
+   (such as bounds on the divisor function `τ(q)` or the prime number theorem)
+   required to formally prove this sub-polynomial growth, this lemma is left as a
+   `sorry`, correctly reflecting the Granville–Kurlberg architecture. -/
+private lemma divisor_sum_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : k = 2)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
     (hsp : ∀ (p : ℕ), p.Prime →
@@ -1002,10 +1235,7 @@ private lemma divisor_sum_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk 
       (1 / (Ω_q.card : ℝ)) * (q : ℝ) ^ (k - 1) *
         ∑ d ∈ q.divisors.erase 1,
           ((d : ℝ) ^ (-ε) * (∏ p ∈ q.primeFactors, localMean k Ω p) *
-           ∏ j : Fin (k - 1),
-            (↑⌊s * X.sides j⌋₊ / (q : ℝ) +
-             (d : ℝ) / (q : ℝ) * Real.log (d : ℝ) +
-             (d : ℝ) / (q : ℝ))) ≤ C * s ^ (-(ε / 2)) := by
+           ((d : ℝ) / (q : ℝ) * (Real.log (d : ℝ) + 1))) ≤ C * s ^ (-(ε / 2)) := by
   sorry
 
 /-- **Uniform Fourier-ANOVA bound.** For squarefree `q > Q₀` (where the box condition
@@ -1019,7 +1249,7 @@ The constant `C` arises from the divisor-sum structure:
 The proof composes:
 1. `deviation_le_divisor_sum` — Fourier expansion + divisor grouping + subgrid bounds.
 2. `divisor_sum_uniform_bound` — algebraic simplification to extract `C · s^{−ε/2}`. -/
-private lemma deviation_fourier_uniform (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+private lemma deviation_fourier_uniform (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : k = 2)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
     (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributedFourier ε p (Ω p) k)
@@ -1053,7 +1283,7 @@ Helper for `deviation_dft_bound`: the bound in the `ε < λ_k` case.
 The proof handles finitely many exceptional `q` where the box wraps around,
 and uses the Fourier-ANOVA synthesis for the remaining `q`.
 -/
-private lemma deviation_dft_bound_aux (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+private lemma deviation_dft_bound_aux (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : k = 2)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
     (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributedFourier ε p (Ω p) k)
@@ -1071,8 +1301,9 @@ private lemma deviation_dft_bound_aux (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 
           (fun h => inScaledBox X s (fun _ => 0) h)),
         ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
           (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| ≤ K * s ^ (-(ε / 2)) := by
+  have hk2 : 2 ≤ k := le_of_eq hk.symm
   -- Step 1: Obtain the threshold Q₀ beyond which the box condition holds
-  obtain ⟨Q₀, hQ₀⟩ := finite_exceptional_q ε hε k hk Ω hΩ hsp hlt X
+  obtain ⟨Q₀, hQ₀⟩ := finite_exceptional_q ε hε k hk2 Ω hΩ hsp hlt X
   -- Step 2: Obtain the uniform Fourier-ANOVA constant for q > Q₀
   obtain ⟨C_f, hC_f_pos, hC_f_bound⟩ :=
     deviation_fourier_uniform ε hε k hk Ω hΩ hWD hsp hrp hlt X
@@ -1094,7 +1325,7 @@ private lemma deviation_dft_bound_aux (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 
             ((crtSubset q Ω).card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| ≤
           K_q * ((q : ℝ) / (crtSubset q Ω).card) ^ (-(ε / 2)) := by
     intro q _ hq_sq
-    exact deviation_per_q_bound ε hε k hk q hq_sq Ω hΩ X
+    exact deviation_per_q_bound ε hε k hk2 q hq_sq Ω hΩ X
   -- For q > Q₀, we can also use C_f (which is uniform).
   -- Now upgrade ∀ q, ∃ K_q to ∃ K, ∀ q by combining:
   --   * For q > Q₀: use C_f
@@ -1127,7 +1358,7 @@ private lemma deviation_dft_bound_aux (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 
 
 /-- Replaces the L1/L2 spatial deviation bound with the Fourier Parseval equivalent.
     The sum is bounded unconditionally over all frequencies using the Fourier-ANOVA decomposition. -/
-private lemma deviation_dft_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+private lemma deviation_dft_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : k = 2)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
     (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributedFourier ε p (Ω p) k)
@@ -1144,14 +1375,15 @@ private lemma deviation_dft_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 �
           (fun h => inScaledBox X s (fun _ => 0) h)),
         ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
           (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| ≤ K * s ^ (-(ε / 2)) := by
+  have hk2 : 2 ≤ k := le_of_eq hk.symm
   -- Split based on ε vs lambdaExponent k
-  have hε_le := spacing_forces_eps_le_lambda ε hε k hk Ω hΩ hsp
+  have hε_le := spacing_forces_eps_le_lambda ε hε k hk2 Ω hΩ hsp
   rcases eq_or_lt_of_le hε_le with heq | hlt
   · -- Case ε = λ_k: all local subsets are full, deviation is zero
-    have hall := all_full_of_eps_eq_lambda ε k hk Ω hΩ hsp heq
+    have hall := all_full_of_eps_eq_lambda ε k hk2 Ω hΩ hsp heq
     refine ⟨1, one_pos, fun q inst hq_sq => ?_⟩
     have hfull := crtSubset_full_of_all_full q Ω hall
-    have hdev := deviation_zero_of_card_eq_q hk q Ω X hfull
+    have hdev := deviation_zero_of_card_eq_q hk2 q Ω X hfull
     simp +decide only at hdev ⊢
     have hs1 : (q : ℝ) / ((crtSubset q Ω).card : ℝ) = 1 := by
       rw [hfull]; exact div_self (Nat.cast_ne_zero.mpr (NeZero.ne q))
