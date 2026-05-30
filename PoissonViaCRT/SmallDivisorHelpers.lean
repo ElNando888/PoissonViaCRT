@@ -14,9 +14,8 @@ To cite Aristotle, tag @Aristotle-Harmonic on GitHub PRs/issues, and add as co-a
 Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
-module
-public import PoissonViaCRT.CancellationInfra
-public import PoissonViaCRT.DeviationBoundHelper
+import PoissonViaCRT.CancellationInfra
+import PoissonViaCRT.DeviationBoundHelper
 import PoissonViaCRT.PeriodPullback
 import PoissonViaCRT.EulerWeights
 import PoissonViaCRT.IteratedCancellation

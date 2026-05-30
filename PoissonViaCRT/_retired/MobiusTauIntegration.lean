@@ -26,8 +26,7 @@ historical reference and on the unlikely chance that its internal machinery prov
 useful in a different context in the future.
 -/
 
-module
-import all PoissonViaCRT.TauOptimization
+import PoissonViaCRT.TauOptimization
 import Mathlib.NumberTheory.ArithmeticFunction.Moebius
 
 /-!

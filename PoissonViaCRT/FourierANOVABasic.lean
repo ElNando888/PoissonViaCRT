@@ -14,21 +14,19 @@ To cite Aristotle, tag @Aristotle-Harmonic on GitHub PRs/issues, and add as co-a
 Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
-module
-public import PoissonViaCRT.Defs
-public import PoissonViaCRT.CRTMultiplicativity
-public import PoissonViaCRT.DeviationBoundHelper
-public import Mathlib.Algebra.Star.Basic
-public import Mathlib.Analysis.Complex.Exponential
-public import Mathlib.Analysis.Normed.Group.Defs
-public import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
-public import Mathlib.Analysis.SpecialFunctions.Trigonometric.Bounds
-public import Mathlib.Data.Finset.Defs
-public import Mathlib.Data.Matrix.Mul
-public import Mathlib.Data.Nat.Prime.Defs
-public import Mathlib.Data.ZMod.Defs
-public import Mathlib.Logic.Basic
-import Mathlib.Tactic
+import PoissonViaCRT.Defs
+import PoissonViaCRT.CRTMultiplicativity
+import PoissonViaCRT.DeviationBoundHelper
+import Mathlib.Algebra.Star.Basic
+import Mathlib.Analysis.Complex.Exponential
+import Mathlib.Analysis.Normed.Group.Defs
+import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
+import Mathlib.Analysis.SpecialFunctions.Trigonometric.Bounds
+import Mathlib.Data.Finset.Defs
+import Mathlib.Data.Matrix.Mul
+import Mathlib.Data.Nat.Prime.Defs
+import Mathlib.Data.ZMod.Defs
+import Mathlib.Logic.Basic
 
 set_option linter.unusedVariables false
 

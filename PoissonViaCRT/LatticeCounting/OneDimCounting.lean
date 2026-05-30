@@ -19,13 +19,12 @@ References:
 - Iwaniec & Kowalski, Analytic Number Theory
 -/
 
-module
-public import Mathlib.Data.Int.Interval
-public import Mathlib.Data.Int.ModEq
-public import Mathlib.Data.Real.Basic
-public import Mathlib.Tactic -- shake: keep
 import Mathlib.Algebra.Order.Ring.Star
+import Mathlib.Data.Int.Interval
+import Mathlib.Data.Int.ModEq
 import Mathlib.Data.Int.Star
+import Mathlib.Data.Real.Basic
+import Mathlib.Tactic
 
 /-!
 # Module 3: OneDimCounting

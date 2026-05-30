@@ -19,11 +19,10 @@ References:
 - Iwaniec & Kowalski, Analytic Number Theory
 -/
 
-module
-public import Mathlib.Algebra.BigOperators.Group.Finset.Basic
-public import Mathlib.Data.Finset.Card
-public import Mathlib.Data.Fintype.Basic
-import Mathlib.Tactic -- shake: keep
+import Mathlib.Algebra.BigOperators.Group.Finset.Basic
+import Mathlib.Data.Finset.Card
+import Mathlib.Data.Fintype.Basic
+import Mathlib.Tactic
 
 /-!
 # Module 4: SequentialCounting

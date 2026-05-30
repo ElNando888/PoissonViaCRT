@@ -19,8 +19,7 @@ References:
 - Iwaniec & Kowalski, Analytic Number Theory
 -/
 
-module
-public import PoissonViaCRT.Defs
+import PoissonViaCRT.Defs
 import PoissonViaCRT.BoxCollisionHelpers
 import PoissonViaCRT.LatticeCounting.SimultaneousCongruences
 import PoissonViaCRT.LatticeCounting.SequentialCounting

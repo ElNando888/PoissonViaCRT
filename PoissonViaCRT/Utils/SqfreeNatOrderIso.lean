@@ -14,10 +14,9 @@ To cite Aristotle, tag @Aristotle-Harmonic on GitHub PRs/issues, and add as co-a
 Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
-module
-public import Mathlib.Algebra.Squarefree.Basic
-public import Mathlib.Data.Finset.NatDivisors
-public import Mathlib.Data.Nat.PrimeFin
+import Mathlib.Algebra.Squarefree.Basic
+import Mathlib.Data.Finset.NatDivisors
+import Mathlib.Data.Nat.PrimeFin
 import Mathlib.Tactic
 
 /-!

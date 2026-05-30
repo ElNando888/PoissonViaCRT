@@ -26,9 +26,8 @@ cancellation and mathematically diverges.
 Second Moment Method (Cauchy-Schwarz) approach that preserves cancellation.
 -/
 
-module
-public import PoissonViaCRT.Defs
-public import PoissonViaCRT.SmallDivisorHelpers
+import PoissonViaCRT.Defs
+import PoissonViaCRT.SmallDivisorHelpers
 import PoissonViaCRT.GammaDeviationHelpers
 import Mathlib.Algebra.Order.Floor.Extended
 import Mathlib.Algebra.Order.Floor.Semifield

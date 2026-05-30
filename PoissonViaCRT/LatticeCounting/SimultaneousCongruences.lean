@@ -19,13 +19,12 @@ References:
 * Iwaniec & Kowalski, Analytic Number Theory
 -/
 
-module
-public import Mathlib.Algebra.BigOperators.Group.Finset.Defs
-public import Mathlib.Data.Int.ModEq
+import Mathlib.Algebra.BigOperators.Group.Finset.Defs
 import Mathlib.Algebra.Order.Ring.Star
+import Mathlib.Data.Int.ModEq
 import Mathlib.Data.Int.Star
 import Mathlib.Data.ZMod.QuotientRing
-import Mathlib.Tactic -- shake: keep
+import Mathlib.Tactic
 
 /-!
 # Module 2: SimultaneousCongruences

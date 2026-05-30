@@ -14,10 +14,9 @@ To cite Aristotle, tag @Aristotle-Harmonic on GitHub PRs/issues, and add as co-a
 Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
-module
-public import Mathlib.Algebra.BigOperators.Group.Finset.Defs
-public import Mathlib.Data.Real.Basic
+import Mathlib.Algebra.BigOperators.Group.Finset.Defs
 import Mathlib.Analysis.PSeries
+import Mathlib.Data.Real.Basic
 import Mathlib.NumberTheory.ArithmeticFunction.Moebius
 
 /-!

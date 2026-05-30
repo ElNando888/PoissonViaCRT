@@ -11,9 +11,8 @@ Lean version: leanprover/lean4:v4.28.0
 Mathlib version: 8f9d9cff6bd728b17a24e163c9402775d9e6a365
 -/
 
-module
-public import PoissonViaCRT.DeviationBoundHelper
-public import PoissonViaCRT.EulerWeights
+import PoissonViaCRT.DeviationBoundHelper
+import PoissonViaCRT.EulerWeights
 import PoissonViaCRT.BoxCollisionIntegration
 import PoissonViaCRT.SmallDivisorHelpers
 import Mathlib.Algebra.Order.Ring.Star

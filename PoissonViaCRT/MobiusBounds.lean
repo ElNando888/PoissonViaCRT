@@ -14,10 +14,9 @@ To cite Aristotle, tag @Aristotle-Harmonic on GitHub PRs/issues, and add as co-a
 Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
-module
-public import Mathlib.Analysis.SpecialFunctions.Pow.Real
-import Mathlib.Analysis.PSeries
 import PoissonViaCRT.MobiusInfra
+import Mathlib.Analysis.PSeries
+import Mathlib.Analysis.SpecialFunctions.Pow.Real
 
 /-!
 # Analytic Bounds for the Möbius Decomposition

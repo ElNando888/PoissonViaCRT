@@ -14,14 +14,13 @@ To cite Aristotle, tag @Aristotle-Harmonic on GitHub PRs/issues, and add as co-a
 Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
-module
-public import PoissonViaCRT.Defs
-public import PoissonViaCRT.DeviationBoundHelper
-public import PoissonViaCRT.SmallDivisorHelpers
-public import PoissonViaCRT.EulerWeights
-public import Mathlib
+import PoissonViaCRT.Defs
+import PoissonViaCRT.DeviationBoundHelper
+import PoissonViaCRT.SmallDivisorHelpers
+import PoissonViaCRT.EulerWeights
 import PoissonViaCRT.LargeDivisorHelpers
 import PoissonViaCRT.BoxCollisionIntegration
+import Mathlib.Algebra.Order.Chebyshev
 
 set_option linter.unusedVariables false
 

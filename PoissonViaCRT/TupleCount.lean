@@ -14,8 +14,7 @@ To cite Aristotle, tag @Aristotle-Harmonic on GitHub PRs/issues, and add as co-a
 Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
-module
-public import PoissonViaCRT.Defs
+import PoissonViaCRT.Defs
 
 /-!
 # Properties of the Counting Function `N_k`

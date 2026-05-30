@@ -14,10 +14,9 @@ To cite Aristotle, tag @Aristotle-Harmonic on GitHub PRs/issues, and add as co-a
 Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
-module
-public import PoissonViaCRT.Utils.SqfreeNatOrderIso
-public import Mathlib.Analysis.SpecialFunctions.Pow.Real
+import PoissonViaCRT.Utils.SqfreeNatOrderIso
 import Mathlib.Analysis.PSeries
+import Mathlib.Analysis.SpecialFunctions.Pow.Real
 import Mathlib.Data.Nat.Squarefree
 
 set_option linter.unusedVariables false

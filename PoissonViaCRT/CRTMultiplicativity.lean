@@ -14,9 +14,8 @@ To cite Aristotle, tag @Aristotle-Harmonic on GitHub PRs/issues, and add as co-a
 Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
-module
-public import PoissonViaCRT.Defs
-public import Mathlib.Data.ZMod.QuotientRing
+import PoissonViaCRT.Defs
+import Mathlib.Data.ZMod.QuotientRing
 
 /-!
 # CRT Multiplicativity of the Counting Function
