@@ -11,5 +11,10 @@ name = "repl"
 git = "https://github.com/leanprover-community/repl.git"
 rev = "v4.29.0"
 
+[[require]]
+name = "PrimeNumberTheoremAnd"
+git = "https://github.com/ElNando888/PrimeNumberTheoremAnd.git"
+rev = "pure_code"
+
 [[lean_lib]]
 name = "PoissonViaCRT"
