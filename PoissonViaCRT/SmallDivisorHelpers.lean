@@ -19,6 +19,7 @@ import PoissonViaCRT.DeviationBoundHelper
 import PoissonViaCRT.PeriodPullback
 import PoissonViaCRT.EulerWeights
 import PoissonViaCRT.IteratedCancellation
+import PoissonViaCRT.SmallDivisorSeriesBound
 
 set_option linter.unusedVariables false
 
@@ -1125,30 +1126,24 @@ public lemma crtSubset_card_pos_aux (Ω : ∀ p : ℕ, Finset (ZMod p))
 
 /-- **Small-divisor series bound.**
 The sum `∑_{d ≤ s, d ∣ q} ∏_{p ∣ d} k · p^{−ε} ≤ K · s^{1−ε/2}`
-uniformly in `q`. This controls the number of contributing subsets
-in the inclusion-exclusion expansion.
+uniformly in squarefree `q`. This controls the number of contributing
+subsets in the inclusion-exclusion expansion.
 
-The product `∏_{p ∣ d} k · p^{−ε}` simplifies to `k^{ω(d)} · d^{−ε}`,
-so the bound reduces to showing
+The product `∏_{p ∣ d} k · p^{−ε}` simplifies to `k^{ω(d)} · d^{−ε}`
+(for squarefree `d ∣ q`), so the bound reduces to showing
 `∑_{d ≤ s} k^{ω(d)} · d^{−ε} ≤ K · s^{1−ε/2}`.
-Proving this uniformly requires deep analytic number theory techniques,
-such as partial summation (Abel summation) combined with precise bounds
-on sums over primes and the divisor function.
-
-While Abel summation exists in Mathlib, the required prime-number
-bounds (such as the Prime Number Theorem or strong bounds on prime
-sums like `∑_{p ≤ x} 1/p = log log x + M + O(1/log x)`) do not yet
-exist in Mathlib's `NumberTheory` module.
-
-Consequently, this bound is left as a mathematically honest `sorry`,
-accurately reflecting the current limits of formalized analytic number
-theory in Lean. -/
-lemma small_divisor_series_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) :
-    ∃ K_series : ℝ, 0 < K_series ∧ ∀ (q : ℕ) (s : ℝ) (_ : 1 ≤ s),
+This is proved via the **elementary factorization path**: for primes
+`p ≥ k^{2/ε}`, the factor `k · p^{−ε/2} ≤ 1`, so the multiplicative
+function `∏_{p∣d} (k · p^{−ε/2})` is bounded by a constant `M(k,ε)`,
+giving `∏_{p∣d} k · p^{−ε} ≤ M · d^{−ε/2}`. Summing `d^{−ε/2}` up
+to `s` via integral comparison yields the result. See
+`SmallDivisorSeriesBound.lean` for the full proof. -/
+lemma small_divisor_series_bound (ε : ℝ) (hε : 0 < ε) (hε2 : ε < 2) (k : ℕ) :
+    ∃ K_series : ℝ, 0 < K_series ∧ ∀ (q : ℕ) (_ : Squarefree q) (s : ℝ) (_ : 1 ≤ s),
       ∑ d ∈ (q.divisors.filter (1 < ·)).filter
             (fun (d : ℕ) => (d : ℝ) ≤ s),
         (∏ p ∈ d.primeFactors, (k : ℝ) * (p : ℝ) ^ (-ε)) ≤ K_series * s ^ (1 - ε / 2) := by
-  sorry
+  exact SmallDivisorSeriesBound.small_divisor_series_bound ε hε hε2 k
 
 /-! ### Small-divisor contribution bound -/
 
@@ -1186,7 +1181,8 @@ public lemma deviation_small_divisors (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 
               (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p -
               localMean k Ω p)) *
             ∏ p ∈ q.primeFactors \ d.primeFactors, localMean k Ω p)| ≤ K₁ * s ^ (-(ε / 2)) := by
-  obtain ⟨K_series, hK_series_pos, hK_series⟩ := small_divisor_series_bound ε hε k;
+  have hε2 : ε < 2 := lt_of_lt_of_le hε_lt (le_trans (lambdaExponent_le_one k) (by norm_num))
+  obtain ⟨K_series, hK_series_pos, hK_series⟩ := small_divisor_series_bound ε hε hε2 k;
   refine ⟨ C_lp * K_series, mul_pos hC_lp_pos hK_series_pos, fun q _ hq_sq => ?_ ⟩;
   -- Work directly with divisor sums: for each d, apply inner_bound_small_divisor with T = d.primeFactors.
   dsimp only []
@@ -1214,7 +1210,7 @@ public lemma deviation_small_divisors (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 
         ( by exact Finset.card_pos.mp ( crtSubset_card_pos_aux Ω hΩ q ) ) ) );
   · rw [ ← Finset.sum_div _ _ _, ← Finset.mul_sum ];
     rw [ div_le_iff₀ ];
-    · convert mul_le_mul_of_nonneg_left ( hK_series q ( q / ( crtSubset q Ω |> Finset.card ) ) _ )
+    · convert mul_le_mul_of_nonneg_left ( hK_series q hq_sq ( q / ( crtSubset q Ω |> Finset.card ) ) _ )
         hC_lp_pos.le using 1;
       · rw [ show ( 1 - ε / 2 : ℝ ) = - ( ε / 2 ) + 1 by ring, Real.rpow_add_one ] <;> ring_nf
         norm_num [ NeZero.ne ];
@@ -1227,3 +1223,24 @@ public lemma deviation_small_divisors (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 
         by have := crtSubset_card_pos_aux Ω hΩ q; aesop;
 
 end PoissonCRT
+
+/-
+PROVIDED SOLUTION
+
+Now that we have `PrimeNumberTheoremAnd` (PNT+) available in the workspace, let's close one of our three final `sorry`s!
+
+Please tackle `small_divisor_series_bound` in `PoissonViaCRT/SmallDivisorHelpers.lean`.
+
+The goal is to prove:
+`∑_{d ≤ s, d | q} ∏_{p | d} k · p^{-ε} ≤ K_series · s^{1 - ε/2}`
+(Note: $d$ is squarefree because $d \mid q$ and $q$ is squarefree, so the product is exactly $k^{\omega(d)} d^{-\varepsilon}$).
+
+You have two potential paths to prove this:
+
+1. **The PNT+ Sieve Path:** You can import `PrimeNumberTheoremAnd.Mathlib.NumberTheory.Sieve.SelbergBounds`, which contains explicit bounds on sums of generalized divisor functions (e.g., bounding `∑_{d ≤ x} 3^{ω(d)}`). You can combine these asymptotic sum bounds with Abel's summation formula (which is in Mathlib) against the smooth weight $d^{-\varepsilon}$ to get the $O(s^{1-\varepsilon/2})$ decay.
+
+2. **The Elementary Factorization Path:** Notice that for primes $p \ge k^{2/\varepsilon}$, we have $k p^{-\varepsilon/2} \le 1$. Therefore, the multiplicative function $f(d) = \prod_{p | d} (k p^{-\varepsilon/2})$ is bounded by a constant $M(k, \varepsilon)$ (the product over the finitely many primes $p < k^{2/\varepsilon}$).
+This immediately implies $k^{\omega(d)} d^{-\varepsilon} \le M(k, \varepsilon) d^{-\varepsilon/2}$. You can then simply sum $d^{-\varepsilon/2}$ up to $s$ by comparing it to the integral $\int_1^s x^{-\varepsilon/2} dx \ll s^{1-\varepsilon/2}$.
+
+Pick whichever path you think will be cleaner and faster to formalize in Lean 4, fully prove the lemma, and remove the `sorry`!
+-/
