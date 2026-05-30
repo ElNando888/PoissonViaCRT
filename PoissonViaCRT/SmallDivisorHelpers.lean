@@ -1223,24 +1223,3 @@ public lemma deviation_small_divisors (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 
         by have := crtSubset_card_pos_aux Ω hΩ q; aesop;
 
 end PoissonCRT
-
-/-
-PROVIDED SOLUTION
-
-Now that we have `PrimeNumberTheoremAnd` (PNT+) available in the workspace, let's close one of our three final `sorry`s!
-
-Please tackle `small_divisor_series_bound` in `PoissonViaCRT/SmallDivisorHelpers.lean`.
-
-The goal is to prove:
-`∑_{d ≤ s, d | q} ∏_{p | d} k · p^{-ε} ≤ K_series · s^{1 - ε/2}`
-(Note: $d$ is squarefree because $d \mid q$ and $q$ is squarefree, so the product is exactly $k^{\omega(d)} d^{-\varepsilon}$).
-
-You have two potential paths to prove this:
-
-1. **The PNT+ Sieve Path:** You can import `PrimeNumberTheoremAnd.Mathlib.NumberTheory.Sieve.SelbergBounds`, which contains explicit bounds on sums of generalized divisor functions (e.g., bounding `∑_{d ≤ x} 3^{ω(d)}`). You can combine these asymptotic sum bounds with Abel's summation formula (which is in Mathlib) against the smooth weight $d^{-\varepsilon}$ to get the $O(s^{1-\varepsilon/2})$ decay.
-
-2. **The Elementary Factorization Path:** Notice that for primes $p \ge k^{2/\varepsilon}$, we have $k p^{-\varepsilon/2} \le 1$. Therefore, the multiplicative function $f(d) = \prod_{p | d} (k p^{-\varepsilon/2})$ is bounded by a constant $M(k, \varepsilon)$ (the product over the finitely many primes $p < k^{2/\varepsilon}$).
-This immediately implies $k^{\omega(d)} d^{-\varepsilon} \le M(k, \varepsilon) d^{-\varepsilon/2}$. You can then simply sum $d^{-\varepsilon/2}$ up to $s$ by comparing it to the integral $\int_1^s x^{-\varepsilon/2} dx \ll s^{1-\varepsilon/2}$.
-
-Pick whichever path you think will be cleaner and faster to formalize in Lean 4, fully prove the lemma, and remove the `sorry`!
--/
