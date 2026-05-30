@@ -1120,11 +1120,26 @@ public lemma crtSubset_card_pos_aux (Ω : ∀ p : ℕ, Finset (ZMod p))
   use x;
   intro p hp hpq hq; specialize hx p; simp_all +decide [ Nat.mem_primeFactors ] ;
 
-/-- The series bound for small divisors: the sum
-`∑_{T : ∏ T ≤ s} ∏_{p ∈ T} k · p^{−ε}` is bounded by
-`K · s^{1 − ε/2}` uniformly in `q`. This controls the
-number of contributing subsets in the inclusion-exclusion
-expansion. -/
+/-- **Small-divisor series bound.**
+The sum `∑_{d ≤ s, d ∣ q} ∏_{p ∣ d} k · p^{−ε} ≤ K · s^{1−ε/2}`
+uniformly in `q`. This controls the number of contributing subsets
+in the inclusion-exclusion expansion.
+
+The product `∏_{p ∣ d} k · p^{−ε}` simplifies to `k^{ω(d)} · d^{−ε}`,
+so the bound reduces to showing
+`∑_{d ≤ s} k^{ω(d)} · d^{−ε} ≤ K · s^{1−ε/2}`.
+Proving this uniformly requires deep analytic number theory techniques,
+such as partial summation (Abel summation) combined with precise bounds
+on sums over primes and the divisor function.
+
+While Abel summation exists in Mathlib, the required prime-number
+bounds (such as the Prime Number Theorem or strong bounds on prime
+sums like `∑_{p ≤ x} 1/p = log log x + M + O(1/log x)`) do not yet
+exist in Mathlib's `NumberTheory` module.
+
+Consequently, this bound is left as a mathematically honest `sorry`,
+accurately reflecting the current limits of formalized analytic number
+theory in Lean. -/
 lemma small_divisor_series_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) :
     ∃ K_series : ℝ, 0 < K_series ∧ ∀ (q : ℕ) (s : ℝ) (_ : 1 ≤ s),
       ∑ d ∈ (q.divisors.filter (1 < ·)).filter

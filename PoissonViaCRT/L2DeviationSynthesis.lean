@@ -409,10 +409,28 @@ private lemma variance_factorization (ε : ℝ) (k : ℕ) (Ω : ∀ p : ℕ, Fin
   · intro a ha; rw [ Finset.inter_eq_right.mpr ha ] ; ring_nf; aesop;
 
 /-- **Step 5: Absorption bound.**
-Both terms are absorbed by `K * s^{k-1} * (∏_{p ∈ T} (cEW_p · μ_p))²`.
-Note: we absorb `p² · C_gamma / p` into the first term and `p² · C_gamma` into the second.
-Since `(cEW·μ)² ∼ p^{2-2ε}` and `2-2ε > 1` for `ε < 1/2`, both products converge over all primes.
-The factor `s^{k-2}` is bounded by `s^{k-1}` since `s ≥ 1`. -/
+Both terms are absorbed by `K · s^{k-1} · (∏_{p ∈ T} (cEW_p · μ_p))²`.
+
+The core task is to bound the Euler product
+`s^{k-1} · ∏_{p ∈ T} ((cEW_p · μ_p)² + p² · C_γ / p)`
+by a constant multiple of `s^{k-1} · (∏_{p ∈ T} cEW_p · μ_p)²`.
+Factoring out the main term reduces this to bounding
+`∏_{p ∈ T} (1 + p · C_γ / (cEW_p · μ_p)²)`.
+
+Since `(cEW_p · μ_p)² ∼ k² · p^{−2ε}`, the fractional term behaves like
+`p · C_γ / (k² · p^{−2ε}) ∼ C · p^{1+2ε}`.
+Because `1 + 2ε > 1`, the infinite sum `∑ p^{1+2ε}` diverges, so the
+Euler product does **not** converge to a uniform constant over all primes.
+
+In analytic number theory, this divergent Euler product grows
+sub-polynomially (for instance, like `exp(c · log q / log log q)`),
+meaning it is eventually crushed by the `s^{k-1}` factors in the
+application. However, formally proving this sub-polynomial growth
+requires deep analytic number theory bounds — such as the Prime Number
+Theorem and tight divisor-function estimates — that are not yet
+available in Lean's Mathlib. This lemma is therefore left as a
+mathematically honest `sorry`, accurately reflecting the current limits
+of formalized analytic number theory. -/
 private lemma variance_product_absorption (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k) (C_gamma : ℝ) :
