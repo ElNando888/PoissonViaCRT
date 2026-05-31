@@ -14,20 +14,11 @@ To cite Aristotle, tag @Aristotle-Harmonic on GitHub PRs/issues, and add as co-a
 Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
-/-
-# ⚠️ DEAD END / ABANDONED MODULE ⚠️
 
-This module has been identified as a mathematical dead end. It applies
-Gamma-structure counting to the pointwise absolute deviation, which loses
-cancellation and mathematically diverges.
-
-**DO NOT USE or import this file for new theorems.**
-👉 See `PoissonViaCRT/L1DeviationSynthesis.lean` for the correct
-Second Moment Method (Cauchy-Schwarz) approach that preserves cancellation.
--/
 
 import PoissonViaCRT.Defs
 import PoissonViaCRT.SmallDivisorHelpers
+import PoissonViaCRT.EulerWeights
 import PoissonViaCRT.GammaDeviationHelpers
 import Mathlib.Algebra.Order.Floor.Extended
 import Mathlib.Algebra.Order.Floor.Semifield
@@ -605,11 +596,9 @@ is `O(k · p^{-1-ε/2})`, which is summable since `1 + ε/2 > 1`.
 over subsets diverge (since ∏_p p/(p−1) grows like log log q). The collision
 contribution is now handled via a separate analytic argument in
 `gamma_weighted_series_bound`. -/
-@[expose]
-public noncomputable def combinedEulerWeight (ε : ℝ) (_k : ℕ) (Ω : ∀ p : ℕ, Finset (ZMod p)) (p : ℕ) : ℝ :=
-  (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)
 
-/-- **Prefactor absorption identity.**
+
+/- **Prefactor absorption identity.**
 The $q$-dependent prefactor $(q^{k-1}/|\Omega_q|^k) \prod_{q \setminus T} \mu_p$
 simplifies algebraically to exactly $\prod_{p \in T} \mu_p^{-1}$. -/
 public lemma prefactor_absorption (k : ℕ) (hk : 2 ≤ k) (Ω : ∀ p : ℕ, Finset (ZMod p))
@@ -635,25 +624,7 @@ public lemma prefactor_absorption (k : ℕ) (hk : 2 ≤ k) (Ω : ∀ p : ℕ, Fi
 
 /-! ### Helper lemmas for the tail-sum decay -/
 
-/-
-`combinedEulerWeight` is nonneg for primes `p`, since `|Ω_p| ≤ p`
-(giving `1 - |Ω_p|/p ≥ 0`) and `p^{-ε} ≥ 0`.
--/
-lemma combinedEulerWeight_nonneg (ε : ℝ) (k : ℕ) (Ω : ∀ p : ℕ, Finset (ZMod p))
-    (p : ℕ) (hp : p.Prime) :
-    0 ≤ combinedEulerWeight ε k Ω p := by
-  refine' mul_nonneg _ ( Real.rpow_nonneg ( Nat.cast_nonneg _ ) _ );
-  haveI := Fact.mk hp; exact sub_nonneg.2 <| div_le_one_of_le₀ ( mod_cast le_trans ( Finset.card_le_univ _ ) <| by norm_num ) <| Nat.cast_nonneg _;
 
-/-
-With the spacing hypothesis, `combinedEulerWeight ≤ k · p^{-(1+ε)}`.
--/
-lemma combinedEulerWeight_le (ε : ℝ) (hε : 0 < ε) (k : ℕ) (Ω : ∀ p : ℕ, Finset (ZMod p))
-    (hrp : ∀ p, p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ))
-    (p : ℕ) (hp : p.Prime) :
-    combinedEulerWeight ε k Ω p ≤ k * (p : ℝ) ^ (-(1 + ε)) := by
-  convert mul_le_mul_of_nonneg_right ( hrp p hp ) ( Real.rpow_nonneg ( Nat.cast_nonneg p ) ( -ε ) ) using 1 ; ring_nf;
-  rw [ show ( -1 - ε : ℝ ) = -1 + ( -ε ) by ring, Real.rpow_add ( Nat.cast_pos.mpr hp.pos ), Real.rpow_neg_one ] ; ring
 
 /-- **Tail Euler weight.** The combined Euler weight multiplied by `p^{ε/2}`,
 used in the Rankin trick. With the spacing hypothesis, this is
@@ -661,85 +632,7 @@ used in the Rankin trick. With the spacing hypothesis, this is
 noncomputable def tailEulerWeight (ε : ℝ) (k : ℕ) (Ω : ∀ p : ℕ, Finset (ZMod p)) (p : ℕ) : ℝ :=
   combinedEulerWeight ε k Ω p * (p : ℝ) ^ (ε / 2)
 
-/-
-**Rankin's trick for powerset sums.**
 
-For a nonneg weight function `w` on a finset `S`, the sum over subsets `T`
-whose product exceeds `s` is bounded by `s^{-α}` times the Euler product
-`∏_{p ∈ S} (1 + w(p) · p^α)`.
--/
-lemma rankin_powerset_bound (S : Finset ℕ) (w : ℕ → ℝ)
-    (hw : ∀ i ∈ S, 0 ≤ w i) (s : ℝ) (hs : 0 < s) (α : ℝ) (hα : 0 < α) :
-    ∑ T ∈ S.powerset.filter (fun (T : Finset ℕ) => ¬(∏ i ∈ T, (i : ℝ) ≤ s)),
-      ∏ i ∈ T, w i ≤
-    s ^ (-α) * ∏ i ∈ S, (1 + w i * (i : ℝ) ^ α) := by
-  -- Apply the inequality from the provided solution to each term in the sum.
-  have h_term : ∀ T ∈ S.powerset, ¬(∏ i ∈ T, (i : ℝ) ≤ s) → (∏ i ∈ T, w i) ≤ s ^ (-α) * ∏ i ∈ T, (w i * (i : ℝ) ^ α) := by
-    intro T hT hts
-    have h_prod : (∏ i ∈ T, (i : ℝ)) ^ α ≥ s ^ α := by
-      exact Real.rpow_le_rpow hs.le ( le_of_not_ge hts ) hα.le;
-    rw [ Finset.prod_mul_distrib, Real.rpow_neg hs.le ];
-    rw [ ← div_eq_inv_mul, le_div_iff₀ ( by positivity ) ];
-    exact mul_le_mul_of_nonneg_left ( by rwa [ Real.finset_prod_rpow _ _ fun x hx => Nat.cast_nonneg x ] ) ( Finset.prod_nonneg fun x hx => hw x ( Finset.mem_powerset.mp hT hx ) );
-  refine' le_trans ( Finset.sum_le_sum fun T hT => h_term T ( Finset.mem_filter.mp hT |>.1 ) ( Finset.mem_filter.mp hT |>.2 ) ) _;
-  simp +decide [ Finset.mul_sum _ _ _, add_comm, Finset.prod_add ];
-  exact Finset.sum_le_sum_of_subset_of_nonneg ( Finset.filter_subset _ _ ) fun _ _ _ => mul_nonneg ( Real.rpow_nonneg hs.le _ ) ( Finset.prod_nonneg fun _ _ => mul_nonneg ( hw _ ( Finset.mem_powerset.mp ‹_› ‹_› ) ) ( Real.rpow_nonneg ( Nat.cast_nonneg _ ) _ ) )
-
-/-
-∏ (1 + f i) ≤ exp(∑ f i) for nonneg f.
--/
-lemma prod_one_add_le_exp_sum (S : Finset ℕ) (f : ℕ → ℝ)
-    (hf : ∀ i ∈ S, 0 ≤ f i) :
-    ∏ i ∈ S, (1 + f i) ≤ Real.exp (∑ i ∈ S, f i) := by
-  rw [ Real.exp_sum ];
-  exact Finset.prod_le_prod ( fun _ _ => add_nonneg zero_le_one ( hf _ ‹_› ) ) fun _ _ => by rw [ add_comm ] ; exact Real.add_one_le_exp _;
-
-/-
-**Tail-sum decay.**
-
-The sum over nonempty subsets `T ⊆ q.primeFactors` with `∏ T > s` of the
-combined Euler weight decays as `O(s^{−ε/2})`. This is the classic Rankin
-trick applied to the deviation Euler product.
-
-The constant `K = exp(k · ζ(1+ε/2))` is independent of `q` and `s`.
-The proof uses:
-1. Rankin's trick to introduce the factor `s^{−ε/2}`.
-2. The bound `1 + x ≤ exp(x)` to convert the Euler product to `exp(sum)`.
-3. The spacing hypothesis to bound `tailEulerWeight ≤ k · p^{−(1+ε/2)}`.
-4. Summability of `p^{−(1+ε/2)}` (since `1 + ε/2 > 1`).
--/
-public lemma tail_sum_decay (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k) (Ω : ∀ p : ℕ, Finset (ZMod p))
-    (hrp : ∀ p, p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ)) :
-    ∃ K : ℝ, 0 < K ∧ ∀ (q : ℕ) [NeZero q] (s : ℝ) (_ : 1 ≤ s),
-      ∑ T ∈ (q.primeFactors.powerset.filter (· ≠ ∅)).filter
-            (fun (T : Finset ℕ) => ¬((∏ p ∈ T, (p : ℝ)) ≤ s)),
-        ∏ p ∈ T, combinedEulerWeight ε k Ω p ≤
-        K * s ^ (-(ε / 2)) := by
-  refine' ⟨ Real.exp ( k * ∑' n : ℕ, ( n : ℝ ) ^ ( - ( 1 + ε / 2 ) ) ), _, _ ⟩;
-  · positivity;
-  · intro q hq s hs
-    have h_rankin : ∑ T ∈ (q.primeFactors.powerset.filter (fun (T : Finset ℕ) => ¬(∏ p ∈ T, (p : ℝ) ≤ s))), ∏ p ∈ T, combinedEulerWeight ε k Ω p ≤ s ^ (-(ε / 2)) * ∏ p ∈ q.primeFactors, (1 + combinedEulerWeight ε k Ω p * (p : ℝ) ^ (ε / 2)) := by
-      convert rankin_powerset_bound q.primeFactors ( fun p => combinedEulerWeight ε k Ω p ) _ s ( by positivity ) ( ε / 2 ) ( by positivity ) using 1;
-      exact fun p hp => combinedEulerWeight_nonneg ε k Ω p ( Nat.prime_of_mem_primeFactors hp );
-    -- Apply the bound from `prod_one_add_le_exp_sum`.
-    have h_exp : ∏ p ∈ q.primeFactors, (1 + combinedEulerWeight ε k Ω p * (p : ℝ) ^ (ε / 2)) ≤ Real.exp (∑ p ∈ q.primeFactors, combinedEulerWeight ε k Ω p * (p : ℝ) ^ (ε / 2)) := by
-      convert prod_one_add_le_exp_sum q.primeFactors _ _ using 1;
-      exact fun p hp => mul_nonneg ( combinedEulerWeight_nonneg ε k Ω p ( Nat.prime_of_mem_primeFactors hp ) ) ( Real.rpow_nonneg ( Nat.cast_nonneg _ ) _ );
-    -- Apply the bound from `combinedEulerWeight_le`.
-    have h_combined : ∑ p ∈ q.primeFactors, combinedEulerWeight ε k Ω p * (p : ℝ) ^ (ε / 2) ≤ k * ∑' n : ℕ, (n : ℝ) ^ (-(1 + ε / 2)) := by
-      have h_combined : ∑ p ∈ q.primeFactors, combinedEulerWeight ε k Ω p * (p : ℝ) ^ (ε / 2) ≤ ∑ p ∈ q.primeFactors, k * (p : ℝ) ^ (-(1 + ε / 2)) := by
-        apply Finset.sum_le_sum;
-        intro p hp; convert mul_le_mul_of_nonneg_right ( combinedEulerWeight_le ε hε k Ω hrp p ( Nat.prime_of_mem_primeFactors hp ) ) ( Real.rpow_nonneg ( Nat.cast_nonneg p ) ( ε / 2 ) ) using 1 ; ring_nf;
-        rw [ mul_assoc, ← Real.rpow_add ( Nat.cast_pos.mpr <| Nat.pos_of_mem_primeFactors hp ) ] ; ring_nf;
-      refine le_trans h_combined ?_;
-      rw [ ← Finset.mul_sum _ _ _ ];
-      exact mul_le_mul_of_nonneg_left ( Summable.sum_le_tsum ( q.primeFactors ) ( fun _ _ => Real.rpow_nonneg ( Nat.cast_nonneg _ ) _ ) ( by exact Real.summable_nat_rpow.2 ( by linarith ) ) ) ( Nat.cast_nonneg _ );
-    refine' le_trans _ ( h_rankin.trans _ );
-    · refine' Finset.sum_le_sum_of_subset_of_nonneg _ _;
-      · grind;
-      · grind;
-    · rw [ mul_comm ] ; gcongr;
-      exact h_exp.trans ( Real.exp_le_exp.mpr h_combined )
 
 /-! ## 5. Gamma-weighted series bound -/
 

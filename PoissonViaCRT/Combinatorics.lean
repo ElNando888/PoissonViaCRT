@@ -498,11 +498,8 @@ theorem GammaStructure.gammaProd_perm_invariant
         [GammaStructure.factorization_gammaProd_eq]
     convert GammaStructure.perm_count_eq Γ σ p hp
       using 1
-    · simp +decide [GammaStructure.permute]
-    · simp +decide [Finset.mem_Iio]
-
-/-! ### Boundedness of gamma entries -/
-
+    · simp +decide [GammaStructure.permute]; try rfl
+    · simp +decide [Finset.mem_Iio]; try rfl
 /-- Every entry `Γ.gamma i j` is bounded by `Γ.gammaProd`. When `i = j` the entry is zero;
 otherwise it divides `gammaRow (max i j)` which in turn divides `gammaProd`. -/
 lemma GammaStructure.gamma_le_gammaProd
@@ -766,9 +763,6 @@ lemma card_filtered_le_prod_of_fiber_dvd
         have h2 := (Finset.mem_filter.mp hh').2
         have h1' := congr_fun h1 ⟨i, hi⟩
         have h2' := congr_fun h2 ⟨i, hi⟩
-        simp only [proj] at h1' h2'
-        have : Fin.castSucc ⟨i, hi⟩ = (⟨i, by omega⟩ : Fin (n+1)) := by ext; simp
-        rw [this] at h1' h2'
         exact h1'.trans h2'.symm;
       have h_fiber_card : (Finset.image (fun h => h (Fin.last n)) (S.filter (fun h => proj h = g))).card ≤ H / m (Fin.last n) + 1 := by
         have h_fiber_card : ∀ x ∈ Finset.image (fun h => h (Fin.last n)) (S.filter (fun h => proj h = g)), ∀ y ∈ Finset.image (fun h => h (Fin.last n)) (S.filter (fun h => proj h = g)), (m (Fin.last n) : ℤ) ∣ (x - y) := by
