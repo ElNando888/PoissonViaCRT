@@ -1195,31 +1195,24 @@ private lemma deviation_le_divisor_sum (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk :
     · norm_num [ mul_assoc, hg_def ];
   · ring
 
-/-- **Uniform divisor-sum bound.** The divisor-sum expression from
-`deviation_le_divisor_sum` is bounded by `C · s^{−ε/2}` independently of `q`.
-The cancellation between `|Ω_q|^{k-1}` from `∏ μ_p / |Ω_q|` and the subgrid
-denominator `q^{k-1}` makes the bound depend only on `s = q / |Ω_q|` (and `X, k, ε`),
-not on `q` itself.  The exponent is halved from `ε` to `ε/2` to absorb the
-logarithmic factors `(d · log d)^{k-1}` coming from the subgrid bound.
+/-- **Uniform divisor-sum bound** (OPEN — see DIVISOR_SUM_ANALYSIS.md).
 
-**Why this is left as `sorry`:**
+The divisor-sum expression from `deviation_le_divisor_sum` is conjectured to be bounded
+by `C · s^{-ε/2}` independently of `q`. The original counterexample (`Ω_p = Finset.univ`)
+was eliminated by updating `WellDistributedFourier` to include the `(1 - |Ω_p|/p)` factor,
+which mirrors the spatial `WellDistributed` hypothesis. With this fix, the DFT coefficients
+now carry a tighter `(1 - |Ω_p|/p) · p^{-ε} · μ_p` bound per prime.
 
-1. Simplifying the prefactors reduces the problem to bounding
-   `∑_{d | q} d^{-ε} · (d/q) · (log d + 1)`.
+**Status:** The `(1 - |Ω_p|/p)` factor kills the original counterexample (since full sets
+give factor 0), but the general case requires a more refined argument using the joint
+constraints from `hsp` and `hrp`. The box indicator's `d/q · (log d + 1)` factor partially
+cancels the `1/d` improvement from `hrp`. A complete proof may require:
 
-2. By the divisor swap `d' = q/d`, this sum reduces to
-   `q^{-ε} · (log q + 1) · ∏_{p | q} (1 + p^{ε-1})`.
+1. Splitting into small/large divisors and using different bounds for each
+2. Or bypassing this divisor-sum intermediate step entirely
+3. Or using Parseval/L² methods directly on the deviation
 
-3. Since `ε < 1/2`, the exponent is `ε - 1 < -1/2`, so the Euler product
-   `∏_{p | q} (1 + p^{ε-1})` diverges over all primes.
-
-4. In analytic number theory, this Euler product grows sub-polynomially with `q`,
-   meaning it is eventually crushed by the `q^{-ε}` factor.
-
-5. Because Lean’s Mathlib currently lacks the deep analytic number theory bounds
-   (such as bounds on the divisor function `τ(q)` or the prime number theorem)
-   required to formally prove this sub-polynomial growth, this lemma is left as a
-   `sorry`, correctly reflecting the Granville–Kurlberg architecture. -/
+See `PoissonViaCRT/DIVISOR_SUM_ANALYSIS.md` for the full analysis. -/
 private lemma divisor_sum_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : k = 2)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)

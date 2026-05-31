@@ -87,13 +87,21 @@ theorem local_deviation_fourier_bound (ε : ℝ) (_hε : 0 < ε)
     rw [ show ( ∑ x : Fin ( k - 1 ) → ZMod p, ( tupleCount ( Ω p ) ( Fin.cons 0 x ) : ℂ ) ) = ( # ( Ω p ) : ℂ ) ^ k from ?_ ] ; norm_num;
     · positivity;
     · convert sum_tupleCount_eq_card_pow k hk p Ω using 1;
-  · simp_all +decide [ mul_sub, mul_assoc, mul_comm, Finset.mul_sum _ _ _, dft ];
+  · -- For ξ ≠ 0, the mean term vanishes by character orthogonality, so
+    -- dft(deviation)(ξ) = dft(tupleCount)(ξ). Then WDF gives the bound with (1-|Ω|/p) factor;
+    -- since (1-|Ω|/p) ≤ 1, we get the desired weaker bound.
+    simp_all +decide [ mul_sub, mul_assoc, mul_comm, Finset.mul_sum _ _ _, dft ];
     simp_all +decide [ ← Finset.mul_sum _ _ _ ];
-    rw [ show ( ∑ i : Fin ( k - 1 ) → ZMod p, ( starRingEnd ℂ ) ( character p ( k - 1 ) ξ i ) ) = 0 from ?_ ] ; aesop;
-    have := character_orthogonality p ( k - 1 ) ξ 0; simp_all +decide only [↓reduceIte] ;
-    convert congr_arg Star.star this using 1;
-    · simp +decide [ character ];
-    · norm_num
+    rw [ show ( ∑ i : Fin ( k - 1 ) → ZMod p, ( starRingEnd ℂ ) ( character p ( k - 1 ) ξ i ) ) = 0 from ?_ ] ; swap;
+    · have := character_orthogonality p ( k - 1 ) ξ 0; simp_all +decide only [↓reduceIte] ;
+      convert congr_arg Star.star this using 1;
+      · simp +decide [ character ];
+      · norm_num
+    simp;
+    have h1 : (1 - (Ω p).card / (p : ℝ)) ≤ 1 := sub_le_self _ (by positivity);
+    have hwdf := hwd ξ hξ
+    have : (0 : ℝ) ≤ (Ω p).card ^ k * ((p : ℝ) ^ (-ε) * ((p : ℝ)⁻¹ * ((Ω p).card * ((p : ℝ) ^ (k - 1))⁻¹))) := by positivity
+    linarith
 
 /-! ### CRT factorization of Fourier coefficients -/
 
@@ -205,17 +213,35 @@ lemma dft_tupleCount_norm_le_localMean (k : ℕ) (hk : 2 ≤ k) (ε : ℝ) (hε 
             unfold character; aesop;
           have := sum_tupleCount_eq_card_pow k ( by linarith ) p Ω; simp_all +decide [ div_eq_inv_mul ] ;
         · refine' le_trans ( hwd ξ hξ ) _;
-          exact mul_le_of_le_one_left ( by positivity ) ( by simpa using Real.rpow_le_rpow_of_exponent_le ( mod_cast hp.1.one_lt.le ) ( neg_nonpos.mpr hε.le ) )
+          calc (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) * ((Ω p).card ^ k / (p : ℝ) ^ (k - 1))
+              ≤ 1 * 1 * ((Ω p).card ^ k / (p : ℝ) ^ (k - 1)) := by
+                gcongr
+                · exact sub_le_self _ (by positivity)
+                · simpa using Real.rpow_le_rpow_of_exponent_le (mod_cast hp.1.one_lt.le) (neg_nonpos.mpr hε.le)
+            _ = (Ω p).card ^ k / (p : ℝ) ^ (k - 1) := by ring
 
 lemma dft_tupleCount_norm_le_decay (k : ℕ) (hk : 2 ≤ k) (ε : ℝ) (hε : 0 < ε)
     (p : ℕ) [hp : Fact p.Prime] (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hwd : WellDistributedFourier ε p (Ω p) k)
     (ξ : Fin (k - 1) → ZMod p) (hξ : ξ ≠ 0) :
     ‖dft p (k - 1) (fun h => (tupleCount (Ω p) (Fin.cons 0 h) : ℂ)) ξ‖ ≤
-      (p : ℝ) ^ (-ε) * localMean k Ω p := by
+      (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) * localMean k Ω p := by
   have := hwd ξ hξ
   unfold localMean
   exact this
+
+/-- Weaker version of `dft_tupleCount_norm_le_decay` that drops the `(1 - |Ω|/p)` factor. -/
+lemma dft_tupleCount_norm_le_decay_weak (k : ℕ) (hk : 2 ≤ k) (ε : ℝ) (hε : 0 < ε)
+    (p : ℕ) [hp : Fact p.Prime] (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hwd : WellDistributedFourier ε p (Ω p) k)
+    (ξ : Fin (k - 1) → ZMod p) (hξ : ξ ≠ 0) :
+    ‖dft p (k - 1) (fun h => (tupleCount (Ω p) (Fin.cons 0 h) : ℂ)) ξ‖ ≤
+      (p : ℝ) ^ (-ε) * localMean k Ω p := by
+  have h := dft_tupleCount_norm_le_decay k hk ε hε p Ω hwd ξ hξ
+  have h1 : (1 - (Ω p).card / (p : ℝ)) ≤ 1 := sub_le_self _ (by positivity)
+  have h2 : (0 : ℝ) ≤ (p : ℝ) ^ (-ε) := Real.rpow_nonneg (Nat.cast_nonneg p) (-ε)
+  have h3 : (0 : ℝ) ≤ localMean k Ω p := by unfold localMean; positivity
+  nlinarith [mul_nonneg h2 h3]
 
 /-! ### Fourier synthesis: the uniform deviation bound -/
 
@@ -289,7 +315,7 @@ public lemma deviation_dft_q1_q2_bound (k : ℕ) (hk : 2 ≤ k) (ε : ℝ) (hε 
     use fun x => if x.val.val ∈ freqSupport q ( k - 1 ) ξ then ( x.val.val : ℝ ) ^ ( -ε ) * localMean k Ω x.val.val else localMean k Ω x.val.val;
     · exact fun _ _ => norm_nonneg _;
     · split_ifs with h;
-      · convert dft_tupleCount_norm_le_decay k hk ε hε x.val.val _ _ _ _ using 1;
+      · convert dft_tupleCount_norm_le_decay_weak k hk ε hε x.val.val _ _ _ _ using 1;
         exact ⟨ Nat.prime_of_mem_primeFactors x.1.2 ⟩;
         · exact hwd _ ( by aesop );
         · intro H; simp_all +decide [ funext_iff, freqSupport ] ;

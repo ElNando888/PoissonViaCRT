@@ -384,14 +384,18 @@ public noncomputable def boxIndicator (q : ℕ) [NeZero q] (m : ℕ)
 
 /-- The Fourier-analytic analogue of `WellDistributed` from §3.2.
 This hypothesis directly asserts the necessary $L^\\infty$ decay on the non-zero Fourier
-coefficients of the local deviation function, bypassing the lossy spatial bound.
-Specifically, it asserts that for $\\xi \\neq 0$, the Fourier coefficient is bounded by
-$p^{-\\varepsilon} |\\Omega_p| / p^{k-1}$, which is necessary to offset the dual group volume. -/
+coefficients of the local deviation function, including the crucial
+$(1 - |\Omega_p|/p)$ factor that mirrors the spatial `WellDistributed` hypothesis.
+Specifically, for $\xi \neq 0$:
+$$\|\widehat{N}_p(\xi)\| \le (1 - |\Omega_p|/p) \cdot p^{-\varepsilon} \cdot \mu_p$$
+where $\mu_p = |\Omega_p|^k / p^{k-1}$. The factor $(1 - |\Omega_p|/p)$ is essential:
+it ensures that when $\Omega_p$ is nearly full, the Fourier coefficients are
+near-zero, making the divisor sum in the Möbius synthesis absolutely convergent. -/
 @[expose]
 public def WellDistributedFourier (ε : ℝ) (p : ℕ) [Fact p.Prime] (Ω : Finset (ZMod p)) (k : ℕ) : Prop :=
   ∀ (ξ : Fin (k - 1) → ZMod p), ξ ≠ 0 →
     ‖dft p (k - 1) (fun h => (tupleCount Ω (Fin.cons 0 h) : ℂ)) ξ‖ ≤
-    (p : ℝ) ^ (-ε) * ((Ω.card : ℝ) ^ k / (p : ℝ) ^ (k - 1))
+    (1 - (Ω.card : ℝ) / p) * (p : ℝ) ^ (-ε) * ((Ω.card : ℝ) ^ k / (p : ℝ) ^ (k - 1))
 
 /-! ### Helper lemmas for the WD → WDF bridge -/
 
@@ -451,7 +455,7 @@ lemma WellDistributed_implies_WellDistributedFourier
   · have := hWD.2;
     rw [ div_mul_eq_mul_div, div_le_iff₀ ] <;> norm_cast at * <;> simp_all +decide only [Nat.cast_pow,
       one_div, Complex.norm_mul, norm_inv, norm_pow, RCLike.norm_natCast, one_mul];
-    · exact this.trans ( by nlinarith [ show 0 ≤ ( p : ℝ ) ^ ( k - 1 ) * ( p : ℝ ) ^ ( -ε ) * ( ( #Ω : ℝ ) ^ k / p ^ ( k - 1 ) ) by positivity, show ( 1 - ( #Ω : ℝ ) / p ) ≤ 1 by exact sub_le_self _ <| by positivity ] );
+    · nlinarith;
     · exact pow_pos ( Nat.Prime.pos Fact.out ) _
 
 /-! ### Box Fourier transform decay -/
