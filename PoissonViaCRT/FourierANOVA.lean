@@ -299,7 +299,7 @@ public lemma deviation_dft_q1_q2_bound (k : ℕ) (hk : 2 ≤ k) (ε : ℝ) (hε 
     (ξ : Fin (k - 1) → ZMod q) (hξ : ξ ≠ 0) :
     ‖dft q (k - 1) (fun h => (tupleCount (crtSubset q Ω) (Fin.cons 0 h) : ℂ) -
       ↑(∏ p ∈ q.primeFactors, localMean k Ω p)) ξ‖ ≤
-      (∏ p ∈ freqSupport q (k - 1) ξ, (p : ℝ) ^ (-ε)) * ∏ p ∈ q.primeFactors, localMean k Ω p := by
+      (∏ p ∈ freqSupport q (k - 1) ξ, (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) * ∏ p ∈ q.primeFactors, localMean k Ω p := by
   -- By the linearity of the DFT and the orthogonality of the characters, we can express the DFT of the deviation in terms of the DFT of the tuple count and the constant term.
   have h_dft_linear : dft q (k - 1) (fun h => (tupleCount (crtSubset q Ω) (Fin.cons 0 h) : ℂ) - ↑(∏ p ∈ q.primeFactors, localMean k Ω p)) ξ = dft q (k - 1) (fun h => (tupleCount (crtSubset q Ω) (Fin.cons 0 h) : ℂ)) ξ := by
     unfold dft;
@@ -312,10 +312,10 @@ public lemma deviation_dft_q1_q2_bound (k : ℕ) (hk : 2 ≤ k) (ε : ℝ) (hε 
   · linarith;
   · rw [ norm_prod, ← Finset.prod_attach ];
     refine' le_trans ( Finset.prod_le_prod _ fun x hx => _ ) _;
-    use fun x => if x.val.val ∈ freqSupport q ( k - 1 ) ξ then ( x.val.val : ℝ ) ^ ( -ε ) * localMean k Ω x.val.val else localMean k Ω x.val.val;
+    use fun x => if x.val.val ∈ freqSupport q ( k - 1 ) ξ then (1 - (Ω x.val.val).card / (x.val.val : ℝ)) * ( x.val.val : ℝ ) ^ ( -ε ) * localMean k Ω x.val.val else localMean k Ω x.val.val;
     · exact fun _ _ => norm_nonneg _;
     · split_ifs with h;
-      · convert dft_tupleCount_norm_le_decay_weak k hk ε hε x.val.val _ _ _ _ using 1;
+      · convert dft_tupleCount_norm_le_decay k hk ε hε x.val.val _ _ _ _ using 1;
         exact ⟨ Nat.prime_of_mem_primeFactors x.1.2 ⟩;
         · exact hwd _ ( by aesop );
         · intro H; simp_all +decide [ funext_iff, freqSupport ] ;
@@ -325,18 +325,29 @@ public lemma deviation_dft_q1_q2_bound (k : ℕ) (hk : 2 ≤ k) (ε : ℝ) (hε 
       · convert dft_tupleCount_norm_le_localMean k hk ε hε x.val.val _ _ _ using 1;
         grind;
         exact hwd _ ( by simp );
-    · simp +decide [ Finset.prod_ite, Finset.prod_mul_distrib ];
-      rw [ mul_assoc, ← Finset.prod_union ];
-      · refine' mul_le_mul _ _ _ _;
-        · refine' le_of_eq _;
-          refine' Finset.prod_bij ( fun x hx => x.val.val ) _ _ _ _ <;> simp +decide [ freqSupport ];
-          exact fun p hp hpq hq h => ⟨ ⟨ hp, hpq, hq ⟩, h ⟩;
-        · refine' le_of_eq _;
-          refine' Finset.prod_bij ( fun x hx => x.val.val ) _ _ _ _ <;> simp +decide [ freqSupport ];
-          exact fun p hp hpq hq => ⟨ ⟨ hp, hpq, hq ⟩, by tauto ⟩;
-        · exact Finset.prod_nonneg fun _ _ => localMean_nonneg _ _ _;
-        · exact Finset.prod_nonneg fun _ _ => Real.rpow_nonneg ( Nat.cast_nonneg _ ) _;
-      · exact Finset.disjoint_filter.mpr fun _ _ _ _ => by tauto;
+    ·
+      rw [ Finset.prod_ite ];
+      -- The product over the attached set is equal to the product over the original set because the index is just a way to uniquely identify each element.
+      have h_prod_eq : ∏ x ∈ q.primeFactors.attach.attach with x.val.val ∈ freqSupport q (k - 1) ξ, localMean k Ω x.val.val = ∏ x ∈ freqSupport q (k - 1) ξ, localMean k Ω x := by
+        refine' Finset.prod_bij ( fun x hx => x.val.val ) _ _ _ _ <;> simp +decide [ freqSupport ];
+        grind;
+      rw [ Finset.prod_mul_distrib, h_prod_eq ];
+      rw [ mul_assoc ];
+      refine' mul_le_mul _ _ _ _;
+      · refine' le_of_eq _;
+        refine' Finset.prod_bij ( fun x hx => x.val.val ) _ _ _ _ <;> simp +decide [ freqSupport ];
+        grind +splitImp;
+      · rw [ ← Finset.prod_sdiff <| show freqSupport q ( k - 1 ) ξ ⊆ q.primeFactors from fun p hp => by
+                                      exact Finset.mem_filter.mp hp |>.1 ];
+        rw [ mul_comm ];
+        refine' le_of_eq _;
+        refine' congrArg₂ _ ( Finset.prod_bij ( fun x hx => x.val.val ) _ _ _ _ ) rfl <;> simp +decide [ Finset.mem_sdiff, Finset.mem_filter ];
+        tauto;
+      · exact mul_nonneg ( Finset.prod_nonneg fun _ _ => localMean_nonneg _ _ _ ) ( Finset.prod_nonneg fun _ _ => localMean_nonneg _ _ _ );
+      · refine' Finset.prod_nonneg fun p hp => mul_nonneg _ _ <;> norm_num;
+        · refine' div_le_one_of_le₀ _ ( Nat.cast_nonneg _ );
+          haveI := Fact.mk ( Nat.prime_of_mem_primeFactors ( Finset.mem_filter.mp hp |>.1 ) ) ; exact_mod_cast le_trans ( Finset.card_le_univ _ ) ( by norm_num ) ;
+        · positivity
 
 /-! ### Helpers for the DFT interval L¹ bound -/
 

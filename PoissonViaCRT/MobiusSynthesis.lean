@@ -960,8 +960,11 @@ private lemma fiber_boxIndicator_neg_bound (q d : ℕ) [NeZero q] [NeZero d]
     · congr! 2;
     · unfold boxIndicator; aesop;
 
-/-- DFT coefficient bound: for nonzero ξ with freqDivisor = d, the norm of
-the DFT of g is bounded by d^(-ε) * M. -/
+/-
+DFT coefficient bound: for nonzero ξ with freqDivisor = d, the norm of
+the DFT of g is bounded by `(∏_{p|d} (1 - |Ω_p|/p)) * d^(-ε) * M`.
+The tight `(1 - |Ω_p|/p)` factor comes from `dft_tupleCount_norm_le_decay`.
+-/
 private lemma dft_g_norm_le_decay (ε : ℝ) (hε : 0 < ε)
     (q : ℕ) [NeZero q] (hq_sq : Squarefree q)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
@@ -970,21 +973,14 @@ private lemma dft_g_norm_le_decay (ε : ℝ) (hε : 0 < ε)
     ‖dft q 1 (fun h : Fin 1 → ZMod q =>
       (tupleCount (crtSubset q Ω) (Fin.cons 0 h) : ℂ) -
       ↑(∏ p ∈ q.primeFactors, localMean 2 Ω p)) ξ‖ ≤
+    (∏ p ∈ freqSupport q 1 ξ, (1 - (Ω p).card / (p : ℝ))) *
     (freqDivisor q 1 ξ : ℝ) ^ (-ε) * ∏ p ∈ q.primeFactors, localMean 2 Ω p := by
   have h1 := deviation_dft_q1_q2_bound 2 le_rfl ε hε q hq_sq Ω
     (fun p hp => by haveI : Fact p.Prime := ⟨(Nat.mem_primeFactors.mp hp).1⟩; exact hWD p) ξ hξ
   refine le_trans h1 (le_of_eq ?_)
-  congr 1
-  change ∏ p ∈ freqSupport q 1 ξ, (p : ℝ) ^ (-ε) = (↑(freqDivisor q 1 ξ)) ^ (-ε)
-  have hfd : (freqDivisor q 1 ξ : ℝ) = ∏ p ∈ freqSupport q 1 ξ, (p : ℝ) := by
-    rw [show freqDivisor q 1 ξ = ∏ p ∈ freqSupport q 1 ξ, p from rfl]
-    exact Nat.cast_prod _ _
-  rw [hfd]
-  induction (freqSupport q 1 ξ) using Finset.cons_induction with
-  | empty => simp
-  | cons a s ha ih =>
-    rw [Finset.prod_cons, Finset.prod_cons, ih,
-      Real.mul_rpow (Nat.cast_nonneg _) (Finset.prod_nonneg (fun i _ => Nat.cast_nonneg i))]
+  rw [ Finset.prod_mul_distrib ] ; norm_num [ freqDivisor ] ;
+  rw [ ← Real.finset_prod_rpow _ _ _ ] ; norm_num;
+  exact fun _ _ => Nat.cast_nonneg _
 
 /-- Per-fiber bound: for each divisor d of q, the sum of F over frequencies
 with freqDivisor = d is bounded by B(d). -/
@@ -1039,7 +1035,19 @@ private lemma fourier_fiber_bound (ε : ℝ) (hε : 0 < ε)
       have hξ_d : freqDivisor q 1 ξ = d := (Finset.mem_filter.mp hξ).2
       have h_coeff := dft_g_norm_le_decay ε hε q hq_sq Ω hWD ξ hξ_ne
       rw [hξ_d] at h_coeff
-      exact mul_le_mul_of_nonneg_right h_coeff (norm_nonneg _)
+      -- Weaken the tight bound by dropping the (1 - |Ω_p|/p) factor (≤ 1)
+      have h_prod_le : (∏ p ∈ freqSupport q 1 ξ, (1 - (Ω p).card / (p : ℝ))) ≤ 1 :=
+        prod_le_one (fun p hp => by
+          have hp' := (Nat.mem_primeFactors.mp (freqSupport_subset_primeFactors q 1 ξ hp)).1
+          haveI : Fact p.Prime := ⟨hp'⟩
+          exact sub_nonneg.mpr (div_le_one_of_le₀ (by have := Finset.card_le_univ (Ω p); rw [ZMod.card] at this; exact_mod_cast this) (Nat.cast_nonneg _)))
+          (fun p _ => sub_le_self _ (by positivity))
+      have h_rpow_nn : (0 : ℝ) ≤ (d : ℝ) ^ (-ε) := Real.rpow_nonneg (Nat.cast_nonneg _) _
+      have h_M_nn : (0 : ℝ) ≤ M := Finset.prod_nonneg (fun p _ => by unfold localMean; positivity)
+      have h_weak : ‖dft q 1 (fun h => (tupleCount (crtSubset q Ω) (Fin.cons 0 h) : ℂ) -
+          ↑(∏ p ∈ q.primeFactors, localMean 2 Ω p)) ξ‖ ≤ (d : ℝ) ^ (-ε) * M :=
+        le_trans h_coeff (by nlinarith [mul_nonneg h_rpow_nn h_M_nn])
+      exact mul_le_mul_of_nonneg_right h_weak (norm_nonneg _)
     -- Factor out: ∑ F ≤ d^(-ε) * M * ∑ ‖dft boxInd (-ξ)‖
     have hsum : ∑ ξ ∈ Finset.univ.filter (fun ξ : Fin 1 → ZMod q => freqDivisor q 1 ξ = d), F ξ ≤
         (d : ℝ) ^ (-ε) * M *
@@ -1162,13 +1170,23 @@ private lemma deviation_le_divisor_sum (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk :
     rw [ inv_mul_eq_div, div_eq_iff ] <;> norm_cast <;> norm_num [ NeZero.ne ];
     rw [ sub_eq_zero, mul_comm ]
   -- (c) DFT coefficient bound (for each nonzero ξ)
+  -- Note: deviation_dft_q1_q2_bound now carries the tight (1 - |Ω|/p) factor;
+  -- we weaken it here to maintain the existing divisor sum chain.
   have h_dft_bound : ∀ (ξ : Fin 1 → ZMod q), ξ ≠ 0 →
       ‖dft q 1 g ξ‖ ≤
         (∏ p ∈ freqSupport q 1 ξ, (p : ℝ) ^ (-ε)) *
         ∏ p ∈ q.primeFactors, localMean 2 Ω p := by
     intro ξ hξ
-    exact deviation_dft_q1_q2_bound 2 le_rfl ε hε q hq_sq Ω
+    have h_tight := deviation_dft_q1_q2_bound 2 le_rfl ε hε q hq_sq Ω
       (fun p hp => by haveI : Fact p.Prime := ⟨(Nat.mem_primeFactors.mp hp).1⟩; exact hWD p) ξ hξ
+    refine le_trans h_tight (mul_le_mul_of_nonneg_right ?_ (Finset.prod_nonneg fun p _ => by unfold localMean; positivity))
+    refine le_trans (Finset.prod_le_prod
+      (fun p hp => by
+        have hp' := (Nat.mem_primeFactors.mp (freqSupport_subset_primeFactors q 1 ξ hp)).1
+        haveI : Fact p.Prime := ⟨hp'⟩
+        exact mul_nonneg (sub_nonneg.mpr (div_le_one_of_le₀ (by have := Finset.card_le_univ (Ω p); rw [ZMod.card] at this; exact_mod_cast this) (Nat.cast_nonneg _))) (Real.rpow_nonneg (Nat.cast_nonneg _) _))
+      (fun p _ => mul_le_mul_of_nonneg_right (sub_le_self _ (by positivity)) (Real.rpow_nonneg (Nat.cast_nonneg _) _))) ?_
+    simp [one_mul]
   -- (d) Divisor summation infrastructure
   have h_sum_div := sum_over_divisors q 1 hq_sq
   -- (e) Punctured subgrid bound (1D, excluding a = 0)
@@ -1197,20 +1215,28 @@ private lemma deviation_le_divisor_sum (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk :
 
 /-- **Uniform divisor-sum bound** (OPEN — see DIVISOR_SUM_ANALYSIS.md).
 
-The divisor-sum expression from `deviation_le_divisor_sum` is conjectured to be bounded
-by `C · s^{-ε/2}` independently of `q`. The original counterexample (`Ω_p = Finset.univ`)
-was eliminated by updating `WellDistributedFourier` to include the `(1 - |Ω_p|/p)` factor,
-which mirrors the spatial `WellDistributed` hypothesis. With this fix, the DFT coefficients
-now carry a tighter `(1 - |Ω_p|/p) · p^{-ε} · μ_p` bound per prime.
+The divisor-sum expression from `deviation_le_divisor_sum` is bounded above by a sum
+over proper divisors of `q`. The goal is to show this is `≤ C · s^{-ε/2}` uniformly in `q`.
 
-**Status:** The `(1 - |Ω_p|/p)` factor kills the original counterexample (since full sets
-give factor 0), but the general case requires a more refined argument using the joint
-constraints from `hsp` and `hrp`. The box indicator's `d/q · (log d + 1)` factor partially
-cancels the `1/d` improvement from `hrp`. A complete proof may require:
+**Progress:** The upstream lemmas `deviation_dft_q1_q2_bound` and `dft_g_norm_le_decay` now
+carry the tight `(1 - |Ω_p|/p)` factor from `dft_tupleCount_norm_le_decay`. The tight
+factor is weakened back to 1 in `fourier_fiber_bound` / `deviation_le_divisor_sum` to
+maintain backward compatibility of the divisor-sum chain.
 
-1. Splitting into small/large divisors and using different bounds for each
-2. Or bypassing this divisor-sum intermediate step entirely
-3. Or using Parseval/L² methods directly on the deviation
+**Analysis of the algebraic cancellation approach:** Using `hrp` to bound
+`∏_{p|d} (1 - |Ω_p|/p) ≤ k^{ω(d)}/d` and cancelling the `1/d` with the `d/q` factor
+from the box indicator yields a sum of the form
+  `s^{-1} · ∑_{d|q} k^{ω(d)} · d^{-ε} · (ℓog d + 1)`.
+This is `s^{-1}` times a sub-polynomial Euler product `∏_{p|q} (1 + k p^{-ε})` (with
+logarithmic corrections). For ε < 1, this product diverges as ω(q) → ∞, growing
+faster than any power of `s = q/|Ω_q|`. Hence the bound `≤ C s^{-ε/2}` with `C`
+independent of `q` cannot be proved by this term-by-term bounding approach alone.
+
+**Potential fixes:**
+1. Propagate the tight `(1 - |Ω_p|/p)` factor into `B(d)` and avoid bounding it by
+   `k^{ω(d)}/d`; instead, exploit direct cancellation with the local mean product.
+2. Split into small/large divisors with different bounds for each.
+3. Bypass the divisor-sum intermediate and use Parseval/L² methods directly.
 
 See `PoissonViaCRT/DIVISOR_SUM_ANALYSIS.md` for the full analysis. -/
 private lemma divisor_sum_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : k = 2)
