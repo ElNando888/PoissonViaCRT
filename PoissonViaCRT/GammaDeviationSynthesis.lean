@@ -715,20 +715,145 @@ lemma perGammaDeviationWeight_split_bound (ε : ℝ) (hε : 0 ≤ ε) (k : ℕ) 
       simp +zetaDelta at *;
       exact fun hp hp' => le_trans ( prime_dvd_radical_le_self p γ ( hT_prime p hp ) hp' ) hγ
 
+/-! ## Helper lemmas for gamma_weighted_series_bound (Steps 1–3)
+
+These helpers implement the 3-step strategy from the PROVIDED SOLUTION:
+1. Tuple count bound + prefactor absorption
+2. γ-sum Euler product bound
+3. Rankin-trick tail bound
+-/
+
+/-
+**Tuple count universal bound.** `M_γ(H) ≤ (H+1)^k` since the
+counting set is a subset of all tuples in `[0, H]^{k+1}`.
+-/
+private lemma countTuplesWithGammaProd_le_pow (k γ H : ℕ) :
+    (countTuplesWithGammaProd k γ H : ℝ) ≤ ((H : ℝ) + 1) ^ k := by
+  norm_cast;
+  refine' le_trans ( Set.ncard_le_ncard <| show { h : Fin ( k + 1 ) → ℤ | h 0 = 0 ∧ ( ∀ i j : Fin ( k + 1 ), ¬i = j → ¬h i = h j ) ∧ ( ∀ i : Fin ( k + 1 ), 0 ≤ h i ∧ h i ≤ H ) ∧ ∃ Γ : GammaStructure ( k + 1 ), Γ.gammaProd = γ ∧ ∀ i j : Fin ( k + 1 ), ¬i = j → Γ.sqfreepart.gcd ( h j - h i |> Int.natAbs ) = Γ.gamma i j } ⊆ Set.image ( fun x : Fin k → ℤ => Fin.cons 0 x ) ( Set.Icc ( 0 : Fin k → ℤ ) ( fun _ => H ) ) from _ ) _;
+  · intro h hh;
+    use fun i => h i.succ;
+    exact ⟨ ⟨ fun i => hh.2.2.1 _ |>.1, fun i => hh.2.2.1 _ |>.2 ⟩, by ext i; induction i using Fin.inductionOn <;> aesop ⟩;
+  · rw [ Set.ncard_image_of_injective, Set.ncard_eq_toFinset_card' ] <;> norm_num [ Function.Injective ];
+    erw [ Finset.card_map, Finset.card_pi ] ; norm_num
+
+/-
+**Prefactor absorption inequality.**
+`(1/|Ω_q|) · ∏_{q.pf ∖ T} μ_p ≤ ∏_T μ_p⁻¹`.
+-/
+private lemma prefactor_le_inv_prod_localMean (k : ℕ) (hk : 2 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (q : ℕ) [NeZero q] (hq : Squarefree q)
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (T : Finset ℕ) (hT : T ⊆ q.primeFactors) :
+    (1 / (crtSubset q Ω).card : ℝ) *
+      ∏ p ∈ q.primeFactors \ T, localMean k Ω p ≤
+    ∏ p ∈ T, (localMean k Ω p)⁻¹ := by
+  -- By definition of cardinality, we know that $(crtSubset q).card � =� \prod_{p \in q.primeFactors} (Ω p).card$.
+  have h_card : ((crtSubset q Ω).card : ℝ) = (∏ p ∈ q.primeFactors, (Ω p).card : ℝ) := by
+    convert globalMean_eq_prod_localMean 1 q hq Ω using 1;
+    · norm_num;
+    · unfold localMean; norm_num;
+  rw [ h_card, div_mul_eq_mul_div, div_le_iff₀ ];
+  · rw [ ← Finset.prod_sdiff hT ];
+    simp +decide [ localMean, mul_assoc, mul_comm, mul_left_comm, Finset.prod_mul_distrib ];
+    field_simp;
+    rw [ div_le_div_iff₀ ] <;> norm_cast <;> norm_num [ Finset.prod_eq_zero_iff, Nat.Prime.ne_zero ];
+    · have h_prod_le : ∀ p ∈ q.primeFactors, (Ω p).card ^ k ≤ p ^ (k - 1) * (Ω p).card := by
+        intro p hp
+        have h_card_le : (Ω p).card ≤ p := by
+          haveI := Fact.mk ( Nat.prime_of_mem_primeFactors hp ) ; exact le_trans ( Finset.card_le_univ _ ) ( by norm_num ) ;
+        exact le_trans ( by rw [ ← pow_succ, Nat.sub_add_cancel ( by linarith ) ] ) ( Nat.mul_le_mul_right _ ( Nat.pow_le_pow_left h_card_le _ ) );
+      refine' le_trans ( Nat.mul_le_mul ( Finset.prod_le_prod' fun p hp => h_prod_le p <| Finset.mem_sdiff.mp hp |>.1 ) ( Finset.prod_le_prod' fun p hp => h_prod_le p <| hT hp ) ) _;
+      simp +decide [ mul_assoc, mul_comm, mul_left_comm, Finset.prod_mul_distrib ];
+    · exact fun p hp _ _ _ => pow_pos hp.pos _;
+    · exact fun p hp => pow_pos ( Finset.card_pos.mpr ( hΩ p ( Nat.prime_of_mem_primeFactors ( hT hp ) ) ) ) _;
+  · exact Finset.prod_pos fun p hp => Nat.cast_pos.mpr ( Finset.card_pos.mpr ( hΩ p ( Nat.prime_of_mem_primeFactors hp ) ) )
+
+/-
+**Pointwise bound on `perGammaDeviationWeight`.**
+For each `γ`, the weight is at most `∏_T (p + weil_p)` since each prime
+contributes either `p` or `weil_p`, both `≤ p + weil_p`.
+-/
+private lemma perGammaDeviationWeight_le_prod_add (ε : ℝ) (k : ℕ)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩle : ∀ p, p.Prime → (Ω p).card ≤ p)
+    (T : Finset ℕ) (hT_prime : ∀ p ∈ T, Nat.Prime p) (γ : ℕ) :
+    perGammaDeviationWeight ε k Ω T γ ≤
+    ∏ p ∈ T, ((p : ℝ) + (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) *
+      localMean k Ω p) := by
+  rw [ ← Finset.prod_filter_mul_prod_filter_not T ( fun p => p ∣ radical γ ) ];
+  refine' mul_le_mul _ _ _ _;
+  · gcongr;
+    refine' le_add_of_nonneg_right _;
+    exact mul_nonneg ( mul_nonneg ( sub_nonneg.2 <| div_le_one_of_le₀ ( mod_cast hΩle _ <| hT_prime _ <| Finset.filter_subset _ _ ‹_› ) <| Nat.cast_nonneg _ ) <| Real.rpow_nonneg ( Nat.cast_nonneg _ ) _ ) <| div_nonneg ( pow_nonneg ( Nat.cast_nonneg _ ) _ ) <| pow_nonneg ( Nat.cast_nonneg _ ) _;
+  · refine' Finset.prod_le_prod _ _;
+    · intro p hp; exact mul_nonneg ( mul_nonneg ( sub_nonneg.2 <| div_le_one_of_le₀ ( mod_cast hΩle p ( hT_prime p <| Finset.filter_subset _ _ hp ) ) <| Nat.cast_nonneg _ ) <| Real.rpow_nonneg ( Nat.cast_nonneg _ ) _ ) <| div_nonneg ( pow_nonneg ( Nat.cast_nonneg _ ) _ ) <| pow_nonneg ( Nat.cast_nonneg _ ) _;
+    · exact fun p hp => le_add_of_nonneg_left <| Nat.cast_nonneg _;
+  · refine' Finset.prod_nonneg fun p hp => mul_nonneg ( mul_nonneg _ _ ) _;
+    · exact sub_nonneg.2 ( div_le_one_of_le₀ ( mod_cast hΩle p ( hT_prime p ( Finset.filter_subset _ _ hp ) ) ) ( Nat.cast_nonneg _ ) );
+    · positivity;
+    · exact div_nonneg ( pow_nonneg ( Nat.cast_nonneg _ ) _ ) ( pow_nonneg ( Nat.cast_nonneg _ ) _ );
+  · refine' Finset.prod_nonneg fun p hp => add_nonneg ( Nat.cast_nonneg _ ) _;
+    exact mul_nonneg ( mul_nonneg ( sub_nonneg.2 <| div_le_one_of_le₀ ( mod_cast hΩle p <| hT_prime p <| Finset.filter_subset _ _ hp ) <| Nat.cast_nonneg _ ) <| Real.rpow_nonneg ( Nat.cast_nonneg _ ) _ ) <| div_nonneg ( pow_nonneg ( Nat.cast_nonneg _ ) _ ) <| pow_nonneg ( Nat.cast_nonneg _ ) _
+
+/-- **Gamma-sum Euler bound.** The weighted gamma sum is bounded by
+`(H+1)^{k-1} · ∏_{p ∈ T} (p + weil_p)`. -/
+private lemma gamma_sum_le_euler_factor (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩle : ∀ p, p.Prime → (Ω p).card ≤ p)
+    (T : Finset ℕ) (hT_prime : ∀ p ∈ T, Nat.Prime p) (H : ℕ) :
+    ∑ γ ∈ Finset.Icc 1 (H ^ (k * k)),
+      perGammaDeviationWeight ε k Ω T γ *
+        (countTuplesWithGammaProd (k - 1) γ H : ℝ) ≤
+    ((H : ℝ) + 1) ^ (k - 1) *
+      ∏ p ∈ T, ((p : ℝ) + (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) *
+        localMean k Ω p) := by
+  sorry
+
+/-- **Per-T contribution bound (Steps 1+2).** The per-`T` term in the
+gamma-weighted series is bounded by `(H+1)^{k-1} · ∏_T w_p`. -/
+private lemma per_T_contribution_le (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p)) (X : Box (k - 1))
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (hΩle : ∀ p, p.Prime → (Ω p).card ≤ p)
+    (hrp : ∀ p, p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ))
+    (q : ℕ) (_ : NeZero q)
+    (T : Finset ℕ) (hT : T ⊆ q.primeFactors) (hT_ne : T.Nonempty)
+    (s : ℝ) (hs : 1 ≤ s) :
+    let H := ⌈s * ∑ i, X.sides i⌉₊
+    (1 / (crtSubset q Ω).card : ℝ) *
+      (∏ p ∈ q.primeFactors \ T, localMean k Ω p) *
+      (∑ γ ∈ Finset.Icc 1 (H ^ (k * k)),
+        perGammaDeviationWeight ε k Ω T γ *
+          (countTuplesWithGammaProd (k - 1) γ H : ℝ)) ≤
+    (⌈s * ∑ i, X.sides i⌉₊ + 1 : ℝ) ^ (k - 1) *
+      ∏ p ∈ T, ((p : ℝ) ^ (k - 1 : ℤ) / ((Ω p).card : ℝ) ^ k +
+        k * (p : ℝ) ^ (-(1 + ε))) := by
+  sorry
+
+/-- **Tail Rankin bound (Step 3).** The sum over `T` with `∏_T p > s`
+of the per-`T` Euler weights decays as `K · s^{-ε/2}`. -/
+private lemma gamma_series_tail_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p)) (X : Box (k - 1))
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (hΩle : ∀ p, p.Prime → (Ω p).card ≤ p)
+    (hrp : ∀ p, p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ)) :
+    ∃ K : ℝ, 0 < K ∧ ∀ (q : ℕ) (_ : NeZero q) (s : ℝ) (_ : 1 ≤ s),
+      let H := ⌈s * ∑ i, X.sides i⌉₊
+      ∑ T ∈ (q.primeFactors.powerset.filter (· ≠ ∅)).filter
+            (fun (T : Finset ℕ) => ¬((∏ p ∈ T, (p : ℝ)) ≤ s)),
+        (⌈s * ∑ i, X.sides i⌉₊ + 1 : ℝ) ^ (k - 1) *
+          ∏ p ∈ T, ((p : ℝ) ^ (k - 1 : ℤ) / ((Ω p).card : ℝ) ^ k +
+            k * (p : ℝ) ^ (-(1 + ε))) ≤
+        K * s ^ (-(ε / 2)) := by
+  sorry
+
 /-- **Gamma-weighted series bound.**
 
 The sum over large-divisor subsets `T` of the gamma-weighted tuple counts
-is bounded by `K · s^{−ε/2}`.
-
-The proof sketch:
-1. Since $\gamma \le H^{k^2}$, use `perGammaDeviationWeight_split_bound` to split $T$ into
-   $T_{small}$ ($p \le H^{k^2}$) and $T_{large}$ ($p > H^{k^2}$).
-2. The weight for $T_{large}$ is exactly the Weil bound, and no primes in $T_{large}$ divide $\gamma$.
-3. Use `prefactor_absorption` to combine the $q$-dependent prefactor with the $T_{large}$ weight.
-   This yields exactly $\prod_{p \in T_{large}} \text{combinedEulerWeight}_p$.
-4. For $T_{small}$, the product is bounded by $\log s$, which is absorbed by $s^{-\epsilon/2}$.
-5. Use `tail_sum_decay` on the deviation product to bound the sum over $T$.
--/
+is bounded by `K · s^{−ε/2}`.  Proved by combining the helper lemmas
+`per_T_contribution_le` and `gamma_series_tail_bound`. -/
 lemma gamma_weighted_series_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p)) (X : Box (k - 1))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
@@ -744,8 +869,13 @@ lemma gamma_weighted_series_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 �
           perGammaDeviationWeight ε k Ω T γ *
             (countTuplesWithGammaProd (k - 1) γ H : ℝ)) ≤
         K * s ^ (-(ε / 2)) := by
-  -- Decomposition: combine weight_le_prod_T, dirichlet_gamma_sum_converges,
-  -- and tail_sum_decay to close this bound.
-  sorry
+  obtain ⟨K, hK_pos, hK⟩ := gamma_series_tail_bound ε hε k hk Ω X hΩ hΩle hrp
+  exact ⟨K, hK_pos, fun q inst s hs => by
+    refine le_trans (Finset.sum_le_sum fun T hT => ?_) (hK q inst s hs)
+    have hT_filt := Finset.mem_filter.mp hT
+    have hT_inner := Finset.mem_filter.mp hT_filt.1
+    have hT_sub : T ⊆ q.primeFactors := Finset.mem_powerset.mp hT_inner.1
+    have hT_ne : T.Nonempty := Finset.nonempty_of_ne_empty hT_inner.2
+    exact per_T_contribution_le ε hε k hk Ω X hΩ hΩle hrp q inst T hT_sub hT_ne s hs⟩
 
 end PoissonCRT

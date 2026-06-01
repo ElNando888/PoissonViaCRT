@@ -1368,3 +1368,46 @@ private lemma deviation_dft_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : k = 
     exact deviation_dft_bound_aux ε hε k hk Ω hΩ hWD hsp hrp hlt X
 
 end PoissonCRT
+
+/-
+PROVIDED SOLUTION
+
+Dear Aristotle,
+
+You were incredibly perceptive to check the $s=1$ case to verify if the constant $K$ can be independent of $q$! You are absolutely right that when $s=1$, the sum includes all nonempty subsets of $q.primeFactors$, and the LHS would diverge if the Euler product diverges.
+
+However, you made a small algebraic error in your head-math when bounding $c_p$.
+You wrote:
+> "Since $c_p = (1 - |\Omega_p|/p) p^{-\epsilon} \mu_p$, for large $p$ this behaves roughly like $k p^{-\epsilon}$ ... the sum $\sum p^{-\epsilon}$ diverges for $\epsilon \le 1$."
+
+By the spacing hypothesis `hrp`, we have $1 - |\Omega_p|/p \le k/p$.
+Thus:
+$c_p \le (k/p) \cdot p^{-\epsilon} \cdot \mu_p = k p^{-1-\epsilon} \mu_p$.
+When you divide out $\mu_p$ (via `prefactor_absorption`), the term inside your Euler product is $k p^{-1-\epsilon}$, NOT $k p^{-\epsilon}$.
+Since $\epsilon > 0$, the sum $\sum p^{-1-\epsilon}$ IS absolutely convergent.
+Therefore, the infinite product $\prod_p (1 + k p^{-1-\epsilon})$ perfectly converges to a finite constant $C(\epsilon, k)$ independent of $q$.
+The lemma IS mathematically true exactly as stated for arbitrary $s \ge 1$.
+
+Here is the revised strategy using this insight:
+
+### Step 1: Tuple Count and Prefactor Absorption
+- Bound $M_\gamma(H)$ by $(H+1)^{k-1}$.
+- By definition, $H = \lceil s \sum X.sides \rceil \le C \cdot s$. Thus $M_\gamma(H) \le C' \cdot s^{k-1}$.
+- At this point, the $s^{k-1}$ is just a polynomial factor in $s$ that will be handled by the Rankin trick later.
+- You still have the $1/|\Omega_q|$ prefactor. **Notice that you don't need $s = q/|\Omega_q|$ to use `prefactor_absorption`.**
+- The `prefactor_absorption` lemma is stated using $q^{k-1}/|\Omega_q|^k$. Since $s$ is a free parameter, you can algebraically isolate this factor: $1/|\Omega_q| \prod_{q \setminus T} \mu_p = \frac{|\Omega_q|^{k-1}}{q^{k-1}} \prod_T \mu_p^{-1}$.
+- Since $|\Omega_p| \le p$, we have $|\Omega_q|^{k-1}/q^{k-1} \le 1$. Thus, the entire prefactor is strictly bounded by $\prod_T \mu_p^{-1}$.
+
+### Step 2: Bounding the $\gamma$ Sum via Euler Products
+- $\text{perGammaDeviationWeight}(T, \gamma)$ factors multiplicatively. For $p \in T$, if $p \mid \gamma$ it contributes $p$, else $\text{Weil}(p)$.
+- Summing over $\gamma$ limits to a convergent product. You can safely bound the sum by injecting it into an infinite Dirichlet product over primes in $T$.
+
+### Step 3: Combine with `tail_sum_decay`
+- Combining Steps 1 and 2, the per-$T$ term is bounded by $C \cdot s^{k-1} \prod_{p \in T} \frac{p + \text{Weil}(p)}{\text{localMean}(p)}$.
+- As shown above, $\frac{\text{Weil}(p)}{\text{localMean}(p)} \le k p^{-1-\epsilon}$, which is summable.
+- Apply the existing `tail_sum_decay` lemma (with a Rankin shift $\alpha = k - 1 + \epsilon/2$) to absorb the $s^{k-1}$ polynomial growth, leaving exactly $K \cdot s^{-\epsilon/2}$.
+
+Please proceed to implement this proof by creating helper lemmas in `PoissonViaCRT/GammaDeviationSynthesis.lean` corresponding to these steps.
+
+Note: Do NOT downgrade the project to v4.28.0; `lake update PrimeNumberTheoremAnd` has already been run and the environment is perfectly configured on v4.29.0 HEAD.
+-/
