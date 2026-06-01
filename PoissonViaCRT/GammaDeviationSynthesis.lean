@@ -756,7 +756,7 @@ private lemma prefactor_le_inv_prod_localMean (k : ℕ) (hk : 2 ≤ k)
     · unfold localMean; norm_num;
   rw [ h_card, div_mul_eq_mul_div, div_le_iff₀ ];
   · rw [ ← Finset.prod_sdiff hT ];
-    simp +decide [ localMean, mul_assoc, mul_comm, mul_left_comm, Finset.prod_mul_distrib ];
+    simp +decide [localMean, mul_assoc, mul_comm];
     field_simp;
     rw [ div_le_div_iff₀ ] <;> norm_cast <;> norm_num [ Finset.prod_eq_zero_iff, Nat.Prime.ne_zero ];
     · have h_prod_le : ∀ p ∈ q.primeFactors, (Ω p).card ^ k ≤ p ^ (k - 1) * (Ω p).card := by

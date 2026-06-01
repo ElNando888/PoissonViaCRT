@@ -1011,49 +1011,23 @@ private lemma fourier_fiber_bound (ε : ℝ) (hε : 0 < ε)
 /-- Norm bound on the Fourier expansion sum, used in `deviation_le_divisor_sum`.
 For k=2 (Fin 1), the norm of the sum of DFT products over all frequencies
 is bounded by the divisor sum of decay * localMean * punctured-subgrid. -/
-private lemma fourier_norm_bound (ε : ℝ) (hε : 0 < ε)
+private lemma fourier_norm_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : k = 2)
     (q : ℕ) [NeZero q] (hq_sq : Squarefree q)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
-    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributedFourier ε p (Ω p) 2)
-    (X : Box 1) (s : ℝ) (hs : 0 ≤ s)
-    (hbox : ∀ j : Fin 1, ⌊s * X.sides j⌋₊ < q) :
-    let g : (Fin 1 → ZMod q) → ℂ := fun h =>
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributedFourier ε p (Ω p) k)
+    (hrp : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ))
+    (X : Box (k - 1)) (s : ℝ) (hs : 0 ≤ s)
+    (hbox : ∀ j : Fin (k - 1), ⌊s * X.sides j⌋₊ < q) :
+    let g : (Fin (k - 1) → ZMod q) → ℂ := fun h =>
       (tupleCount (crtSubset q Ω) (Fin.cons 0 h) : ℂ) -
-      ↑(∏ p ∈ q.primeFactors, localMean 2 Ω p)
-    ‖∑ ξ : Fin 1 → ZMod q, dft q 1 g ξ *
-      dft q 1 (boxIndicator q 1 X s) (-ξ)‖ ≤
+      ↑(∏ p ∈ q.primeFactors, localMean k Ω p)
+    ‖∑ ξ : Fin (k - 1) → ZMod q, dft q (k - 1) g ξ *
+      dft q (k - 1) (boxIndicator q (k - 1) X s) (-ξ)‖ ≤
     ∑ d ∈ q.divisors.erase 1,
-      ((↑d) ^ (-ε) * (∏ p ∈ q.primeFactors, localMean 2 Ω p) *
+      ((k : ℝ) ^ d.primeFactors.card * (↑d) ^ (-(1 + ε)) * (∏ p ∈ q.primeFactors, localMean k Ω p) *
        ((↑d) / (↑q) * (Real.log (↑d) + 1))) := by
-  intro g
-  -- Step 1: Triangle inequality + norm_mul
-  refine le_trans (le_trans (norm_sum_le _ _)
-    (Finset.sum_le_sum (fun ξ _ => le_of_eq (norm_mul _ _)))) ?_
-  -- Now goal: ∑ ξ, ‖dft g ξ‖ * ‖dft boxInd (-ξ)‖ ≤ ∑ d ∈ divisors.erase 1, ...
-  -- Step 2: Apply sum_over_divisors to group by freqDivisor
-  set F : (Fin 1 → ZMod q) → ℝ := fun ξ =>
-    ‖dft q 1 g ξ‖ * ‖dft q 1 (boxIndicator q 1 X s) (-ξ)‖ with hF_def
-  set M : ℝ := ∏ p ∈ q.primeFactors, localMean 2 Ω p with hM_def
-  set B : ℕ → ℝ := fun d =>
-    if d = 1 then 0
-    else (d : ℝ) ^ (-ε) * M *
-      ((d : ℝ) / (q : ℝ) * (Real.log (d : ℝ) + 1)) with hB_def
-  -- Step 2a: Bound each fiber (from fourier_fiber_bound)
-  have hfiber : ∀ d : ℕ, d ∣ q →
-      ∑ ξ ∈ Finset.univ.filter (fun ξ => freqDivisor q 1 ξ = d), F ξ ≤ B d :=
-    fourier_fiber_bound ε hε q hq_sq Ω hΩ hWD X s hs hbox
-  -- Step 2b: Apply sum_over_divisors
-  have hgrouped := sum_over_divisors q 1 hq_sq F B hfiber
-  -- Step 3: Convert ∑ d ∈ divisors, B(d) to ∑ d ∈ divisors.erase 1, target
-  refine le_trans hgrouped ?_
-  rw [show ∑ d ∈ q.divisors, B d =
-    ∑ d ∈ q.divisors.erase 1,
-      ((d : ℝ) ^ (-ε) * M * ((d : ℝ) / (q : ℝ) * (Real.log (d : ℝ) + 1))) from by
-    rw [← Finset.add_sum_erase _ _ (Nat.mem_divisors.mpr ⟨one_dvd q, NeZero.ne q⟩)]
-    simp only [hB_def, ite_true, zero_add]
-    exact Finset.sum_congr rfl (fun d hd => by
-      simp only [Finset.mem_erase] at hd; simp [hd.1])]
+  sorry
 
 /-
 **Fourier per-`q` bound via divisor summation.** For a single squarefree `q`
@@ -1076,6 +1050,7 @@ private lemma deviation_le_divisor_sum (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk :
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
     (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributedFourier ε p (Ω p) k)
+    (hrp : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ))
     (X : Box (k - 1))
     (hbox : ∀ j : Fin (k - 1), ⌊(q : ℝ) / (crtSubset q Ω).card * X.sides j⌋₊ < q) :
     let Ω_q := crtSubset q Ω
@@ -1088,74 +1063,9 @@ private lemma deviation_le_divisor_sum (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk :
         (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| ≤
     (1 / (Ω_q.card : ℝ)) * (q : ℝ) ^ (k - 1) *
       ∑ d ∈ q.divisors.erase 1,
-        ((d : ℝ) ^ (-ε) * (∏ p ∈ q.primeFactors, localMean k Ω p) *
+        ((k : ℝ) ^ d.primeFactors.card * (d : ℝ) ^ (-(1 + ε)) * (∏ p ∈ q.primeFactors, localMean k Ω p) *
          ((d : ℝ) / (q : ℝ) * (Real.log (d : ℝ) + 1))) := by
-  -- Architecture: deviation_dft_expansion → triangle ineq → deviation_dft_q1_q2_bound
-  --   → sum_over_divisors → sum_fiber_le_subgrid → dft_interval_punctured_subgrid_bound.
-  -- With k = 2, k - 1 = 1, so the box DFT is 1-dimensional and the punctured
-  -- subgrid bound gives d/q · (log d + 1) without the L/q leading term.
-  subst hk
-  -- Define s explicitly (the let binding in the conclusion is not in scope)
-  set s : ℝ := (q : ℝ) / (crtSubset q Ω).card with hs_def
-  have hs_nonneg : 0 ≤ s := by
-    rw [hs_def]; exact div_nonneg (Nat.cast_nonneg _) (Nat.cast_nonneg _)
-  -- Set up the deviation function in ℂ
-  set g : (Fin 1 → ZMod q) → ℂ := fun h =>
-    (tupleCount (crtSubset q Ω) (Fin.cons 0 h) : ℂ) -
-    ↑(∏ p ∈ q.primeFactors, localMean 2 Ω p) with hg_def
-  -- (a) Fourier expansion
-  have h_fourier := deviation_dft_expansion 2 le_rfl q X s hs_nonneg hbox g
-  -- (b) DFT of g vanishes at 0
-  have h_dft_zero : dft q 1 g 0 = 0 := by
-    unfold dft;
-    simp +zetaDelta at *;
-    convert dft_tupleCount_zero 2 le_rfl q hq_sq Ω using 1;
-    unfold dft; norm_num [ character ] ;
-    rw [ inv_mul_eq_div, div_eq_iff ] <;> norm_cast <;> norm_num [ NeZero.ne ];
-    rw [ sub_eq_zero, mul_comm ]
-  -- (c) DFT coefficient bound (for each nonzero ξ)
-  -- Note: deviation_dft_q1_q2_bound now carries the tight (1 - |Ω|/p) factor;
-  -- we weaken it here to maintain the existing divisor sum chain.
-  have h_dft_bound : ∀ (ξ : Fin 1 → ZMod q), ξ ≠ 0 →
-      ‖dft q 1 g ξ‖ ≤
-        (∏ p ∈ freqSupport q 1 ξ, (p : ℝ) ^ (-ε)) *
-        ∏ p ∈ q.primeFactors, localMean 2 Ω p := by
-    intro ξ hξ
-    have h_tight := deviation_dft_q1_q2_bound 2 le_rfl ε hε q hq_sq Ω
-      (fun p hp => by haveI : Fact p.Prime := ⟨(Nat.mem_primeFactors.mp hp).1⟩; exact hWD p) ξ hξ
-    refine le_trans h_tight (mul_le_mul_of_nonneg_right ?_ (Finset.prod_nonneg fun p _ => by unfold localMean; positivity))
-    refine le_trans (Finset.prod_le_prod
-      (fun p hp => by
-        have hp' := (Nat.mem_primeFactors.mp (freqSupport_subset_primeFactors q 1 ξ hp)).1
-        haveI : Fact p.Prime := ⟨hp'⟩
-        exact mul_nonneg (sub_nonneg.mpr (div_le_one_of_le₀ (by have := Finset.card_le_univ (Ω p); rw [ZMod.card] at this; exact_mod_cast this) (Nat.cast_nonneg _))) (Real.rpow_nonneg (Nat.cast_nonneg _) _))
-      (fun p _ => mul_le_mul_of_nonneg_right (sub_le_self _ (by positivity)) (Real.rpow_nonneg (Nat.cast_nonneg _) _))) ?_
-    simp [one_mul]
-  -- (d) Divisor summation infrastructure
-  have h_sum_div := sum_over_divisors q 1 hq_sq
-  -- (e) Punctured subgrid bound (1D, excluding a = 0)
-  have h_punctured : ∀ (d : ℕ) [NeZero d], d ∣ q →
-      ∑ a ∈ Finset.Icc 1 (d - 1),
-        ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 ⌊s * X.sides 0⌋₊ then (1 : ℂ) else 0)
-          (fun _ => (((a * (q / d) : ℕ) : ZMod q)))‖ ≤
-        (d : ℝ) / q * (Real.log d + 1) :=
-    fun d _ hd => dft_interval_punctured_subgrid_bound q d hd ⌊s * X.sides 0⌋₊
-  -- (f) freqDivisor is invariant under diffMap
-  have h_freq_inv := freqDivisor_diffMap_eq q 1 hq_sq
-  -- Step 1: prod localMean = |Ω|^2/q
-  have h_mean := prod_localMean_eq_mean 2 le_rfl q hq_sq Ω
-  -- Step 2: |Ω| is positive
-  have h_card_pos : (0 : ℝ) < ((crtSubset q Ω).card : ℝ) :=
-    Nat.cast_pos.mpr (crtSubset_card_pos_aux Ω hΩ q)
-  -- Step 3: Apply fourier_norm_bound
-  have h_norm_bound := fourier_norm_bound ε hε q hq_sq Ω hΩ hWD X s hs_nonneg hbox
-  -- Step 4: Connect the real deviation sum to the complex Fourier expansion
-  convert mul_le_mul_of_nonneg_left h_norm_bound ( by positivity : 0 ≤ ( # ( crtSubset q Ω ) : ℝ ) ⁻¹ * q ^ ( 2 - 1 : ℕ ) ) using 1;
-  · convert congr_arg ( fun x : ℂ => |( # ( crtSubset q Ω ) : ℝ ) ⁻¹| * ‖x‖ ) h_fourier using 1;
-    · simp +zetaDelta at *;
-      norm_cast ; aesop;
-    · norm_num [ mul_assoc, hg_def ];
-  · ring
+  sorry
 
 /-- **Uniform divisor-sum bound** (OPEN — see DIVISOR_SUM_ANALYSIS.md).
 
@@ -1197,7 +1107,7 @@ private lemma divisor_sum_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk 
       let s := (q : ℝ) / Ω_q.card
       (1 / (Ω_q.card : ℝ)) * (q : ℝ) ^ (k - 1) *
         ∑ d ∈ q.divisors.erase 1,
-          ((d : ℝ) ^ (-ε) * (∏ p ∈ q.primeFactors, localMean k Ω p) *
+          ((k : ℝ) ^ d.primeFactors.card * (d : ℝ) ^ (-(1 + ε)) * (∏ p ∈ q.primeFactors, localMean k Ω p) *
            ((d : ℝ) / (q : ℝ) * (Real.log (d : ℝ) + 1))) ≤ C * s ^ (-(ε / 2)) := by
   sorry
 
@@ -1236,7 +1146,7 @@ private lemma deviation_fourier_uniform (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk 
     divisor_sum_uniform_bound ε hε k hk Ω hΩ hsp hrp hlt X
   exact ⟨C, hC_pos, fun q inst hq_sq hbox => by
     -- Step 1: Apply the Fourier architecture to bound by a divisor sum
-    have h_step1 := deviation_le_divisor_sum ε hε k hk q hq_sq Ω hΩ hWD X hbox
+    have h_step1 := deviation_le_divisor_sum ε hε k hk q hq_sq Ω hΩ hWD hrp X hbox
     -- Step 2: Apply the uniform divisor-sum bound
     have h_step2 := hC_bound q hq_sq hbox
     exact le_trans h_step1 h_step2⟩
@@ -1372,42 +1282,26 @@ end PoissonCRT
 /-
 PROVIDED SOLUTION
 
+  Note: The aristotlelib command-line tool used to upload this project will have downgraded the project to v4.28.0 automatically.
+  Before doing anything else, you are to replace the project files with the `real_*` ones, which pin to Lean/Mathlib v4.29.0.
+  This is an **absolute requirement**, as `PrimeNumberTheoremAnd` is a required dependency that is currently v4.29.0.
+
 Dear Aristotle,
 
-You were incredibly perceptive to check the $s=1$ case to verify if the constant $K$ can be independent of $q$! You are absolutely right that when $s=1$, the sum includes all nonempty subsets of $q.primeFactors$, and the LHS would diverge if the Euler product diverges.
+We are completely abandoning the Spatial/Gamma Deviation method for now. Do NOT try to close the sorries in `GammaDeviationSynthesis.lean`. Completely ignore them. We only need the main theorem to build for the $k=2$ constellation case, which means the Fourier method is 100% mathematically sufficient!
 
-However, you made a small algebraic error in your head-math when bounding $c_p$.
-You wrote:
-> "Since $c_p = (1 - |\Omega_p|/p) p^{-\epsilon} \mu_p$, for large $p$ this behaves roughly like $k p^{-\epsilon}$ ... the sum $\sum p^{-\epsilon}$ diverges for $\epsilon \le 1$."
+The only reason the Fourier method was stuck was an algebraic oversight: the tight `(1 - |Ω_p|/p)` factor was being dropped. This has already been fixed in `FourierANOVA.lean`, and I have rewritten the signatures of the 4 key lemmas in `MobiusSynthesis.lean` to expect it:
+1. `fourier_fiber_bound`
+2. `fourier_norm_bound`
+3. `deviation_le_divisor_sum`
+4. `divisor_sum_uniform_bound`
 
-By the spacing hypothesis `hrp`, we have $1 - |\Omega_p|/p \le k/p$.
-Thus:
-$c_p \le (k/p) \cdot p^{-\epsilon} \cdot \mu_p = k p^{-1-\epsilon} \mu_p$.
-When you divide out $\mu_p$ (via `prefactor_absorption`), the term inside your Euler product is $k p^{-1-\epsilon}$, NOT $k p^{-\epsilon}$.
-Since $\epsilon > 0$, the sum $\sum p^{-1-\epsilon}$ IS absolutely convergent.
-Therefore, the infinite product $\prod_p (1 + k p^{-1-\epsilon})$ perfectly converges to a finite constant $C(\epsilon, k)$ independent of $q$.
-The lemma IS mathematically true exactly as stated for arbitrary $s \ge 1$.
+Your ONLY task is to close these 4 sorries in `MobiusSynthesis.lean`.
 
-Here is the revised strategy using this insight:
+### How to Prove Them:
+1. **`fourier_fiber_bound`**: When bounding the fiber sum, apply `dft_g_norm_le_decay` which now provides the product `∏_{p|d} (1 - |Ω_p|/p)`. Use the provided hypothesis `hrp` to bound `(1 - |Ω_p|/p) ≤ 2/p`. Since `d` is squarefree, `∏_{p|d} (2/p) = 2^{ω(d)} / d`. Combined with the existing $d^{-ε}$ from the DFT, this gives exactly $2^{ω(d)} d^{-1-ε}$ as specified in the new `B(d)` definition.
+2. **`fourier_norm_bound` & `deviation_le_divisor_sum`**: These are straightforward topological translations of the fiber bound. Just thread the new $2^{ω(d)} d^{-1-ε}$ term through the existing sum structure.
+3. **`divisor_sum_uniform_bound`**: This is the final analytic step. The divisor sum now contains $d^{-1-ε}$, which makes it convergent! Since $\sum d^{-1-ε} 2^{ω(d)} (\log d + 1)$ converges to a constant, the overall sum is bounded by $O(q^{-1})$. Because of the spacing hypothesis $q \le s^{1/\lambda_2}$, $O(q^{-1}) = O(s^{-1/\lambda_2})$. This easily satisfies the target bound of $C s^{-ε/2}$. Use Mathlib's summability tools to bound the divisor sum unconditionally.
 
-### Step 1: Tuple Count and Prefactor Absorption
-- Bound $M_\gamma(H)$ by $(H+1)^{k-1}$.
-- By definition, $H = \lceil s \sum X.sides \rceil \le C \cdot s$. Thus $M_\gamma(H) \le C' \cdot s^{k-1}$.
-- At this point, the $s^{k-1}$ is just a polynomial factor in $s$ that will be handled by the Rankin trick later.
-- You still have the $1/|\Omega_q|$ prefactor. **Notice that you don't need $s = q/|\Omega_q|$ to use `prefactor_absorption`.**
-- The `prefactor_absorption` lemma is stated using $q^{k-1}/|\Omega_q|^k$. Since $s$ is a free parameter, you can algebraically isolate this factor: $1/|\Omega_q| \prod_{q \setminus T} \mu_p = \frac{|\Omega_q|^{k-1}}{q^{k-1}} \prod_T \mu_p^{-1}$.
-- Since $|\Omega_p| \le p$, we have $|\Omega_q|^{k-1}/q^{k-1} \le 1$. Thus, the entire prefactor is strictly bounded by $\prod_T \mu_p^{-1}$.
-
-### Step 2: Bounding the $\gamma$ Sum via Euler Products
-- $\text{perGammaDeviationWeight}(T, \gamma)$ factors multiplicatively. For $p \in T$, if $p \mid \gamma$ it contributes $p$, else $\text{Weil}(p)$.
-- Summing over $\gamma$ limits to a convergent product. You can safely bound the sum by injecting it into an infinite Dirichlet product over primes in $T$.
-
-### Step 3: Combine with `tail_sum_decay`
-- Combining Steps 1 and 2, the per-$T$ term is bounded by $C \cdot s^{k-1} \prod_{p \in T} \frac{p + \text{Weil}(p)}{\text{localMean}(p)}$.
-- As shown above, $\frac{\text{Weil}(p)}{\text{localMean}(p)} \le k p^{-1-\epsilon}$, which is summable.
-- Apply the existing `tail_sum_decay` lemma (with a Rankin shift $\alpha = k - 1 + \epsilon/2$) to absorb the $s^{k-1}$ polynomial growth, leaving exactly $K \cdot s^{-\epsilon/2}$.
-
-Please proceed to implement this proof by creating helper lemmas in `PoissonViaCRT/GammaDeviationSynthesis.lean` corresponding to these steps.
-
-Note: Do NOT downgrade the project to v4.28.0; `lake update PrimeNumberTheoremAnd` has already been run and the environment is perfectly configured on v4.29.0 HEAD.
+Focus all your computational effort strictly on `MobiusSynthesis.lean`. Good luck!
 -/
