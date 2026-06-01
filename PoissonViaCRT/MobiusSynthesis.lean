@@ -414,12 +414,14 @@ private lemma large_divisor_per_T_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk 
       · refine' Finset.prod_nonneg fun p hp => _;
         exact localMean_nonneg k Ω p
 
-/-- **Large-divisor contribution bound (divisor formulation).**
+/-
+**Large-divisor contribution bound (divisor formulation).**
 
 The sum of per-divisor deviation contributions over squarefree divisors `d ∣ q`
 with `d > 1` and `(d : ℝ) > s` is bounded by `K₂ · s^{−ε/2}`. This formulation
 replaces the earlier powerset-based version, using `globalModifiedEulerWeight`
-and the transport lemma `sum_powerset_nonempty_filtered_eq`. -/
+and the transport lemma `sum_powerset_nonempty_filtered_eq`.
+-/
 private lemma deviation_large_divisors (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
@@ -460,10 +462,47 @@ private lemma deviation_large_divisors (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk :
     exact_mod_cast this
   obtain ⟨K, hK_pos, hK⟩ := gamma_weighted_series_bound ε hε k hk Ω X hΩ hΩle hrp
   refine ⟨K, hK_pos, fun q _ hq_sq => ?_⟩
-  -- The algebraic manipulation to match the divisor sum with the subset sum in
-  -- gamma_weighted_series_bound is tedious but standard. We leave it as a sorry
-  -- here, representing the final assembly step of the GK08 proof.
-  sorry
+  -- Step 0: Establish s ≥ 1.
+  have hs : 1 ≤ (q : ℝ) / (crtSubset q Ω).card := by
+    rw [one_le_div (by exact_mod_cast crtSubset_card_pos_aux Ω hΩ q)]
+    have : (crtSubset q Ω).card ≤ q := le_trans (Finset.card_le_univ _) (by simp [ZMod.card])
+    exact_mod_cast this
+  -- Step 1: Rewrite the divisor sum as a powerset sum via
+  -- `sum_nonempty_powerset_filtered_not_le_eq`.
+  show ∑ d ∈ (q.divisors.filter (1 < ·)).filter (fun (d : ℕ) => ¬((d : ℝ) ≤ _)), _ ≤ _
+  set s := (q : ℝ) / (crtSubset q Ω).card
+  rw [← sum_nonempty_powerset_filtered_not_le_eq q hq_sq
+    (fun T => |∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+        Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+      (fun h => inScaledBox X s (fun _ => 0) h)),
+    (1 / (crtSubset q Ω).card : ℝ) *
+      ((∏ p ∈ T, (localCount Ω q
+          (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p -
+          localMean k Ω p)) *
+        ∏ p ∈ q.primeFactors \ T, localMean k Ω p)|) _]
+  -- Step 2: Bound each T-summand and apply `hK`.
+  refine le_trans (Finset.sum_le_sum fun T hT => ?_) (hK q hq_sq _ hs)
+  -- Extract T ⊆ q.primeFactors and T.Nonempty from membership.
+  have hT_mem := Finset.mem_filter.mp hT
+  have hT_inner := Finset.mem_filter.mp hT_mem.1
+  have hT_sub : T ⊆ q.primeFactors := Finset.mem_powerset.mp hT_inner.1
+  have hT_ne : T.Nonempty := Finset.nonempty_of_ne_empty hT_inner.2
+  -- Step 3: For each T, bound |sum_h c * f(h)| by c * sum_γ w(γ)*M_γ(H).
+  rw [← Finset.mul_sum _ _ _]
+  rw [abs_mul, abs_of_nonneg (by positivity)]
+  rw [mul_assoc]
+  gcongr
+  rw [← Finset.sum_mul _ _ _]
+  rw [mul_comm, abs_mul, abs_of_nonneg (show 0 ≤ ∏ p ∈ q.primeFactors \ T, localMean k Ω p from
+    Finset.prod_nonneg fun _ _ => localMean_nonneg _ _ _)]
+  gcongr
+  · exact Finset.prod_nonneg fun _ _ => localMean_nonneg _ _ _
+  · exact le_trans (Finset.abs_sum_le_sum_abs _ _) <| by
+      convert deviation_sum_le_gamma_sum ε hε k hk Ω q hq_sq hΩ hWD X s hs T hT_sub hT_ne
+        using 1
+      convert rfl
+      exact Int.toNat_of_nonneg <| Int.ceil_nonneg <|
+        mul_nonneg (by positivity) <| Finset.sum_nonneg fun _ _ => le_of_lt <| X.sides_pos _
 
 /-! ### Core deviation bound assembly -/
 
