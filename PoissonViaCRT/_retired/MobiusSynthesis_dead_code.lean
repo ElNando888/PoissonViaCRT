@@ -16,6 +16,8 @@ Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 
 
 import PoissonViaCRT.MobiusSynthesis
+import PoissonViaCRT._retired.EulerWeights_dead_code
+import PoissonViaCRT._retired.FourierANOVA_dead_code
 
 set_option linter.unusedVariables false
 
