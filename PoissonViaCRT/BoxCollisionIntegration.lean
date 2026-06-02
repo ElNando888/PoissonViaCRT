@@ -37,7 +37,6 @@ choice functions `σ ∈ U.pi pairsBelow`, and then sequentially bounding each c
 via CRT.
 -/
 
-set_option maxHeartbeats 800000
 
 namespace PoissonCRT
 

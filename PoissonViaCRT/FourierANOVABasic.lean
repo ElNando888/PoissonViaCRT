@@ -546,7 +546,6 @@ $\chi_\xi(x) = \prod_{p \mid q} \chi_{\xi_p}(x_p),$
 where `ξ_p = crtFrequencyEquiv q hq ξ p` is the corrected local frequency and
 `x_p = crtRingEquiv q hq x p` is the CRT projection of `x`.
 -/
-set_option maxHeartbeats 1600000 in
 public lemma additiveChar_crt_split (q : ℕ) [NeZero q] (hq : Squarefree q)
     (ξ x : ZMod q) :
     additiveChar q ξ x =
@@ -586,29 +585,52 @@ public lemma additiveChar_crt_split (q : ℕ) [NeZero q] (hq : Squarefree q)
         haveI := Fact.mk ( Nat.prime_of_mem_primeFactors p.2 ) ; simp +decide [ ← mul_assoc ] ;
       have h_crt : ∀ p ∈ q.primeFactors.attach, (ξ * x).val ≡ ∑ p ∈ q.primeFactors.attach, ((crtFrequencyEquiv q hq ξ p) * (crtRingEquiv q hq x p)).val * (q / p : ℕ) [MOD p] := by
         intro p hp
-        have h_crt : ∑ p ∈ q.primeFactors.attach, ((crtFrequencyEquiv q hq ξ p) * (crtRingEquiv q hq x p)).val * (q / p : ℕ) ≡ ((crtFrequencyEquiv q hq ξ p) * (crtRingEquiv q hq x p)).val * (q / p : ℕ) [MOD p] := by
-          simp +decide [ ← ZMod.natCast_eq_natCast_iff ];
-          rw [ Finset.sum_eq_single p ] <;> simp_all +decide [ Nat.ModEq ];
-          intro a ha ha' ha'' ha'''; have := Nat.dvd_div_of_mul_dvd ( show a * p.val ∣ q from Nat.Coprime.mul_dvd_of_dvd_of_dvd ( by have := Nat.coprime_primes ha ( Nat.prime_of_mem_primeFactors p.2 ) ; aesop ) ha' ( Nat.dvd_of_mem_primeFactors p.2 ) ) ; simp_all +decide [ Nat.dvd_iff_mod_eq_zero ] ;
-          simp_all +decide [ ← ZMod.val_natCast, Nat.dvd_iff_mod_eq_zero ];
-        exact Eq.trans ( by solve_by_elim ) h_crt.symm;
+        have h_crt_sum : ∑ p_1 ∈ q.primeFactors.attach, ((crtFrequencyEquiv q hq ξ p_1) * (crtRingEquiv q hq x p_1)).val * (q / p_1 : ℕ) ≡ ((crtFrequencyEquiv q hq ξ p) * (crtRingEquiv q hq x p)).val * (q / p : ℕ) [MOD p] := by
+          rw [ ← ZMod.natCast_eq_natCast_iff, Nat.cast_sum ]
+          rw [ Finset.sum_eq_single p ]
+          · intro a _ ha_ne
+            have h_coprime : Nat.Coprime a.val p.val := Nat.coprime_primes (Nat.prime_of_mem_primeFactors a.2) (Nat.prime_of_mem_primeFactors p.2) |>.mpr (Subtype.coe_injective.ne ha_ne)
+            have h_mul_dvd : a.val * p.val ∣ q := Nat.Coprime.mul_dvd_of_dvd_of_dvd h_coprime (Nat.dvd_of_mem_primeFactors a.2) (Nat.dvd_of_mem_primeFactors p.2)
+            have h_dvd_div : p.val ∣ q / a.val := Nat.dvd_div_of_mul_dvd h_mul_dvd
+            have h_zero : (q / a.val : ZMod p.val) = 0 := (ZMod.natCast_eq_zero_iff (q / a.val) p.val).mpr h_dvd_div
+            simp [ h_zero ]
+          · exact fun hp_not_mem => (hp_not_mem hp).elim
+        exact Eq.trans ( by solve_by_elim ) h_crt_sum.symm;
       rw [ Nat.modEq_iff_dvd ] at *;
       have h_crt : (∏ p ∈ q.primeFactors.attach, (p : ℤ)) ∣ (∑ p ∈ q.primeFactors.attach, ((crtFrequencyEquiv q hq ξ p) * (crtRingEquiv q hq x p)).val * (q / p : ℕ)) - (ξ * x).val := by
         convert Finset.prod_dvd_of_coprime _ _;
         · intros p hp q hq hpq; exact (by
           have := Nat.coprime_primes ( Nat.prime_of_mem_primeFactors p.2 ) ( Nat.prime_of_mem_primeFactors q.2 ) ; aesop;);
         · exact fun p hp => by simpa using h_crt p hp |> Nat.ModEq.dvd;
-      convert h_crt using 1;
-      rw [ ← Nat.cast_prod ] ; norm_cast ; rw [ ← Nat.prod_primeFactors_of_squarefree hq ] ;
-      refine' Finset.prod_bij ( fun p hp => ⟨ p, _ ⟩ ) _ _ _ _ <;> simp_all +decide [ Nat.primeFactors_prod ];
+      have h_prod_eq_q : (∏ p ∈ q.primeFactors.attach, (p : ℤ)) = (q : ℤ) := by
+        rw [ ← Nat.cast_prod ] ; norm_cast
+        exact (Finset.prod_attach _ _).trans (Nat.prod_primeFactors_of_squarefree hq)
+      rw [ h_prod_eq_q ] at h_crt
+      exact h_crt
     obtain ⟨ k, hk ⟩ := h_crt.symm.dvd;
     use k;
-    simp_all +decide [ ← @Int.cast_inj ℂ ];
-    rw [ div_sub', eq_div_iff ] <;> norm_cast at * <;> simp_all +decide [ NeZero.ne ];
-    convert hk.symm using 1 ; ring;
-    rw [ Finset.mul_sum _ _ _ ] ; refine' congr_arg _ ( Finset.sum_congr rfl fun p hp => _ ) ; rw [ Nat.cast_div ( Nat.dvd_of_mem_primeFactors p.2 ) ( Nat.cast_ne_zero.mpr <| Nat.ne_of_gt <| Nat.pos_of_mem_primeFactors p.2 ) ] ; ring;
-  obtain ⟨ n, hn ⟩ := h_exp; simp_all +decide [ Complex.exp_eq_exp_iff_exists_int, mul_div_assoc, mul_assoc, mul_comm, mul_left_comm ] ;
-  exact ⟨ n, by rw [ hn ] ; simp [ Finset.mul_sum _ _ _, mul_sub, mul_comm ] ⟩
+    have h_calc : (q : ℂ) * (((ξ * x).val : ℂ) / (q : ℂ) - ∑ p ∈ q.primeFactors.attach, (((crtFrequencyEquiv q hq ξ p) * (crtRingEquiv q hq x p)).val : ℂ) / (p : ℂ)) = (q : ℂ) * (k : ℂ) := by
+      calc
+        (q : ℂ) * (((ξ * x).val : ℂ) / (q : ℂ) - ∑ p ∈ q.primeFactors.attach, (((crtFrequencyEquiv q hq ξ p) * (crtRingEquiv q hq x p)).val : ℂ) / (p : ℂ))
+          = (q : ℂ) * (((ξ * x).val : ℂ) / (q : ℂ)) - (q : ℂ) * ∑ p ∈ q.primeFactors.attach, (((crtFrequencyEquiv q hq ξ p) * (crtRingEquiv q hq x p)).val : ℂ) / (p : ℂ) := by ring
+        _ = ((ξ * x).val : ℂ) - ∑ p ∈ q.primeFactors.attach, (((crtFrequencyEquiv q hq ξ p) * (crtRingEquiv q hq x p)).val : ℂ) * (q / p : ℕ) := by
+          rw [ mul_div_cancel₀ _ (Nat.cast_ne_zero.mpr (NeZero.ne q)) ]
+          rw [ Finset.mul_sum ]
+          congr 1
+          apply Finset.sum_congr rfl
+          intro p hp
+          rw [ Nat.cast_div ( Nat.dvd_of_mem_primeFactors p.2 ) ( Nat.cast_ne_zero.mpr <| Nat.ne_of_gt <| Nat.pos_of_mem_primeFactors p.2 ) ]
+          ring
+        _ = (q : ℂ) * (k : ℂ) := by exact_mod_cast hk
+    have h_final := mul_left_cancel₀ (Nat.cast_ne_zero.mpr (NeZero.ne q) : (q : ℂ) ≠ 0) h_calc.symm
+    rw [ ZMod.cast_eq_val (ξ * x) ]
+    exact_mod_cast h_final
+  obtain ⟨ n, hn ⟩ := h_exp;
+  rw [ Complex.exp_eq_exp_iff_exists_int ]
+  refine ⟨ n, ?_ ⟩;
+  change (n : ℂ) = _ at hn; rw [ hn ]
+  rw [ sub_mul, Finset.sum_mul _ _ (2 * ↑Real.pi * I) ]
+  ring_nf
 
 /-! ### Fourier synthesis helper lemmas -/
 
@@ -785,7 +807,6 @@ Step 1: Change variables from cumulative h to differences d.
 The map `h → d` where `d_j = h_j - h_{j-1}` is a bijection from
 `inScaledBox` lattice points to the product interval `∏_j {1,...,⌊s*b_j⌋}`.
 -/
-set_option maxHeartbeats 800000 in
 public lemma inScaledBox_sum_eq_diff_sum (k : ℕ) (hk : 2 ≤ k)
     (q : ℕ) [NeZero q] (X : Box (k - 1)) (s : ℝ) (hs : 0 ≤ s)
     (f : (Fin (k - 1) → ℤ) → ℂ) :
@@ -794,11 +815,11 @@ public lemma inScaledBox_sum_eq_diff_sum (k : ℕ) (hk : 2 ≤ k)
       f h =
     ∑ d ∈ Fintype.piFinset (fun j : Fin (k - 1) => Finset.Icc 1 ⌊s * X.sides j⌋),
       f (fun j => ∑ i ∈ Finset.Iic j, d i) := by
-  apply Finset.sum_bij (fun h _ => fun j => h j - if j.val = 0 then 0 else h ⟨j.val - 1, by omega⟩) _ _ _ _ <;> simp_all +decide [Finset.mem_filter];
-  · intro a ha hX a_3; specialize hX a_3; split_ifs at * <;> simp_all +decide ;
+  apply Finset.sum_bij (fun h _ => fun j => h j - if j.val = 0 then 0 else h ⟨j.val - 1, by omega⟩) _ _ _ _ <;> simp [Finset.mem_filter]
+  · intro a _ hX a_3; specialize hX a_3; split_ifs at * <;> simp_all +decide ;
     · exact Int.le_floor.2 hX.2;
     · exact ⟨ by linarith, Int.le_of_lt_add_one <| by rw [ ← @Int.cast_lt ℝ ] ; push_cast; linarith [ Int.lt_floor_add_one ( s * X.sides a_3 ) ] ⟩;
-  · intro a₁ ha₁ ha₂ a₂ ha₃ ha₄ h; ext j; induction' j with j ih; simp_all +decide [ funext_iff ] ;
+  · intro a₁ _ ha₂ a₂ _ ha₄ h; ext j; induction' j with j ih; simp_all +decide [ funext_iff ] ;
     induction' j with j ih <;> simp_all +decide [ Fin.forall_iff ];
     · simpa using h 0 ih;
     · grind;
@@ -824,7 +845,7 @@ public lemma inScaledBox_sum_eq_diff_sum (k : ℕ) (hk : 2 ≤ k)
       · rw [ show ( Iic ⟨ 0, hj ⟩ : Finset ( Fin ( k - 1 ) ) ) = { ⟨ 0, hj ⟩ } by ext ⟨ i, hi ⟩ ; aesop ] ; norm_num;
       · rw [ show ( Iic ⟨ j + 1, hj ⟩ : Finset ( Fin ( k - 1 ) ) ) = Iic ⟨ j, by omega ⟩ ∪ { ⟨ j + 1, hj ⟩ } from ?_, Finset.sum_union ] <;> norm_num [ Finset.sum_singleton, Finset.mem_Iic ];
         ext ⟨ i, hi ⟩ ; simp +decide [le_iff_lt_or_eq] ; omega;
-  · intro a ha h; congr; ext j; rw [ show ( ∑ x ∈ Iic j, a x ) = ∑ x ∈ Iic j, ( if x.val = 0 then 0 else a ⟨ x.val - 1, by omega ⟩ ) + a j from ?_ ] ; ring;
+  · intro a _ _; congr; ext j; rw [ show ( ∑ x ∈ Iic j, a x ) = ∑ x ∈ Iic j, ( if x.val = 0 then 0 else a ⟨ x.val - 1, by omega ⟩ ) + a j from ?_ ] ; ring;
     induction' j with j ih;
     induction' j with j ih <;> simp_all +decide [Finset.sum_ite];
     · rw [ show ( Iic ⟨ 0, ih ⟩ : Finset ( Fin ( k - 1 ) ) ) = { ⟨ 0, ih ⟩ } by ext ⟨ x, hx ⟩ ; aesop ] ; aesop;
