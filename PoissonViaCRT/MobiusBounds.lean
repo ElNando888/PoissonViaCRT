@@ -57,12 +57,6 @@ positive integer, the partial sum over squarefree divisors of `q` is bounded by 
 full series, giving a `q`-independent constant.
 -/
 
-/-- The p-series exponent for `k ≥ 3` exceeds 1. -/
-public lemma pseries_exponent_gt_one {k : ℕ} (hk : 3 ≤ k) {ε : ℝ} (hε : 0 < ε) :
-    1 < (k : ℝ) - 2 + ε := by
-  have : (k : ℝ) ≥ 3 := by exact_mod_cast hk
-  linarith
-
 /-
 **Convergence for `k ≥ 3`**: For any positive modulus `q`, the sum of `d^{-(k-2+ε)}`
 over squarefree divisors of `q` is bounded by the tsum of the p-series, which is a
@@ -92,18 +86,6 @@ uniformly bounded by the convergent p-series.
 /-- The critical exponent `λ₂ = (√17 - 3) / 2` from §3.2. -/
 @[expose]
 public noncomputable def lambda2 : ℝ := (Real.sqrt 17 - 3) / 2
-
-/-
-`λ₂` is positive.
--/
-public lemma lambda2_pos : 0 < lambda2 := by
-  exact div_pos ( sub_pos.mpr ( Real.lt_sqrt_of_sq_lt ( by norm_num ) ) ) ( by norm_num )
-
-/-
-`λ₂ < 1`.
--/
-public lemma lambda2_lt_one : lambda2 < 1 := by
-  exact div_lt_one ( by norm_num ) |>.2 ( by nlinarith [ Real.sqrt_nonneg 17, Real.sq_sqrt ( show 0 ≤ 17 by norm_num ) ] )
 
 /-
 **Critical exponent bound for `k = 2`**: When the effective exponent `α` exceeds 1

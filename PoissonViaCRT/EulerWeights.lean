@@ -165,11 +165,6 @@ lemma prod_one_add_le_exp_sum (S : Finset ℕ) (f : ℕ → ℝ)
   exact Finset.prod_le_prod (fun _ _ => add_nonneg zero_le_one (hf _ ‹_›))
     fun _ _ => by rw [add_comm]; exact Real.add_one_le_exp _
 
-/-- All elements of `q.primeFactors` are prime. -/
-public lemma primeFactors_subset_prime (q : ℕ) (T : Finset ℕ)
-    (hT : T ⊆ q.primeFactors) (p : ℕ) (hp : p ∈ T) : p.Prime :=
-  Nat.prime_of_mem_primeFactors (hT hp)
-
 /-
 For `T ⊆ q.primeFactors` and squarefree `q`, the product `∏ p ∈ T, p`
 is a divisor of `q`.
@@ -224,20 +219,6 @@ public lemma sum_powerset_eq_sum_divisors (q : ℕ) (hq : Squarefree q) (f : ℕ
         exact fun h => Nat.not_prime_zero ( hT.2 _ h );
       exact h_prime_factors fun p hp => Nat.prime_of_mem_primeFactors <| Finset.mem_powerset.mp hT hp
     rw [h_prime_factors]
-
-/-
-Variant of `sum_powerset_eq_sum_divisors` restricted to nonempty subsets
-(equivalently, nontrivial divisors `1 < d`).
--/
-public lemma sum_powerset_nonempty_eq_sum_divisors_gt_one (q : ℕ) (hq : Squarefree q) (f : ℕ → ℝ) :
-    ∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅), ∏ p ∈ T, f p =
-      ∑ d ∈ nontrivDivisors q, ∏ p ∈ d.primeFactors, f p := by
-  convert congr_arg ( fun x : ℝ => x - 1 ) ( sum_powerset_eq_sum_divisors q hq ( fun p => f p ) ) using 1;
-  · simp +decide [ Finset.filter_ne' ];
-  · rw [ Finset.sum_eq_add_sum_diff_singleton 1 _ (fun h => absurd (Nat.one_mem_divisors.mpr (Squarefree.ne_zero hq)) h) ];
-    rw [ show q.divisors \ { 1 } = Finset.filter ( fun x => 1 < x ) q.divisors from ?_ ];
-    · norm_num +zetaDelta at *;
-    · ext ( _ | _ | x ) <;> simp +arith +decide
 
 /-
 For a nonempty subset `T` of primes, `∏ p ∈ T, (p : ℝ) = ((∏ p ∈ T, p : ℕ) : ℝ)`,
@@ -459,92 +440,6 @@ public lemma modifiedEulerWeight_le (ε : ℝ) (hε : 0 < ε) (hε2 : ε ≤ 1) 
     positivity
   rw [add_mul]
   exact add_le_add h1 h2
-
-/-- **Modified Tail-sum decay.**
-The sum over nonempty subsets `T ⊆ q.primeFactors` with `∏ T > s` of the
-modified Euler weight decays as `O(s^{−ε/2})`. -/
-public lemma modified_tail_sum_decay (ε : ℝ) (hε : 0 < ε) (hε2 : ε ≤ 1) (k : ℕ) (hk : 2 ≤ k)
-    (C_gamma : ℝ) (hC_gamma : 0 ≤ C_gamma)
-    (Ω : ∀ p : ℕ, Finset (ZMod p))
-    (hrp : ∀ p, p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ)) :
-    ∃ K : ℝ, 0 < K ∧ ∀ (q : ℕ) (_ : NeZero q) (_ : Squarefree q) (s : ℝ) (_ : 1 ≤ s),
-      ∑ d ∈ (nontrivDivisors q).filter (fun (d : ℕ) => ¬((d : ℝ) ≤ s)),
-        ∏ p ∈ d.primeFactors, modifiedEulerWeight ε k C_gamma Ω p ≤
-        K * s ^ (-(ε / 2)) := by
-  refine ⟨Real.exp ((k + (k : ℝ)^2 * C_gamma) * ∑' n : ℕ, (n : ℝ) ^ (-(1 + ε / 2))), ?_, ?_⟩
-  · positivity
-  · intro q hq hq_sf s hs
-    -- Transport: rewrite divisor sum as powerset sum
-    rw [show ∑ d ∈ (nontrivDivisors q).filter (fun (d : ℕ) => ¬((d : ℝ) ≤ s)),
-          ∏ p ∈ d.primeFactors, modifiedEulerWeight ε k C_gamma Ω p =
-        ∑ T ∈ (q.primeFactors.powerset.filter (· ≠ ∅)).filter
-              (fun (T : Finset ℕ) => ¬((∏ p ∈ T, (p : ℝ)) ≤ s)),
-          ∏ p ∈ T, modifiedEulerWeight ε k C_gamma Ω p from
-      (sum_nonempty_powerset_filtered_not_le_eq q hq_sf
-        (fun T => ∏ p ∈ T, modifiedEulerWeight ε k C_gamma Ω p) s).symm]
-    -- Now prove the powerset bound
-    have h_rankin : ∑ T ∈ (q.primeFactors.powerset.filter
-        (fun (T : Finset ℕ) => ¬(∏ p ∈ T, (p : ℝ) ≤ s))),
-        ∏ p ∈ T, modifiedEulerWeight ε k C_gamma Ω p ≤
-        s ^ (-(ε / 2)) * ∏ p ∈ q.primeFactors,
-          (1 + modifiedEulerWeight ε k C_gamma Ω p * (p : ℝ) ^ (ε / 2)) := by
-      convert rankin_powerset_bound q.primeFactors
-        (fun p => modifiedEulerWeight ε k C_gamma Ω p) _ s (by positivity) (ε / 2)
-        (by positivity) using 1
-      exact fun p hp => modifiedEulerWeight_nonneg ε k C_gamma hC_gamma Ω p (Nat.prime_of_mem_primeFactors hp)
-    have h_exp : ∏ p ∈ q.primeFactors,
-        (1 + modifiedEulerWeight ε k C_gamma Ω p * (p : ℝ) ^ (ε / 2)) ≤
-        Real.exp (∑ p ∈ q.primeFactors,
-          modifiedEulerWeight ε k C_gamma Ω p * (p : ℝ) ^ (ε / 2)) := by
-      convert prod_one_add_le_exp_sum q.primeFactors _ _ using 1
-      exact fun p hp => mul_nonneg
-        (modifiedEulerWeight_nonneg ε k C_gamma hC_gamma Ω p (Nat.prime_of_mem_primeFactors hp))
-        (Real.rpow_nonneg (Nat.cast_nonneg _) _)
-    have h_combined : ∑ p ∈ q.primeFactors,
-        modifiedEulerWeight ε k C_gamma Ω p * (p : ℝ) ^ (ε / 2) ≤
-        (k + (k : ℝ)^2 * C_gamma) * ∑' n : ℕ, (n : ℝ) ^ (-(1 + ε / 2)) := by
-      have h_combined : ∑ p ∈ q.primeFactors,
-          modifiedEulerWeight ε k C_gamma Ω p * (p : ℝ) ^ (ε / 2) ≤
-          ∑ p ∈ q.primeFactors, (k + (k : ℝ)^2 * C_gamma) * (p : ℝ) ^ (-(1 + ε / 2)) := by
-        apply Finset.sum_le_sum
-        intro p hp
-        have hp_pos : 0 < (p : ℝ) := Nat.cast_pos.mpr (Nat.pos_of_mem_primeFactors hp)
-        calc modifiedEulerWeight ε k C_gamma Ω p * (p : ℝ) ^ (ε / 2)
-          _ ≤ ((k + (k : ℝ)^2 * C_gamma) * (p : ℝ) ^ (-(1 + ε))) * (p : ℝ) ^ (ε / 2) := mul_le_mul_of_nonneg_right (modifiedEulerWeight_le ε hε hε2 k C_gamma hC_gamma Ω hrp p (Nat.prime_of_mem_primeFactors hp)) (Real.rpow_nonneg hp_pos.le (ε / 2))
-          _ = (k + (k : ℝ)^2 * C_gamma) * ((p : ℝ) ^ (-(1 + ε)) * (p : ℝ) ^ (ε / 2)) := by ring
-          _ = (k + (k : ℝ)^2 * C_gamma) * (p : ℝ) ^ (-(1 + ε) + ε / 2) := by rw [← Real.rpow_add hp_pos]
-          _ = (k + (k : ℝ)^2 * C_gamma) * (p : ℝ) ^ (-(1 + ε / 2)) := by congr 2; ring
-      refine le_trans h_combined ?_
-      rw [← Finset.mul_sum _ _ _]
-      exact mul_le_mul_of_nonneg_left
-        (Summable.sum_le_tsum (q.primeFactors)
-          (fun _ _ => Real.rpow_nonneg (Nat.cast_nonneg _) _)
-          (by exact Real.summable_nat_rpow.2 (by linarith)))
-        (by positivity)
-    refine le_trans ?_ (h_rankin.trans ?_)
-    · refine Finset.sum_le_sum_of_subset_of_nonneg ?_ ?_ <;> grind
-    · rw [mul_comm]; gcongr
-      exact h_exp.trans (Real.exp_le_exp.mpr h_combined)
-
-/-! ## Global Euler Weights and Divisor-Sum Reformulation
-
-This section bundles the local Euler weights into global multiplicative
-weight functions on natural numbers, and provides transport lemmas that
-reformulate powerset sums as sums over squarefree divisors of `q`.
-
-The key bridge is `sqfreeNatOrderIso` from
-`PoissonViaCRT.Utils.SqfreeNatOrderIso`, which witnesses the
-order-isomorphism between `SquarefreeNat` and `Finset Nat.Primes`.
--/
-
-/-- **Global combined Euler weight.** For a natural number `d`, the product of
-local `combinedEulerWeight` values over its prime factors. When `d` is a
-squarefree divisor of `q`, this equals `∏ p ∈ T, combinedEulerWeight ε k Ω p`
-for the subset `T = d.primeFactors` of `q.primeFactors`. -/
-@[expose]
-public noncomputable def globalCombinedEulerWeight (ε : ℝ) (k : ℕ)
-    (Ω : ∀ p : ℕ, Finset (ZMod p)) (d : ℕ) : ℝ :=
-  ∏ p ∈ d.primeFactors, combinedEulerWeight ε k Ω p
 
 /-- **Global modified Euler weight.** For a natural number `d`, the product of
 local `modifiedEulerWeight` values over its prime factors. -/

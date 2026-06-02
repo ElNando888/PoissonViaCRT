@@ -64,17 +64,6 @@ public lemma prod_primes_squarefree (T : Finset ℕ) (q : ℕ) [NeZero q]
 
 /-! ## Lower bound: gammaProdOfBoxPoint ≥ 1 -/
 
-/-- `Nat.gcd c d > 0` when `c > 0`. -/
-lemma gcd_pos_of_pos_left' (c d : ℕ) (hc : 0 < c) : 0 < Nat.gcd c d :=
-  Nat.pos_of_ne_zero (by intro h; simp [Nat.gcd_eq_zero_iff] at h; omega)
-
-/-- The lcm of values over a finset is positive when all values are positive. -/
-lemma lcm_pos_of_pos {ι : Type*} (S : Finset ι) (f : ι → ℕ)
-    (hf : ∀ i ∈ S, 0 < f i) : 0 < S.lcm f := by
-  by_cases h : S.lcm f = 0
-  · simp_all +decide [ Finset.lcm_eq_zero_iff ]; grind
-  · exact Nat.pos_of_ne_zero h
-
 /-- `gammaProdOfBoxPoint T h ≥ 1` for nonempty T of primes. -/
 public lemma gammaProdOfBoxPoint_pos {n : ℕ}
     (T : Finset ℕ) (hT_ne : T.Nonempty)

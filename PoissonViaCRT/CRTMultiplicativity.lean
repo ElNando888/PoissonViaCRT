@@ -130,24 +130,6 @@ public noncomputable def crt_domain_equiv (q : ℕ) [NeZero q] (hq : Squarefree 
 
 /-! ### Counting function multiplicativity -/
 
-/-- The tuple counting function condition, transferred through the CRT equivalence:
-`∀ i, t + h i ∈ crtSubset q Ω` iff the projected condition holds componentwise. -/
-public theorem tupleCount_filter_iff (q : ℕ) [NeZero q] (hq : Squarefree q)
-    {k : ℕ} (Ω : ∀ p : ℕ, Finset (ZMod p)) (h : Fin k → ZMod q)
-    (t : ZMod q) :
-    (∀ i, t + h i ∈ crtSubset q Ω) ↔
-      ∀ p : q.primeFactors, ∀ i,
-        crtRingEquiv q hq t p +
-          crtRingEquiv q hq (h i) p ∈ Ω p := by
-  simp only [mem_crtSubset_iff_crtEquiv q hq]
-  constructor
-  · intro ht p i
-    have := ht i p
-    rwa [map_add] at this
-  · intro ht i p
-    rw [map_add]
-    exact ht p i
-
 /-- **CRT multiplicativity of the counting function**: For squarefree `q`, the counting
 function `N_k(h, Ω_q)` factors as a product over the prime divisors of `q`:
 

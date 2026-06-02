@@ -152,31 +152,6 @@ of the exponent `λ₂ = (√17 - 3)/2` and standard bounds on the divisor funct
 -/
 
 /-
-**Convergence for k ≥ 3**: The p-series `∑ d^{-(k-2+ε)}` converges when
-`k ≥ 3` and `ε > 0`, as the exponent `k - 2 + ε ≥ 1 + ε > 1`.
-
-Apply Real.summable_nat_rpow_inv.mpr. Need to show 1 < (k : ℝ) - 2 + ε. Since k ≥ 3 (cast to ℝ), we have (k:ℝ) - 2 ≥ 1, so (k:ℝ) - 2 + ε ≥ 1 + ε > 1. Use linarith with the cast.
--/
-theorem divisor_sum_convergence_k_ge_3 {k : ℕ} (hk : 3 ≤ k) (ε : ℝ) (hε : 0 < ε) :
-    Summable (fun n : ℕ => ((n : ℝ) ^ ((k : ℝ) - 2 + ε))⁻¹) := by
-  exact Real.summable_nat_rpow_inv.mpr ( by linarith [ show ( k : ℝ ) ≥ 3 by norm_cast ] )
-
-/-
-**Convergence for k = 2 (critical exponent)**: For `k = 2`, the divisor sum
-convergence requires the exponent `α` to exceed 1. The paper's critical exponent
-`λ₂ = (√17 - 3)/2 ≈ 0.56` combined with the spacing bound `s ≤ p^{λ₂ - ε}`
-ensures an effective exponent `> 1` after accounting for the divisor function bound.
-
-This lemma captures the general summability criterion used in both the `k = 2`
-and `k ≥ 3` regimes.
-
-Directly apply Real.summable_nat_rpow_inv.mpr hα.
--/
-theorem divisor_sum_convergence_k_eq_2 (α : ℝ) (hα : 1 < α) :
-    Summable (fun n : ℕ => ((n : ℝ) ^ α)⁻¹) := by
-  exact Real.summable_nat_rpow_inv.2 hα
-
-/-
 **Unified convergence (divisor_sum_convergence)**: The divisor power series
 `∑ d^{-(k-2+ε)}` converges whenever the exponent `(k : ℝ) - 2 + ε` exceeds 1.
 For `k ≥ 3`, this holds automatically for any `ε > 0`.

@@ -94,7 +94,7 @@ private lemma pairsBelow_nonempty (m : ℕ) (hm : 1 ≤ m) : (pairsBelow m).None
 The number of integers in `[1, S]` satisfying simultaneous divisibility conditions
 by distinct primes is at most `(S / ∏ primes + 1).toNat`. Combines CRT with interval counting.
 -/
-private lemma card_filter_coprime_dvd_le (S : ℤ) (hS : 0 ≤ S)
+lemma card_filter_coprime_dvd_le (S : ℤ) (hS : 0 ≤ S)
     (U : Finset ℕ) (hprime : ∀ p ∈ U, Nat.Prime p)
     (c : ℕ → ℤ) :
     ((Finset.Icc 1 S).filter (fun x => ∀ p ∈ U, (p : ℤ) ∣ (x - c p))).card ≤
@@ -111,36 +111,9 @@ private lemma card_filter_coprime_dvd_le (S : ℤ) (hS : 0 ≤ S)
   exact fun _ _ => ⟨ fun hx => hA.2 x hx, fun hx => fun p hp => by simpa using dvd_trans ( Finset.dvd_prod_of_mem _ hp ) hx |> fun h => by simpa using dvd_add h ( hA.1 p hp ) ⟩
 
 /-
-The collision sum is bounded by the number of box elements (trivial bound, each
-product factor is at most 1).
--/
-private lemma collision_sum_le_card_box (m : ℕ) (X : Box m) (s : ℝ)
-    (U : Finset ℕ) :
-    ∑ h ∈ ((Fintype.piFinset fun _ => Finset.Icc (1:ℤ) ⌈s * ∑ i, X.sides i⌉).filter
-        (fun h => inScaledBox X s (fun _ => 0) h)),
-      (∏ p ∈ U, if Function.Injective (Fin.cons (0 : ZMod p) (fun i => (h i : ZMod p)))
-       then (0:ℝ) else 1)
-    ≤ ((Fintype.piFinset fun _ : Fin m => Finset.Icc (1:ℤ) ⌈s * ∑ i, X.sides i⌉).filter
-        (fun h => inScaledBox X s (fun _ => 0) h)).card := by
-  refine' le_trans ( Finset.sum_le_sum fun x hx => _ ) _;
-  use fun x => 1;
-  · exact Finset.prod_le_one ( fun _ _ => by split_ifs <;> norm_num ) fun _ _ => by split_ifs <;> norm_num;
-  · norm_num [ Finset.sum_const ]
-
-/-
-The scaled box has at most `⌈s * ∑ sides⌉ ^ m` lattice points.
-## Currently unused -/
-private lemma card_box_le_pow (m : ℕ) (X : Box m) (s : ℝ) (hs : 1 ≤ s) :
-    ((Fintype.piFinset fun _ : Fin m => Finset.Icc (1:ℤ) ⌈s * ∑ i, X.sides i⌉).filter
-        (fun h => inScaledBox X s (fun _ => 0) h)).card
-    ≤ (⌈s * ∑ i, X.sides i⌉).toNat ^ m := by
-  convert Finset.card_le_card ( Finset.filter_subset _ _ ) using 1;
-  erw [ Fintype.card_piFinset ] ; norm_num
-
-/-
 For `h ∈ validHForSigma`, each coordinate `h k` lies in `[1, S]`.
 -/
-private lemma validHForSigma_coord_mem_Icc (m : ℕ) (X : Box m) (s : ℝ) (U : Finset ℕ)
+lemma validHForSigma_coord_mem_Icc (m : ℕ) (X : Box m) (s : ℝ) (U : Finset ℕ)
     (σ : ∀ p ∈ U, Fin (m + 1) × Fin (m + 1))
     (h : Fin m → ℤ) (hh : h ∈ validHForSigma m X s U σ) (k : Fin m) :
     1 ≤ h k ∧ h k ≤ ⌈s * ∑ i, X.sides i⌉ := by
@@ -166,7 +139,7 @@ For `h ∈ validHForSigma` agreeing with `h_prefix` on `< k`,
 the divisibility condition at coordinate `k` reduces to a congruence condition
 on `h k` modulo the relevant primes.
 -/
-private lemma validHForSigma_divisibility_at_coord (m : ℕ) (X : Box m) (s : ℝ)
+lemma validHForSigma_divisibility_at_coord (m : ℕ) (X : Box m) (s : ℝ)
     (U : Finset ℕ) (_hp_prime : ∀ p ∈ U, p.Prime)
     (σ : ∀ p ∈ U, Fin (m + 1) × Fin (m + 1))
     (h_sigma : ∀ p (hp_mem : p ∈ U), (σ p hp_mem) ∈ pairsBelow m)
@@ -314,38 +287,6 @@ private lemma collision_sum_main_bound (m : ℕ) (hm : 1 ≤ m) (X : Box m) (s :
   ring
 
 /-! ## Main results -/
-
-/-- The sequential cardinality bound for a fixed choice function `σ`.
-**Corrected statement**: the per-coordinate bound is `⌊N / M_k⌋ + 1` instead of `2 * ⌊N / M_k⌋`,
-which is the maximum number of integers in a congruence class within an interval.
-## Currently unused -/
-lemma validHForSigma_card_le (m : ℕ) (X : Box m) (s : ℝ) (hs : 1 ≤ s)
-    (U : Finset ℕ) (hp_prime : ∀ p ∈ U, p.Prime)
-    (σ : ∀ p ∈ U, Fin (m + 1) × Fin (m + 1))
-    (h_sigma : ∀ p (hp_mem : p ∈ U), (σ p hp_mem) ∈ pairsBelow m) :
-    (validHForSigma m X s U σ).card ≤
-      ∏ j : Fin m, (⌈s * ∑ i, X.sides i⌉ / ∏ p ∈ U.filter (fun p =>
-        ∃ hp_mem : p ∈ U, (σ p hp_mem).2 = j.succ), (p:ℤ) + 1).toNat := by
-  set S := ⌈s * ∑ i, X.sides i⌉ with hS_def
-  have hS_nn : (0 : ℤ) ≤ S := Int.ceil_nonneg (mul_nonneg (by linarith) (Finset.sum_nonneg
-    fun _ _ => le_of_lt (X.sides_pos _)))
-  apply LatticeCounting.seq_bound_nat
-  intro k h_prefix
-  -- Define the target c for the CRT counting
-  set U_k := U.filter (fun p => ∃ hp_mem : p ∈ U, (σ p hp_mem).2 = k.succ) with hU_k_def
-  have hU_k_prime : ∀ p ∈ U_k, p.Prime := fun p hp => hp_prime p (Finset.mem_filter.mp hp).1
-  -- Define target residues
-  let c : ℕ → ℤ := fun p => if hp : p ∈ U then extendH m h_prefix (σ p hp).1 else 0
-  -- Bound the image by the filtered interval
-  apply le_trans (Finset.card_le_card _) (card_filter_coprime_dvd_le S hS_nn U_k hU_k_prime c)
-  -- Prove the image is contained in the filtered interval
-  intro x hx
-  simp only [Finset.mem_image, Finset.mem_filter] at hx
-  obtain ⟨h, ⟨hh_valid, hh_agree⟩, rfl⟩ := hx
-  simp only [Finset.mem_filter, Finset.mem_Icc]
-  exact ⟨validHForSigma_coord_mem_Icc m X s U σ h hh_valid k,
-    validHForSigma_divisibility_at_coord m X s U hp_prime σ h_sigma k h_prefix h hh_valid
-      hh_agree c rfl⟩
 
 /-- The full collision sum bound, including the error term for large U (following GK). -/
 public lemma box_collision_sum_bound (m : ℕ) (hm : 1 ≤ m) (X : Box m) :

@@ -153,25 +153,6 @@ def IsPoissonDistributed
     Filter.Tendsto (fun n => kCorrelation (Ω n) X) Filter.atTop
       (nhds X.volume)
 
-/-- Poisson distribution with parameter `θ` (§2): The spacings become Poisson with
-parameter `θ_n` if `R_k(θ_n X, Ω_{q_n}) → vol(θ_n X)` for all `k` and boxes `X`.
-
-"Poisson with parameter 1" is the same as "Poisson". In fact, Poisson with any bounded
-parameter is the same as Poisson (remark in §2). -/
-def IsPoissonWithParam
-    (Q : ℕ → ℕ) [∀ n, NeZero (Q n)]
-    (Ω : ∀ n, Finset (ZMod (Q n)))
-    (θ : ℕ → ℝ) (hθ : ∀ n, 0 < θ n) : Prop :=
-  ∀ (k : ℕ) (_ : 2 ≤ k) (X : Box (k - 1)),
-    Filter.Tendsto
-      (fun m => kCorrelation (Ω m)
-        ⟨fun i => θ m * X.sides i, fun i => mul_pos (hθ m) (X.sides_pos i)⟩ -
-        (∏ i, θ m * X.sides i))
-      Filter.atTop
-      (nhds 0)
-
-/-! ### Section 3.1: Gamma structures for counting congruence solutions -/
-
 /-- The radical of a natural number: the product of its distinct prime factors. -/
 @[expose]
 public def radical (n : ℕ) : ℕ :=
@@ -313,18 +294,6 @@ public def WellDistributed (ε : ℝ) (p : ℕ) [Fact p.Prime] (Ω : Finset (ZMo
   (∑ r : Fin (k - 1) → ZMod p,
     |(tupleCount Ω (Fin.cons 0 r) : ℝ) - (Ω.card : ℝ) ^ k / (p : ℝ) ^ (k - 1)|
     ≤ (p : ℝ) ^ (k - 1) * (1 - Ω.card / p : ℝ) * (p : ℝ) ^ (-ε) * ((Ω.card : ℝ) ^ k / (p : ℝ) ^ (k - 1)))
-
-/-- The function `w(τ) = (τ - 1/2)² / 2 + k - 9/8` from Corollary 3.4. -/
-noncomputable def wFunction (k : ℕ) (τ : ℝ) : ℝ :=
-  (τ - 1/2) ^ 2 / 2 + k - 9/8
-
-/-- The function `v(τ)` from §3.2:
-`v(0) = k - 2`, `v(τ₁) = k + 1/2 - √(2k + 1/4)`, `v(τ) = k - τ` for `τ₁ + 1 ≤ τ ≤ k - 1`. -/
-noncomputable def vFunction (k : ℕ) (τ : ℕ) : ℝ :=
-  let τ₁ := ⌊Real.sqrt (2 * k + 1/4) - 1/2⌋₊
-  if τ = 0 then k - 2
-  else if τ = τ₁ then k + 1/2 - Real.sqrt (2 * k + 1/4)
-  else k - τ
 
 /-- The critical exponent `λ_k = min_τ (k-1-v(τ))/w(τ)` from §3.2.
 For `k ≥ 4`, `λ_k = 1/(k-1)`.-/

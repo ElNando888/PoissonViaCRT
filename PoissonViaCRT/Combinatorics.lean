@@ -93,16 +93,6 @@ theorem stirlingSecond_le_choose_pow_aux :
       · simp_all +decide [ Nat.stirlingSecond_eq_zero_of_lt ];
         simp_all +arith +decide [ Nat.stirlingSecond_self ]
 
-/-- For n ≥ 2 and 1 ≤ d ≤ n-1, S(n, n-d) ≤ C(n, 2)^d -/
-theorem stirlingSecond_le_choose_pow (n d : ℕ) (hn : 2 ≤ n) (hd1 : 1 ≤ d) (hd2 : d ≤ n - 1) :
-    stirlingSecond n (n - d) ≤ (n.choose 2) ^ d := by
-  have hdn : d ≤ n := by omega
-  have hm : 1 ≤ n - d := by omega
-  have := stirlingSecond_le_choose_pow_aux d (n - d) hd1 hm
-  rwa [Nat.sub_add_cancel hdn] at this
-
-/-! ### Permutation of Gamma structures -/
-
 /-- Apply a permutation `σ` of `{0, …, k-1}` to a Gamma
 structure. The permuted structure has
 `γ^(σ)_{i,j} = γ_{σ(i), σ(j)}`. -/
@@ -689,17 +679,6 @@ lemma card_set_pairwise_dvd_le {m : ℕ} (hm : 0 < m)
       have := hdvd x hx y hy; aesop
 
 -- See docs/proof_sketches.md for full proof sketch.
-lemma gamma_dvd_of_gcd_eq {Γ : GammaStructure k}
-    {h : Fin k → ℤ} {i j : Fin k} (_hij : i ≠ j)
-    (hgcd : Nat.gcd Γ.sqfreepart
-      (Int.natAbs (h j - h i)) = Γ.gamma i j) :
-    (Γ.gamma i j : ℤ) ∣ (h j - h i) :=
-  Int.dvd_trans
-    (Int.natCast_dvd_natCast.mpr
-      (hgcd ▸ Nat.gcd_dvd_right _ _))
-    (by simp)
-
--- See docs/proof_sketches.md for full proof sketch.
 lemma gammaRow_dvd_diff_of_valid
     {Γ : GammaStructure (k + 1)}
     {h h' : Fin (k + 1) → ℤ}
@@ -875,32 +854,6 @@ theorem countTuples_bound_prop
       rw [le_div_iff₀ (Γ.gammaRow_cast_pos i.succ)]
       exact_mod_cast Nat.div_mul_le_self H
         (Γ.gammaRow i.succ)
-
-/-- **Corollary to Proposition 3.2** (weaker but
-unconditional bound): `M_Γ(H) ≤ (2H + 1)^k`. Each coordinate
-(after fixing `h₀ = 0`) has at most `H + 1` choices. -/
-theorem countTuples_bound
-    (Γ : GammaStructure (k + 1)) (H : ℕ) :
-    countTuplesWithGamma Γ H ≤ (2 * H + 1) ^ k := by
-  refine' le_trans _
-    (pow_le_pow_left'
-      (show 2 * H + 1 ≥ H + 1 by linarith) _)
-  refine' le_trans (Finset.card_le_card _) _
-  exact Finset.image
-    (fun h : Fin k → ℤ => Fin.cons 0 h)
-    (Fintype.piFinset
-      fun _ : Fin k => Finset.Icc 0 (H : ℤ))
-  · intro h hh
-    simp_all +decide [Fin.forall_fin_succ]
-    exact ⟨fun i => h i.succ, fun i => hh.1.2 i,
-      by ext i
-         cases i using Fin.inductionOn <;> aesop⟩
-  · rw [Finset.card_image_of_injective] <;>
-      norm_num [Function.Injective]
-
-/-! ### Corollary 3.3: Bounds from Proposition 3.2 -/
-
--- See docs/proof_sketches.md for full proof sketch.
 public theorem countTuples_bound_small_gamma
     (Γ : GammaStructure (k + 1)) (H : ℕ)
     (hsmall : ∀ i : Fin k,
@@ -953,145 +906,5 @@ public theorem countTuples_bound_small_gamma
     · rw [mul_pow]
   · exact Nat.cast_pos.mpr
       (GammaStructure.gammaProd_pos Γ)
-
-/-
-See docs/proof_sketches.md for full proof sketch.
--/
-theorem countTuples_bound_large_gamma
-    (Γ : GammaStructure (k + 1)) (H : ℕ)
-    (hlarge : ∃ i : Fin k,
-      H ≤ Γ.gammaRow i.succ) :
-    (countTuplesWithGamma Γ H : ℝ) ≤
-      2 ^ k * (H : ℝ) ^ (k - 1) := by
-  rcases hlarge with ⟨ i, hi ⟩;
-  by_cases hH : H = 0;
-  · rcases k with ( _ | _ | k ) <;> simp_all +decide [ countTuplesWithGamma ];
-    exact fun h => absurd ( h 0 1 ) ( by simp +decide );
-  · -- Applying the bound from countTuples_bound_prop, we get:
-    have h_bound : (countTuplesWithGamma Γ H : ℝ) ≤ ∏ j : Fin k, ((H : ℝ) / (Γ.gammaRow j.succ) + 1) := by
-      convert countTuples_bound_prop Γ H using 1;
-    -- Since $H \leq \Gamma.gammaRow i.succ$, we have $\frac{H}{\Gamma.gammaRow i.succ} \leq 1$, thus $\frac{H}{\Gamma.gammaRow i.succ} + 1 \leq 2$.
-    have h_term_bound : ∀ j : Fin k, ((H : ℝ) / (Γ.gammaRow j.succ) + 1) ≤ if j = i then 2 else (H : ℝ) + 1 := by
-      intro j; split_ifs <;> simp_all +decide ;
-      · linarith [ show ( H : ℝ ) / Γ.gammaRow i.succ ≤ 1 by rw [ div_le_iff₀ ( Nat.cast_pos.mpr <| Nat.pos_of_ne_zero <| by aesop ) ] ; norm_cast; linarith ];
-      · exact div_le_self ( Nat.cast_nonneg _ ) ( mod_cast Γ.gammaRow_pos _ );
-    refine le_trans h_bound <| le_trans ( Finset.prod_le_prod ?_ fun j _ => h_term_bound j ) ?_ <;> norm_num [ Finset.prod_ite, Finset.filter_eq', Finset.filter_ne' ];
-    · exact fun _ => by positivity;
-    · rcases k with ( _ | _ | k ) <;> norm_num [ pow_succ' ] at *;
-      · exact Fin.elim0 i;
-      · norm_cast ; ring_nf;
-        rcases H with ( _ | _ | H ) <;> norm_num at *;
-        · linarith;
-        · ring_nf;
-          norm_num [ mul_assoc, ← mul_pow ];
-          nlinarith [ pow_pos ( by linarith : 0 < 3 + H ) k, pow_le_pow_left' ( by linarith : 3 + H ≤ 2 * ( 2 + H ) ) k ]
-
-/-! ### Inequality (3.3): Greedy reordering bound -/
-
--- See docs/proof_sketches.md for full proof sketch.
-theorem gammaRow_succ_bound
-    (Γ : GammaStructure (k + 2)) (r : Fin (k + 1))
-    (H : ℕ)
-    (hH : ∀ i j : Fin (k + 2), i ≠ j →
-      Γ.gamma i j ≤ H) :
-    Γ.gammaRow r.castSucc ≤
-      H * Γ.gammaRow r.castSucc := by
-  have hH_pos : 1 ≤ H :=
-    le_trans
-      (pos_of_gt (Γ.pos 0 1 (by norm_num)))
-      (hH 0 1 (by norm_num))
-  exact le_mul_of_one_le_left
-    (Nat.zero_le _) hH_pos
-
-/-! ### Corollary 3.4: Full refined bound -/
-
--- See docs/proof_sketches.md for full proof sketch.
-theorem countTuples_refined_bound (γ H : ℕ)
-    (hH : 0 < H) (hγ : 0 < γ) :
-    (countTuplesWithGammaProd k γ H : ℝ) ≤
-      (2 ^ (k + 1).choose 2) ^ γ.primeFactors.card *
-        (2 * (H : ℝ) + 1) ^ k := by
-  by_cases hk : k = 0
-  · subst hk; norm_num
-    by_cases h : γ.primeFactors = ∅ <;>
-      simp_all +decide [countTuplesWithGammaProd]
-    · cases h <;>
-        simp_all +decide
-      refine' le_trans
-        (Set.ncard_le_ncard <|
-          show { h : Fin 1 → ℤ |
-            h 0 = 0 ∧ (0 ≤ h 0 ∧ h 0 ≤ H) ∧
-            ∃ Γ : GammaStructure 1,
-              Γ.gammaProd = 1 } ⊆ { 0 }
-          from _) _ <;>
-        norm_num [Set.subset_def]
-      exact fun x hx₁ hx₂ hx₃ Γ hΓ =>
-        funext fun i => by fin_cases i; exact hx₁
-    · have h_empty :
-          ∀ h : Fin 1 → ℤ, h 0 = 0 →
-            (∃ Γ : GammaStructure 1,
-              Γ.gammaProd = γ) → False := by
-        rintro h hh ⟨Γ, rfl⟩
-        simp_all +decide [Fin.eq_zero,
-          GammaStructure.gammaProd]
-        exact h.2 (by
-          rw [show Γ.gammaRow 0 = 1 from by
-            unfold GammaStructure.gammaRow; aesop])
-      rw [show { h : Fin 1 → ℤ |
-          h 0 = 0 ∧ (0 ≤ h 0 ∧ h 0 ≤ H) ∧
-          ∃ Γ : GammaStructure 1,
-            Γ.gammaProd = γ } = ∅ from by
-        rw [Set.eq_empty_iff_forall_notMem]
-        rintro h ⟨hh₁, hh₂, hh₃⟩
-        exact h_empty h hh₁ hh₃]
-      norm_num
-  · refine' le_trans _
-      (le_mul_of_one_le_left (by positivity) _)
-    · have h_finite :
-          { h : Fin (k + 1) → ℤ |
-            h 0 = 0 ∧
-            (∀ i, 0 ≤ h i ∧ h i ≤ H)
-          }.ncard ≤ (H + 1) ^ k := by
-        rw [show { h : Fin (k + 1) → ℤ |
-            h 0 = 0 ∧ ∀ i : Fin (k + 1),
-              0 ≤ h i ∧ h i ≤ ↑H } =
-          (Set.image
-            (fun t : Fin k → ℤ => Fin.cons 0 t)
-            (Set.Icc (0 : Fin k → ℤ)
-              (fun _ => ↑H)))
-          from ?_]
-        · rw [Set.ncard_image_of_injective,
-            Set.ncard_eq_toFinset_card'] <;>
-            norm_num [Function.Injective]
-          erw [Finset.card_map,
-            Finset.card_pi]
-          norm_num
-        · ext h; simp
-          exact ⟨fun ⟨h₀, h₁⟩ =>
-            ⟨fun i => h i.succ,
-              ⟨fun i => h₁ _ |>.1,
-               fun i => h₁ _ |>.2⟩,
-              by ext i
-                 cases i using Fin.inductionOn <;>
-                   aesop⟩, by
-            rintro ⟨x, ⟨hx₀, hx₁⟩, rfl⟩
-            exact ⟨rfl, fun i => by
-              cases i using Fin.inductionOn <;>
-                aesop⟩⟩
-      have h_subset :
-          countTuplesWithGammaProd k γ H ≤
-            Set.ncard { h : Fin (k + 1) → ℤ |
-              h 0 = 0 ∧
-              (∀ i, 0 ≤ h i ∧ h i ≤ H) } := by
-        apply Set.ncard_le_ncard
-        · exact fun x hx => ⟨hx.1, hx.2.2.1⟩
-        · exact Set.Finite.subset
-            (Set.finite_Icc _ _) fun x hx =>
-            ⟨fun i => hx.2 i |>.1,
-             fun i => hx.2 i |>.2⟩
-      exact_mod_cast h_subset.trans
-        (h_finite.trans (by gcongr; linarith))
-    · exact one_le_pow₀ (mod_cast
-        Nat.one_le_two_pow)
 
 end PoissonCRT

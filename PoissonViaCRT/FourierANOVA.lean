@@ -188,18 +188,6 @@ public lemma dft_tupleCount_zero (k : ℕ) (hk : 2 ≤ k)
   simp_all +decide [ character ];
   rw [ ← mul_assoc, inv_mul_cancel₀ ( pow_ne_zero _ ( Nat.cast_ne_zero.mpr <| NeZero.ne q ) ), one_mul ]
 
-/-
-The DFT of a constant function at `ξ ≠ 0` vanishes.
-This follows from character orthogonality.
--/
-public lemma dft_const_nonzero (q : ℕ) [NeZero q] (m : ℕ) (c : ℂ)
-    (ξ : Fin m → ZMod q) (hξ : ξ ≠ 0) :
-    dft q m (fun _ => c) ξ = 0 := by
-  unfold dft;
-  have := character_orthogonality q m ξ 0; simp_all +decide [ Finset.mul_sum _ _ _, mul_left_comm ] ;
-  convert congr_arg ( fun x : ℂ => c * ( ( q ^ m : ℂ ) ⁻¹ * starRingEnd ℂ x ) ) this using 1 ; simp +decide [ Finset.mul_sum _ _ _, character ] ; ring_nf;
-  norm_num
-
 lemma dft_tupleCount_norm_le_localMean (k : ℕ) (hk : 2 ≤ k) (ε : ℝ) (hε : 0 < ε)
     (p : ℕ) [hp : Fact p.Prime] (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hwd : WellDistributedFourier ε p (Ω p) k)
@@ -229,58 +217,6 @@ lemma dft_tupleCount_norm_le_decay (k : ℕ) (hk : 2 ≤ k) (ε : ℝ) (hε : 0 
   have := hwd ξ hξ
   unfold localMean
   exact this
-
-/-- Weaker version of `dft_tupleCount_norm_le_decay` that drops the `(1 - |Ω|/p)` factor. -/
-lemma dft_tupleCount_norm_le_decay_weak (k : ℕ) (hk : 2 ≤ k) (ε : ℝ) (hε : 0 < ε)
-    (p : ℕ) [hp : Fact p.Prime] (Ω : ∀ p : ℕ, Finset (ZMod p))
-    (hwd : WellDistributedFourier ε p (Ω p) k)
-    (ξ : Fin (k - 1) → ZMod p) (hξ : ξ ≠ 0) :
-    ‖dft p (k - 1) (fun h => (tupleCount (Ω p) (Fin.cons 0 h) : ℂ)) ξ‖ ≤
-      (p : ℝ) ^ (-ε) * localMean k Ω p := by
-  have h := dft_tupleCount_norm_le_decay k hk ε hε p Ω hwd ξ hξ
-  have h1 : (1 - (Ω p).card / (p : ℝ)) ≤ 1 := sub_le_self _ (by positivity)
-  have h2 : (0 : ℝ) ≤ (p : ℝ) ^ (-ε) := Real.rpow_nonneg (Nat.cast_nonneg p) (-ε)
-  have h3 : (0 : ℝ) ≤ localMean k Ω p := by unfold localMean; positivity
-  nlinarith [mul_nonneg h2 h3]
-
-/-! ### Fourier synthesis: the uniform deviation bound -/
-
-public lemma deviation_dft_prod_bound (k : ℕ) (hk : 2 ≤ k) (ε : ℝ) (hε : 0 < ε)
-    (q : ℕ) [NeZero q] (hq : Squarefree q)
-    (Ω : ∀ p : ℕ, Finset (ZMod p))
-    (hwd : ∀ p, (hp : p ∈ q.primeFactors) → haveI : Fact p.Prime :=
-      ⟨(Nat.mem_primeFactors.mp hp).1⟩;
-      WellDistributedFourier ε p (Ω p) k)
-    (ξ : Fin (k - 1) → ZMod q) :
-    ‖dft q (k - 1) (fun h => (tupleCount (crtSubset q Ω) (Fin.cons 0 h) : ℂ) -
-      ↑(∏ p ∈ q.primeFactors, localMean k Ω p)) ξ‖ ≤
-      ∏ p ∈ q.primeFactors, localMean k Ω p := by
-  by_cases hξ : ξ = 0;
-  · -- By definition of $dft$, we know that
-    have h_dft_zero : dft q (k - 1) (fun h => (tupleCount (crtSubset q Ω) (Fin.cons 0 h) : ℂ) - (∏ p ∈ q.primeFactors, localMean k Ω p) : (Fin (k - 1) → ZMod q) → ℂ) 0 = 0 := by
-      have h_dft_zero : dft q (k - 1) (fun h => (tupleCount (crtSubset q Ω) (Fin.cons 0 h) : ℂ)) 0 = (∏ p ∈ q.primeFactors, localMean k Ω p) := by
-        convert dft_tupleCount_zero k hk q hq Ω using 1;
-      convert congr_arg ( fun x : ℂ => x - dft q ( k - 1 ) ( fun _ => ( ∏ p ∈ q.primeFactors, localMean k Ω p : ℂ ) ) 0 ) h_dft_zero using 1;
-      · unfold dft; norm_num [ Finset.sum_sub_distrib, sub_mul ] ;
-        rw [ mul_sub ];
-      · unfold dft; norm_num [ Finset.card_univ ] ;
-        unfold character; norm_num [ Finset.card_univ ] ;
-        rw [ ← mul_assoc, inv_mul_cancel₀ ( pow_ne_zero _ ( NeZero.ne _ ) ), one_mul, sub_self ];
-    rw [ hξ, h_dft_zero ];
-    exact le_trans ( by norm_num ) ( Finset.prod_nonneg fun p hp => div_nonneg ( pow_nonneg ( Nat.cast_nonneg _ ) _ ) ( pow_nonneg ( Nat.cast_nonneg _ ) _ ) );
-  · -- By linearity of the DFT, we have:
-    have h_dft_linear : dft q (k - 1) (fun h => (tupleCount (crtSubset q Ω) (Fin.cons 0 h) : ℂ) - (∏ p ∈ q.primeFactors, localMean k Ω p)) ξ = dft q (k - 1) (fun h => (tupleCount (crtSubset q Ω) (Fin.cons 0 h) : ℂ)) ξ := by
-      unfold dft; simp +decide [ *, Finset.sum_sub_distrib, sub_mul ] ;
-      rw [ ← Finset.mul_sum _ _ _, show ∑ x : Fin ( k - 1 ) → ZMod q, ( starRingEnd ℂ ) ( character q ( k - 1 ) ξ x ) = 0 from ?_ ] ; aesop;
-      convert congr_arg ( fun x : ℂ => starRingEnd ℂ x ) ( character_orthogonality q ( k - 1 ) ξ 0 ) using 1 <;> norm_num [ character ];
-      aesop;
-    rw [ h_dft_linear, dft_crt_factorization q hq Ω k hk ξ ];
-    rw [ norm_prod ];
-    refine' le_trans ( Finset.prod_le_prod _ fun p hp => _ ) _;
-    use fun p => localMean k Ω p;
-    · exact fun _ _ => norm_nonneg _;
-    · convert dft_tupleCount_norm_le_localMean k hk ε hε p ( Ω ) ( hwd p p.2 ) _ using 1;
-    · conv_rhs => rw [ ← Finset.prod_attach ] ;
 
 /-- The support of a frequency ξ modulo q is the set of prime factors p of q where ξ mod p ≠ 0. -/
 @[expose]
@@ -393,7 +329,7 @@ private lemma geom_partial_sum_norm_le {z : ℂ} (hz : ‖z‖ = 1) (hz1 : z ≠
 The sum `∑_{j=1}^{q-1} 1/(q |sin(π j / q)|)` is at most `log(q) + 1`.
 -/
 set_option maxHeartbeats 800000 in
-private lemma sum_inv_sin_le_log_add_one (q : ℕ) (hq : 1 ≤ q) :
+lemma sum_inv_sin_le_log_add_one (q : ℕ) (hq : 1 ≤ q) :
     ∑ j ∈ Finset.Icc 1 (q - 1), (1 / ((q : ℝ) * |Real.sin (Real.pi * (j : ℝ) / q)|)) ≤
       Real.log q + 1 := by
   -- Pair terms j and q-j. The sum over j=1 to q-1 of 1/(q|sin(πj/q)|) equals ∑_{j=1}^{⌊q/2⌋} (1/(q|sin(πj/q)|) + 1/(q|sin(π(q-j)/q)|)) plus possibly a middle term.
@@ -449,7 +385,7 @@ private lemma sum_inv_sin_le_log_add_one (q : ℕ) (hq : 1 ≤ q) :
 /-
 At frequency `ξ = 0`, the DFT of the interval indicator has norm at most `1`.
 -/
-private lemma dft_interval_norm_at_zero (q : ℕ) [NeZero q] (L : ℕ) :
+lemma dft_interval_norm_at_zero (q : ℕ) [NeZero q] (L : ℕ) :
     ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 L then (1 : ℂ) else 0)
       (fun _ => (0 : ZMod q))‖ ≤ 1 := by
   unfold dft;
@@ -527,7 +463,7 @@ private lemma norm_one_sub_star_additiveChar (q : ℕ) [NeZero q] (ξ : ZMod q) 
 At frequency `ξ ≠ 0`, the DFT of the interval indicator has norm at most
     `1 / (q * |sin(π ξ / q)|)`.
 -/
-private lemma dft_interval_norm_at_nonzero (q : ℕ) [NeZero q] (L : ℕ)
+lemma dft_interval_norm_at_nonzero (q : ℕ) [NeZero q] (L : ℕ)
     (ξ : ZMod q) (hξ : ξ ≠ 0) :
     ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 L then (1 : ℂ) else 0)
       (fun _ => ξ)‖ ≤
@@ -560,33 +496,12 @@ private lemma dft_interval_norm_at_nonzero (q : ℕ) [NeZero q] (L : ℕ)
 /-
 The sum over `ZMod q` of the pointwise norm bound matches `sum_inv_sin_le_log_add_one`.
 -/
-private lemma sum_dft_bound_le_log_add_two (q : ℕ) [NeZero q] :
+lemma sum_dft_bound_le_log_add_two (q : ℕ) [NeZero q] :
     1 + ∑ j ∈ Finset.Icc 1 (q - 1),
       (1 / ((q : ℝ) * |Real.sin (Real.pi * (j : ℝ) / q)|)) ≤
       Real.log q + 2 := by
   convert add_le_add_left ( sum_inv_sin_le_log_add_one q ( NeZero.pos q ) ) ( 1 : ℝ ) using 1 ; ring;
   ring
-
-public lemma dft_interval_l1_bound (q : ℕ) [NeZero q] (L : ℕ) :
-    ∑ ξ : ZMod q, ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 L then (1 : ℂ) else 0) (fun _ => ξ)‖ ≤
-      Real.log (q : ℝ) + 2 := by
-  have h_split : ∑ ξ : ZMod q, ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 L then (1 : ℂ) else 0) (fun _ => ξ)‖ = 1 * ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 L then (1 : ℂ) else 0) (fun _ => 0)‖ + ∑ j ∈ Finset.Icc 1 (q - 1), ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 L then (1 : ℂ) else 0) (fun _ => (j : ZMod q))‖ := by
-    -- The sum over all ξ in ZMod q can be split into the sum over 0 and the sum over the non-zero elements.
-    have h_split : ∑ ξ : ZMod q, ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 L then (1 : ℂ) else 0) (fun _ => ξ)‖ = ∑ ξ ∈ Finset.image (fun j : ℕ => (j : ZMod q)) (Finset.Icc 0 (q - 1)), ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 L then (1 : ℂ) else 0) (fun _ => ξ)‖ := by
-      rw [ show ( Finset.image ( fun j : ℕ => ( j : ZMod q ) ) ( Finset.Icc 0 ( q - 1 ) ) ) = Finset.univ from ?_ ];
-      ext x
-      simp [Finset.mem_image];
-      exact ⟨ x.val, Nat.le_sub_one_of_lt x.val_lt, by simp +decide ⟩;
-    rw [ h_split, Finset.sum_image ];
-    · erw [ Finset.sum_Ico_eq_sub _ _, Finset.sum_Ico_eq_sub _ _ ] <;> norm_num;
-    · intro a ha b hb; simp_all +decide [ ZMod.natCast_eq_natCast_iff' ] ;
-      exact fun h => Nat.mod_eq_of_lt ( lt_of_le_of_lt ha ( Nat.pred_lt ( NeZero.ne q ) ) ) ▸ Nat.mod_eq_of_lt ( lt_of_le_of_lt hb ( Nat.pred_lt ( NeZero.ne q ) ) ) ▸ h;
-  have h_bound : ∑ j ∈ Finset.Icc 1 (q - 1), ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 L then (1 : ℂ) else 0) (fun _ => (j : ZMod q))‖ ≤ ∑ j ∈ Finset.Icc 1 (q - 1), (1 / ((q : ℝ) * |Real.sin (Real.pi * (j : ℝ) / q)|)) := by
-    gcongr;
-    convert dft_interval_norm_at_nonzero q L ( ↑‹ℕ› : ZMod q ) _ using 1;
-    · erw [ ZMod.val_cast_of_lt ] ; linarith [ Finset.mem_Icc.mp ‹_›, Nat.sub_add_cancel ( NeZero.pos q ) ];
-    · rw [ Ne.eq_def, ZMod.natCast_eq_zero_iff ] ; exact Nat.not_dvd_of_pos_of_lt ( by linarith [ Finset.mem_Icc.mp ‹_› ] ) ( by linarith [ Finset.mem_Icc.mp ‹_›, Nat.sub_add_cancel ( NeZero.pos q ) ] );
-  linarith [ sum_dft_bound_le_log_add_two q, dft_interval_norm_at_zero q L ]
 
 /-
 At frequency `ξ = 0`, the DFT of the interval indicator has norm at most `L / q`.
@@ -609,7 +524,7 @@ private lemma dft_interval_norm_at_zero_tight (q : ℕ) [NeZero q] (L : ℕ) :
 /-
 For nonzero `a : ZMod d` with `d ∣ q`, the frequency `a.val * (q / d)` is nonzero in `ZMod q`.
 -/
-private lemma subgrid_freq_ne_zero (q d : ℕ) [NeZero q] [NeZero d] (hd : d ∣ q)
+lemma subgrid_freq_ne_zero (q d : ℕ) [NeZero q] [NeZero d] (hd : d ∣ q)
     (a : ZMod d) (ha : a ≠ 0) :
     ((a.val * (q / d) : ℕ) : ZMod q) ≠ 0 := by
       -- By definition of modular arithmetic, � multiplying� by a coprime number preserves the non-zero property.
@@ -695,79 +610,6 @@ public lemma dft_interval_subgrid_bound (q d : ℕ) [NeZero q] [NeZero d] (hd : 
       simp +decide [ mul_assoc, mul_comm, mul_left_comm, Finset.mul_sum _ _ _, NeZero.ne ];
   linarith [ show ( d : ℝ ) / q ≤ 1 by rw [ div_le_iff₀ ] <;> norm_cast <;> linarith [ Nat.pos_of_ne_zero ( NeZero.ne q ), Nat.pos_of_ne_zero ( NeZero.ne d ), Nat.le_of_dvd ( NeZero.pos q ) hd ] ]
 
-/-
-**Punctured subgrid bound.** The sum of the 1D interval DFT norms over the
-non-zero frequencies in a subgrid. This is the second half of the split in
-`dft_interval_subgrid_bound`, excluding the `a = 0` term.
--/
-public lemma dft_interval_punctured_subgrid_bound (q d : ℕ) [NeZero q] [NeZero d]
-    (hd : d ∣ q) (L : ℕ) :
-    ∑ a ∈ Finset.Icc 1 (d - 1),
-      ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 L then (1 : ℂ) else 0)
-        (fun _ => (((a * (q / d) : ℕ) : ZMod q)))‖ ≤
-      (d : ℝ) / q * (Real.log d + 1) := by
-  -- Apply the bound from `dft_interval_norm_at_nonzero` and `subgrid_sin_eq`.
-  have h_bound : ∀ a ∈ Finset.Icc 1 (d - 1), ‖dft q 1 (fun x => if (x 0).val ∈ Icc 1 L then (1 : ℂ) else 0) (fun _ => ((a * (q / d) : ℕ) : ZMod q))‖ ≤ 1 / ((q : ℝ) * |Real.sin (Real.pi * (a : ℝ) / d)|) := by
-    intro a ha
-    have h_nonzero : ((a * (q / d) : ℕ) : ZMod q) ≠ 0 := by
-      have := subgrid_freq_ne_zero q d hd ( a : ZMod d ) ?_ <;> simp_all +decide [ ZMod.natCast_eq_zero_iff ];
-      · rwa [ Nat.mod_eq_of_lt ( show a < d from lt_of_le_of_lt ha.2 ( Nat.pred_lt ( NeZero.ne d ) ) ) ] at this;
-      · exact Nat.not_dvd_of_pos_of_lt ha.1 ( lt_of_le_of_lt ha.2 ( Nat.pred_lt ( NeZero.ne d ) ) )
-    have h_sin_eq : |Real.sin (Real.pi * ((a * (q / d) : ℕ) : ℝ) / q)| = |Real.sin (Real.pi * (a : ℝ) / d)| := by
-      simp +decide [ mul_assoc, mul_comm, mul_left_comm, NeZero.ne, div_eq_mul_inv, hd ]
-    have h_bound : ‖dft q 1 (fun x => if (x 0).val ∈ Icc 1 L then (1 : ℂ) else 0) (fun _ => ((a * (q / d) : ℕ) : ZMod q))‖ ≤ 1 / ((q : ℝ) * |Real.sin (Real.pi * (a : ℝ) / d)|) := by
-      convert dft_interval_norm_at_nonzero q L _ _ using 1;
-      · convert rfl using 3;
-        norm_num [ ZMod.val_mul, Nat.mod_eq_of_lt ( show a * ( q / d ) < q from _ ) ];
-        rw [ Nat.mod_eq_of_lt ( by nlinarith [ Finset.mem_Icc.mp ha, Nat.sub_add_cancel ( show 1 ≤ d from NeZero.pos d ), Nat.div_mul_cancel hd, Nat.sub_add_cancel ( show 1 ≤ q from NeZero.pos q ) ] ) ] ; norm_cast;
-      · convert h_nonzero using 1
-    exact h_bound;
-  refine le_trans ( Finset.sum_le_sum h_bound ) ?_;
-  have := sum_inv_sin_le_log_add_one d ( NeZero.pos d ) ; simp_all +decide [ div_eq_mul_inv, mul_assoc, mul_comm, mul_left_comm ] ;
-  simp_all +decide [ ← Finset.mul_sum _ _ _ ];
-  exact mul_le_mul_of_nonneg_left ( by rw [ inv_mul_le_iff₀ ( Nat.cast_pos.mpr <| NeZero.pos d ) ] at this; linarith ) <| by positivity;
-
-/-
-Generalization to the (k-1)-dimensional box DFT over a subgrid of frequencies.
-The box indicator `boxIndicator` factors as a product of 1D indicators, so its DFT
-factors as a product of 1D DFTs (`dft_boxIndicator_eq_prod`). The sum over the product type
-then factors via Fubini, and each factor is bounded by `dft_interval_subgrid_bound`.
--/
-public lemma dft_boxIndicator_subgrid_bound (q d : ℕ) [NeZero q] [NeZero d] (hd : d ∣ q)
-    (k : ℕ) (hk : 2 ≤ k) (X : Box (k - 1)) (s : ℝ) (hs : 0 ≤ s) :
-    ∑ a : Fin (k - 1) → ZMod d,
-      ‖dft q (k - 1) (boxIndicator q (k - 1) X s) (fun i => (((a i).val * (q / d) : ℕ) : ZMod q))‖ ≤
-      ∏ j : Fin (k - 1), (⌊s * X.sides j⌋₊ / (q : ℝ) + (d : ℝ) / q * Real.log d + (d : ℝ) / q) := by
-  -- By Fubini's theorem, we can interchange the order of summation.
-  have h_fubini : ∑ a : Fin (k - 1) → ZMod d, ∏ j, ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 ⌊s * X.sides j⌋₊ then (1 : ℂ) else 0) (fun _ => (((a j).val * (q / d) : ℕ) : ZMod q))‖ = ∏ j : Fin (k - 1), ∑ a : ZMod d, ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 ⌊s * X.sides j⌋₊ then (1 : ℂ) else 0) (fun _ => (((a).val * (q / d) : ℕ) : ZMod q))‖ := by
-    rw [ Finset.prod_sum ];
-    refine' Finset.sum_bij ( fun a _ => fun j _ => a j ) _ _ _ _ <;> simp +decide;
-    · simp +decide [ funext_iff ];
-    · exact fun b => ⟨ fun j => b j ( Finset.mem_univ j ), rfl ⟩;
-  convert h_fubini.le.trans ( Finset.prod_le_prod ?_ fun j _ => dft_interval_subgrid_bound q d hd ⌊s * X.sides j⌋₊ ) using 1;
-  · congr! 1;
-    convert congr_arg Norm.norm ( dft_boxIndicator_eq_prod q ( k - 1 ) X s ( fun i => ( ( ‹Fin ( k - 1 ) → ZMod d› i |> ZMod.val ) * ( q / d ) : ℕ ) : Fin ( k - 1 ) → ZMod q ) ) using 1;
-    rw [ norm_prod ];
-  · exact fun _ _ => Finset.sum_nonneg fun _ _ => norm_nonneg _
-
-public lemma deviation_dft_expansion (k : ℕ) (hk : 2 ≤ k)
-    (q : ℕ) [NeZero q] (X : Box (k - 1)) (s : ℝ) (hs : 0 ≤ s)
-    (hbox : ∀ j : Fin (k - 1), ⌊s * X.sides j⌋₊ < q)
-    (g : (Fin (k - 1) → ZMod q) → ℂ) :
-    ∑ h ∈ (Fintype.piFinset fun _ => Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
-        (fun h => inScaledBox X s (fun _ => 0) h),
-      g (fun i => (h i : ZMod q)) =
-    (q : ℂ) ^ (k - 1) * ∑ ξ : Fin (k - 1) → ZMod q,
-      dft q (k - 1) g (fun j => ξ j - if h_lt : (j : ℕ) + 1 < k - 1 then ξ ⟨(j : ℕ) + 1, h_lt⟩ else 0) *
-      dft q (k - 1) (boxIndicator q (k - 1) X s) (-ξ) := by
-  rw [ inScaledBox_sum_eq_zmod_sum k hk q X s hs hbox g, spatial_to_frequency_swap ];
-  simp +decide only [mul_assoc, Finset.mul_sum _ _ _];
-  convert rfl using 3;
-  congr! 1;
-  convert dft_sum_transform q ( k - 1 ) g _ |> Eq.symm using 1
-
-/-! ## Divisor Summation Infrastructure -/
-
 /-- The frequency divisor of `ξ` modulo `q` is the product of primes in its frequency support. -/
 @[expose]
 public noncomputable def freqDivisor (q m : ℕ) [NeZero q] (ξ : Fin m → ZMod q) : ℕ :=
@@ -782,24 +624,11 @@ public lemma freqDivisor_dvd (q m : ℕ) [NeZero q] (ξ : Fin m → ZMod q) :
   refine' Nat.dvd_trans _ ( Nat.prod_primeFactors_dvd q );
   apply_rules [ Finset.prod_dvd_prod_of_subset, freqSupport_subset_primeFactors ]
 
-public lemma freqDivisor_diffMap_eq (q m : ℕ) [NeZero q] (hq : Squarefree q)
-    (ξ : Fin m → ZMod q) :
-    freqDivisor q m (diffMap q m ξ) = freqDivisor q m ξ := by
-  refine' Finset.prod_congr _ _;
-  · ext p;
-    by_cases hp : p ∈ q.primeFactors <;> simp_all +decide [ freqSupport ];
-    constructor <;> intro h <;> contrapose! h <;> simp_all +decide [funext_iff];
-    · unfold diffMap; aesop;
-    · intro x; induction' x with i ih; simp_all +decide [ diffMap ] ;
-      induction' i with i ih <;> simp_all +decide [ sub_eq_iff_eq_add ];
-      grind +splitIndPred;
-  · grind
-
 /-
 If `p ∉ freqSupport q m ξ` and `p ∈ q.primeFactors`, then every component of `ξ`
 is zero modulo `p`.
 -/
-private lemma component_zero_of_not_in_freqSupport {q m : ℕ} [NeZero q]
+lemma component_zero_of_not_in_freqSupport {q m : ℕ} [NeZero q]
     {ξ : Fin m → ZMod q} {p : ℕ} (hp_pf : p ∈ q.primeFactors)
     (hp_not : p ∉ freqSupport q m ξ) (i : Fin m) :
     ZMod.castHom (Nat.dvd_of_mem_primeFactors hp_pf) (ZMod p) (ξ i) = 0 := by
@@ -810,7 +639,7 @@ private lemma component_zero_of_not_in_freqSupport {q m : ℕ} [NeZero q]
 The subgrid injection map `a ↦ (a_i.val * (q/d))` is injective as a map
 from `Fin m → ZMod d` to `Fin m → ZMod q` when `d ∣ q` and `q` is squarefree.
 -/
-private lemma subgrid_map_injective (q d : ℕ) [NeZero q] [NeZero d] (hd : d ∣ q)
+lemma subgrid_map_injective (q d : ℕ) [NeZero q] [NeZero d] (hd : d ∣ q)
     (hq : Squarefree q) (m : ℕ) :
     Function.Injective (fun (a : Fin m → ZMod d) (i : Fin m) =>
       (((a i).val * (q / d) : ℕ) : ZMod q)) := by
@@ -838,7 +667,7 @@ private lemma subgrid_map_injective (q d : ℕ) [NeZero q] [NeZero d] (hd : d �
 For squarefree `q`, if `p \in q.primeFactors` and `castHom _ (\xi i) = 0` for all `i`,
 then `p \mid (\xi i).val`.
 -/
-private lemma val_dvd_of_castHom_zero {q : ℕ} [NeZero q] {p : ℕ}
+lemma val_dvd_of_castHom_zero {q : ℕ} [NeZero q] {p : ℕ}
     (hp_pf : p ∈ q.primeFactors) (ξ : ZMod q)
     (hzero : ZMod.castHom (Nat.dvd_of_mem_primeFactors hp_pf) (ZMod p) ξ = 0) :
     p ∣ ξ.val := by
@@ -877,7 +706,7 @@ private lemma qd_dvd_val_of_freqDivisor_eq {q d m : ℕ} [NeZero q] [NeZero d]
 /-
 If `freqDivisor q m ξ = d`, then `ξ` is in the image of the subgrid injection.
 -/
-private lemma fiber_subset_subgrid_image (q d : ℕ) [NeZero q] [NeZero d] (hd : d ∣ q)
+lemma fiber_subset_subgrid_image (q d : ℕ) [NeZero q] [NeZero d] (hd : d ∣ q)
     (hq : Squarefree q) (m : ℕ) :
     (Finset.univ.filter (fun ξ : Fin m → ZMod q => freqDivisor q m ξ = d)) ⊆
       Finset.univ.image (fun (a : Fin m → ZMod d) (i : Fin m) =>
@@ -894,83 +723,5 @@ private lemma fiber_subset_subgrid_image (q d : ℕ) [NeZero q] [NeZero d] (hd :
     exact ⟨ fun i => ( ( hξ i |> ZMod.val ) / ( q / d ) : ZMod d ), fun i => by simpa [ ZMod.val_natCast ] using Nat.mod_eq_of_lt ( h_div_lt i ) ⟩;
   refine' Finset.mem_image.mpr ⟨ a, Finset.mem_univ _, _ ⟩;
   ext i; simp +decide [ ha, Nat.div_mul_cancel ( h_div i ) ] ;
-
-public lemma sum_fiber_le_subgrid (q d : ℕ) [NeZero q] [NeZero d] (hd : d ∣ q)
-    (hq : Squarefree q) (m : ℕ) (F : (Fin m → ZMod q) → ℝ) (hF_nonneg : ∀ ξ, 0 ≤ F ξ) :
-    ∑ ξ ∈ Finset.univ.filter (fun ξ => freqDivisor q m ξ = d), F ξ ≤
-      ∑ a : Fin m → ZMod d, F (fun i => (((a i).val * (q / d) : ℕ) : ZMod q)) := by
-  refine' le_trans ( Finset.sum_le_sum_of_subset_of_nonneg _ _ ) _;
-  exact Finset.image ( fun a : Fin m → ZMod d => fun i => ( ( a i |> ZMod.val ) * ( q / d ) : ℕ ) ) Finset.univ;
-  · exact fiber_subset_subgrid_image q d hd hq m;
-  · aesop;
-  · rw [ Finset.sum_image ];
-    convert subgrid_map_injective q d hd hq m using 1;
-    simp +decide [ Set.InjOn, Function.Injective ]
-
-/-
-For d | q with d ≠ 1 and squarefree q, the fiber sum is bounded by the
-punctured subgrid sum (excluding the a = 0 term). In the 1D case (m = 1),
-the elements a ∈ {1, ..., d-1} map injectively to frequencies ξ with
-freqDivisor d, and the a = 0 element maps to ξ = 0 which has freqDivisor 1 ≠ d.
-
-If freqDivisor q m ξ = 1 and q is squarefree, then ξ = 0.
--/
-public lemma freqDivisor_eq_one_imp_zero (q m : ℕ) [NeZero q] (hq : Squarefree q)
-    (ξ : Fin m → ZMod q) (h : freqDivisor q m ξ = 1) : ξ = 0 := by
-  ext i;
-  -- Since i has no prime � factors� in q.primeFactors, it must be zero modulo q.
-  have h_zero_mod_q : (ξ i).val < q := by
-    exact ZMod.val_lt _;
-  contrapose! h_zero_mod_q;
-  -- Since i has no prime factors in q.primeFactors, it must be zero modulo q. Hence, we can conclude that q ≤ (ξ i).val.
-  have h_div : ∀ p ∈ q.primeFactors, p ∣ (ξ i).val := by
-    intro p hp; rw [ freqDivisor ] at h; simp_all +decide ;
-    exact val_dvd_of_castHom_zero ( by aesop ) _ ( component_zero_of_not_in_freqSupport ( by aesop ) ( by specialize h p; aesop ) i );
-  refine' Nat.le_of_dvd ( Nat.pos_of_ne_zero _ ) _;
-  · cases q <;> aesop;
-  · convert Nat.dvd_trans _ ( Nat.prod_primeFactors_dvd _ );
-    rw [ ← Finset.prod_sdiff <| show q.primeFactors ⊆ ( ξ i |> ZMod.val |> Nat.primeFactors ) from fun p hp => Nat.mem_primeFactors.mpr ⟨ Nat.prime_of_mem_primeFactors hp, h_div p hp, by aesop ⟩ ];
-    convert Nat.dvd_mul_left _ _ using 1;
-    rw [ Nat.prod_primeFactors_of_squarefree hq ]
-
-public lemma sum_fiber_le_punctured_1d (q d : ℕ) [NeZero q] [NeZero d]
-    (hd : d ∣ q) (hq : Squarefree q) (hd1 : d ≠ 1)
-    (F : (Fin 1 → ZMod q) → ℝ) (hF : ∀ ξ, 0 ≤ F ξ) :
-    ∑ ξ ∈ Finset.univ.filter (fun ξ => freqDivisor q 1 ξ = d), F ξ ≤
-    ∑ a ∈ Finset.Icc 1 (d - 1),
-      F (fun _ => (((a * (q / d) : ℕ) : ZMod q))) := by
-  -- Since `freqDivisor q 1 = d`, the fiber is a subset of the punctured subgrid.
-  have h_subset : Finset.filter (fun ξ => freqDivisor q 1 ξ = d) Finset.univ ⊆ Finset.image (fun (a : Fin 1 → ZMod d) (i : Fin 1) => (((a i).val * (q / d) : ℕ) : ZMod q)) (Finset.univ.erase 0) := by
-    intro hξ hhξ;
-    -- By definition of `freqDivisor �`,� if `freqDivisor q 1 hξ = d`, then there exists some `a : Fin 1 → ZMod d` such that `hξ = fun i => (((a i).val * (q / d) : ℕ) : ZMod q)`.
-    obtain ⟨a, ha⟩ : ∃ a : Fin 1 → ZMod d, hξ = fun i => (((a i).val * (q / d) : ℕ) : ZMod q) := by
-      have := fiber_subset_subgrid_image q d hd hq 1;
-      simpa [ eq_comm ] using this hhξ;
-    by_cases ha0 : a = 0 <;> simp_all +decide [ funext_iff, Fin.forall_fin_one ];
-    · unfold freqDivisor at hhξ; simp_all +decide [ freqSupport ] ;
-      simp_all +decide [funext_iff];
-    · lia;
-  have h_bij : Finset.sum (Finset.univ.erase 0 : Finset (Fin 1 → ZMod d)) (fun a => F (fun i => (((a i).val * (q / d) : ℕ) : ZMod q))) = Finset.sum (Finset.Icc 1 (d - 1)) (fun a => F (fun _ => ((a * (q / d) : ℕ) : ZMod q))) := by
-    refine' Finset.sum_bij ( fun a ha => a 0 |> ZMod.val ) _ _ _ _ <;> simp_all +decide [ Fin.eq_zero ];
-    · intro a ha; haveI := Fact.mk ( NeZero.pos d ) ; exact ⟨ Nat.pos_of_ne_zero fun h => ha <| funext fun i => by fin_cases i; aesop, Nat.le_sub_one_of_lt <| ZMod.val_lt _ ⟩ ;
-    · exact fun a₁ ha₁ a₂ ha₂ h => by ext i; fin_cases i; exact ZMod.val_injective _ h;
-    · intro b hb₁ hb₂; use fun _ => ( b : ZMod d ) ; simp +decide [ ZMod.val_natCast, Nat.mod_eq_of_lt ( show b < d from lt_of_le_of_lt hb₂ ( Nat.pred_lt ( NeZero.ne d ) ) ) ] ;
-      simp +decide [ funext_iff, ZMod.natCast_eq_zero_iff ];
-      exact Nat.not_dvd_of_pos_of_lt hb₁ ( lt_of_le_of_lt hb₂ ( Nat.pred_lt ( NeZero.ne d ) ) );
-  refine' le_trans ( Finset.sum_le_sum_of_subset_of_nonneg h_subset fun _ _ _ => hF _ ) _;
-  rw [ ← h_bij, Finset.sum_image ];
-  exact fun a ha b hb hab => subgrid_map_injective q d hd hq 1 <| by simpa using hab;
-
-public lemma sum_over_divisors (q m : ℕ) [NeZero q] (hq : Squarefree q)
-    (F : (Fin m → ZMod q) → ℝ) (B : ℕ → ℝ)
-    (h_bound : ∀ d : ℕ, d ∣ q →
-      ∑ ξ ∈ Finset.univ.filter (fun ξ => freqDivisor q m ξ = d), F ξ ≤ B d) :
-    ∑ ξ : Fin m → ZMod q, F ξ ≤ ∑ d ∈ Nat.divisors q, B d := by
-  convert Finset.sum_le_sum fun d hd => h_bound d <| Nat.dvd_of_mem_divisors hd;
-  rw [ ← Finset.sum_biUnion ];
-  · congr with;
-    simp +decide [ freqDivisor_dvd ];
-    exact NeZero.ne q;
-  · exact fun x hx y hy hxy => Finset.disjoint_left.mpr fun z hz₁ hz₂ => hxy <| by aesop;
 
 end PoissonCRT

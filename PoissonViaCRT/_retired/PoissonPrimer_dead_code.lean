@@ -14,8 +14,7 @@ To cite Aristotle, tag @Aristotle-Harmonic on GitHub PRs/issues, and add as co-a
 Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
-import PoissonViaCRT.Defs
-import PoissonViaCRT.TupleCount
+import PoissonViaCRT.PoissonPrimer
 
 /-!
 # Poisson Statistics Primer (§2)
@@ -71,49 +70,11 @@ Full formalization requires probability theory infrastructure (Bernoulli measure
 of `ℤ/qℤ`). We record the combinatorial core below.
 -/
 
-/-- The conditional expectation of the indicator product: the probability that specific
-`k` positions are all in a random subset of `{1, …, q}` of size `r` is `C(q-k, r-k) / C(q, r)`.
-This equals `∏_{i=0}^{k-1} (r-i)/(q-i)`, proved by induction on `k`. -/
-theorem condExpectation_indicator (q k r : ℕ) (hk : k ≤ q) (hr : k ≤ r) (hrq : r ≤ q) :
-    (Nat.choose (q - k) (r - k) : ℚ) / Nat.choose q r =
-      ∏ i ∈ Finset.range k, ((r - i : ℚ) / (q - i)) := by
-  by_cases hqr : r = q;
-  · simp_all +decide [Finset.prod_eq_zero_iff, sub_eq_zero];
-  · induction' k with k ih generalizing r q <;> simp_all +decide [ Finset.prod_range_succ ];
-    · exact ne_of_gt <| Nat.choose_pos hrq;
-    · rw [ mul_div_mul_comm, ← ih ];
-      · rw [ div_mul_div_comm, div_eq_div_iff ] <;> norm_cast;
-        · rw [ Int.subNatNat_of_le hk.le, Int.subNatNat_of_le hr.le ];
-          rw [ show q - k = ( q - ( k + 1 ) ) + 1 by omega, show r - k = ( r - ( k + 1 ) ) + 1 by omega ] ; norm_cast ; simp +decide [ Nat.add_one_mul_choose_eq, mul_assoc, mul_comm ] ;
-        · exact Nat.ne_of_gt <| Nat.choose_pos hrq;
-        · exact mul_ne_zero ( Nat.cast_ne_zero.mpr ( Nat.ne_of_gt ( Nat.choose_pos hrq ) ) ) ( by rw [ Int.subNatNat_eq_coe ] ; linarith );
-      · grind;
-      · lia;
-      · linarith;
-      · assumption
+/-- The average spacing is at least 1 for nonempty subsets. -/
+theorem avgSpacing_ge_one {q : ℕ} [NeZero q] (Ω : Finset (ZMod q)) (hΩ : Ω.Nonempty) :
+    1 ≤ avgSpacing Ω := by
+  unfold avgSpacing
+  rw [le_div_iff₀ (by exact_mod_cast hΩ.card_pos)]
+  simp only [one_mul]
+  exact card_le_q Ω
 
-/-! ### Properties of the average spacing and density -/
-
-theorem card_le_q {q : ℕ} [NeZero q] (Ω : Finset (ZMod q)) :
-    (Ω.card : ℚ) ≤ q := by
-  have := Finset.card_le_univ Ω
-  simp [ZMod.card] at this
-  exact_mod_cast this
-
-/-- The density satisfies `0 ≤ r_q`. -/
-theorem density_nonneg {q : ℕ} [NeZero q] (Ω : Finset (ZMod q)) :
-    0 ≤ density Ω := by
-  unfold density; positivity
-
-/-- The density satisfies `r_q ≤ 1`. -/
-theorem density_le_one {q : ℕ} [NeZero q] (Ω : Finset (ZMod q)) :
-    density Ω ≤ 1 := by
-  exact div_le_one_of_le₀ (card_le_q Ω) (Nat.cast_nonneg _)
-
-/-- `density Ω = 1 / avgSpacing Ω` when `Ω` is nonempty. -/
-theorem density_eq_inv_avgSpacing {q : ℕ} [NeZero q] (Ω : Finset (ZMod q))
-    (_ : (Ω.card : ℚ) ≠ 0) :
-    density Ω = 1 / avgSpacing Ω := by
-  simp [density, avgSpacing, one_div, inv_div]
-
-end PoissonCRT

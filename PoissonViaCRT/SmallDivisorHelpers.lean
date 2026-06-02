@@ -135,31 +135,8 @@ lemma deviation_product_sum_zero (k : ℕ) (hk : 1 ≤ k) (q : ℕ) [NeZero q]
 
 /-! ### Residue multiplicity and rescaled box bijection -/
 
-/-- The sum of residue multiplicities over all residue classes equals the total card. -/
-private lemma sum_residueMultiplicity_eq_card {d : ℕ} [NeZero d] {m : ℕ}
-    (S : Finset (Fin m → ℤ)) :
-    ∑ g : Fin m → ZMod d, residueMultiplicity S g = S.card := by
-  simp +decide only [residueMultiplicity]
-  have key := Finset.sum_card_fiberwise_eq_card_filter S Finset.univ
-    (fun h => fun i => (h i : ZMod d))
-  simp at key; exact key
-
-/-
-Factoring the arithmetic product: extract `d^{k-1}` and `∏ p^{-ε}` from the per-prime
-arithmetic bound using `Finset.prod_mul_distrib` and `Finset.prod_pow`.
--/
-private lemma arith_prod_factor (k : ℕ) (Ω : ∀ p : ℕ, Finset (ZMod p))
-    (T : Finset ℕ) (d : ℕ) (hd_def : d = ∏ p ∈ T, p) (ε : ℝ) :
-    ∏ p ∈ T, ((p : ℝ) ^ (k - 1) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) *
-      ((Ω p).card : ℝ) ^ k / (p : ℝ) ^ (k - 1)) =
-    (d : ℝ) ^ (k - 1) * (∏ p ∈ T, (p : ℝ) ^ (-ε)) *
-    ∏ p ∈ T, ((1 - (Ω p).card / (p : ℝ)) *
-      ((Ω p).card : ℝ) ^ k / (p : ℝ) ^ (k - 1)) := by
-  by_cases hT : T = ∅ <;> simp_all +decide [Finset.prod_mul_distrib, Finset.prod_div_distrib]
-  rw [← Finset.prod_pow]; ring
-
 /-- d-power cancellation: `(s/d)^{k-2} · d^{k-1} = s^{k-2} · d`. -/
-private lemma geo_arith_combine (k : ℕ) (s : ℝ) (d : ℕ) (hd_pos : 0 < d) :
+lemma geo_arith_combine (k : ℕ) (s : ℝ) (d : ℕ) (hd_pos : 0 < d) :
     (s / ↑d) ^ ((↑(k - 1) : ℤ) - 1) * (d : ℝ) ^ (k - 1) =
     s ^ ((↑(k - 1) : ℤ) - 1) * (d : ℝ) := by
   rcases k with _ | _ | k <;> norm_num at *
@@ -228,18 +205,6 @@ private lemma surj_mod_eq (d : ℕ) [NeZero d] (r : Fin k → ZMod d)
         cases d <;> simp_all +decide only [neZero_zero_iff_false];
         injection h_cast_zero with h_cast_zero ; aesop
       exact h_r_zero.symm
-
-/-
-Rescaling identity: `(d * (b i - 1) + r_1 i : ℝ) = d * ((b i : ℝ) - (1 - (r_1 i : ℝ) / d))`.
--/
-private lemma surj_rescale_identity (d : ℕ) [NeZero d] (r : Fin k → ZMod d)
-    (b : Fin k → ℤ) (i : Fin k) :
-    let r_int : Fin k → ℤ := fun i => (ZMod.val (r i) : ℤ)
-    let r_1 : Fin k → ℤ := fun i => if r_int i = 0 then (d : ℤ) else r_int i
-    ((↑d * (b i - 1) + r_1 i : ℤ) : ℝ) =
-      (d : ℝ) * ((b i : ℝ) - (1 - (r_1 i : ℝ) / (d : ℝ))) := by
-        simp +decide [ mul_sub, mul_div_cancel₀, NeZero.ne ];
-        ring
 
 /-
 From inScaledBox with shift 0, each coordinate h i satisfies
@@ -441,7 +406,7 @@ private lemma residue_class_card_eq_rescaled_card {k : ℕ} (hk : 1 ≤ k)
       r_int rfl r_1 rfl b hb
     exact ⟨a, ha_mem, ha_eq⟩
 
-private lemma residue_class_discrepancy_bound (k : ℕ) (hk : 1 ≤ k)
+lemma residue_class_discrepancy_bound (k : ℕ) (hk : 1 ≤ k)
     (s : ℝ) (C_lp : ℝ) (hC_lp_pos : 0 ≤ C_lp)
     (X : Box (k - 1))
     (d : ℕ) [NeZero d]
@@ -508,83 +473,6 @@ private lemma residue_class_discrepancy_bound (k : ℕ) (hk : 1 ≤ k)
   · -- When s / d < 1, this contradicts hd_le_s since 0 < d and d ≤ s implies 1 ≤ s / d.
     have hd_pos : (0 : ℝ) < d := Nat.cast_pos.mpr (NeZero.pos d)
     exact absurd (le_div_iff₀ hd_pos |>.mpr (by linarith)) h_sd
-
-/-- Total variation bound for residue multiplicities. -/
-private lemma residue_total_variation_bound (k : ℕ) (hk : 1 ≤ k)
-    (d : ℕ) [NeZero d] (hd_pos : 0 < d)
-    (s : ℝ) (C_lp : ℝ) (X : Box (k - 1))
-    (S : Finset (Fin (k - 1) → ℤ))
-    (hS_def : S = ((Fintype.piFinset fun _ : Fin (k - 1) =>
-        Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
-      (fun h => inScaledBox X s (fun _ => 0) h)))
-    (hC_lp : ∀ (v : Fin (k - 1) → ℝ), (∀ i, 0 ≤ v i ∧ v i ≤ 1) → ∀ (s : ℝ), 1 ≤ s →
-      |(((Fintype.piFinset fun _ : Fin (k - 1) =>
-          Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
-        (fun h => inScaledBox X s v h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
-        C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1))
-    (hd_le_s : (d : ℝ) ≤ s)
-    (ε : ℝ) (T : Finset ℕ) (_hT_d : d = ∏ p ∈ T, p) :
-    ∑ r : Fin (k - 1) → ZMod d,
-      |(↑(residueMultiplicity S r) : ℝ) -
-        s ^ (k - 1 : ℕ) * X.volume / (d : ℝ) ^ (k - 1)| ≤
-      C_lp * s ^ ((↑(k - 1) : ℤ) - 1) * (d : ℝ) := by
-  -- Derive 0 ≤ C_lp from hC_lp at (v, s) = (0, 1)
-  have hC_lp_pos : 0 ≤ C_lp := by
-    have h := hC_lp (fun _ => 0) (fun _ => ⟨le_refl _, zero_le_one⟩) 1 le_rfl
-    have : 0 ≤ C_lp * (1 : ℝ) ^ (((k - 1 : ℕ) : ℤ) - 1) :=
-      le_trans (abs_nonneg _) h
-    rwa [one_zpow, mul_one] at this
-  -- Apply residue_class_discrepancy_bound pointwise
-  have h_bound : ∀ r : Fin (k - 1) → ZMod d,
-      |(↑(residueMultiplicity S r) : ℝ) -
-        s ^ (k - 1 : ℕ) * X.volume / (d : ℝ) ^ (k - 1)| ≤
-      C_lp * (s / d) ^ (((k - 1 : ℕ) : ℤ) - 1) :=
-    fun r => residue_class_discrepancy_bound k hk s C_lp hC_lp_pos X d hd_le_s hC_lp S hS_def r
-  calc ∑ r : Fin (k - 1) → ZMod d,
-        |(↑(residueMultiplicity S r) : ℝ) -
-          s ^ (k - 1 : ℕ) * X.volume / (d : ℝ) ^ (k - 1)|
-    _ ≤ Finset.univ.card • (C_lp * (s / d) ^ (((k - 1 : ℕ) : ℤ) - 1)) :=
-        Finset.sum_le_card_nsmul _ _ _ (fun r _ => h_bound r)
-    _ = (Fintype.card (Fin (k - 1) → ZMod d) : ℝ) *
-          (C_lp * (s / d) ^ (((k - 1 : ℕ) : ℤ) - 1)) := by
-        rw [Finset.card_univ]; simp +decide [nsmul_eq_mul]
-    _ = (d : ℝ) ^ (k - 1) * (C_lp * (s / d) ^ (((k - 1 : ℕ) : ℤ) - 1)) := by
-        congr 1; rw [Fintype.card_fun, ZMod.card, Fintype.card_fin]
-        simp +decide [Nat.cast_pow]
-    _ = C_lp * ((s / ↑d) ^ ((↑(k - 1) : ℤ) - 1) * (d : ℝ) ^ (k - 1)) := by ring
-    _ = C_lp * (s ^ ((↑(k - 1) : ℤ) - 1) * (d : ℝ)) := by
-        rw [geo_arith_combine k s d hd_pos]
-    _ = C_lp * s ^ ((↑(k - 1) : ℤ) - 1) * (d : ℝ) := by ring
-
-/-- The CRT subset cardinality factors as a product over prime factors. -/
-private lemma crt_card_eq_prod (q : ℕ) [NeZero q] (hq_sq : Squarefree q)
-    (Ω : ∀ p : ℕ, Finset (ZMod p)) :
-    ((crtSubset q Ω).card : ℝ) = ∏ p ∈ q.primeFactors, ((Ω p).card : ℝ) := by
-  have h_card : (crtSubset q Ω).card = ∏ p ∈ q.primeFactors, (Ω p).card := by
-    have h_card : Fintype.card (crtSubset q Ω) = ∏ p ∈ q.primeFactors, Fintype.card (Ω p) := by
-      have := @crt_domain_equiv q ‹_› hq_sq Ω;
-      rw [ Fintype.card_congr this, Fintype.card_pi ];
-      refine' Finset.prod_bij ( fun p hp => p ) _ _ _ _ <;> aesop;
-    convert h_card using 1;
-    · rw [ Fintype.card_of_subtype ] ; aesop;
-    · exact Finset.prod_congr rfl fun _ _ => by rw [ Fintype.card_of_subtype ] ; aesop;
-  exact_mod_cast h_card
-
-/-
-Final algebraic collapse: combine zpow exponents and absorb d into product.
--/
-private lemma final_collapse (s C_lp : ℝ) (d : ℕ) (k : ℕ) (ε : ℝ)
-    (Ω : ∀ p : ℕ, Finset (ZMod p)) (T : Finset ℕ)
-    (hs_ne : s ≠ 0) (hd_def : d = ∏ p ∈ T, p) :
-    s ^ (-(↑(k - 1) : ℤ)) * (C_lp * (s ^ ((↑(k - 1) : ℤ) - 1) * (d : ℝ)) *
-        ∏ p ∈ T, ((1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε))) =
-      C_lp * s ^ ((-1 : ℤ)) *
-        ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) := by
-  rcases k with ( _ | _ | k ) <;> simp_all +decide [ mul_assoc, mul_left_comm, zpow_add₀ ];
-  · exact Or.inl ( by rw [ ← Finset.prod_mul_distrib ] );
-  · exact Or.inl ( by rw [ ← Finset.prod_mul_distrib ] );
-  · simp +decide [ Finset.prod_mul_distrib ];
-    simp +decide [ mul_left_comm ( s ^ k ), hs_ne ]
 
 /-- The global expected value of the counting function factors
 as a product of local means over the prime factors of
@@ -1010,37 +898,6 @@ lemma box_deviation_inner_bound (k : ℕ) (hk : 1 ≤ k) (q : ℕ) [NeZero q]
         hcard_pos h_arith_split h_mean_recombine h_geo_arith_combine
 
 /-! ### Per-subset inner bound -/
-
-/-
-**Trivial discrete bound (large divisor case).**
--/
-private lemma localCount_eq_localMean_of_full (k : ℕ) (hk : 1 ≤ k)
-    (Ω : ∀ p : ℕ, Finset (ZMod p)) (q : ℕ) [NeZero q]
-    (p₀ : ℕ) (hp₀_pf : p₀ ∈ q.primeFactors) (hp₀_full : (Ω p₀).card = p₀)
-    (g : Fin (k - 1) → ℤ) :
-    localCount Ω q (Fin.cons (0 : ZMod q) fun i => (g i : ZMod q)) p₀ -
-      localMean k Ω p₀ = 0 := by
-  unfold localCount localMean;
-  split_ifs ; simp_all;
-  haveI := Fact.mk ( Nat.prime_of_mem_primeFactors hp₀_pf ) ; simp_all +decide [ tupleCount ] ;
-  rw [ show ( Ω p₀ : Finset ( ZMod p₀ ) ) = Finset.univ from Finset.eq_of_subset_of_card_le ( Finset.subset_univ _ ) ( by simp +decide [ hp₀_full, Finset.card_univ ] ) ] ; simp +decide [ Finset.filter_true_of_mem, Finset.card_univ ] ;
-  rw [ sub_eq_zero, eq_div_iff ] <;> norm_cast <;> cases k <;> simp_all +decide [ pow_succ' ];
-  aesop
-
-/-
-The Euler weight product is strictly positive when all primes in T have proper subsets.
--/
-private lemma euler_weight_pos (ε : ℝ) (hε : 0 < ε)
-    (Ω : ∀ p : ℕ, Finset (ZMod p))
-    (T : Finset ℕ) (hT_sub : T ⊆ (q : ℕ).primeFactors)
-    (h_all_proper : ∀ p ∈ T, (Ω p).card ≠ p)
-    (q : ℕ) [NeZero q] :
-    0 < ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) := by
-  refine' Finset.prod_pos fun p hp => mul_pos ( mul_pos ( _ ) ( sub_pos.mpr ( _ ) ) ) ( Real.rpow_pos_of_pos ( Nat.cast_pos.mpr ( Nat.pos_of_mem_primeFactors ( hT_sub hp ) ) ) _ );
-  · exact Nat.cast_pos.mpr ( Nat.pos_of_mem_primeFactors ( hT_sub hp ) );
-  · rw [ div_lt_one ] <;> norm_cast;
-    · exact lt_of_le_of_ne ( by haveI := Fact.mk ( Nat.prime_of_mem_primeFactors ( hT_sub hp ) ) ; simpa using Finset.card_le_univ ( Ω p ) ) ( h_all_proper p hp );
-    · exact Nat.pos_of_mem_primeFactors ( hT_sub hp )
 
 /-- **Small-divisor inner bound**: When `∏_{p ∈ T} p ≤ s`, the L∞ × L₁ argument
 from `box_deviation_inner_bound` gives a bound with coefficient `C_lp`. -/

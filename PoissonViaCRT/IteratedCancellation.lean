@@ -57,12 +57,6 @@ public theorem sum_prod_pi_eq_zero (f : (i : ι) → α i → R) {j : ι} (hj : 
 end SumProdPi
 
 -- Provide the names requested in the instructions as aliases.
-/-- Alias of `sum_prod_pi` with the name requested by the specification. -/
-theorem sum_mul_sum_pi {ι : Type*} {α : ι → Type*} {R : Type*}
-    [Fintype ι] [DecidableEq ι] [(i : ι) → Fintype (α i)] [CommSemiring R]
-    (f : (i : ι) → α i → R) :
-    ∑ x : (i : ι) → α i, ∏ i, f i (x i) = ∏ i, ∑ y, f i y :=
-  sum_prod_pi f
 
 /-- Alias of `sum_prod_pi_eq_zero` with the name requested by the specification. -/
 theorem zero_sum_implies_pi_sum_zero {ι : Type*} {α : ι → Type*} {R : Type*}

@@ -433,44 +433,6 @@ lemma deviation_sum_le_gamma_sum (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤
 /-! ## 4. Auxiliary lemmas for the gamma-weighted series bound -/
 
 /-
-**Weight bound by trivial product.**
-
-The per-gamma deviation weight is bounded above by the product of all primes
-in `T`. This is because:
-- For collision primes (`p ∣ radical γ`), the factor is exactly `(p : ℝ)`.
-- For well-distributed primes (`p ∤ radical γ`), the Weil-type factor
-  `(1 − |Ω_p|/p) · p^{−ε} · μ_p` satisfies `μ_p ≤ p` (since `|Ω_p| ≤ p`),
-  and `(1 − |Ω_p|/p) · p^{−ε} ≤ 1`, so the factor is at most `p`.
-
-Combining both cases gives `perGammaDeviationWeight ε k Ω T γ ≤ ∏ p ∈ T, (p : ℝ)`.
--/
-lemma weight_le_prod_T (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
-    (Ω : ∀ p : ℕ, Finset (ZMod p)) (q : ℕ) [NeZero q] (hq : Squarefree q)
-    (hΩle : ∀ p, p.Prime → (Ω p).card ≤ p)
-    (T : Finset ℕ) (hT : T ⊆ q.primeFactors) (γ : ℕ) :
-    perGammaDeviationWeight ε k Ω T γ ≤ ∏ p ∈ T, (p : ℝ) := by
-  have h_bound : ∀ p ∈ T, (if p ∣ radical γ then (p : ℝ) else (1 - (Ω p).card / p) * p ^ (-ε) * localMean k Ω p) ≤ (p : ℝ) := by
-    intro p hp
-    by_cases hdiv : p ∣ radical γ;
-    · rw [ if_pos hdiv ];
-    · rw [ if_neg hdiv ];
-      refine' le_trans ( mul_le_of_le_one_left ( _ ) _ ) _;
-      · exact div_nonneg ( pow_nonneg ( Nat.cast_nonneg _ ) _ ) ( pow_nonneg ( Nat.cast_nonneg _ ) _ );
-      · refine' le_trans ( mul_le_of_le_one_left ( by positivity ) _ ) _;
-        · exact sub_le_self _ ( by positivity );
-        · exact le_trans ( Real.rpow_le_rpow_of_exponent_le ( mod_cast Nat.Prime.pos ( Nat.prime_of_mem_primeFactors ( hT hp ) ) ) ( neg_nonpos.mpr hε.le ) ) ( by norm_num );
-      · unfold localMean;
-        rw [ div_le_iff₀ ] <;> norm_cast;
-        · exact le_trans ( Nat.pow_le_pow_left ( hΩle p ( Nat.prime_of_mem_primeFactors ( hT hp ) ) ) _ ) ( by rw [ ← pow_succ', Nat.sub_add_cancel ( by linarith ) ] );
-        · exact pow_pos ( Nat.pos_of_mem_primeFactors ( hT hp ) ) _;
-  convert Finset.prod_le_prod ?_ h_bound <;> norm_num [ Finset.prod_ite ];
-  · exact Real.ext_cauchy rfl;
-  · intro p hp; split_ifs <;> norm_num [ localMean ] ;
-    exact mul_nonneg ( mul_nonneg ( sub_nonneg.2 <| div_le_one_of_le₀ ( mod_cast hΩle p <| Nat.prime_of_mem_primeFactors <| hT hp ) <| Nat.cast_nonneg _ ) <| Real.rpow_nonneg ( Nat.cast_nonneg _ ) _ ) <| div_nonneg ( pow_nonneg ( Nat.cast_nonneg _ ) _ ) <| pow_nonneg ( Nat.cast_nonneg _ ) _
-
-/-! ### Helper lemmas for the Dirichlet gamma-sum bound -/
-
-/-
 **Euler product expansion.** The product `∏_{p ∈ S} (1 + 1/p)` equals
 the sum over all subsets `A ⊆ S` of `∏_{p ∈ A} (1/p)`. This follows
 from `Finset.prod_add` with `f = 1/p`, `g = 1`.
@@ -531,99 +493,6 @@ lemma primeFactors_sdiff_injOn (T : Finset ℕ) (hT : ∀ p ∈ T, Nat.Prime p) 
   generalize_proofs at *; (
   exact Nat.prod_primeFactors_of_squarefree hγ₁.2.1 ▸ Nat.prod_primeFactors_of_squarefree hγ₂.2.1 ▸ by rw [ h_eq_prime_factors ] ;))
 
-/-
-**Dirichlet gamma-sum convergence.**
-
-For a squarefree integer `d = radical(∏ T)` (i.e., `d = ∏ T` when `T`
-consists of distinct primes), the sum
-`∑_{γ squarefree, d ∣ γ} 1/γ`
-factors as `(1/d) · ∏_{p ∤ d} (1 + 1/p)`, which converges.
-
-More precisely, for a fixed finite set `T` of primes, we bound:
-`∑_{γ ∈ [1, N], d ∣ γ, Squarefree γ} 1/(γ : ℝ) ≤ (1/d) · ∏_{p ≤ N, p ∤ d} (1 + 1/p)`.
-
-This provides the analytic convergence factor needed in the
-gamma-weighted series bound.
-
-The proof uses `euler_product_one_add_inv`, `squarefree_prod_primeFactors_sdiff`,
-`primeFactors_sdiff_mem_powerset`, and `primeFactors_sdiff_injOn`.
--/
-lemma dirichlet_gamma_sum_converges (T : Finset ℕ) (hT_prime : ∀ p ∈ T, Nat.Prime p)
-    (N : ℕ) :
-    ∑ γ ∈ (Finset.Icc 1 N).filter (fun γ => Squarefree γ ∧ (∏ p ∈ T, p) ∣ γ),
-      (1 : ℝ) / (γ : ℝ) ≤
-    (1 : ℝ) / (∏ p ∈ T, (p : ℝ)) *
-      ∏ p ∈ (Finset.Icc 2 N).filter (fun p => Nat.Prime p ∧ p ∉ T),
-        (1 + 1 / (p : ℝ)) := by
-  -- Let $d = \prod_{p \in T} p$.
-  set d := ∏ p ∈ T, p with hd_def
-  have hd_pos : 0 < d := by
-    exact Finset.prod_pos fun p hp => Nat.Prime.pos ( hT_prime p hp );
-  nontriviality;
-  revert ‹Nontrivial ℝ›;
-  intro h_nontrivial
-  have h_sum : ∑ γ ∈ Finset.filter (fun γ => Squarefree γ ∧ d ∣ γ) (Finset.Icc 1 N), (1 / (γ : ℝ)) ≤ (1 / (d : ℝ)) * ∑ A ∈ ((Finset.Icc 2 N).filter (fun p => Nat.Prime p ∧ p ∉ T)).powerset, (∏ p ∈ A, (1 / (p : ℝ))) := by
-    have h_sum : ∑ γ ∈ Finset.filter (fun γ => Squarefree γ ∧ d ∣ γ) (Finset.Icc 1 N), (1 / (γ : ℝ)) ≤ (1 / (d : ℝ)) * ∑ γ ∈ Finset.filter (fun γ => Squarefree γ ∧ d ∣ γ) (Finset.Icc 1 N), (∏ p ∈ γ.primeFactors \ T, (1 / (p : ℝ))) := by
-      have h_sum : ∀ γ ∈ Finset.filter (fun γ => Squarefree γ ∧ d ∣ γ) (Finset.Icc 1 N), (1 / (γ : ℝ)) = (1 / (d : ℝ)) * (∏ p ∈ γ.primeFactors \ T, (1 / (p : ℝ))) := by
-        intro γ hγ
-        have hγ_eq : γ = d * ∏ p ∈ γ.primeFactors \ T, p := by
-          apply squarefree_prod_primeFactors_sdiff T hT_prime γ (Finset.mem_filter.mp hγ).right.left (Finset.mem_filter.mp hγ).right.right;
-        rw [ hγ_eq, Nat.cast_mul, mul_comm ] ; norm_num [ hd_pos.ne' ];
-        rw [ ← hγ_eq ];
-      rw [ Finset.mul_sum _ _ _, Finset.sum_congr rfl h_sum ];
-    refine le_trans h_sum <| mul_le_mul_of_nonneg_left ?_ <| by positivity;
-    have h_inj : Set.InjOn (fun γ : ℕ => γ.primeFactors \ T) (Finset.filter (fun γ => Squarefree γ ∧ d ∣ γ) (Finset.Icc 1 N)) := by
-      apply primeFactors_sdiff_injOn T hT_prime N;
-    have h_image : Finset.image (fun γ : ℕ => γ.primeFactors \ T) (Finset.filter (fun γ => Squarefree γ ∧ d ∣ γ) (Finset.Icc 1 N)) ⊆ ((Finset.Icc 2 N).filter (fun p => Nat.Prime p ∧ p ∉ T)).powerset := by
-      simp +contextual [ Finset.subset_iff ];
-      rintro _ x hx₁ hx₂ hx₃ hx₄ rfl y hy; exact ⟨ ⟨ Nat.Prime.two_le ( Nat.prime_of_mem_primeFactors ( Finset.mem_sdiff.mp hy |>.1 ) ), Nat.le_trans ( Nat.le_of_mem_primeFactors ( Finset.mem_sdiff.mp hy |>.1 ) ) hx₂ ⟩, Nat.prime_of_mem_primeFactors ( Finset.mem_sdiff.mp hy |>.1 ), Finset.mem_sdiff.mp hy |>.2 ⟩ ;
-    have h_sum_le : ∑ γ ∈ Finset.filter (fun γ => Squarefree γ ∧ d ∣ γ) (Finset.Icc 1 N), (∏ p ∈ γ.primeFactors \ T, (1 / (p : ℝ))) ≤ ∑ A ∈ Finset.image (fun γ : ℕ => γ.primeFactors \ T) (Finset.filter (fun γ => Squarefree γ ∧ d ∣ γ) (Finset.Icc 1 N)), (∏ p ∈ A, (1 / (p : ℝ))) := by
-      rw [ Finset.sum_image <| by intros a ha b hb hab; exact h_inj ha hb hab ];
-    exact h_sum_le.trans ( Finset.sum_le_sum_of_subset_of_nonneg h_image fun _ _ _ => Finset.prod_nonneg fun _ _ => one_div_nonneg.mpr <| Nat.cast_nonneg _ );
-  convert h_sum using 2 ; norm_num [ euler_product_one_add_inv ];
-  · norm_num [ hd_def ];
-  · convert euler_product_one_add_inv _ using 1
-
-/-- **Combined per-prime Euler weight (deviation contribution).**
-
-For a prime `p`, the well-distributed contribution to the deviation is
-`(1 - |Ω_p|/p) · p^{-ε}`. With the spacing hypothesis `1 - |Ω_p|/p ≤ k/p`,
-this is `O(k · p^{-1-ε})`, so `tailEulerWeight = combinedEulerWeight · p^{ε/2}`
-is `O(k · p^{-1-ε/2})`, which is summable since `1 + ε/2 > 1`.
-
-**Note:** An earlier definition also included the collision/Euler-factor term
-`(localMean)⁻¹ · p/(p-1)`, but that term is ∼ 1/p and makes the tail sum
-over subsets diverge (since ∏_p p/(p−1) grows like log log q). The collision
-contribution is now handled via a separate analytic argument in
-`gamma_weighted_series_bound`. -/
-
-
-/- **Prefactor absorption identity.**
-The $q$-dependent prefactor $(q^{k-1}/|\Omega_q|^k) \prod_{q \setminus T} \mu_p$
-simplifies algebraically to exactly $\prod_{p \in T} \mu_p^{-1}$. -/
-public lemma prefactor_absorption (k : ℕ) (hk : 2 ≤ k) (Ω : ∀ p : ℕ, Finset (ZMod p))
-    (q : ℕ) [NeZero q] (hq : Squarefree q)
-    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
-    (T : Finset ℕ) (hT : T ⊆ q.primeFactors) :
-    ((q : ℝ) ^ (k - 1) / ((crtSubset q Ω).card : ℝ) ^ k) *
-    (∏ p ∈ q.primeFactors \ T, localMean k Ω p) =
-    ∏ p ∈ T, (localMean k Ω p)⁻¹ := by
-  have hlm_pos : ∀ p ∈ q.primeFactors, 0 < localMean k Ω p := by
-    intro p hp; unfold localMean
-    exact div_pos (pow_pos (Nat.cast_pos.mpr (Finset.Nonempty.card_pos (hΩ p (Nat.prime_of_mem_primeFactors hp)))) _)
-      (pow_pos (Nat.cast_pos.mpr (Nat.pos_of_mem_primeFactors hp)) _)
-  have hgm := globalMean_eq_prod_localMean k q hq Ω
-  have h_inv : (q : ℝ) ^ (k - 1) / ((crtSubset q Ω).card : ℝ) ^ k =
-    (∏ p ∈ q.primeFactors, localMean k Ω p)⁻¹ := by
-    rw [← hgm, inv_div]
-  rw [h_inv]
-  have h_split := (Finset.prod_sdiff hT (f := fun p => localMean k Ω p)).symm
-  rw [h_split, mul_inv_rev, mul_assoc,
-    inv_mul_cancel₀ (ne_of_gt (Finset.prod_pos (fun p hp => hlm_pos p (Finset.sdiff_subset hp)))),
-    mul_one, Finset.prod_inv_distrib]
-
-/-! ### Helper lemmas for the tail-sum decay -/
-
 
 
 /-- **Tail Euler weight.** The combined Euler weight multiplied by `p^{ε/2}`,
@@ -664,80 +533,6 @@ lemma weil_weight_le_prime (ε : ℝ) (hε : 0 ≤ ε) (k : ℕ) (hk : 1 ≤ k)
   exact h_weil_weight_le_p.trans ( by rw [ one_mul ] ; exact mul_le_of_le_one_left ( Nat.cast_nonneg _ ) ( by simpa using Real.rpow_le_rpow_of_exponent_le ( Nat.one_le_cast.mpr hp.pos ) ( neg_nonpos.mpr hε ) ) )
 
 /-
-**Gamma-weighted prime splitting.**
-
-For `γ ≤ B_max`, any prime dividing `radical γ` must be at most `B_max`.
-Therefore, for primes `p > B_max`, they cannot divide `γ`, and their contribution
-to `perGammaDeviationWeight` is exactly the well-distributed Weil weight.
-For primes `p ≤ B_max`, their contribution (whether collision or well-distributed)
-is bounded universally by `p`.
--/
-lemma perGammaDeviationWeight_split_bound (ε : ℝ) (hε : 0 ≤ ε) (k : ℕ) (hk : 2 ≤ k)
-    (Ω : ∀ p : ℕ, Finset (ZMod p))
-    (T : Finset ℕ) (hT_prime : ∀ p ∈ T, Nat.Prime p)
-    (γ B_max : ℕ) (hγ : γ ≤ B_max) :
-    perGammaDeviationWeight ε k Ω T γ ≤
-    (∏ p ∈ T.filter (· ≤ B_max), (p : ℝ)) *
-    (∏ p ∈ T.filter (B_max < ·), (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) * localMean k Ω p) := by
-  refine' le_trans _ ( mul_le_mul_of_nonneg_right ( Finset.prod_le_prod _ fun x hx => _ ) _ );
-  rotate_left;
-  use fun p => if p ∣ radical γ then p else ( 1 - ( Ω p |> Finset.card : ℝ ) / p ) * p ^ ( -ε ) * localMean k Ω p;
-  · intro p hp; split_ifs <;> simp_all +decide ;
-    apply_rules [ mul_nonneg, sub_nonneg.2, div_le_one_of_le₀, combinedEulerWeight_nonneg ];
-    · haveI := Fact.mk ( hT_prime p hp.1 ) ; exact_mod_cast le_trans ( Finset.card_le_univ _ ) ( by norm_num ) ;
-    · positivity;
-    · positivity;
-    · positivity;
-    · positivity;
-  · split_ifs <;> norm_num;
-    exact PoissonCRT.weil_weight_le_prime ε hε k ( by linarith ) Ω x ( hT_prime x ( Finset.filter_subset _ _ hx ) );
-  · refine' Finset.prod_nonneg fun p hp => mul_nonneg ( mul_nonneg _ _ ) _ <;> norm_num;
-    · refine' div_le_one_of_le₀ _ ( Nat.cast_nonneg _ );
-      haveI := Fact.mk ( hT_prime p ( Finset.filter_subset _ _ hp ) ) ; exact_mod_cast le_trans ( Finset.card_le_univ _ ) ( by norm_num ) ;
-    · positivity;
-    · exact localMean_nonneg k Ω p;
-  · convert le_rfl using 1;
-    unfold perGammaDeviationWeight;
-    rw [ show ( T.filter fun p => p ∣ radical γ ) = ( T.filter fun p => p ≤ B_max ∧ p ∣ radical γ ) from ?_, show ( T.filter fun p => ¬p ∣ radical γ ) = ( T.filter fun p => p ≤ B_max ∧ ¬p ∣ radical γ ) ∪ ( T.filter fun p => B_max < p ∧ ¬p ∣ radical γ ) from ?_ ];
-    · rw [ Finset.prod_union ];
-      · simp +decide [ Finset.prod_ite, Finset.filter_and ];
-        simp +decide [ Finset.filter_filter, Finset.inter_filter ] ; ring_nf;
-        congr! 2;
-        · congr! 1;
-          grind;
-        · congr! 1;
-          grind;
-        · ext; simp [Finset.mem_filter];
-          exact ⟨ fun h => ⟨ ⟨ h, h.1 ⟩, fun h' => by have := prime_dvd_radical_le_self _ _ ( hT_prime _ h.1 ) h'; linarith ⟩, fun h => ⟨ h.1.1.1, h.1.1.2 ⟩ ⟩;
-      · exact Finset.disjoint_filter.mpr fun _ _ _ _ => by linarith;
-    · grind;
-    · ext p;
-      simp +zetaDelta at *;
-      exact fun hp hp' => le_trans ( prime_dvd_radical_le_self p γ ( hT_prime p hp ) hp' ) hγ
-
-/-! ## Helper lemmas for gamma_weighted_series_bound (Steps 1–3)
-
-These helpers implement the 3-step strategy from the PROVIDED SOLUTION:
-1. Tuple count bound + prefactor absorption
-2. γ-sum Euler product bound
-3. Rankin-trick tail bound
--/
-
-/-
-**Tuple count universal bound.** `M_γ(H) ≤ (H+1)^k` since the
-counting set is a subset of all tuples in `[0, H]^{k+1}`.
--/
-private lemma countTuplesWithGammaProd_le_pow (k γ H : ℕ) :
-    (countTuplesWithGammaProd k γ H : ℝ) ≤ ((H : ℝ) + 1) ^ k := by
-  norm_cast;
-  refine' le_trans ( Set.ncard_le_ncard <| show { h : Fin ( k + 1 ) → ℤ | h 0 = 0 ∧ ( ∀ i j : Fin ( k + 1 ), ¬i = j → ¬h i = h j ) ∧ ( ∀ i : Fin ( k + 1 ), 0 ≤ h i ∧ h i ≤ H ) ∧ ∃ Γ : GammaStructure ( k + 1 ), Γ.gammaProd = γ ∧ ∀ i j : Fin ( k + 1 ), ¬i = j → Γ.sqfreepart.gcd ( h j - h i |> Int.natAbs ) = Γ.gamma i j } ⊆ Set.image ( fun x : Fin k → ℤ => Fin.cons 0 x ) ( Set.Icc ( 0 : Fin k → ℤ ) ( fun _ => H ) ) from _ ) _;
-  · intro h hh;
-    use fun i => h i.succ;
-    exact ⟨ ⟨ fun i => hh.2.2.1 _ |>.1, fun i => hh.2.2.1 _ |>.2 ⟩, by ext i; induction i using Fin.inductionOn <;> aesop ⟩;
-  · rw [ Set.ncard_image_of_injective, Set.ncard_eq_toFinset_card' ] <;> norm_num [ Function.Injective ];
-    erw [ Finset.card_map, Finset.card_pi ] ; norm_num
-
-/-
 **Prefactor absorption inequality.**
 `(1/|Ω_q|) · ∏_{q.pf ∖ T} μ_p ≤ ∏_T μ_p⁻¹`.
 -/
@@ -769,33 +564,6 @@ private lemma prefactor_le_inv_prod_localMean (k : ℕ) (hk : 2 ≤ k)
     · exact fun p hp _ _ _ => pow_pos hp.pos _;
     · exact fun p hp => pow_pos ( Finset.card_pos.mpr ( hΩ p ( Nat.prime_of_mem_primeFactors ( hT hp ) ) ) ) _;
   · exact Finset.prod_pos fun p hp => Nat.cast_pos.mpr ( Finset.card_pos.mpr ( hΩ p ( Nat.prime_of_mem_primeFactors hp ) ) )
-
-/-
-**Pointwise bound on `perGammaDeviationWeight`.**
-For each `γ`, the weight is at most `∏_T (p + weil_p)` since each prime
-contributes either `p` or `weil_p`, both `≤ p + weil_p`.
--/
-private lemma perGammaDeviationWeight_le_prod_add (ε : ℝ) (k : ℕ)
-    (Ω : ∀ p : ℕ, Finset (ZMod p))
-    (hΩle : ∀ p, p.Prime → (Ω p).card ≤ p)
-    (T : Finset ℕ) (hT_prime : ∀ p ∈ T, Nat.Prime p) (γ : ℕ) :
-    perGammaDeviationWeight ε k Ω T γ ≤
-    ∏ p ∈ T, ((p : ℝ) + (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) *
-      localMean k Ω p) := by
-  rw [ ← Finset.prod_filter_mul_prod_filter_not T ( fun p => p ∣ radical γ ) ];
-  refine' mul_le_mul _ _ _ _;
-  · gcongr;
-    refine' le_add_of_nonneg_right _;
-    exact mul_nonneg ( mul_nonneg ( sub_nonneg.2 <| div_le_one_of_le₀ ( mod_cast hΩle _ <| hT_prime _ <| Finset.filter_subset _ _ ‹_› ) <| Nat.cast_nonneg _ ) <| Real.rpow_nonneg ( Nat.cast_nonneg _ ) _ ) <| div_nonneg ( pow_nonneg ( Nat.cast_nonneg _ ) _ ) <| pow_nonneg ( Nat.cast_nonneg _ ) _;
-  · refine' Finset.prod_le_prod _ _;
-    · intro p hp; exact mul_nonneg ( mul_nonneg ( sub_nonneg.2 <| div_le_one_of_le₀ ( mod_cast hΩle p ( hT_prime p <| Finset.filter_subset _ _ hp ) ) <| Nat.cast_nonneg _ ) <| Real.rpow_nonneg ( Nat.cast_nonneg _ ) _ ) <| div_nonneg ( pow_nonneg ( Nat.cast_nonneg _ ) _ ) <| pow_nonneg ( Nat.cast_nonneg _ ) _;
-    · exact fun p hp => le_add_of_nonneg_left <| Nat.cast_nonneg _;
-  · refine' Finset.prod_nonneg fun p hp => mul_nonneg ( mul_nonneg _ _ ) _;
-    · exact sub_nonneg.2 ( div_le_one_of_le₀ ( mod_cast hΩle p ( hT_prime p ( Finset.filter_subset _ _ hp ) ) ) ( Nat.cast_nonneg _ ) );
-    · positivity;
-    · exact div_nonneg ( pow_nonneg ( Nat.cast_nonneg _ ) _ ) ( pow_nonneg ( Nat.cast_nonneg _ ) _ );
-  · refine' Finset.prod_nonneg fun p hp => add_nonneg ( Nat.cast_nonneg _ ) _;
-    exact mul_nonneg ( mul_nonneg ( sub_nonneg.2 <| div_le_one_of_le₀ ( mod_cast hΩle p <| hT_prime p <| Finset.filter_subset _ _ hp ) <| Nat.cast_nonneg _ ) <| Real.rpow_nonneg ( Nat.cast_nonneg _ ) _ ) <| div_nonneg ( pow_nonneg ( Nat.cast_nonneg _ ) _ ) <| pow_nonneg ( Nat.cast_nonneg _ ) _
 
 /-- **Gamma-sum Euler bound.** The weighted gamma sum is bounded by
 `(H+1)^{k-1} \cdot \prod_{p \in T} (1 + W_p)`.

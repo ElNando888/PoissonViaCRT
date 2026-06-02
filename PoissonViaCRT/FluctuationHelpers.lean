@@ -27,15 +27,6 @@ namespace PoissonCRT
 
 variable {q : ℕ} [NeZero q]
 
-/-- `kCorrelation` is nonneg. -/
-theorem kCorrelation_nonneg (Ω : Finset (ZMod q)) (X : Box m) :
-    0 ≤ kCorrelation Ω X := by
-  unfold kCorrelation
-  apply mul_nonneg
-  · positivity
-  · apply Finset.sum_nonneg
-    intros; positivity
-
 /-- The deviation sum vanishes: `∑_g (tupleCount(Ω, 0::g) - μ) = 0`
 where `μ = |Ω|^{m+1} / q^m`. -/
 public theorem tupleCount_cons_deviation_sum_zero (Ω : Finset (ZMod q)) (m : ℕ) :

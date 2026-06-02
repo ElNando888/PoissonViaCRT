@@ -114,45 +114,4 @@ theorem mobius_boundary_sum_bound {ι : Type*}
 
 /-! ## 4. Deviation Synthesis (Hard Case) -/
 
-/-
-**Deviation synthesis (hard case).** Combining `mobius_boundary_sum_bound` with the
-analytic convergence of divisor sums from `MobiusBounds.lean`, the finite sum
-`∑_{d|q} d^{-α}` is bounded by the convergent p-series `∑' n, n^{-α}` (a q-independent
-constant) via `critical_exponent_divisor_bound`. Multiplying through gives the uniform
-bound `|∑ f(d)| ≤ C · (∑' n, n^{-α})` for all `q`, completing the hard case of
-Proposition 3.6 of Granville–Kurlberg.
-
-The synthesis proceeds as:
-1. Apply `mobius_boundary_sum_bound` to get `|∑ f(d)| ≤ C · ∑_{d|q} d^{-α}`.
-2. Apply `critical_exponent_divisor_bound` (from `MobiusBounds.lean`) to bound
-   `∑_{d|q} d^{-α} ≤ ∑' n, n^{-α}`.
-3. Combine via monotonicity of multiplication to conclude the `O(s⁻¹)` bound.
--/
-theorem deviation_synthesis_harder_case
-    (q : ℕ) (_hq : 0 < q)
-    (f : ℕ → ℝ)
-    (C : ℝ) (hC : 0 ≤ C)
-    (α : ℝ) (hα : 1 < α)
-    (hfg : ∀ d ∈ q.divisors, |f d| ≤ C * ((d : ℝ) ^ α)⁻¹) :
-    |∑ d ∈ q.divisors, f d| ≤ C * ∑' n : ℕ, ((n : ℝ) ^ α)⁻¹ := by
-  calc |∑ d ∈ q.divisors, f d|
-      _ ≤ C * ∑ d ∈ q.divisors, ((d : ℝ) ^ α)⁻¹ :=
-        mobius_boundary_sum_bound _ _ C hC _ (fun _ _ => by positivity) hfg
-      _ ≤ C * ∑' n : ℕ, ((n : ℝ) ^ α)⁻¹ := by
-        exact mul_le_mul_of_nonneg_left
-          (critical_exponent_divisor_bound α hα q (by omega)) hC
-
-/-! ## 5. L2 Cauchy-Schwarz Bounds (k=2) -/
-
-/-- **Cauchy-Schwarz for Divisor Sums.**
-Bounds the L1 norm of a deviation function over divisors by its L2 variance multiplied
-by the number of divisors (τ(q)). This allows us to bypass the lack of geometric decay
-in the k=2 case by exploiting the orthogonality of the variance. -/
-theorem divisor_sum_cauchy_schwarz (q : ℕ) (f : ℕ → ℝ) :
-    (∑ d ∈ q.divisors, |f d|) ^ 2 ≤
-      (∑ d ∈ q.divisors, (f d) ^ 2) * (q.divisors.card : ℝ) := by
-  have h := Finset.sum_mul_sq_le_sq_mul_sq q.divisors (fun d => |f d|) (fun _ => (1 : ℝ))
-  simp only [mul_one, one_pow, sq_abs, Finset.sum_const, nsmul_eq_mul] at h
-  exact h
-
 end PoissonCRT

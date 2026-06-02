@@ -531,55 +531,6 @@ public theorem mainTheorem_precise
   have := error_bound_simplified ε hε k hk2 Ω hΩ (fun p _ => hWD p k hk_le) hsp_k hrp_k
   exact ⟨this.choose, this.choose_spec.1, this.choose_spec.2 X⟩
 
-/-
-**Lemma following Theorem 3.7**: Under the well-distribution hypothesis with suitable
-bounds on `s_p`, the `p`-th factor in each Euler product is `s_p^{o(1)}`, so each
-Euler product is `s_q^{o(1)}` and `Error ≤ s_q^{-δ}` for some `δ > 0`.
-
-Choose δ = ε (positive by hε). Then for any prime p, subset Ω, assuming WellDistributed ε p Ω k, the spacing bound, and given injective h:
-
-Case 1: If Ω.card = 0, then epsilonError = 0 by the if-then-else in the definition, and |0| = 0 ≤ RHS (since RHS = (1 - 0) * p^(-ε) ≥ 0, because p^(-ε) ≥ 0).
-
-Case 2: If Ω.card > 0: WellDistributed gives |tupleCount Ω h - expected| ≤ (1 - |Ω|/p) * p^(-ε) * expected, where expected = |Ω|^k / p^(k-1) > 0.
-
-epsilonError = tupleCount/expected - 1, so |epsilonError| = |tupleCount/expected - 1| = |tupleCount - expected| / expected (using the fact that for b > 0, |a/b - 1| = |a - b| / b).
-
-From WellDistributed: |tupleCount - expected| / expected ≤ (1 - |Ω|/p) * p^(-ε).
-
-Key steps:
-1. refine ⟨ε, hε, fun p _ Ω hWD _ h hInj => ?_⟩
-2. Unfold epsilonError, split on Ω.card = 0.
-3. If Ω.card = 0: simp.
-4. If Ω.card ≠ 0: let E := expected, show E > 0, then rewrite |.../E - 1| as |... - E|/E, then apply div_le_iff and use WellDistributed.
--/
-theorem error_from_euler_products
-    (ε : ℝ) (hε : 0 < ε) (k : ℕ) (_ : 2 ≤ k) :
-    ∃ δ : ℝ, 0 < δ ∧ ∀ (p : ℕ) [Fact p.Prime] (Ω : Finset (ZMod p)),
-      WellDistributed ε p Ω k →
-      (p : ℝ) / Ω.card ≤ (p : ℝ) ^ (lambdaExponent k - 2 * ε) →
-        ∀ (h : Fin k → ZMod p), Function.Injective h →
-          |epsilonError Ω h| ≤ (1 - Ω.card / p : ℝ) * (p : ℝ) ^ (-ε) := by
-  refine' ⟨ ε, hε, _ ⟩;
-  intro p hp Ω hWD hsp h hInj
-  unfold epsilonError
-  simp +decide;
-  split_ifs <;> simp_all +decide [ WellDistributed ];
-  · positivity;
-  · convert div_le_div_of_nonneg_right ( hWD.1 h hInj ) ( show 0 ≤ ( ( Ω.card : ℝ ) ^ k / p ^ ( k - 1 ) ) by positivity ) using 1;
-    · rw [ div_sub_one, abs_div ] <;> norm_num [ show ( Ω.card : ℝ ) ≠ 0 by exact Nat.cast_ne_zero.mpr <| ne_of_gt <| Finset.card_pos.mpr <| Finset.nonempty_iff_ne_empty.mpr ‹_› ];
-      · rw [ abs_of_nonneg ( by positivity : 0 ≤ ( Ω.card : ℝ ) ^ k / p ^ ( k - 1 ) ) ];
-      · exact fun h => absurd h hp.1.ne_zero;
-    · rw [ mul_div_cancel_right₀ _ ( ne_of_gt ( div_pos ( pow_pos ( Nat.cast_pos.mpr ( Finset.card_pos.mpr ( Finset.nonempty_of_ne_empty ‹_› ) ) ) _ ) ( pow_pos ( Nat.cast_pos.mpr hp.1.pos ) _ ) ) ) ]
-
-/- Corollary 1.2 (d-th powers well-distributed) has been removed from scope,
-   as it requires the Hasse-Weil bound (Riemann Hypothesis for curves).
-   The target applications (like the Krafft multi-residue sieve) rely strictly
-   on exact combinatorial additive bounds (excluding bounded residue classes),
-   which trivially satisfy the WellDistributed hypotheses without algebraic geometry. -/
-
-
-/-! ### Special case: Hooley's theorem (integers coprime to q) -/
-
 /-- **Hooley's theorem** (recovered from Theorem 1.1): For `Ω_p = {x ∈ ℤ/pℤ : x ≠ 0}`
 (integers coprime to `p`), the tuple counting function satisfies
 `N_k(h, Ω_p) = p - k` for injective `h`. -/

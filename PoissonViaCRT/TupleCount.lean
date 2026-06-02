@@ -52,35 +52,6 @@ public theorem tupleCount_le_card (Ω : Finset (ZMod q)) (h : Fin (k + 1) → ZM
   · rw [Finset.card_image_of_injective _ (add_left_injective _)]; rfl
   · grind
 
-/-- When `k = 0`, `N_0(h, Ω)` counts all elements of `ℤ/qℤ`, i.e., equals `q`. -/
-theorem tupleCount_zero (Ω : Finset (ZMod q)) (h : Fin 0 → ZMod q) :
-    tupleCount Ω h = q := by
-  unfold tupleCount
-  simp_all only [IsEmpty.forall_iff, filter_true, card_univ, ZMod.card]
-
-/-- Shifting all offsets by a constant doesn't change `N_k`. -/
-theorem tupleCount_shift (Ω : Finset (ZMod q)) (h : Fin k → ZMod q) (c : ZMod q) :
-    tupleCount Ω (fun i => h i + c) = tupleCount Ω h := by
-  unfold tupleCount
-  rw [Finset.card_filter, Finset.card_filter]
-  apply Finset.sum_bij (fun i _ => i + c)
-  · exact fun _ _ => Finset.mem_univ _
-  · intro a₁ ha₁ a₂ ha₂ a
-    simp_all only [mem_univ, add_left_inj]
-  · exact fun b _ => ⟨b - c, Finset.mem_univ _, sub_add_cancel _ _⟩
-  · simp +decide only [add_comm, add_left_comm]
-    tauto
-
-/-! ### The sum formula
-
-The fundamental identity `∑_h N_k(h, Ω) = q · |Ω|^k` is established by exchanging the order
-of summation. Each `t ∈ ℤ/qℤ` contributes `|Ω|^k` to the sum (by independence of coordinates).
-
-The paper uses the variant with `h₀ = 0` fixed (Lemma 3.5): summing over `g : Fin k → ℤ/qℤ`,
-we have `∑_g N_{k+1}(0 :: g, Ω) = |Ω|^{k+1}`. The condition `t + 0 ∈ Ω` restricts `t` to
-`Ω`, giving `|Ω|` choices of `t`, each contributing `|Ω|^k` from the remaining coordinates.
--/
-
 /-- **Sum formula for `N_k`**: `∑_h N_k(h, Ω) = q · |Ω|^k`. -/
 public theorem tupleCount_sum_eq (Ω : Finset (ZMod q)) :
     ∑ h : Fin k → ZMod q, tupleCount Ω h = q * Ω.card ^ k := by
@@ -137,17 +108,6 @@ public theorem tupleCount_sum_cons_eq (Ω : Finset (ZMod q)) :
   · norm_num [pow_succ']
 
 /-! ### Monotonicity and subset properties -/
-
-/-- `N_k(h, Ω)` is monotone in `Ω`. -/
-theorem tupleCount_mono {Ω₁ Ω₂ : Finset (ZMod q)} (h : Fin k → ZMod q)
-    (hsub : Ω₁ ⊆ Ω₂) : tupleCount Ω₁ h ≤ tupleCount Ω₂ h :=
-  Finset.card_mono fun x hx => by aesop
-
-/-- `N_k(h, ∅) = 0` for `k ≥ 1`. -/
-theorem tupleCount_empty (h : Fin (k + 1) → ZMod q) :
-    tupleCount (∅ : Finset (ZMod q)) h = 0 := by
-  unfold tupleCount
-  simp_all only [notMem_empty, forall_const, filter_false, card_empty]
 
 /-- `N_k(h, univ) = q` for all `h`. -/
 public theorem tupleCount_univ (h : Fin k → ZMod q) :

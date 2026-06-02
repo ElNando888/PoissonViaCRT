@@ -40,62 +40,6 @@ open Finset BigOperators Classical
 
 namespace PoissonCRT
 
-lemma deviation_bound (k : ℕ) (_hk : 2 ≤ k) (q : ℕ) [NeZero q]
-    (Ω : Finset (ZMod q)) (X : Box (k - 1))
-    (hcard : 0 < Ω.card) :
-    ∃ C : ℝ, 0 < C ∧
-      |(1 / (Ω.card : ℝ)) *
-        ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
-            Finset.Icc (1 : ℤ) ⌈((q : ℝ) / Ω.card) * ∑ i, X.sides i⌉).filter
-          (fun h => inScaledBox X ((q : ℝ) / Ω.card) (fun _ => 0) h)),
-        ((tupleCount Ω (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
-          (Ω.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| ≤
-      C * ((q : ℝ) / Ω.card) ^ (-(1 : ℝ)) := by
-  refine' ⟨ _, _, _ ⟩;
-  exact ( |1 / ( Ω.card : ℝ ) * ∑ h ∈ Fintype.piFinset fun x : Fin ( k - 1 ) => Icc 1 ⌈ ( q : ℝ ) / ( Ω.card : ℝ ) * ∑ i : Fin ( k - 1 ), X.sides i⌉ with inScaledBox X ( ( q : ℝ ) / ( Ω.card : ℝ ) ) (fun _ => 0) h, ( tupleCount Ω ( Fin.cons 0 fun i => ( h i : ZMod q ) ) - ( Ω.card : ℝ ) ^ k / ( q : ℝ ) ^ ( k - 1 ) )| + 1 ) * ( q / ( Ω.card : ℝ ) );
-  · exact mul_pos ( add_pos_of_nonneg_of_pos ( abs_nonneg _ ) zero_lt_one ) ( div_pos ( Nat.cast_pos.mpr <| NeZero.pos q ) <| Nat.cast_pos.mpr hcard );
-  · rw [ Real.rpow_neg_one, mul_assoc, mul_inv_cancel₀ ( ne_of_gt <| div_pos ( Nat.cast_pos.mpr <| NeZero.pos q ) <| Nat.cast_pos.mpr hcard ), mul_one ] ; norm_num
-
-/-- The cardinality of the CRT subset is at most q. -/
-lemma crtSubset_card_le (q : ℕ) [NeZero q] (Ω : ∀ p : ℕ, Finset (ZMod p)) :
-    (crtSubset q Ω).card ≤ q := by
-  exact le_trans (Finset.card_filter_le _ _) (by simp [Finset.card_univ, ZMod.card])
-
-/-- The absolute value of the deviation expression is bounded by 2 * box_card
-    when Ω.card > 0 and Ω.card ≤ q. -/
-lemma deviation_abs_le_two_box_card (k : ℕ) (hk : 2 ≤ k) (q : ℕ) [NeZero q]
-    (Ω : Finset (ZMod q)) (X : Box (k - 1))
-    (hcard : 0 < Ω.card) (hle : (Ω.card : ℝ) ≤ (q : ℝ)) :
-    |(1 / (Ω.card : ℝ)) *
-      ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
-          Finset.Icc (1 : ℤ) ⌈((q : ℝ) / Ω.card) * ∑ i, X.sides i⌉).filter
-        (fun h => inScaledBox X ((q : ℝ) / Ω.card) (fun _ => 0) h)),
-      ((tupleCount Ω (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
-        (Ω.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| ≤
-    2 * ((Fintype.piFinset fun _ : Fin (k - 1) =>
-        Finset.Icc (1 : ℤ) ⌈((q : ℝ) / Ω.card) * ∑ i, X.sides i⌉).filter
-      (fun h => inScaledBox X ((q : ℝ) / Ω.card) (fun _ => 0) h)).card := by
-  rw [ abs_mul, abs_of_nonneg ];
-  · rw [ div_mul_eq_mul_div, div_le_iff₀ ] <;> norm_cast;
-    refine' le_trans ( mul_le_mul_of_nonneg_left ( Finset.abs_sum_le_sum_abs _ _ ) zero_le_one ) _;
-    refine' le_trans ( mul_le_mul_of_nonneg_left ( Finset.sum_le_sum fun x hx => _ ) zero_le_one ) _;
-    use fun x => 2 * Ω.card;
-    · convert individual_deviation_bound Ω ( k - 1 ) hcard hle ( fun i => ( x i : ZMod q ) ) using 1 ; cases k <;> aesop;
-    · norm_num [ mul_assoc, mul_comm, mul_left_comm ];
-  · positivity
-
-/-! ### Core Möbius-based bound
-
-The following lemma captures the key mathematical content: for each divisor `d` of `q`,
-the contribution to the deviation sum is bounded using:
-- Period cancellation at period `d` (via `deviation_sum_period_zero`)
-- The well-distribution hypothesis (via `WellDistributed`)
-- The lattice point counting bound (`hC_lp`)
-
-The total contribution, summed over all divisors, converges by `divisor_sum_convergence`.
-
-This is formalized as a uniform bound on `D(q) · s(q)` for all `q`. -/
-
 /-- **Möbius deviation bound**: The product `|deviation_expression| · s` is uniformly
 bounded over all `q`. This is the core mathematical content of Proposition 3.6,
 established via the Möbius inversion decomposition (§3.2 of Granville–Kurlberg).

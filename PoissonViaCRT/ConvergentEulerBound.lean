@@ -124,12 +124,6 @@ noncomputable def convergentEulerBoundConstant (k : ℕ) (ε : ℝ)
     (Ω : ∀ p : ℕ, Finset (ZMod p)) : ℝ :=
   Real.exp (∑' p : ℕ, convergentEulerLocalWeight ε Ω p)
 
-/-- Positivity of the bound constant. -/
-theorem convergentEulerBoundConstant_pos (k : ℕ) (ε : ℝ)
-    (Ω : ∀ p : ℕ, Finset (ZMod p)) :
-    0 < convergentEulerBoundConstant k ε Ω :=
-  Real.exp_pos _
-
 /-- **Convergent Euler product bound**: For `k ≥ 3`, the Euler partition sum
 over any finset `S` is bounded by the constant `convergentEulerBoundConstant k ε Ω`.
 
@@ -172,14 +166,6 @@ public theorem largeEulerLocalWeight_nonneg (ε : ℝ) (Ω : ∀ p : ℕ, Finset
     0 ≤ largeEulerLocalWeight ε Ω p :=
   mul_nonneg (Nat.cast_nonneg p) (convergentEulerLocalWeight_nonneg ε Ω p hp)
 
-/-- Per-prime comparison for the large-divisor case: the actual factor is exactly
-`largeEulerLocalWeight ε Ω p`. -/
-theorem largeEuler_comparison {p : ℕ} (hp : p.Prime) (ε : ℝ)
-    (Ω : ∀ p : ℕ, Finset (ZMod p)) (hΩ : (Ω p).Nonempty) :
-    (p : ℝ) * ((p : ℝ) * (1 - ((Ω p).card : ℝ) / (p : ℝ)) * (p : ℝ) ^ (-ε)) ≤
-      largeEulerLocalWeight ε Ω p :=
-  le_refl _
-
 /-- The large-divisor Euler partition sum:
 `largeEulerPartitionSum ε Ω S = ∏_{p ∈ S} (1 + largeEulerLocalWeight ε Ω p)`. -/
 @[expose]
@@ -187,49 +173,11 @@ public noncomputable def largeEulerPartitionSum (ε : ℝ) (Ω : ∀ p : ℕ, Fi
     (S : Finset ℕ) : ℝ :=
   ∏ p ∈ S, (1 + largeEulerLocalWeight ε Ω p)
 
-theorem largeEulerPartitionSum_nonneg (ε : ℝ) (Ω : ∀ p : ℕ, Finset (ZMod p))
-    (S : Finset ℕ) (hΩ : ∀ p ∈ S, (Ω p).card ≤ p) :
-    0 ≤ largeEulerPartitionSum ε Ω S :=
-  Finset.prod_nonneg fun p hp =>
-    add_nonneg one_pos.le (largeEulerLocalWeight_nonneg ε Ω p (hΩ p hp))
-
 public theorem powerset_prod_eq_largeEulerPartitionSum (ε : ℝ) (Ω : ∀ p : ℕ, Finset (ZMod p))
     (S : Finset ℕ) :
     ∑ T ∈ S.powerset, ∏ p ∈ T, largeEulerLocalWeight ε Ω p =
       largeEulerPartitionSum ε Ω S := by
   unfold largeEulerPartitionSum
   simp +decide [add_comm (1 : ℝ), Finset.prod_add]
-
-/-- The `q`-independent bound constant for the large-divisor Euler product.
-
-**Deprecated.** See the deprecation note on `convergentEulerBoundConstant`.
-Use `euler_product_ratio_bound_large` from `MobiusSynthesis.lean` instead. -/
-noncomputable def largeEulerBoundConstant (k : ℕ) (ε : ℝ)
-    (Ω : ∀ p : ℕ, Finset (ZMod p)) : ℝ :=
-  Real.exp (∑' p : ℕ, largeEulerLocalWeight ε Ω p)
-
-theorem largeEulerBoundConstant_pos (k : ℕ) (ε : ℝ) (Ω : ∀ p : ℕ, Finset (ZMod p)) :
-    0 < largeEulerBoundConstant k ε Ω :=
-  Real.exp_pos _
-
-/-- **Large-divisor Euler product bound**: For `k ≥ 3`, the large-divisor
-partition sum over any finset `S` is bounded by `largeEulerBoundConstant k ε Ω`. -/
-theorem largeEulerPartitionSum_le_bound {k : ℕ} (hk : 3 ≤ k) {ε : ℝ} (hε : 0 < ε)
-    (Ω : ∀ p : ℕ, Finset (ZMod p)) (S : Finset ℕ)
-    (h_sum : Summable (largeEulerLocalWeight ε Ω))
-    (hΩ : ∀ p, (Ω p).card ≤ p) :
-    largeEulerPartitionSum ε Ω S ≤ largeEulerBoundConstant k ε Ω := by
-  unfold largeEulerPartitionSum largeEulerBoundConstant
-  have h1 : ∏ p ∈ S, (1 + largeEulerLocalWeight ε Ω p) ≤ ∏ p ∈ S, Real.exp (largeEulerLocalWeight ε Ω p) := by
-    apply Finset.prod_le_prod
-    · intro p _
-      exact add_nonneg one_pos.le (largeEulerLocalWeight_nonneg ε Ω p (hΩ p))
-    · intro p _
-      rw [add_comm]
-      exact Real.add_one_le_exp (largeEulerLocalWeight ε Ω p)
-  rw [← Real.exp_sum] at h1
-  apply le_trans h1
-  apply Real.exp_le_exp.mpr
-  exact Summable.sum_le_tsum S (fun p _ => largeEulerLocalWeight_nonneg ε Ω p (hΩ p)) h_sum
 
 end PoissonCRT

@@ -93,20 +93,6 @@ lemma inScaledBox_iff_gap {m : ℕ} (X : Box m)
   norm_num +zetaDelta at *
   grind
 
-/-- The number of integers in the half-open interval `(α, α + L]` is at most `L + 1`. This elementary
-counting lemma is used in the boundary coordinate estimates. -/
-lemma int_count_in_interval (α L : ℝ) (hL : 0 < L) :
-    ((Finset.Ioc ⌊α⌋ ⌊α + L⌋).card : ℝ) ≤ L + 1 := by
-  have h_card :
-      #(Finset.Ioc ⌊α⌋ ⌊α + L⌋) ≤ ⌊α + L⌋ - ⌊α⌋ := by
-    norm_num
-    exact Int.floor_mono <| le_add_of_nonneg_right hL.le
-  exact le_trans (Int.cast_le.mpr h_card) (by
-    push_cast
-    linarith [Int.floor_le (α + L),
-      Int.lt_floor_add_one (α + L),
-      Int.floor_le α, Int.lt_floor_add_one α])
-
 /-- The number of integers in `(α, α + L] \ (0, L]` is at most `2` when `|α| ≤ 1`. This bounds the
 per-coordinate boundary contribution in the symmetric-difference estimate. -/
 lemma int_excess_count (α L : ℝ) (_hL : 0 < L)
