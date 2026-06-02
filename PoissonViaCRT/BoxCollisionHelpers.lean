@@ -104,7 +104,7 @@ public lemma inScaledBox_cons_nonneg {m : ℕ} (X : Box m) (s : ℝ) (hs : 1 ≤
 
 /-
 For `p = 0` (i.e., `ZMod 0 = ℤ`), the extended map is injective.
--/
+## Currently unused -/
 public lemma injective_fin_cons_zero {m : ℕ} (X : Box m) (s : ℝ) (hs : 1 ≤ s)
     (h : Fin m → ℤ)
     (hbox : inScaledBox X s (fun _ => 0) h) :
@@ -176,7 +176,8 @@ public lemma indicator_zero_of_large_prime {m : ℕ} (X : Box m) (s : ℝ) (hs :
 
 /-! ## 4. Helper: product vanishes when any factor does -/
 
-/-- If any factor in a product over `U` vanishes, the whole product is `0`. -/
+/-- If any factor in a product over `U` vanishes, the whole product is `0`.
+## Currently unused -/
 public lemma prod_eq_zero_of_mem_zero {U : Finset ℕ}
     (f : ℕ → (Fin m → ℤ) → ℝ) (h : Fin m → ℤ)
     (p : ℕ) (hp : p ∈ U) (hf : f p h = 0) :

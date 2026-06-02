@@ -129,7 +129,7 @@ private lemma collision_sum_le_card_box (m : ℕ) (X : Box m) (s : ℝ)
 
 /-
 The scaled box has at most `⌈s * ∑ sides⌉ ^ m` lattice points.
--/
+## Currently unused -/
 private lemma card_box_le_pow (m : ℕ) (X : Box m) (s : ℝ) (hs : 1 ≤ s) :
     ((Fintype.piFinset fun _ : Fin m => Finset.Icc (1:ℤ) ⌈s * ∑ i, X.sides i⌉).filter
         (fun h => inScaledBox X s (fun _ => 0) h)).card
@@ -317,7 +317,8 @@ private lemma collision_sum_main_bound (m : ℕ) (hm : 1 ≤ m) (X : Box m) (s :
 
 /-- The sequential cardinality bound for a fixed choice function `σ`.
 **Corrected statement**: the per-coordinate bound is `⌊N / M_k⌋ + 1` instead of `2 * ⌊N / M_k⌋`,
-which is the maximum number of integers in a congruence class within an interval. -/
+which is the maximum number of integers in a congruence class within an interval.
+## Currently unused -/
 lemma validHForSigma_card_le (m : ℕ) (X : Box m) (s : ℝ) (hs : 1 ≤ s)
     (U : Finset ℕ) (hp_prime : ∀ p ∈ U, p.Prime)
     (σ : ∀ p ∈ U, Fin (m + 1) × Fin (m + 1))
