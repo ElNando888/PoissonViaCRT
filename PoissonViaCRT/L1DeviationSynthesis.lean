@@ -233,7 +233,7 @@ private lemma prefactor_localMean_collapse' (k : ℕ) (hk : 1 ≤ k) (q : ℕ) [
 
 /-! ## Helper: The raw L1 deviation sum bound -/
 
-/-
+/--
 The sum of the collision indicator product over box points is bounded,
 after factoring out `k^2` per prime.
 -/
@@ -372,7 +372,7 @@ private lemma L1_deviation_raw_bound (ε : ℝ) (k : ℕ) (hk : 2 ≤ k)
   · exact mul_nonneg (by positivity) (Finset.prod_nonneg fun p hp => localMean_nonneg k Ω p)
   · exact inner_sum_bound ε k hk Ω hWD hrp X C_box C_γ hC_box hC_γ h_coll q T hT_sub s hs_ge rfl
 
-/-
+/--
 The prefactor `(1/|Ω_q|) * (∏_{Q\T} μ_p) * C_box * s^(k-1)` collapses to
 `C_box / (∏_T μ_p)` using the global mean factorization.
 -/
@@ -398,7 +398,7 @@ private lemma prefactor_main_collapse (k : ℕ) (hk : 2 ≤ k) (q : ℕ) [NeZero
     simp +decide [← mul_pow, mul_assoc, mul_left_comm, NeZero.ne];
     rw [ mul_inv_cancel₀ ( Nat.cast_ne_zero.mpr hc.card_pos.ne' ), one_pow, mul_one ] ; norm_num
 
-/-
+/--
 The prefactor `(1/|Ω_q|) * (∏_{Q\T} μ_p) * C_box * s^(k-2)` collapses to
 `C_box / (s * ∏_T μ_p)` using the global mean factorization.
 -/
@@ -424,7 +424,7 @@ private lemma prefactor_error_collapse (k : ℕ) (hk : 2 ≤ k) (q : ℕ) [NeZer
     simp +decide [ ← mul_pow, mul_assoc, mul_comm, mul_left_comm, div_eq_mul_inv, NeZero.ne ];
     exact Or.inl <| Or.inl <| by rw [ mul_inv_cancel₀ <| Nat.cast_ne_zero.mpr hc.card_pos.ne', one_pow, one_mul ] ;
 
-/-
+/--
 Per-factor bound: `combinedEulerWeight * μ + k²*C_γ/p ≤ modifiedEulerWeight(C_γ*C_μ) * μ`
 when `1/μ ≤ C_μ/p`.
 -/

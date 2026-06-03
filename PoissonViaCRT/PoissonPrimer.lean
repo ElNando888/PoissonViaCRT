@@ -94,6 +94,7 @@ theorem condExpectation_indicator (q k r : ℕ) (hk : k ≤ q) (hr : k ≤ r) (h
 
 /-! ### Properties of the average spacing and density -/
 
+/-- The cardinality of any subset of `ℤ/qℤ` is at most `q`. -/
 theorem card_le_q {q : ℕ} [NeZero q] (Ω : Finset (ZMod q)) :
     (Ω.card : ℚ) ≤ q := by
   have := Finset.card_le_univ Ω

@@ -50,22 +50,17 @@ namespace PoissonCRT
 
 variable {k : ℕ}
 
-/-
-C(n+1, 2) = C(n, 2) + n
--/
+/-- Pascal's identity for `choose 2`: `C(n+1, 2) = C(n, 2) + n`. -/
 lemma Nat.choose_two_succ (n : ℕ) : (n + 1).choose 2 = n.choose 2 + n := by
   simp +arith +decide [ Nat.choose ]
 
-/-
-For n ≥ 2, C(n, 2) ≥ 1
--/
+/-- For `n ≥ 2`, `C(n, 2) ≥ 1`. -/
 lemma Nat.one_le_choose_two (n : ℕ) (hn : 2 ≤ n) : 1 ≤ n.choose 2 := by
   exact Nat.choose_pos hn
 
-/-
-S(m + d, m) ≤ C(m + d, 2) ^ d for m ≥ 1, d ≥ 1.
-    This is the key bound, proved by induction on d (outer) and m (inner).
-    The proof uses the recurrence S(n+1, p+1) = (p+1) * S(n, p+1) + S(n, p).
+/--
+Stirling numbers of the second kind bound: `S(m + d, m) ≤ C(m + d, 2)^d` for `m, d ≥ 1`.
+This is a key combinatorial bound proved by double induction using the standard recurrence.
 -/
 theorem stirlingSecond_le_choose_pow_aux :
     ∀ d m : ℕ, 1 ≤ d → 1 ≤ m →
@@ -147,6 +142,8 @@ private lemma GammaStructure.prime_dvd_or_eq_equiv
       (hjl.resolve_right hne_jl))
 
 -- See docs/proof_sketches.md for full proof sketch.
+/-- The product of squarefree integers remains squarefree if they are pairwise coprime, which
+implies that the row product `γⱼ` is squarefree. -/
 lemma GammaStructure.gammaRow_squarefree
     (Γ : GammaStructure k) (j : Fin k) :
     Squarefree (Γ.gammaRow j) := by
@@ -186,12 +183,16 @@ lemma GammaStructure.gammaRow_squarefree
   exact fun i hi => Γ.sqfree i j (ne_of_lt hi)
 
 -- See docs/proof_sketches.md for full proof sketch.
+/-- The prime factorization multiplicity of `gammaRow j` at any prime is at most 1, since it
+is squarefree. -/
 lemma GammaStructure.factorization_gammaRow_le_one
     (Γ : GammaStructure k) (j : Fin k) (p : ℕ) :
     Nat.factorization (Γ.gammaRow j) p ≤ 1 :=
   (gammaRow_squarefree Γ j).natFactorization_le_one p
 
 -- See docs/proof_sketches.md for full proof sketch.
+/-- The prime factorization multiplicity of `gammaRow j` at a prime `p` is 1 if `p` divides
+any entry in the column `i < j`, and 0 otherwise. -/
 lemma GammaStructure.factorization_gammaRow_eq
     (Γ : GammaStructure k) (j : Fin k) (p : ℕ)
     (hp : Nat.Prime p) :
@@ -217,6 +218,8 @@ lemma GammaStructure.factorization_gammaRow_eq
       h i <| Finset.mem_Iio.mp hi
 
 -- See docs/proof_sketches.md for full proof sketch.
+/-- The multiplicity of `p` in the factorization of `γ(Γ)` equals the number of columns `j`
+such that `p` divides some entry `gamma i j` with `i < j`. -/
 lemma GammaStructure.factorization_gammaProd_eq
     (Γ : GammaStructure k) (p : ℕ)
     (hp : Nat.Prime p) :
@@ -235,6 +238,8 @@ lemma GammaStructure.factorization_gammaProd_eq
   · rw [Finset.card_filter]
 
 -- See docs/proof_sketches.md for full proof sketch.
+/-- Counts the number of indices `j` that are not the minimal representative of their
+equivalence class under the relation `R`. -/
 lemma card_filter_exists_lt_equiv {n : ℕ}
     (R : Fin n → Fin n → Prop)
     [DecidableRel R]
@@ -278,6 +283,8 @@ lemma card_filter_exists_lt_equiv {n : ℕ}
   norm_num [Finset.card_univ]
 
 -- See docs/proof_sketches.md for full proof sketch.
+/-- Applying a permutation to an equivalence relation preserves the number of distinct
+equivalence classes. -/
 lemma card_image_classMin_eq_of_perm {n : ℕ}
     (R₁ R₂ : Fin n → Fin n → Prop)
     [DecidableRel R₁] [DecidableRel R₂]
@@ -394,6 +401,8 @@ lemma card_filter_exists_lt_equiv_eq {n : ℕ}
         hrefl₂ hsymm₂ htrans₂ σ hcompat]
 
 -- See docs/proof_sketches.md for full proof sketch.
+/-- The number of non-minimal column indices under the prime divisibility equivalence
+relation is invariant under permutations of the index set. -/
 lemma GammaStructure.perm_count_eq
     (Γ : GammaStructure k)
     (σ : Equiv.Perm (Fin k)) (p : ℕ)
@@ -444,16 +453,19 @@ lemma GammaStructure.gammaRow_pos
   refine Nat.pos_of_ne_zero fun h => ?_
   have := Γ.gammaRow_squarefree j; simp_all
 
+/-- The row product `gammaRow` is strictly non-zero. -/
 lemma GammaStructure.gammaRow_ne_zero
     (Γ : GammaStructure k) (j : Fin k) :
     Γ.gammaRow j ≠ 0 :=
   (Γ.gammaRow_pos j).ne'
 
+/-- The real cast of `gammaRow` is strictly positive. -/
 lemma GammaStructure.gammaRow_cast_pos
     (Γ : GammaStructure k) (j : Fin k) :
     (0 : ℝ) < (Γ.gammaRow j : ℝ) :=
   Nat.cast_pos.mpr (Γ.gammaRow_pos j)
 
+/-- The real cast of `gammaRow` is non-zero. -/
 lemma GammaStructure.gammaRow_cast_ne_zero
     (Γ : GammaStructure k) (j : Fin k) :
     (Γ.gammaRow j : ℝ) ≠ 0 :=
@@ -465,6 +477,7 @@ lemma GammaStructure.gammaRow_cast_ge_one
     (Γ.gammaRow j : ℝ) ≥ 1 :=
   Nat.one_le_cast.mpr (Γ.gammaRow_pos j)
 
+/-- The global Gamma product `γ(Γ)` is strictly positive. -/
 public lemma GammaStructure.gammaProd_pos
     (Γ : GammaStructure k) : 0 < Γ.gammaProd :=
   Finset.prod_pos fun j _ => Γ.gammaRow_pos j
@@ -472,6 +485,7 @@ public lemma GammaStructure.gammaProd_pos
 /-! ### Permutation invariance of `γ(Γ)` -/
 
 -- See docs/proof_sketches.md for full proof sketch.
+/-- The product `γ(Γ)` is invariant under permutations of the underlying Gamma structure. -/
 theorem GammaStructure.gammaProd_perm_invariant
     (hk : 0 < k) (Γ : GammaStructure k)
     (σ : Equiv.Perm (Fin k))
@@ -490,6 +504,7 @@ theorem GammaStructure.gammaProd_perm_invariant
       using 1
     · simp +decide [GammaStructure.permute]; try rfl
     · simp +decide [Finset.mem_Iio]; try rfl
+
 /-- Every entry `Γ.gamma i j` is bounded by `Γ.gammaProd`. When `i = j` the entry is zero;
 otherwise it divides `gammaRow (max i j)` which in turn divides `gammaProd`. -/
 lemma GammaStructure.gamma_le_gammaProd
@@ -542,6 +557,7 @@ public noncomputable def finsetGammaStructures (γ : ℕ) : Finset (GammaStructu
       sqfree := hf.2.2.2.1
       compat := hf.2.2.2.2.1 }
 
+/-- Simplification lemma extracting `Γ.gammaProd = γ` from membership in the finset. -/
 @[simp]
 public theorem mem_finsetGammaStructures {γ : ℕ} {Γ : GammaStructure k} :
     Γ ∈ finsetGammaStructures γ ↔ Γ.gammaProd = γ := by
@@ -556,9 +572,7 @@ public theorem mem_finsetGammaStructures {γ : ℕ} {Γ : GammaStructure k} :
 /-! ### Bound on number of Gamma structures
 (Lemma 3.1) -/
 
-/-
-Each off-diagonal entry of a `GammaStructure` divides `gammaProd`.
--/
+/-- Each off-diagonal entry of a `GammaStructure` divides `gammaProd`. -/
 lemma GammaStructure.gamma_dvd_gammaProd (Γ : GammaStructure k) (i j : Fin k)
     (hij : i ≠ j) : Γ.gamma i j ∣ Γ.gammaProd := by
   unfold GammaStructure.gammaProd; cases le_total i j <;> simp_all +decide ;
@@ -569,9 +583,7 @@ lemma GammaStructure.gamma_dvd_gammaProd (Γ : GammaStructure k) (i j : Fin k)
   · refine' dvd_trans _ ( Finset.dvd_prod_of_mem _ ( Finset.mem_univ i ) );
     exact Finset.dvd_lcm ( Finset.mem_Iio.mpr ( lt_of_le_of_ne ‹_› ( Ne.symm hij ) ) ) |> dvd_trans ( by simp +decide [ Γ.symm ] )
 
-/-
-The number of squarefree divisors of `n` is `2 ^ n.primeFactors.card`.
--/
+/-- The number of squarefree divisors of `n` is `2 ^ n.primeFactors.card`. -/
 lemma card_squarefree_divisors (n : ℕ) (hn : n ≠ 0) :
     (n.divisors.filter Squarefree).card = 2 ^ n.primeFactors.card := by
   convert Nat.divisors_filter_squarefree hn using 1;
@@ -580,18 +592,14 @@ lemma card_squarefree_divisors (n : ℕ) (hn : n ≠ 0) :
   · convert congr_arg Multiset.card h using 1;
     simp +decide [ Nat.factors_eq ]
 
-/-
-Each off-diagonal entry of `Γ` with `Γ.gammaProd = γ` is a squarefree divisor of `γ`.
--/
+/-- Each off-diagonal entry of `Γ` with `Γ.gammaProd = γ` is a squarefree divisor of `γ`. -/
 lemma GammaStructure.gamma_mem_squarefree_divisors {Γ : GammaStructure k} {γ : ℕ}
     (hΓ : Γ.gammaProd = γ) (i j : Fin k) (hij : i ≠ j) :
     Γ.gamma i j ∈ γ.divisors.filter Squarefree := by
   refine' Finset.mem_filter.mpr ⟨ Nat.mem_divisors.mpr ⟨ hΓ ▸ GammaStructure.gamma_dvd_gammaProd Γ i j hij, _ ⟩, Γ.sqfree i j hij ⟩;
   exact hΓ ▸ Nat.pos_iff_ne_zero.mp ( Γ.gammaProd_pos )
 
-/-
-The number of ordered pairs `(i, j)` with `i < j` in `Fin k` is `k.choose 2`.
--/
+/-- The number of ordered pairs `(i, j)` with `i < j` in `Fin k` is `k.choose 2`. -/
 lemma card_upper_triangular_pairs (k : ℕ) :
     (Finset.univ.filter (fun p : Fin k × Fin k => p.1 < p.2)).card = k.choose 2 := by
   rw [ Nat.choose_two_right ];
@@ -601,6 +609,8 @@ lemma card_upper_triangular_pairs (k : ℕ) :
   simp +decide [ Finset.filter_lt_eq_Ioi ];
   rw [ ← Finset.sum_range_reflect, Finset.sum_range ]
 
+/-- The number of Gamma structures with a fixed product `γ(Γ) = γ` is bounded by
+`(2 ^ k.choose 2) ^ γ.primeFactors.card` (Lemma 3.1). -/
 public theorem countGammaStructures_le (γ : ℕ) (hγ : 0 < γ) :
     (finsetGammaStructures γ : Finset (GammaStructure k)).card ≤
       (2 ^ k.choose 2) ^ γ.primeFactors.card := by
@@ -639,6 +649,8 @@ public theorem countGammaStructures_le (γ : ℕ) (hγ : 0 < γ) :
 /-! ### Helper lemmas for Proposition 3.2 -/
 
 -- See docs/proof_sketches.md for full proof sketch.
+/-- The number of elements in an interval `[0, H]` that are pairwise congruent modulo `m`
+is bounded by `H / m + 1`. -/
 lemma card_set_pairwise_dvd_le {m : ℕ} (hm : 0 < m)
     (H : ℕ) (S : Finset ℤ)
     (hS : ∀ x ∈ S, 0 ≤ x ∧ x ≤ H)
@@ -679,6 +691,8 @@ lemma card_set_pairwise_dvd_le {m : ℕ} (hm : 0 < m)
       have := hdvd x hx y hy; aesop
 
 -- See docs/proof_sketches.md for full proof sketch.
+/-- If two valid tuples agree on all indices `< j`, their difference at index `j` must be
+divisible by the row product `gammaRow j`. -/
 lemma gammaRow_dvd_diff_of_valid
     {Γ : GammaStructure (k + 1)}
     {h h' : Fin (k + 1) → ℤ}
@@ -712,9 +726,9 @@ lemma gammaRow_dvd_diff_of_valid
     simp_all +decide [Finset.lcm_insert]
   simp +decide [← ‹_›, GCDMonoid.lcm])
 
-/-
-See docs/proof_sketches.md for full proof sketch.
--/
+/-- Given a sequence of moduli `m_j`, if agreeing on the prefix `< j` forces differences at `j`
+to be divisible by `m_j`, then the total number of such valid tuples bounded by `H` is at
+most the product of `H / m_j + 1`. -/
 lemma card_filtered_le_prod_of_fiber_dvd
     (n : ℕ) (H : ℕ) (m : Fin n → ℕ)
     (hm : ∀ j, 0 < m j)
@@ -800,7 +814,8 @@ lemma card_filtered_le_prod_of_fiber_dvd
 
 /-! ### Upper bound on `M_Γ(H)` (Proposition 3.2) -/
 
--- See docs/proof_sketches.md for full proof sketch.
+/-- Proposition 3.2: The number of tuples consistent with a Gamma structure `Γ` bounded by `H`
+is at most `∏ (H / γ_j + 1)`. -/
 theorem countTuples_bound_prop
     (Γ : GammaStructure (k + 1)) (H : ℕ) :
     (countTuplesWithGamma Γ H : ℝ) ≤
@@ -854,6 +869,9 @@ theorem countTuples_bound_prop
       rw [le_div_iff₀ (Γ.gammaRow_cast_pos i.succ)]
       exact_mod_cast Nat.div_mul_le_self H
         (Γ.gammaRow i.succ)
+
+/-- Corollary 3.3: If all row products `γ_j` are bounded by `H`, then the tuple count is
+bounded by `2^k * H^k / γ(Γ)`. -/
 public theorem countTuples_bound_small_gamma
     (Γ : GammaStructure (k + 1)) (H : ℕ)
     (hsmall : ∀ i : Fin k,

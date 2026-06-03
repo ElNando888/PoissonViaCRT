@@ -65,12 +65,12 @@ open Finset BigOperators Classical Complex
 
 namespace PoissonCRT
 
-/-
-**$L^\\infty$ bound on local deviation Fourier coefficients.** Under the `WellDistributedFourier`
+/--
+**$L^\infty$ bound on local deviation Fourier coefficients.** Under the `WellDistributedFourier`
 hypothesis (which encodes the Weil bound cancellation from the convolution structure),
 the Fourier transform of the local deviation function is bounded pointwise.
 
-Note: by definition, `dft(deviation)(0) = 0`. For $\\xi \\neq 0$, the deviation FT equals
+Note: by definition, `dft(deviation)(0) = 0`. For $\xi \neq 0$, the deviation FT equals
 the FT of `tupleCount`, which is bounded by `WellDistributedFourier`.
 -/
 theorem local_deviation_fourier_bound (ε : ℝ) (_hε : 0 < ε)
@@ -105,7 +105,7 @@ theorem local_deviation_fourier_bound (ε : ℝ) (_hε : 0 < ε)
 
 /-! ### CRT factorization of Fourier coefficients -/
 
-/-
+/--
 **CRT factorization of the deviation DFT.** For squarefree `q`, the Fourier transform
 of the global counting function factors as a product of local Fourier transforms over
 the prime factors of `q`. This is the frequency-domain manifestation of
@@ -146,7 +146,7 @@ theorem dft_crt_factorization (q : ℕ) [NeZero q] (hq : Squarefree q)
         rw [ map_prod ];
         refine' Finset.prod_bij ( fun p hp => ⟨ p, hp ⟩ ) _ _ _ _ <;> aesop
 
-/-
+/--
 The sum of the global counting function over all `h` equals
 `q^(k-1) * ∏_p μ_p` (or equivalently, `∏_p |Ω_p|^k`).
 -/
@@ -171,7 +171,7 @@ public lemma sum_global_tupleCount (k : ℕ) (hk : 2 ≤ k)
       linarith;
     · simp +decide [ crtFrequencyEquiv ]
 
-/-
+/--
 The DFT of the global counting function at `ξ = 0` equals `μ_q = ∏_p μ_p`.
 This is a consequence of the definition of `dft`, `sum_tupleCount_eq_card_pow`,
 and `counting_function_multiplicative`.
@@ -287,14 +287,14 @@ public lemma deviation_dft_q1_q2_bound (k : ℕ) (hk : 2 ≤ k) (ε : ℝ) (hε 
 
 /-! ### Helpers for the DFT interval L¹ bound -/
 
-/-
+/--
 **Jordan's inequality**: `sin x ≥ (2/π) x` for `x ∈ [0, π/2]`.
 -/
 private lemma jordan_inequality {x : ℝ} (hx0 : 0 ≤ x) (hx1 : x ≤ Real.pi / 2) :
     Real.sin x ≥ 2 / Real.pi * x := by
   exact le_trans ( by ring_nf; norm_num ) ( Real.mul_le_sin hx0 hx1 )
 
-/-
+/--
 The harmonic sum `∑_{j=1}^{n} 1/j ≤ log(n) + 1` for `n ≥ 1`.
 -/
 private lemma harmonic_sum_le_log_add_one {n : ℕ} (hn : 1 ≤ n) :
@@ -303,7 +303,7 @@ private lemma harmonic_sum_le_log_add_one {n : ℕ} (hn : 1 ≤ n) :
   rw [ show ( n : ℝ ) + 1 = n * ( 1 + ( n : ℝ ) ⁻¹ ) by nlinarith only [ mul_inv_cancel₀ ( by positivity : ( n : ℝ ) ≠ 0 ) ], Real.log_mul ( by positivity ) ( by positivity ) ];
   nlinarith [ inv_pos.mpr ( by positivity : 0 < ( n : ℝ ) * ( 1 + ( n : ℝ ) ⁻¹ ) ), mul_inv_cancel₀ ( by positivity : ( n : ℝ ) * ( 1 + ( n : ℝ ) ⁻¹ ) ≠ 0 ), Real.log_inv ( 1 + ( n : ℝ ) ⁻¹ ), Real.log_le_sub_one_of_pos ( inv_pos.mpr ( by positivity : 0 < ( 1 + ( n : ℝ ) ⁻¹ ) ) ), mul_inv_cancel₀ ( by positivity : ( n : ℝ ) ≠ 0 ), mul_inv_cancel₀ ( by positivity : ( 1 + ( n : ℝ ) ⁻¹ ) ≠ 0 ) ]
 
-/-
+/--
 The norm of `1 - exp(iθ)` equals `2 |sin(θ/2)|`.
 -/
 private lemma norm_one_sub_cexp_mul_I (θ : ℝ) :
@@ -312,7 +312,7 @@ private lemma norm_one_sub_cexp_mul_I (θ : ℝ) :
   rw [ Real.sqrt_eq_iff_mul_self_eq ] <;> ring_nf <;> norm_num [ Real.sin_sq, Real.cos_sq ] <;> ring_nf ; norm_num [ abs_mul, abs_of_nonneg ];
   exact Real.cos_le_one _
 
-/-
+/--
 For `z` on the unit circle with `z ≠ 1`,
     `‖∑_{j=0}^{n-1} z^j‖ ≤ 2 / ‖1 - z‖`.
 -/
@@ -368,7 +368,7 @@ private lemma sum_inv_sin_pairing (q : ℕ) (hq : 1 ≤ q) :
   rw [ h_pair ] ; refine Finset.sum_le_sum fun i hi => ?_; rw [ show Real.pi * ( 2 * k + 1 - i ) / ( 2 * k + 1 ) = Real.pi - Real.pi * i / ( 2 * k + 1 ) by rw [ sub_div' ] <;> ring_nf ; positivity ] ; norm_num [ Real.sin_pi_sub ] ; ring_nf ; norm_num;
   rw [ ← mul_inv ] ; ring_nf ; norm_num;
 
-/-
+/--
 The sum `∑_{j=1}^{q-1} 1/(q |sin(π j / q)|)` is at most `log(q) + 1`.
 -/
 lemma sum_inv_sin_le_log_add_one (q : ℕ) (hq : 1 ≤ q) :
@@ -389,7 +389,7 @@ lemma sum_inv_sin_le_log_add_one (q : ℕ) (hq : 1 ≤ q) :
     fun n hn => harmonic_sum_le_log_add_one hn;
   exact if h : 1 ≤ q / 2 then le_trans ( h_harmonic _ h ) ( by gcongr ; omega ) else by interval_cases q / 2 ; norm_num ; positivity;
 
-/-
+/--
 At frequency `ξ = 0`, the DFT of the interval indicator has norm at most `1`.
 -/
 lemma dft_interval_norm_at_zero (q : ℕ) [NeZero q] (L : ℕ) :
@@ -402,7 +402,7 @@ lemma dft_interval_norm_at_zero (q : ℕ) [NeZero q] (L : ℕ) :
     simp +decide [ Finset.card_univ ];
   · exact NeZero.pos q
 
-/-
+/--
 The 1D DFT factors through a sum over `ZMod q`.
 -/
 private lemma dft_one_dim_eq (q : ℕ) [NeZero q]
@@ -418,7 +418,7 @@ private lemma dft_one_dim_eq (q : ℕ) [NeZero q]
   convert congr_arg ( fun x : ℂ => ( 1 / ( q : ℂ ) ) * x ) h_sum_eq using 1;
   convert rfl using 2 ; norm_num [ dft, character ]
 
-/-
+/--
 `conj(additiveChar q ξ a) = (conj(additiveChar q ξ 1))^(a.val)`.
 -/
 private lemma star_additiveChar_eq_pow (q : ℕ) [NeZero q] (ξ a : ZMod q) :
@@ -427,7 +427,7 @@ private lemma star_additiveChar_eq_pow (q : ℕ) [NeZero q] (ξ a : ZMod q) :
         rw [ additiveChar_eq_exp_pow ] ; norm_num [ ← map_pow ] ; ring_nf;
         unfold additiveChar; norm_num [ ← Complex.exp_nat_mul ] ; ring_nf;
 
-/-
+/--
 `‖conj(additiveChar q ξ 1)‖ = 1`.
 -/
 private lemma norm_star_additiveChar_one (q : ℕ) [NeZero q] (ξ : ZMod q) :
@@ -435,7 +435,7 @@ private lemma norm_star_additiveChar_one (q : ℕ) [NeZero q] (ξ : ZMod q) :
   convert norm_additiveChar q ξ 1 using 1;
   convert norm_star ( additiveChar q ξ 1 ) using 1
 
-/-
+/--
 For `ξ ≠ 0`, `conj(additiveChar q ξ 1) ≠ 1`.
 -/
 private lemma star_additiveChar_one_ne_one (q : ℕ) [NeZero q]
@@ -454,7 +454,7 @@ private lemma star_additiveChar_one_ne_one (q : ℕ) [NeZero q]
     exact ⟨ h_exp_eq.choose, by rw [ ← @Int.cast_inj ℝ ] ; push_cast; nlinarith [ Real.pi_pos, mul_div_cancel₀ ( 2 * Real.pi * ξ.val : ℝ ) ( show ( q : ℝ ) ≠ 0 by exact Nat.cast_ne_zero.mpr <| NeZero.ne q ), h_exp_eq.choose_spec ] ⟩;
   cases' h_exp_eq with n hn; have := congr_arg ( fun x : ℤ => x : ℤ → ZMod q ) hn; norm_num at this; aesop;
 
-/-
+/--
 `‖1 - conj(additiveChar q ξ 1)‖ = 2 * |sin(π * ξ.val / q)|`.
 -/
 private lemma norm_one_sub_star_additiveChar (q : ℕ) [NeZero q] (ξ : ZMod q) :
@@ -466,7 +466,7 @@ private lemma norm_one_sub_star_additiveChar (q : ℕ) [NeZero q] (ξ : ZMod q) 
     cases q <;> norm_num at *;
   · ring_nf; norm_num [ mul_div ] ;
 
-/-
+/--
 At frequency `ξ ≠ 0`, the DFT of the interval indicator has norm at most
     `1 / (q * |sin(π ξ / q)|)`.
 -/
@@ -500,7 +500,7 @@ lemma dft_interval_norm_at_nonzero (q : ℕ) [NeZero q] (L : ℕ)
     rw [ norm_additiveChar ] ; norm_num;
   convert h_dft_bound using 1 ; rw [ norm_one_sub_star_additiveChar ] ; ring
 
-/-
+/--
 The sum over `ZMod q` of the pointwise norm bound matches `sum_inv_sin_le_log_add_one`.
 -/
 lemma sum_dft_bound_le_log_add_two (q : ℕ) [NeZero q] :
@@ -510,7 +510,7 @@ lemma sum_dft_bound_le_log_add_two (q : ℕ) [NeZero q] :
   convert add_le_add_left ( sum_inv_sin_le_log_add_one q ( NeZero.pos q ) ) ( 1 : ℝ ) using 1 ; ring;
   ring
 
-/-
+/--
 At frequency `ξ = 0`, the DFT of the interval indicator has norm at most `L / q`.
 -/
 private lemma dft_interval_norm_at_zero_tight (q : ℕ) [NeZero q] (L : ℕ) :
@@ -528,7 +528,7 @@ private lemma dft_interval_norm_at_zero_tight (q : ℕ) [NeZero q] (L : ℕ) :
       exact le_trans ( Finset.card_le_card <| Finset.image_subset_iff.mpr fun x hx => Finset.mem_Icc.mpr <| Finset.mem_filter.mp hx |>.2 ) ( by simp );
     rwa [ Finset.card_image_of_injective _ fun x y hxy => by simpa [ ZMod.natCast_eq_zero_iff ] using congr_arg ( fun x : ℕ => x : ℕ → ZMod q ) hxy ] at h_card
 
-/-
+/--
 For nonzero `a : ZMod d` with `d ∣ q`, the frequency `a.val * (q / d)` is nonzero in `ZMod q`.
 -/
 lemma subgrid_freq_ne_zero (q d : ℕ) [NeZero q] [NeZero d] (hd : d ∣ q)
@@ -545,7 +545,7 @@ lemma subgrid_freq_ne_zero (q d : ℕ) [NeZero q] [NeZero d] (hd : d ∣ q)
         exact ha ( by rw [ ← ZMod.natCast_eq_zero_iff ] at h_div; aesop );
       contrapose! h_mod; erw [ ZMod.natCast_eq_zero_iff ] at *; aesop;
 
-/-
+/--
 For nonzero `a : ZMod d` with `d ∣ q`, the sine argument simplifies:
 `|sin(π * (a.val * (q / d)) / q)| = |sin(π * a.val / d)|`.
 -/
@@ -557,7 +557,7 @@ private lemma subgrid_sin_eq (q d : ℕ) [NeZero q] [NeZero d] (hd : d ∣ q)
   simp +decide [ sq, mul_assoc, mul_comm, mul_left_comm, NeZero.ne ];
   by_cases hk : k = 0 <;> aesop
 
-/-
+/--
 The `val` of a nonzero `a.val * (q / d)` in `ZMod q` equals `a.val * (q / d)`,
 since `a.val < d` and `d ∣ q` imply `a.val * (q / d) < q`.
 -/
@@ -599,7 +599,7 @@ private lemma dft_subgrid_nonzero_term_bound (q d : ℕ) [NeZero q] [NeZero d]
       exact absurd h_freq_ne_zero ( Nat.not_dvd_of_pos_of_lt ha.1 ( lt_of_le_of_lt ha.2 ( Nat.pred_lt ( NeZero.ne d ) ) ) );
   aesop
 
-/-
+/--
 Sum of the 1D interval DFT over a subgrid of frequencies.
 -/
 public lemma dft_interval_subgrid_bound (q d : ℕ) [NeZero q] [NeZero d] (hd : d ∣ q) (L : ℕ) :
@@ -637,7 +637,7 @@ public lemma freqDivisor_dvd (q m : ℕ) [NeZero q] (ξ : Fin m → ZMod q) :
   refine' Nat.dvd_trans _ ( Nat.prod_primeFactors_dvd q );
   apply_rules [ Finset.prod_dvd_prod_of_subset, freqSupport_subset_primeFactors ]
 
-/-
+/--
 If `p ∉ freqSupport q m ξ` and `p ∈ q.primeFactors`, then every component of `ξ`
 is zero modulo `p`.
 -/
@@ -648,7 +648,7 @@ lemma component_zero_of_not_in_freqSupport {q m : ℕ} [NeZero q]
   unfold freqSupport at hp_not; simp_all +decide ;
   exact congr_fun ( hp_not ( Nat.prime_of_mem_primeFactors hp_pf ) ( Nat.dvd_of_mem_primeFactors hp_pf ) ( NeZero.ne q ) ) i
 
-/-
+/--
 The subgrid injection map `a ↦ (a_i.val * (q/d))` is injective as a map
 from `Fin m → ZMod d` to `Fin m → ZMod q` when `d ∣ q` and `q` is squarefree.
 -/
@@ -676,7 +676,7 @@ lemma subgrid_map_injective (q d : ℕ) [NeZero q] [NeZero d] (hd : d ∣ q)
     exact Int.dvd_of_dvd_mul_left_of_gcd_one h_cong_mod_d ( by simpa [ Int.gcd_natCast_natCast ] using Nat.Coprime.symm h_coprime );
   ext i; specialize h_cong_mod_d i; simp_all +decide [ ← ZMod.natCast_eq_natCast_iff ] ;
 
-/-
+/--
 For squarefree `q`, if `p \in q.primeFactors` and `castHom _ (\xi i) = 0` for all `i`,
 then `p \mid (\xi i).val`.
 -/
@@ -686,7 +686,7 @@ lemma val_dvd_of_castHom_zero {q : ℕ} [NeZero q] {p : ℕ}
     p ∣ ξ.val := by
   rw [ ← ZMod.natCast_eq_zero_iff ] ; aesop;
 
-/-
+/--
 The complementary prime product: for squarefree `q`, if `d = ∏ freqSupport`,
 then `q / d = ∏ (q.primeFactors \ freqSupport)`.
 -/
@@ -699,8 +699,9 @@ private lemma complementary_prod_eq_div {q m : ℕ} [NeZero q] (hq : Squarefree 
     rw [ mul_comm, ← Finset.prod_sdiff <| freqSupport_subset_primeFactors q m ξ ];
     exact mul_comm _ _
 
-/-
-For squarefree `q`, if `freqDivisor q m ξ = d`, then `(q/d) ∣ (ξ i).val` for all `i`.
+/--
+For `d = freqDivisor q m ξ`, if `q` is squarefree, then `(ξ i).val = a_i * (q/d)`
+for some `a_i < d`.
 -/
 private lemma qd_dvd_val_of_freqDivisor_eq {q d m : ℕ} [NeZero q] [NeZero d]
     (hd : d ∣ q) (hq : Squarefree q) (ξ : Fin m → ZMod q)
@@ -716,7 +717,7 @@ private lemma qd_dvd_val_of_freqDivisor_eq {q d m : ℕ} [NeZero q] [NeZero d]
     grind;
   · assumption
 
-/-
+/--
 If `freqDivisor q m ξ = d`, then `ξ` is in the image of the subgrid injection.
 -/
 lemma fiber_subset_subgrid_image (q d : ℕ) [NeZero q] [NeZero d] (hd : d ∣ q)

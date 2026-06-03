@@ -25,7 +25,7 @@ open Finset BigOperators Classical
 
 namespace PoissonCRT
 
-/-
+/--
 For a finset of distinct primes, the prime factorization of their product
 equals the finset itself.
 -/
@@ -34,7 +34,7 @@ lemma primeFactors_prod_primes {S : Finset ℕ} (hS : ∀ p ∈ S, Nat.Prime p) 
   induction S using Finset.induction <;> simp_all +decide;
   rw [ Nat.primeFactors_mul, hS.1.primeFactors ] <;> aesop
 
-/-
+/--
 The `freqSupport` of a frequency vector equals the prime factorization of
 its `freqDivisor`, provided `q` is squarefree.
 -/
@@ -44,7 +44,7 @@ lemma freqSupport_eq_primeFactors_freqDivisor (q m : ℕ) [NeZero q]
   rw [ eq_comm, freqDivisor, primeFactors_prod_primes ];
   exact fun p hp => Nat.prime_of_mem_primeFactors <| freqSupport_subset_primeFactors q m ξ hp
 
-/-
+/--
 Bound on the product of `(1 - |Ω_p|/p)` factors using `hrp`.
 Given `hrp : 1 - |Ω_p|/p ≤ k/p` for all primes, the product over primes
 in `freqSupport` satisfies
@@ -69,7 +69,7 @@ lemma prod_one_sub_le_pow_div (k : ℕ) (hk : 2 ≤ k)
     haveI := Fact.mk ( show Nat.Prime p from by { unfold freqSupport at hp; aesop } ) ; exact_mod_cast le_trans ( Finset.card_le_univ _ ) ( by norm_num ) ;
   · exact Nat.prime_of_mem_primeFactors ( Finset.mem_filter.mp hp |>.1 )
 
-/-
+/--
 Combined DFT coefficient bound with tight `(1 - |Ω_p|/p)` factor.
 For nonzero `ξ` with `freqDivisor = d`, the norm of the DFT coefficient
 is bounded by `k^{ω(d)} · d^{-(1+ε)} · M`.

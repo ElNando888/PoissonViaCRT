@@ -107,9 +107,7 @@ theorem deviation_product_difference {k : ℕ} (q : ℕ) [NeZero q]
   rw [prod_sub_prod_expansion (localCount Ω q h) (localMean k Ω) q.primeFactors]
   exact sum_nonempty_powerset_eq_sum_nontrivial_divisors q hq _
 
-/-
-When |Ω_q| = q (all of ZMod q), the deviation is zero.
--/
+/-- When `|Ω_q| = q` (all of `ZMod q`), the deviation is zero. -/
 lemma deviation_zero_of_card_eq_q {k : ℕ} (hk : 2 ≤ k) (q : ℕ) [NeZero q]
     (Ω : ∀ p : ℕ, Finset (ZMod p)) (X : Box (k - 1))
     (hfull : (crtSubset q Ω).card = q) :
@@ -129,8 +127,8 @@ lemma deviation_zero_of_card_eq_q {k : ℕ} (hk : 2 ≤ k) (q : ℕ) [NeZero q]
 
 /-! ### Helpers for deviation_final_synthesis -/
 
-/-
-The spacing hypothesis at p = 2 forces ε ≤ lambdaExponent k. When ε > lambdaExponent k,
+/--
+The spacing hypothesis at `p = 2` forces `ε ≤ λ_k`. When `ε > λ_k`,
 the hypotheses are inconsistent.
 -/
 lemma spacing_forces_eps_le_lambda (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
@@ -147,9 +145,7 @@ lemma spacing_forces_eps_le_lambda (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 �
   · exact le_trans ( Finset.card_le_univ _ ) ( by norm_num );
   · exact Finset.card_pos.mpr ( hΩ 2 Nat.prime_two )
 
-/-
-When ε = lambdaExponent k, all local subsets are full, so the deviation is zero.
--/
+/-- When `ε = λ_k`, all local subsets are full, so the deviation is zero. -/
 lemma all_full_of_eps_eq_lambda (ε : ℝ) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
@@ -160,9 +156,9 @@ lemma all_full_of_eps_eq_lambda (ε : ℝ) (k : ℕ) (hk : 2 ≤ k)
   intro p pp; specialize hsp p pp; simp_all +decide [ div_le_iff₀ ] ;
   haveI := Fact.mk pp; exact le_antisymm ( le_trans ( Finset.card_le_univ _ ) ( by norm_num ) ) hsp;
 
-/-
-When all local subsets are full (Ω_p = ZMod p for all primes p), the CRT subset
-is the full set ZMod q.
+/--
+When all local subsets are full (`Ω_p = ZMod p` for all primes `p`), the CRT subset
+is the full set `ZMod q`.
 -/
 lemma crtSubset_full_of_all_full (q : ℕ) [NeZero q]
     (Ω : ∀ p : ℕ, Finset (ZMod p))
@@ -188,7 +184,7 @@ lemma crtSubset_full_of_all_full (q : ℕ) [NeZero q]
   after which the Rankin-trick tail sum gives the `O(s^{-ε/2})` decay.
 -/
 
-/-
+/--
 **Large-divisor contribution bound (divisor formulation).**
 
 The sum of per-divisor deviation contributions over squarefree divisors `d ∣ q`
@@ -280,9 +276,7 @@ private lemma deviation_large_divisors (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk :
 
 /-! ### Core deviation bound assembly -/
 
-/-
-**Core per-`q` deviation bound with fixed exponent `ε / 2`.**
--/
+/-- **Core per-`q` deviation bound with fixed exponent `ε / 2`.** -/
 lemma deviation_expression_fixed_delta (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
@@ -336,6 +330,7 @@ lemma deviation_expression_fixed_delta (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk :
     · rw [ Finset.sum_filter_add_sum_filter_not ];
     · ring
 
+/-- **Core per-`q` deviation bound with uniform exponent.** -/
 private lemma deviation_expression_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)

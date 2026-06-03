@@ -161,7 +161,7 @@ private lemma rescaled_card_injectivity {k : ℕ}
       have := Int.mul_ediv_add_emod ( a2 i - 1 ) d
       aesop
 
-/-
+/--
 The 1-based residue `r_1 i` satisfies `1 ≤ r_1 i` and `r_1 i ≤ d`.
 -/
 private lemma r1_bounds (d : ℕ) [NeZero d] (r : Fin k → ZMod d) (i : Fin k) :
@@ -170,7 +170,7 @@ private lemma r1_bounds (d : ℕ) [NeZero d] (r : Fin k → ZMod d) (i : Fin k) 
     1 ≤ r_1 i ∧ r_1 i ≤ (d : ℤ) := by
       grind
 
-/-
+/--
 The image condition: `(d * (b i - 1) + r_1 i - 1) / d + 1 = b i`.
 -/
 private lemma surj_image_eq (d : ℕ) [NeZero d] (r : Fin k → ZMod d)
@@ -190,7 +190,7 @@ private lemma surj_image_eq (d : ℕ) [NeZero d] (r : Fin k → ZMod d)
             ( Nat.le_of_lt ( ZMod.val_lt _ ) ) );
         grind +suggestions
 
-/-
+/--
 The mod condition: `(d * (b i - 1) + r_1 i : ZMod d) = r i`.
 -/
 private lemma surj_mod_eq (d : ℕ) [NeZero d] (r : Fin k → ZMod d)
@@ -206,7 +206,7 @@ private lemma surj_mod_eq (d : ℕ) [NeZero d] (r : Fin k → ZMod d)
         injection h_cast_zero with h_cast_zero ; aesop
       exact h_r_zero.symm
 
-/-
+/--
 From inScaledBox with shift 0, each coordinate h i satisfies
 `(h i : ℝ) ≤ s * ∑ j, X.sides j`, hence `h i ≤ ⌈s * ∑ X.sides⌉`.
 -/
@@ -240,7 +240,7 @@ private lemma inscaledbox_implies_icc_upper {k : ℕ}
       exact Int.le_of_lt_add_one <|
       by rw [ ← @Int.cast_lt ℝ ] ; push_cast; linarith [ Int.le_ceil ( s * ∑ j, X.sides j ) ] ;
 
-/-
+/--
 Transfer of inScaledBox from scale s/d to scale s.
 -/
 private lemma surj_inscaledbox_transfer {k : ℕ}
@@ -262,7 +262,7 @@ private lemma surj_inscaledbox_transfer {k : ℕ}
         rw [ div_lt_div_iff_of_pos_right, le_div_iff₀ ] <;> norm_num [ NeZero.pos ];
         constructor <;> intro h <;> constructor <;> linarith
 
-/-
+/--
 Helper: the candidate point for surjectivity is in S and satisfies inScaledBox.
 -/
 private lemma rescaled_surj_mem_S {k : ℕ}
@@ -287,7 +287,7 @@ private lemma rescaled_surj_mem_S {k : ℕ}
   exact ⟨by nlinarith [ hr1_bounds i, hb_pi i, show ( d : ℤ ) > 0
     from Nat.cast_pos.mpr ( NeZero.pos d ) ], h_le⟩
 
-/-
+/--
 Helper: the candidate point has the correct residue class mod d.
 -/
 private lemma rescaled_surj_mod_eq {k : ℕ}
@@ -296,7 +296,7 @@ private lemma rescaled_surj_mod_eq {k : ℕ}
     (fun i => (((d : ℤ) * (b i - 1) + r_1 i : ℤ) : ZMod d)) = r := by
   exact funext fun i => surj_mod_eq d r b i
 
-/-
+/--
 Helper: the candidate point maps back to b under the rescaling.
 -/
 private lemma rescaled_surj_image_eq {k : ℕ}
@@ -513,7 +513,7 @@ private lemma mean_collapse (k : ℕ) (hk : 1 ≤ k) (q : ℕ) [NeZero q] (hq_sq
 
 /-! ### The main box_deviation_inner_bound -/
 
-/-
+/--
 Per-prime L¹ bound from WellDistributed.
 -/
 private lemma arith_l1_per_prime (k : ℕ) (ε : ℝ)
@@ -538,7 +538,7 @@ private lemma arith_l1_per_prime (k : ℕ) (ε : ℝ)
       grind +splitIndPred;
     · ring
 
-/-
+/--
 CRT transport: sum over ZMod d matches sum over product type via box_period_equiv.
     Requires T = d.primeFactors (which holds when d = ∏_{p ∈ T} p with T consisting of primes).
 -/
@@ -567,7 +567,7 @@ private lemma arith_l1_crt_transport (k : ℕ)
     · grind +splitIndPred;
   · exact fun x _ => Finset.abs_prod _ _
 
-/-
+/--
 Product matching: ∏ over d.primeFactors matches ∏ over T via bijection.
 -/
 private lemma arith_l1_prod_match (k : ℕ) (ε : ℝ)
@@ -593,7 +593,7 @@ private lemma arith_l1_prod_match (k : ℕ) (ε : ℝ)
     exact ⟨ Nat.prime_of_mem_primeFactors p.2 ⟩;
   · refine' Finset.prod_bij ( fun p hp => ⟨ p, by aesop ⟩ ) _ _ _ _ <;> aesop
 
-/-
+/--
 Arithmetic L¹ bound via CRT factorization: the sum of absolute products of local
 deviations over all residue classes mod d is bounded by the product of per-prime L¹ norms.
 -/
@@ -639,7 +639,7 @@ private lemma box_deviation_arith_l1 (k : ℕ) (ε : ℝ) (hε : 0 < ε)
     _ ≤ _ := h2
     _ ≤ _ := h3
 
-/-
+/--
 The deviation product factors through ZMod d when d = ∏_{p ∈ T} p.
 -/
 private lemma box_deviation_factors_through_d (k : ℕ) (q : ℕ) [NeZero q]
@@ -666,7 +666,7 @@ private lemma box_deviation_factors_through_d (k : ℕ) (q : ℕ) [NeZero q]
       ( by have := Nat.dvd_of_mem_primeFactors ( hT hp ) ; exact fun h =>
         absurd ( Nat.dvd_gcd ( dvd_refl p ) this ) ( by aesop ) ) ) ( NeZero.ne q )
 
-/-
+/--
 Final algebraic rearrangement for the last step of box_deviation_inner_bound.
 Combines the mean collapse, d-power cancellation, and arith split.
 -/

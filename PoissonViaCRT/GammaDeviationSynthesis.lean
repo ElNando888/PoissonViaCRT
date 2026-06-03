@@ -100,7 +100,7 @@ noncomputable def perGammaDeviationWeight (ε : ℝ) (k : ℕ)
 
 /-! ## 2. Auxiliary lemmas for the deviation-sum bound -/
 
-/-
+/--
 The `perGammaDeviationWeight` is nonneg for primes `T ⊆ q.primeFactors`.
 -/
 lemma perGammaDeviationWeight_nonneg (ε : ℝ) (k : ℕ)
@@ -114,7 +114,7 @@ lemma perGammaDeviationWeight_nonneg (ε : ℝ) (k : ℕ)
   · positivity;
   · exact div_nonneg ( pow_nonneg ( Nat.cast_nonneg _ ) _ ) ( pow_nonneg ( Nat.cast_nonneg _ ) _ )
 
-/-
+/--
 When `p ∈ T`, `p` is prime, and `p ∤ radical(γ(h))`, the projected
 tuple `Fin.cons 0 h` is injective modulo `p`. This is because `p ∣ ∏ T`
 and `p ∤ radical(γ)` together imply `p` does not divide any pairwise
@@ -152,7 +152,7 @@ lemma not_dvd_radical_gammaProd_imp_injective {n : ℕ} (hn : 1 ≤ n)
   · simp +decide [ Finset.prod_eq_zero_iff, Nat.gcd_eq_zero_iff ];
     intro i j hij h0; have := hT h0; simp_all +decide
 
-/-
+/--
 Weil-type bound on `|localCount − localMean|` when the tuple is
 injective modulo `p` (without requiring `p > ⌈s * ∑ sides⌉`).
 -/
@@ -174,7 +174,7 @@ lemma localCount_deviation_of_injective {ε : ℝ} {n : ℕ} (hn : 1 ≤ n)
   convert hWD.1 _ _ using 1;
   convert h_inj using 1
 
-/-
+/--
 **Pointwise Weight Bound.** For a single lattice point `h` in the box,
 the absolute deviation product `|∏_{p ∈ T} (localCount − localMean)|` is
 bounded by `perGammaDeviationWeight ε k Ω T γ`, where `γ` is the gamma
@@ -432,7 +432,7 @@ lemma deviation_sum_le_gamma_sum (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤
 
 /-! ## 4. Auxiliary lemmas for the gamma-weighted series bound -/
 
-/-
+/--
 **Euler product expansion.** The product `∏_{p ∈ S} (1 + 1/p)` equals
 the sum over all subsets `A ⊆ S` of `∏_{p ∈ A} (1/p)`. This follows
 from `Finset.prod_add` with `f = 1/p`, `g = 1`.
@@ -442,7 +442,7 @@ lemma euler_product_one_add_inv (S : Finset ℕ) :
     ∑ A ∈ S.powerset, ∏ p ∈ A, (1 / (p : ℝ)) := by
   simp +decide [ add_comm, Finset.prod_add ]
 
-/-
+/--
 For squarefree `γ` divisible by `d = ∏ T` (where `T` consists of primes),
 we have `T ⊆ γ.primeFactors` and
 `γ = (∏ p ∈ T, p) * ∏ p ∈ γ.primeFactors \ T, p`.
@@ -458,7 +458,7 @@ lemma squarefree_prod_primeFactors_sdiff (T : Finset ℕ) (hT : ∀ p ∈ T, Nat
     exact fun p hp => Nat.mem_primeFactors.mpr ⟨ h_prime p hp, Nat.dvd_trans ( Finset.dvd_prod_of_mem _ hp ) h_div, by aesop ⟩ ;
   assumption
 
-/-
+/--
 For squarefree `γ ∈ [1, N]`, the set `γ.primeFactors \ T` lies in
 the powerset of `S = {primes p ∈ [2,N], p ∉ T}`.
 -/
@@ -470,7 +470,7 @@ lemma primeFactors_sdiff_mem_powerset (T : Finset ℕ) (hT : ∀ p ∈ T, Nat.Pr
   intro p hp; simp_all +decide ;
   exact ⟨ hp.1.1.two_le, Nat.le_trans ( Nat.le_of_dvd hγ_range.1 hp.1.2.1 ) hγ_range.2 ⟩
 
-/-
+/--
 The map `γ ↦ γ.primeFactors \ T` is injective on squarefree multiples
 of `d = ∏ T`. This is because squarefree `γ` is determined by its prime
 factors, and `T ⊆ γ.primeFactors` (so the sdiff determines all of
@@ -505,7 +505,7 @@ noncomputable def tailEulerWeight (ε : ℝ) (k : ℕ) (Ω : ∀ p : ℕ, Finset
 
 /-! ## 5. Gamma-weighted series bound -/
 
-/-
+/--
 If `p` is prime and divides `radical γ`, then `p ≤ γ`.
 -/
 lemma prime_dvd_radical_le_self (p γ : ℕ) (hp : p.Prime) (h : p ∣ radical γ) : p ≤ γ := by
@@ -514,7 +514,7 @@ lemma prime_dvd_radical_le_self (p γ : ℕ) (hp : p.Prime) (h : p ∣ radical �
   obtain ⟨ q, hq₁, hq₂, hq₃ ⟩ := h; have := Nat.gcd_dvd_left p q; have := Nat.gcd_dvd_right p q; simp_all +decide [ Nat.dvd_prime ] ;
   exact Nat.le_of_dvd ( Nat.pos_of_ne_zero hg ) hq₂
 
-/-
+/--
 The Weil weight `(1 − |Ω_p|/p) · p^{−ε} · localMean k Ω p` is at most `p`
 for any prime `p` and `ε ≥ 0`.
 -/
@@ -532,7 +532,7 @@ lemma weil_weight_le_prime (ε : ℝ) (hε : 0 ≤ ε) (k : ℕ) (hk : 1 ≤ k)
       exact div_le_of_le_mul₀ ( by positivity ) ( by positivity ) ( by norm_cast; nlinarith [ pow_pos ( Nat.pos_of_ne_zero hp.ne_zero ) k, pow_le_pow_left' h_card_le_p k ] ));
   exact h_weil_weight_le_p.trans ( by rw [ one_mul ] ; exact mul_le_of_le_one_left ( Nat.cast_nonneg _ ) ( by simpa using Real.rpow_le_rpow_of_exponent_le ( Nat.one_le_cast.mpr hp.pos ) ( neg_nonpos.mpr hε ) ) )
 
-/-
+/--
 **Prefactor absorption inequality.**
 `(1/|Ω_q|) · ∏_{q.pf ∖ T} μ_p ≤ ∏_T μ_p⁻¹`.
 -/

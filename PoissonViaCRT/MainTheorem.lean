@@ -145,16 +145,10 @@ terms remain. For large `d`, the Gamma machinery bounds the contribution via `M_
 
 /-! ### Helper lemmas for Proposition 3.6 -/
 
-/-
+/--
 The CRT subset is nonempty when each local subset `Ω p` is nonempty for primes `p`.
-
-The CRT subset is nonempty because for each prime p dividing q, Ω p is nonempty. By ZMod.ringHom_surjective, the cast homomorphism ZMod q → ZMod p is surjective, so for any target in Ω p there exists a preimage. The intersection over all primes is nonempty by induction on the number of prime factors, using the Chinese Remainder Theorem.
-
-Alternative simpler approach: for q = 1, primeFactors is empty so crtSubset = univ which has card 1 > 0. For q > 1, note that crtSubset q Ω = univ.filter (condition). The condition only involves prime factors of q. We need to show the filter is nonempty.
-
-Actually, the simplest approach: show Finset.card_pos from Finset.Nonempty. The set is nonempty because we can construct an element. For any q, we can pick 0 ∈ ZMod q and check if it satisfies all conditions. If not, use CRT.
-
-Try: rw [Finset.card_pos], apply Finset.Nonempty, use some element, and verify conditions using ZMod.ringHom_surjective and the nonemptiness of each Ω p.
+This follows from the Chinese Remainder Theorem, as we can pick any element in each
+local subset and find a global element mapping to them.
 -/
 private lemma crtSubset_card_pos (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty) (q : ℕ) [NeZero q] :
@@ -186,12 +180,9 @@ private lemma crtSubset_card_pos (Ω : ∀ p : ℕ, Finset (ZMod p))
   simp_all +decide [ Finset.ext_iff, crtSubset ];
   obtain ⟨ p, hp₁, hp₂, hp₃, hp₄ ⟩ := h_contra x; specialize hx p hp₁ hp₂ hp₃; aesop;
 
-/-
-The spacing `s_q = q / |Ω_q|` is at least 1.
-
-The spacing s_q = q / |crtSubset q Ω| ≥ 1 because |crtSubset q Ω| ≤ q. This follows from crtSubset q Ω ⊆ univ (it's a finset of ZMod q), and card(univ : Finset (ZMod q)) = q (by ZMod.card). So card(crtSubset) ≤ q, hence q / card ≥ 1.
-
-Use: Finset.card_le_univ, ZMod.card, one_le_div_of_le (with card > 0 from crtSubset_card_pos).
+/--
+The spacing `s_q = q / |Ω_q|` is at least 1, which follows from the fact that
+`|Ω_q| ≤ q` since it is a subset of `ℤ/qℤ`.
 -/
 private lemma spacing_ge_one (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty) (q : ℕ) [NeZero q] :
@@ -203,16 +194,10 @@ private lemma spacing_ge_one (Ω : ∀ p : ℕ, Finset (ZMod p))
 
 /-! ### Intermediate lemmas for Proposition 3.6 -/
 
-/-
-**Lattice point box bound**: The number of lattice points in a scaled box `sX`
-deviates from `s^m · vol(X)` by at most `C_X · s^{m-1}`, where `C_X` depends on the
-box dimensions and `m` is the dimension. This is a standard lattice point counting result.
-
-The lattice points satisfying inScaledBox can be parametrized by increments d_i = h_i - h_{i-1} (with h_{-1} = 0), where each d_i is a positive integer with d_i ≤ s * X.sides i. So d_i ranges over {1, 2, ..., ⌊s * X.sides i⌋}, and the count equals ∏_i ⌊s * X.sides i⌋.
-The volume X.volume = ∏_i X.sides i, so s^m * X.volume = ∏_i (s * X.sides i).
-The error |∏_i ⌊s * b_i⌋ - ∏_i (s * b_i)| is bounded by C * s^(m-1) using the telescoping product bound: ∏ a_i - ∏ n_i = ∑_j (a_j - n_j) * ∏_{i&lt;j} n_i * ∏_{i>j} a_i, where each |a_j - n_j| &lt; 1 and each factor is at most s * max(b_i).
-Choose C = m * (max b_i)^(m-1) + 1 (or similar).
-For m = 0: the box is 0-dimensional, the count is 1, the volume is 1 (empty product), and s^0 * 1 = 1, so the error is 0 and any C > 0 works.
+/--
+**Lattice point box bound**: Count of lattice points in a scaled box `sX` deviates from `s^m · vol(X)`
+by at most `C_X · s^{m-1}`. This is a standard lattice point result obtained using the telescoping
+product bound on the product of floors.
 -/
 lemma lattice_point_box_bound (m : ℕ) (X : Box m) :
     ∃ C : ℝ, 0 < C ∧ ∀ (v : Fin m → ℝ), (∀ i, 0 ≤ v i ∧ v i ≤ 1) → ∀ (s : ℝ), 1 ≤ s →
@@ -255,24 +240,11 @@ lemma lattice_point_box_bound (m : ℕ) (X : Box m) :
         have : 0 ≤ s ^ ((m : ℤ) - 1) := zpow_nonneg (by linarith) _
         nlinarith
 
-/-
+/--
 **Euler product convergence**: Under the WD hypothesis with parameter `ε`,
 for any divisor `d > 1` of `q`, the product of local WD error factors is bounded
-by a universal constant `C_k` (depending only on `k` and `ε`). This captures the fact
-that the product `∏_{p|d} (1 + O_k(p^{-ε}))` converges absolutely.
-
-Choose C = 1. The product ∏_{p ∈ d.primeFactors} ((1 - |Ω_p|/p) · p^(-ε)) has each factor with absolute value at most 1 · p^(-ε) ≤ 2^(-ε) < 1 (since 0 ≤ 1 - |Ω_p|/p ≤ 1 because |Ω_p| ≤ p for any Finset of ZMod p). So the absolute value of the product is at most ∏_{p ∈ d.primeFactors} p^(-ε) ≤ ∏_{p ∈ d.primeFactors} 1 = 1.
-
-Actually, each factor (1 - |Ω_p|/p) satisfies 0 ≤ (1 - |Ω_p|/p) ≤ 1, and p^(-ε) ≤ 1 for p ≥ 1 and ε > 0. So each factor has absolute value at most 1, and the product has absolute value at most 1. So C = 1 works.
-
-Detailed proof:
-refine ⟨1, one_pos, fun q _ d hd hd1 => ?_⟩
-Apply abs_prod and bound each factor:
-Each factor = (1 - (Ω p).card / p) * p ^ (-ε)
-- 0 ≤ 1 - (Ω p).card / p ≤ 1 since (Ω p).card ≤ p (Finset.card_le_univ + ZMod.card)
-- 0 ≤ p^(-ε) ≤ 1 since p ≥ 2 (prime) and ε > 0
-So 0 ≤ factor ≤ 1, hence |factor| ≤ 1.
-Product of values in [0,1] is in [0,1], so |product| ≤ 1 = C.
+by a universal constant. Since `0 ≤ 1 - |Ω_p|/p ≤ 1` and `p^{-ε} ≤ 1`, the product
+is trivially bounded by `C = 1`.
 -/
 lemma euler_product_convergence
     (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
@@ -295,39 +267,13 @@ lemma euler_product_convergence
       · haveI := Fact.mk pp; exact le_trans ( Finset.card_le_univ _ ) ( by norm_num ) ;
       · exact pp.pos
 
-/-
+/--
 **Complete period cancellation application**: For a divisor `d > 1` of `q`,
-the sum of the error product `e_k(h, d) = ∏_{p|d} ε_k(h, p)` over lattice
-points `h` in the scaled box `sX` is bounded using the cancellation from
-`tupleCount_cons_deviation_sum_zero`. The key insight is that complete periods
-cancel, and only boundary terms of size `O(s^{k-2})` remain.
+the sum of the error product over lattice points `h` in the scaled box `sX` is
+bounded using complete period cancellation. 
 
-Combining the lattice point box bound, the Euler product convergence, and the
-period cancellation, the overall error is bounded by `C / s_q`.
-
-Decompose kCorrelation into main term + deviation:
-
-kCorrelation Ω_q X = (1/|Ω_q|) * ∑_h tupleCount(0::h)
-
-Split tupleCount into expected μ = |Ω_q|^k / q^{k-1} plus deviation:
-= (1/|Ω_q|) * [|box| * μ + ∑_h (tupleCount - μ)]
-= (μ/|Ω_q|) * |box| + deviation_sum
-= s^{-(k-1)} * |box| + deviation_sum
-
-where s^{-(k-1)} = (|Ω_q|/q)^{k-1} = μ/|Ω_q|.
-
-By the triangle inequality:
-|kCorrelation - vol(X)| ≤ |s^{-(k-1)} * |box| - vol(X)| + |deviation_sum|
-
-For the first term: s^{-(k-1)} * ||box| - s^{k-1} * vol(X)| ≤ s^{-(k-1)} * C_lp * s^{(k-1)-1} = C_lp * s^{-1}.
-This uses h_lp_q.
-
-For the second term: |deviation_sum| ≤ C_dev * s^{-1}.
-This is exactly h_dev_q.
-
-So: |kCorrelation - vol| ≤ C_lp * s^{-1} + C_dev * s^{-1} = (C_lp + C_dev) * s^{-1} ≤ (C_lp + C_dev + 1) * s^{-1}.
-
-Key steps: unfold kCorrelation, use Finset.sum_sub_distrib to split the sum, convert the main term to s^{-(k-1)} * |box| using algebra, apply the triangle inequality, use h_lp_q and h_dev_q, and combine.
+Combining the lattice point box bound and the deviation bound, the overall error
+in the `k`-level correlation is bounded by `C / s_q^δ` for some `δ > 0`.
 -/
 lemma complete_period_cancellation_apply
     (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
@@ -486,16 +432,13 @@ theorem error_bound_simplified
 
 /-! ### Theorem 3.7 (= Theorem 1.1, precise version) -/
 
-/-
+/--
 **Theorem 3.7** (Theorem 1.1, precise version): Fix `ε > 0` and integer `K`.
-Suppose subsets `Ω_p ⊆ ℤ/pℤ` satisfy:
-1. `s_p ≤ p^{λ_K - ε}` for all primes `p`,
-2. Hypothesis (1) holds for all `k ≤ K` with distinct `h` mod `p`.
+Suppose subsets `Ω_p ⊆ ℤ/pℤ` satisfy `s_p ≤ p^{λ_K - ε}` for all primes `p`, and
+Hypothesis (1) holds for all `k ≤ K` with distinct `h` mod `p`.
 
 Then for `k ≤ K` and any box `X`, the `k`-level correlation satisfies
 `R_k(X, Ω_q) = vol(X) + o_{X,k}(1)` as `s_q → ∞`.
-
-This follows from Proposition 3.6 and the lemma below.
 -/
 public theorem mainTheorem_precise
     (ε : ℝ) (hε : 0 < ε) (K : ℕ) (hK : 2 ≤ K)

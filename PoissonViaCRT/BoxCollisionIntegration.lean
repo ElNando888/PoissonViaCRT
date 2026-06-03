@@ -52,7 +52,7 @@ noncomputable def validHForSigma (m : ℕ) (X : Box m) (s : ℝ) (U : Finset ℕ
 
 /-! ## Helper lemmas -/
 
-/-
+/--
 The number of integers in `[1, S]` in a congruence class mod `M` is at most
 `(S / M + 1).toNat`.
 -/
@@ -66,7 +66,7 @@ private lemma card_Icc_filter_dvd_le (S : ℤ) (hS : 0 ≤ S) (M : ℤ) (hM : 0 
   rw [ Finset.card_image_of_injective _ fun x y hxy => by nlinarith ] ; norm_num;
   exact Classical.or_iff_not_imp_right.2 fun h => by nlinarith [ Int.mul_ediv_add_emod ( S - a ) M, Int.emod_nonneg ( S - a ) hM.ne', Int.emod_lt_of_pos ( S - a ) hM, Int.mul_ediv_add_emod S M, Int.emod_nonneg S hM.ne', Int.emod_lt_of_pos S hM, Int.mul_ediv_add_emod ( 1 - a + M - 1 ) M, Int.emod_nonneg ( 1 - a + M - 1 ) hM.ne', Int.emod_lt_of_pos ( 1 - a + M - 1 ) hM ] ;
 
-/-
+/--
 When `U` contains a prime exceeding `⌈s * ∑ sides⌉`, every collision indicator
 vanishes, so the sum is zero.
 -/
@@ -89,7 +89,7 @@ private lemma pairsBelow_nonempty (m : ℕ) (hm : 1 ≤ m) : (pairsBelow m).None
     fun ij : Fin (m + 1) × Fin (m + 1) => ij.1 < ij.2 from rfl]
   exact ⟨(0, ⟨1, by omega⟩), Finset.mem_filter.mpr ⟨Finset.mem_univ _, h0lt1⟩⟩
 
-/-
+/--
 The number of integers in `[1, S]` satisfying simultaneous divisibility conditions
 by distinct primes is at most `(S / ∏ primes + 1).toNat`. Combines CRT with interval counting.
 -/
@@ -109,7 +109,7 @@ lemma card_filter_coprime_dvd_le (S : ℤ) (hS : 0 ≤ S)
   ext x; simp;
   exact fun _ _ => ⟨ fun hx => hA.2 x hx, fun hx => fun p hp => by simpa using dvd_trans ( Finset.dvd_prod_of_mem _ hp ) hx |> fun h => by simpa using dvd_add h ( hA.1 p hp ) ⟩
 
-/-
+/--
 For `h ∈ validHForSigma`, each coordinate `h k` lies in `[1, S]`.
 -/
 lemma validHForSigma_coord_mem_Icc (m : ℕ) (X : Box m) (s : ℝ) (U : Finset ℕ)
@@ -133,7 +133,7 @@ private lemma extendH_agree_of_lt (m : ℕ) (h h' : Fin m → ℤ) (k : Fin m)
     apply hagree
     exact Fin.succ_lt_succ_iff.mp hj
 
-/-
+/--
 For `h ∈ validHForSigma` agreeing with `h_prefix` on `< k`,
 the divisibility condition at coordinate `k` reduces to a congruence condition
 on `h k` modulo the relevant primes.
@@ -159,7 +159,7 @@ lemma validHForSigma_divisibility_at_coord (m : ℕ) (X : Box m) (s : ℝ)
   · rfl;
   · exact hp_eq ▸ Finset.mem_filter.mp ( h_sigma p hp_mem ) |>.2
 
-/-
+/--
 The collision sum is bounded by the sum over choice functions `σ ∈ U.pi (pairsBelow m)`
 of `(validHForSigma m X s U σ).card`. This is the union-bound step.
 -/
@@ -194,7 +194,7 @@ private lemma collision_sum_le_sigma_sum (m : ℕ) (X : Box m) (s : ℝ) (hs : 1
     simp +decide [ zero_pow_eq ];
     exact Finset.card_mono fun x hx => by aesop;
 
-/-
+/--
 Algebraic bound: `∏_j (S/M_j + 1) ≤ S^m/∏ p + 2^m * S^(m-1)` in ℝ,
 where the `M_j` partition the primes and `∏ M_j = ∏ p`. This is a consequence
 of the multinomial expansion `∏ (a_j + 1) = ∑_{I ⊆ [m]} ∏_{j∈I} a_j`.
@@ -224,7 +224,7 @@ private lemma prod_int_div_add_one_le (m : ℕ) (S : ℤ) (hS : 1 ≤ S)
   · norm_num [ Finset.prod_div_distrib ] ; ring_nf ; norm_num;
     positivity
 
-/-
+/--
 The collision sum for a fixed set of primes `U` is bounded by the sum over
 choice functions `σ` of `validHForSigma` cardinalities, which in turn is bounded
 by `C_box * (s^m / ∏ p + s^(m-1)) * C_gamma^|U|`. This combines the counting argument

@@ -41,7 +41,7 @@ namespace SmallDivisorSeriesBound
 
 /-! ### Step 1: Per-term product bound for squarefree d -/
 
-/-
+/--
 For any squarefree `d ≥ 1` and `ε > 0`, the product
 `∏_{p ∣ d} (k · p^{-ε/2})` is bounded by a constant depending
 only on `k` and `ε`. Specifically, for primes `p ≥ k^{2/ε}` the
@@ -74,7 +74,7 @@ public lemma prod_kp_half_le_const (ε : ℝ) (hε : 0 < ε) (k : ℕ) :
       have h0 : (k : ℝ) * (p : ℝ) ^ (-ε / 2) = 0 := by rw [hk0]; simp
       rw [Finset.prod_eq_zero hp h0]; exact zero_le_one
 
-/-
+/--
 For squarefree `d > 0`, the product `∏_{p ∣ d} p^α` equals
 `d^α`, since `∏_{p ∣ d} p = d` for squarefree numbers.
 -/
@@ -85,7 +85,7 @@ public lemma prod_rpow_eq_rpow_of_squarefree (d : ℕ) (hd : Squarefree d) (hd0 
   · rw [ ← Nat.cast_prod, Nat.prod_primeFactors_of_squarefree hd ];
   · aesop
 
-/-
+/--
 The per-term bound: for squarefree `d > 0`,
 `∏_{p ∣ d} k · p^{-ε} ≤ M · d^{-ε/2}`.
 -/
@@ -103,7 +103,7 @@ public lemma prod_kp_eps_le_const_mul_rpow (ε : ℝ) (hε : 0 < ε) (k : ℕ) :
 
 /-! ### Step 2: Sum of d^{-α} bound -/
 
-/-
+/--
 For `0 < α < 1` and integer `N ≥ 1`, the sum
 `∑_{d=1}^{N} d^{-α} ≤ N^{1-α} / (1 - α)`.
 
@@ -127,7 +127,7 @@ public lemma sum_rpow_le_rpow_div (α : ℝ) (hα0 : 0 < α) (hα1 : α < 1) (N 
 
 /-! ### Step 3: Main bound -/
 
-/-
+/--
 **Small-divisor series bound** (for squarefree `q`).
 The sum `∑_{d ≤ s, d ∣ q, d > 1} ∏_{p ∣ d} k · p^{−ε}`
 is bounded by `K · s^{1−ε/2}`, uniformly in squarefree `q`.

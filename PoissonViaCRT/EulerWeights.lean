@@ -165,7 +165,7 @@ lemma prod_one_add_le_exp_sum (S : Finset ℕ) (f : ℕ → ℝ)
   exact Finset.prod_le_prod (fun _ _ => add_nonneg zero_le_one (hf _ ‹_›))
     fun _ _ => by rw [add_comm]; exact Real.add_one_le_exp _
 
-/-
+/--
 For `T ⊆ q.primeFactors` and squarefree `q`, the product `∏ p ∈ T, p`
 is a divisor of `q`.
 -/
@@ -175,9 +175,7 @@ public lemma prod_mem_divisors_of_subset (q : ℕ) (hq : Squarefree q)
   apply Nat.mem_divisors.mpr;
   exact ⟨ Nat.prod_primeFactors_dvd q |> fun x => dvd_trans ( by apply_rules [ Finset.prod_dvd_prod_of_subset ] ) x, hq.ne_zero ⟩
 
-/-
-For two subsets of `q.primeFactors`, equal products imply equal sets.
--/
+/-- For two subsets of `q.primeFactors`, equal products imply equal sets. -/
 public lemma prod_injective_on_primeFactors (q : ℕ)
     (T₁ T₂ : Finset ℕ) (hT₁ : T₁ ⊆ q.primeFactors) (hT₂ : T₂ ⊆ q.primeFactors)
     (h : ∏ p ∈ T₁, p = ∏ p ∈ T₂, p) : T₁ = T₂ := by
@@ -197,7 +195,7 @@ public lemma divisor_eq_prod_primeFactors (q : ℕ) (hq : Squarefree q)
   exact ⟨Finset.mem_powerset.mpr (Nat.primeFactors_mono hd_dvd hq.ne_zero),
          Nat.prod_primeFactors_of_squarefree (hq.squarefree_of_dvd hd_dvd)⟩
 
-/-
+/--
 For squarefree `q`, the map `T ↦ ∏ p ∈ T, p` bijects
 `q.primeFactors.powerset` with `q.divisors`, and summands of the form
 `∏ p ∈ T, f p` are preserved. This is the core transport lemma used to
@@ -220,7 +218,7 @@ public lemma sum_powerset_eq_sum_divisors (q : ℕ) (hq : Squarefree q) (f : ℕ
       exact h_prime_factors fun p hp => Nat.prime_of_mem_primeFactors <| Finset.mem_powerset.mp hT hp
     rw [h_prime_factors]
 
-/-
+/--
 For a nonempty subset `T` of primes, `∏ p ∈ T, (p : ℝ) = ((∏ p ∈ T, p : ℕ) : ℝ)`,
 and the product is the corresponding squarefree divisor.  In particular,
 the threshold condition `¬(∏ p ∈ T, (p : ℝ) ≤ s)` transports to `¬((d : ℝ) ≤ s)`.

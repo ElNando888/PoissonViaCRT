@@ -57,7 +57,7 @@ positive integer, the partial sum over squarefree divisors of `q` is bounded by 
 full series, giving a `q`-independent constant.
 -/
 
-/-
+/--
 **Convergence for `k ≥ 3`**: For any positive modulus `q`, the sum of `d^{-(k-2+ε)}`
 over squarefree divisors of `q` is bounded by the tsum of the p-series, which is a
 constant independent of `q`.
@@ -87,7 +87,7 @@ uniformly bounded by the convergent p-series.
 @[expose]
 public noncomputable def lambda2 : ℝ := (Real.sqrt 17 - 3) / 2
 
-/-
+/--
 **Critical exponent bound for `k = 2`**: When the effective exponent `α` exceeds 1
 (which the spacing hypothesis with `ε ≤ λ₂` ensures after accounting for the divisor
 function growth), the divisor sum `∑_{d | q} d^{-α}` is uniformly bounded by the

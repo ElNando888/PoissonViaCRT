@@ -213,16 +213,18 @@ define `γᵢⱼ(h) := gcd(c, |hⱼ - hᵢ|)` for `i ≠ j` and `γᵢᵢ = 0`. 
 public def gammaOfTuple (c : ℕ) (h : Fin k → ℤ) (i j : Fin k) : ℕ :=
   if i = j then 0 else Nat.gcd c (Int.natAbs (h j - h i))
 
+/-- The diagonal entries of `gammaOfTuple` are zero by definition. -/
 @[simp]
 public theorem gammaOfTuple_self (c : ℕ) (h : Fin k → ℤ) (i : Fin k) :
     gammaOfTuple c h i i = 0 := by
   simp [gammaOfTuple]
 
+/-- The off-diagonal entries of `gammaOfTuple` equal the GCD. -/
 public theorem gammaOfTuple_of_ne (c : ℕ) (h : Fin k → ℤ) {i j : Fin k} (hij : i ≠ j) :
     gammaOfTuple c h i j = Nat.gcd c (Int.natAbs (h j - h i)) := by
   simp [gammaOfTuple, hij]
 
-/-
+/--
 The gamma structure induced by a squarefree integer `c` and a tuple `h` with
 distinct entries. Each off-diagonal entry is `gcd(c, |h j - h i|)`.
 -/

@@ -101,7 +101,7 @@ public lemma natAbs_diff_le_H {n : ℕ} (H : ℕ)
   simp_all +decide [ Fin.forall_fin_succ ]
   grind +qlia
 
-/-
+/--
 When all values are bounded by H and positive, lcm ≤ product ≤ H^|S|.
     More precisely, `S.lcm f ≤ H ^ S.card` when `0 < H` and each `f i ≤ H`.
 -/
@@ -114,7 +114,7 @@ lemma lcm_le_pow_card {ι : Type*} [DecidableEq ι]
     obtain ⟨ a, ha, ha' ⟩ := h; exact le_trans ( Finset.lcm_eq_zero_iff.mpr ⟨ a, ha, ha' ⟩ |> le_of_eq ) ( Nat.zero_le _ ) ;
   · exact le_trans ( Nat.le_of_dvd ( Nat.pos_of_ne_zero h ) ( lcm_dvd_prod _ _ ) ) ( Finset.prod_le_pow_card _ _ _ hf )
 
-/-
+/--
 `gammaProdOfBoxPoint T h ≤ H^((n+1)*(n+1))` when all pairwise
     differences of `Fin.cons 0 h` are nonzero (e.g., from inScaledBox).
     Requires `H > 0` and differences ≤ H.
@@ -160,7 +160,7 @@ public lemma fin_cons_zero_injective {n : ℕ} (hn : 1 ≤ n)
     exact lt_of_lt_of_le this.1 ( h_mono.monotone ( Nat.zero_le _ ) )
   exact ⟨ fun i hi => ne_of_lt ( h_pos i ), fun i => ⟨ ne_of_gt ( h_pos i ), fun j hij => h_mono.injective.ne hij ⟩ ⟩
 
-/-
+/--
 Positive differences from distinct Fin.cons 0 h entries.
 -/
 public lemma fin_cons_zero_diff_pos {n : ℕ} (hn : 1 ≤ n)
@@ -187,7 +187,7 @@ public lemma gammaProd_ofTuple_eq {n : ℕ}
   intro i hi
   exact gammaOfTuple_of_ne _ _ (ne_of_lt (Finset.mem_Iio.mp hi))
 
-/-
+/--
 For `GammaStructure.ofTuple`, gamma i j divides sqfreepart.
     Since gamma i j is squarefree and divides gammaProd, it divides radical(gammaProd).
 -/

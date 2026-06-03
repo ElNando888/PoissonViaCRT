@@ -161,6 +161,7 @@ public noncomputable def largeEulerLocalWeight (ε : ℝ) (Ω : ∀ p : ℕ, Fin
     (p : ℕ) : ℝ :=
   (p : ℝ) * convergentEulerLocalWeight ε Ω p
 
+/-- The local weight for large divisors is nonneg. -/
 public theorem largeEulerLocalWeight_nonneg (ε : ℝ) (Ω : ∀ p : ℕ, Finset (ZMod p)) (p : ℕ)
     (hp : (Ω p).card ≤ p) :
     0 ≤ largeEulerLocalWeight ε Ω p :=
@@ -173,6 +174,7 @@ public noncomputable def largeEulerPartitionSum (ε : ℝ) (Ω : ∀ p : ℕ, Fi
     (S : Finset ℕ) : ℝ :=
   ∏ p ∈ S, (1 + largeEulerLocalWeight ε Ω p)
 
+/-- Euler product identity for the large-divisor partition sum. -/
 public theorem powerset_prod_eq_largeEulerPartitionSum (ε : ℝ) (Ω : ∀ p : ℕ, Finset (ZMod p))
     (S : Finset ℕ) :
     ∑ T ∈ S.powerset, ∏ p ∈ T, largeEulerLocalWeight ε Ω p =

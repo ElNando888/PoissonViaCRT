@@ -99,7 +99,7 @@ end SquarefreeNat
 public noncomputable def sqfreeToFactors (q : SquarefreeNat) : Finset Nat.Primes :=
   q.val.primeFactors.subtype Nat.Prime
 
-/-
+/--
 The product of a finite set of primes is squarefree.
 -/
 public lemma prod_primes_squarefree (s : Finset Nat.Primes) :
@@ -117,7 +117,7 @@ public lemma prod_primes_squarefree (s : Finset Nat.Primes) :
 public noncomputable def factorsToSqfree (s : Finset Nat.Primes) : SquarefreeNat :=
   ⟨s.prod (fun p => (p : ℕ)), prod_primes_squarefree s⟩
 
-/-
+/--
 Left inverse: taking prime factors of the product recovers the original set.
 -/
 public lemma left_inv (s : Finset Nat.Primes) :
@@ -139,7 +139,7 @@ public lemma left_inv (s : Finset Nat.Primes) :
     exact ⟨hp, Finset.dvd_prod_of_mem _ hmem,
       (Finset.prod_pos fun i _ => Nat.Prime.pos i.2).ne'⟩
 
-/-
+/--
 Right inverse: the product of the prime factors recovers the original number.
 -/
 public lemma right_inv (q : SquarefreeNat) :
@@ -151,7 +151,7 @@ public lemma right_inv (q : SquarefreeNat) :
     tauto;
   exact Subtype.ext h_prod_factors
 
-/-
+/--
 The map preserves and reflects the order.
 -/
 public lemma map_le_map_iff' (a b : SquarefreeNat) :
@@ -228,7 +228,7 @@ public lemma divisor_eq_prod_primeFactors (q : SquarefreeNat)
   exact ⟨Finset.mem_powerset.mpr (Nat.primeFactors_mono hd_dvd q.ne_zero),
          Nat.prod_primeFactors_of_squarefree (q.prop.squarefree_of_dvd hd_dvd)⟩
 
-/-
+/--
 **Core transport (general summand):** any function `g : Finset ℕ → M` summed
 over nonempty subsets of `q.primeFactors` equals the same function composed
 with `d ↦ d.primeFactors` summed over `q.nontrivialDivisors`.

@@ -49,14 +49,12 @@ public noncomputable def residueMultiplicity
     (S : Finset (Fin m → ℤ)) (g : Fin m → ZMod q) : ℕ :=
   (S.filter fun h => (fun i => (h i : ZMod q)) = g).card
 
-/-
+/--
 **Sum by residue classes**: A sum of a function that depends only on `h mod q`
 over a set of lattice points equals a weighted sum over residue classes.
 
 Specifically, if `f(h)` depends only on the reduction of `h` modulo `q`, then
 `∑_{h ∈ S} f(h) = ∑_{g : (ZMod q)^m} (multiplicity of g in S) * f(g)`.
-
-We partition S by residue class. Each h ∈ S maps to g = (h i mod q)_i, and the filter S.filter (cond = g) gives exactly the elements with that residue. Use Finset.sum_fiberwise or Finset.sum_partition to rewrite the sum. The key is that S = ⊔_{g} (S.filter (residue = g)), and on each fiber the function value is f(g). So the sum over the fiber is (fiber.card) * f(g) = residueMultiplicity S g * f(g).
 -/
 public lemma sum_by_residue_classes
     (m : ℕ) (S : Finset (Fin m → ℤ)) (f : (Fin m → ZMod q) → ℝ) :
@@ -67,12 +65,10 @@ public lemma sum_by_residue_classes
   push_cast [ Finset.sum_mul _ _ _ ];
   rw [ Finset.sum_comm, Finset.sum_congr rfl ] ; aesop
 
-/-
+/--
 **Box multiplicity bound**: For a scaled box with scaling factor `s`, the total
 number of lattice points in the box is bounded by `(s * B + 1) ^ m` where `B = ∑ X.sides`.
 This provides a crude but effective upper bound on the cardinality of the box.
-
-The filtered set is a subset of the piFinset, so its card is at most card of the piFinset. The piFinset has each coordinate ranging over Icc 1 ⌈s * ∑ X.sides⌉, which has ⌈s * ∑ X.sides⌉ elements (for positive ceiling). The piFinset card is thus ⌈s * ∑ X.sides⌉^m. Use Finset.card_filter_le_card for the subset bound, then Finset.card_piFinset for the product. Convert Int.toNat to Nat.ceil using the fact that s * ∑ sides ≥ 0.
 -/
 lemma box_card_upper_bound (m : ℕ) (X : Box m) (s : ℝ) (_hs : 1 ≤ s) :
     ((Fintype.piFinset fun _ : Fin m =>
@@ -92,17 +88,10 @@ lemma deviation_sum_period_zero (Ω : Finset (ZMod q)) (m : ℕ) :
         (Ω.card : ℝ) ^ (m + 1) / (q : ℝ) ^ m) = 0 :=
   tupleCount_cons_deviation_sum_zero Ω m
 
-/-
+/--
 Each individual deviation `|N_k(0::g) - μ|` is bounded by `2 * |Ω|`.
 This uses `tupleCount_le_card` (i.e., `N_k ≤ |Ω|`) and the fact that `μ ≤ |Ω|`
 when the spacing `s = q/|Ω| ≥ 1`.
-
-We need |N_k(0::g) - μ| ≤ 2*|Ω| where N_k = tupleCount Ω (Fin.cons 0 g) and μ = |Ω|^{m+1}/q^m.
-
-First, 0 ≤ N_k ≤ |Ω| by tupleCount_le_card.
-Second, 0 ≤ μ = |Ω|^{m+1}/q^m ≤ |Ω| because |Ω|^{m+1}/q^m = |Ω| * (|Ω|/q)^m ≤ |Ω| * 1^m = |Ω| (using |Ω| ≤ q from hs).
-
-So both N_k and μ are in [0, |Ω|], hence |N_k - μ| ≤ |Ω| ≤ 2*|Ω|. Actually |N_k - μ| ≤ max(N_k, μ) ≤ |Ω|. But to be safe, use the triangle: |N_k - μ| ≤ |N_k| + |μ| = N_k + μ ≤ |Ω| + |Ω| = 2|Ω|.
 -/
 public lemma individual_deviation_bound (Ω : Finset (ZMod q)) (m : ℕ) (hΩ : 0 < Ω.card)
     (hs : (Ω.card : ℝ) ≤ (q : ℝ))
