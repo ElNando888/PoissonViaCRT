@@ -14,7 +14,35 @@ To cite Aristotle, tag @Aristotle-Harmonic on GitHub PRs/issues, and add as co-a
 Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
-import Mathlib.Tactic
+import Mathlib.Tactic.Cases
+import Mathlib.Tactic.Check
+import Mathlib.Tactic.Common
+import Mathlib.Tactic.Constructor
+import Mathlib.Tactic.ErwQuestion
+import Mathlib.Tactic.Eval
+import Mathlib.Tactic.Ext
+import Mathlib.Tactic.Generalize
+import Mathlib.Tactic.Have
+import Mathlib.Tactic.HaveI
+import Mathlib.Tactic.Linarith
+import Mathlib.Tactic.LinearCombination'
+import Mathlib.Tactic.Linter
+import Mathlib.Tactic.NormNum
+import Mathlib.Tactic.NormNum.LegendreSymbol
+import Mathlib.Tactic.NormNum.Prime
+import Mathlib.Tactic.NormNum.RealSqrt
+import Mathlib.Tactic.Positivity
+import Mathlib.Tactic.Push
+import Mathlib.Tactic.Ring
+import Mathlib.Tactic.Ring.RingNF
+import Mathlib.Tactic.SimpRw
+import Mathlib.Tactic.SplitIfs
+import Mathlib.Tactic.Tauto
+import Mathlib.Tactic.Trace
+import Mathlib.Tactic.TypeCheck
+import Mathlib.Tactic.TypeStar
+import Mathlib.Tactic.Use
+import Mathlib.Tactic.Variable
 
 /-!
 # Poisson Statistics via the Chinese Remainder Theorem — Definitions
