@@ -138,11 +138,11 @@ lemma lossy_divisor_sum_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : k = 2)
     (hsp : ∀ (p : ℕ), p.Prime → (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
     (hlt : ε < lambdaExponent k) :
     ∃ C : ℝ, 0 < C ∧ ∀ (q : ℕ) [NeZero q], Squarefree q →
-    ((1 : ℝ) / ((crtSubset q Ω).card : ℝ)) * (q : ℝ) ^ (k - 1) *
-      ∑ d ∈ q.divisors.erase 1,
-        ((k : ℝ) ^ d.primeFactors.card * (d : ℝ) ^ (-(1 + ε)) * (∏ p ∈ q.primeFactors, localMean k Ω p) *
-         ((d : ℝ) / (q : ℝ) * (Real.log (d : ℝ) + 1))) ≤
-      C * ((q : ℝ) / (crtSubset q Ω).card) ^ (-(ε / 2)) := by
+    ((1 : ℝ) / ((crtSubset q Ω).card : ℝ)) * (q : ℝ) ^ (k - 1)
+      * ∑ d ∈ q.divisors.erase 1,
+        ((k : ℝ) ^ d.primeFactors.card * (d : ℝ) ^ (-(1 + ε))
+          * (∏ p ∈ q.primeFactors, localMean k Ω p) * ((d : ℝ) / (q : ℝ) * (Real.log (d : ℝ) + 1)))
+      ≤ C * ((q : ℝ) / (crtSubset q Ω).card) ^ (-(ε / 2)) := by
   sorry
 
 end PoissonCRT

@@ -184,6 +184,4 @@ public lemma indicator_zero_of_large_prime {m : ℕ} (X : Box m) (s : ℝ) (hs :
   haveI : NeZero p := ⟨hp.ne_zero⟩
   simp [injective_fin_cons_of_large X s hs h hbox p hlarge]
 
-/-! ## 4. Helper: product vanishes when any factor does -/
-
 end PoissonCRT
