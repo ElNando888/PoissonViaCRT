@@ -96,10 +96,9 @@ lemma dft_g_norm_tight_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
           mul_le_mul_of_nonneg_right ( hrp p _ ) ( Real.rpow_nonneg ( Nat.cast_nonneg _ ) _ ) ) _
       · intro p hp
         exact mul_nonneg ( sub_nonneg.2 <| div_le_one_of_le₀ ( mod_cast by
-          haveI :=
-            Fact.mk ( show Nat.Prime p from by
-              { exact Nat.prime_of_mem_primeFactors <| Finset.mem_filter.mp hp |>.1 } )
-          exact le_trans ( Finset.card_le_univ _ ) ( by simp +decide ) ; ) <| Nat.cast_nonneg _ ) <|
+          haveI := Fact.mk ( show Nat.Prime p from by
+            { exact Nat.prime_of_mem_primeFactors <| Finset.mem_filter.mp hp |>.1 } )
+          exact le_trans ( Finset.card_le_univ _ ) ( by simp +decide ) ) <| Nat.cast_nonneg _ ) <|
             Real.rpow_nonneg ( Nat.cast_nonneg _ ) _
       · exact Nat.prime_of_mem_primeFactors ( freqSupport_subset_primeFactors q ( k - 1 ) ξ hp )
       · -- The product of � the� terms simplifies to $k^{(\text{number � of� primes})} \cdot
