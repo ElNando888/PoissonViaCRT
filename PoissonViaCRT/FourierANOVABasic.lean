@@ -117,38 +117,40 @@ public noncomputable def dft (q : ℕ) [NeZero q] (m : ℕ)
 public lemma additiveChar_eq_exp_pow (q : ℕ) [NeZero q] (a x : ZMod q) :
     additiveChar q a x =
       Complex.exp (2 * Real.pi * Complex.I * (a.val : ℂ) / (q : ℂ)) ^ x.val := by
-  rw [ ← Complex.exp_nat_mul ] ; ring_nf;
-  convert Complex.exp_eq_exp_iff_exists_int.mpr ?_ using 2 ; ring_nf;
-  use -((a.val * x.val) / q);
-  rw [ ZMod.val_mul ];
-  rw [ Nat.mod_def ] ; ring_nf;
-  rw [ Nat.cast_sub ( Nat.mul_div_le _ _ ) ] ; push_cast ; ring_nf;
+  rw [ ← Complex.exp_nat_mul ] ; ring_nf
+  convert Complex.exp_eq_exp_iff_exists_int.mpr ?_ using 2 ; ring_nf
+  use -((a.val * x.val) / q)
+  rw [ ZMod.val_mul ]
+  rw [ Nat.mod_def ] ; ring_nf
+  rw [ Nat.cast_sub ( Nat.mul_div_le _ _ ) ] ; push_cast ; ring_nf
   norm_cast ; simp +decide [ mul_assoc, mul_comm, mul_left_comm, NeZero.ne ]
 
 /-- The `additiveChar` at `a = 0` is identically `1`. -/
 @[simp]
 public lemma additiveChar_zero (q : ℕ) [NeZero q] (x : ZMod q) :
     additiveChar q 0 x = 1 := by
-  -- By definition of additiveChar, we have additiveChar q 0 x = Complex.exp (2 * Real.pi * Complex.I * (0 * x).val / (q : ℂ)).
+  -- By definition of additiveChar, we have
+  -- additiveChar q 0 x = Complex.exp (2 * Real.pi * Complex.I * (0 * x).val / (q : ℂ)).
   simp [additiveChar]
 
 /-- The primitive `q`-th root of unity raised to `q` equals `1`. -/
 lemma exp_two_pi_I_val_pow_eq_one (q : ℕ) [NeZero q] (a : ZMod q) :
     Complex.exp (2 * Real.pi * Complex.I * (a.val : ℂ) / (q : ℂ)) ^ q = 1 := by
-  rw [ ← Complex.exp_nat_mul, mul_comm, Complex.exp_eq_one_iff ];
+  rw [ ← Complex.exp_nat_mul, mul_comm, Complex.exp_eq_one_iff ]
   exact ⟨ a.val, by rw [ div_mul_cancel₀ _ ( NeZero.ne _ ) ] ; push_cast; ring ⟩
 
 /-- For `a ≠ 0` in `ZMod q`, the primitive root `exp(2πi·a.val/q) ≠ 1`. -/
 lemma exp_two_pi_I_val_ne_one (q : ℕ) [NeZero q] (a : ZMod q) (ha : a ≠ 0) :
     Complex.exp (2 * Real.pi * Complex.I * (a.val : ℂ) / (q : ℂ)) ≠ 1 := by
-  contrapose! ha;
-  rw [ Complex.exp_eq_one_iff ] at ha;
+  contrapose! ha
+  rw [ Complex.exp_eq_one_iff ] at ha
   -- By simplifying, we can see that this implies $a.val = nq$ for some integer $n$.
   obtain ⟨n, hn⟩ := ha
   have h_eq : a.val = n * q := by
-    rw [ div_eq_iff ] at hn;
-    · exact_mod_cast ( mul_left_cancel₀ ( Complex.two_pi_I_ne_zero ) <| by linear_combination' hn : ( a.val : ℂ ) = n * q );
-    · exact Nat.cast_ne_zero.mpr <| NeZero.ne q;
+    rw [ div_eq_iff ] at hn
+    · exact_mod_cast ( mul_left_cancel₀ ( Complex.two_pi_I_ne_zero ) <| by
+        linear_combination' hn : ( a.val : ℂ ) = n * q )
+    · exact Nat.cast_ne_zero.mpr <| NeZero.ne q
   replace h_eq := congr_arg ( ( ↑ ) : ℤ → ZMod q ) h_eq ; simp_all +decide
 
 /--
@@ -158,31 +160,39 @@ $$\sum_{x \in \mathbb{Z}/q\mathbb{Z}} \chi_a(x) =
 -/
 lemma additiveChar_sum_eq_ite (q : ℕ) [NeZero q] (a : ZMod q) :
     ∑ x : ZMod q, additiveChar q a x = if a = 0 then (q : ℂ) else 0 := by
-  split_ifs with ha;
-  · aesop;
-  · -- Rewrite each term using `additiveChar_eq_exp_pow` to get `∑ x, r^(x.val)` where `r = exp(2πi a.val/q)`.
-    have h_exp : ∑ x : ZMod q, additiveChar q a x = ∑ x ∈ Finset.range q, (Complex.exp (2 * Real.pi * Complex.I * (a.val : ℂ) / (q : ℂ))) ^ x := by
-      refine' Finset.sum_bij ( fun x _ => x.val ) _ _ _ _ <;> simp +decide [ additiveChar_eq_exp_pow ];
-      · exact fun x => ZMod.val_lt x;
-      · exact fun x y h => by simpa [ ZMod.natCast_zmod_val ] using congr_arg ( fun x : ℕ => x : ℕ → ZMod q ) h;
-      · exact fun b hb => ⟨ b, ZMod.val_cast_of_lt hb ⟩;
-    rw [ h_exp, geom_sum_eq ] <;> norm_num [ ha ];
-    · exact Or.inl ( by rw [ sub_eq_zero, ← Complex.exp_nat_mul, mul_comm, Complex.exp_eq_one_iff ] ; use a.val; push_cast; ring_nf; norm_num [ NeZero.ne ] );
-    · convert exp_two_pi_I_val_ne_one q a ha using 1;
+  split_ifs with ha
+  · aesop
+  · -- Rewrite each term using `additiveChar_eq_exp_pow` to get `∑ x, r^(x.val)`
+    -- where `r = exp(2πi a.val/q)`.
+    have h_exp : ∑ x : ZMod q, additiveChar q a x = ∑ x ∈ Finset.range q,
+        (Complex.exp (2 * Real.pi * Complex.I * (a.val : ℂ) / (q : ℂ))) ^ x := by
+      refine' Finset.sum_bij ( fun x _ => x.val ) _ _ _ _ <;>
+        simp +decide [ additiveChar_eq_exp_pow ]
+      · exact fun x => ZMod.val_lt x
+      · exact fun x y h => by
+          simpa [ ZMod.natCast_zmod_val ] using congr_arg ( fun x : ℕ => x : ℕ → ZMod q ) h
+      · exact fun b hb => ⟨ b, ZMod.val_cast_of_lt hb ⟩
+    rw [ h_exp, geom_sum_eq ] <;> norm_num [ ha ]
+    · exact Or.inl ( by
+        rw [ sub_eq_zero, ← Complex.exp_nat_mul, mul_comm, Complex.exp_eq_one_iff ]
+        use a.val; push_cast; ring_nf; norm_num [ NeZero.ne ] )
+    · convert exp_two_pi_I_val_ne_one q a ha using 1
       cases q <;> aesop
 
 /-- The conjugate of `additiveChar q a x` equals `additiveChar q (-a) x`. -/
 public lemma starRingEnd_additiveChar (q : ℕ) [NeZero q] (a x : ZMod q) :
     starRingEnd ℂ (additiveChar q a x) = additiveChar q (-a) x := by
   -- Apply the property of the conjugate of the exponential.
-  have h_conj_exp : (starRingEnd ℂ) (Complex.exp (2 * Real.pi * Complex.I * ((a * x).val : ℂ) / (q : ℂ))) = Complex.exp (2 * Real.pi * Complex.I * (q - (a * x).val : ℤ) / (q : ℂ)) := by
-    norm_num [ Complex.ext_iff, Complex.exp_re, Complex.exp_im ];
-    norm_num [ sub_div, mul_sub, NeZero.ne ];
-    erw [ ZMod.cast_eq_val ] ; norm_cast ; aesop;
-  unfold additiveChar;
-  cases eq_or_ne ( a * x ) 0 <;> simp_all +decide [ ZMod.neg_val ];
-  rw [ Nat.cast_sub ];
-  · cases q <;> aesop;
+  have h_conj_exp : (starRingEnd ℂ)
+      (Complex.exp (2 * Real.pi * Complex.I * ((a * x).val : ℂ) / (q : ℂ)))
+      = Complex.exp (2 * Real.pi * Complex.I * (q - (a * x).val : ℤ) / (q : ℂ)) := by
+    norm_num [ Complex.ext_iff, Complex.exp_re, Complex.exp_im ]
+    norm_num [ sub_div, mul_sub, NeZero.ne ]
+    erw [ ZMod.cast_eq_val ] ; norm_cast ; aesop
+  unfold additiveChar
+  cases eq_or_ne ( a * x ) 0 <;> simp_all +decide [ ZMod.neg_val ]
+  rw [ Nat.cast_sub ]
+  · cases q <;> aesop
   · exact Nat.le_of_lt ( ZMod.val_lt _ )
 
 /-- The product of characters satisfies `χ_ξ(x) · conj(χ_η(x)) = χ_{ξ-η}(x)`. -/
@@ -190,17 +200,17 @@ lemma character_mul_conj (q : ℕ) [NeZero q] (m : ℕ)
     (ξ η x : Fin m → ZMod q) :
     character q m ξ x * starRingEnd ℂ (character q m η x) =
       character q m (ξ - η) x := by
-  unfold character;
-  rw [ map_prod, ← Finset.prod_mul_distrib ];
-  refine' Finset.prod_congr rfl fun j _ => _;
-  rw [ starRingEnd_additiveChar ];
-  unfold additiveChar;
-  rw [ ← Complex.exp_add ];
-  rw [ Complex.exp_eq_exp_iff_exists_int ];
-  use ((ξ j * x j).val + (-η j * x j).val - ((ξ j - η j) * x j).val) / q;
-  rw [ Int.cast_div ] <;> norm_num;
-  · ring;
-  · simp +decide [ sub_mul, ← ZMod.intCast_zmod_eq_zero_iff_dvd ];
+  unfold character
+  rw [ map_prod, ← Finset.prod_mul_distrib ]
+  refine' Finset.prod_congr rfl fun j _ => _
+  rw [ starRingEnd_additiveChar ]
+  unfold additiveChar
+  rw [ ← Complex.exp_add ]
+  rw [ Complex.exp_eq_exp_iff_exists_int ]
+  use ((ξ j * x j).val + (-η j * x j).val - ((ξ j - η j) * x j).val) / q
+  rw [ Int.cast_div ] <;> norm_num
+  · ring
+  · simp +decide [ sub_mul, ← ZMod.intCast_zmod_eq_zero_iff_dvd ]
   · exact NeZero.ne q
 
 /--
@@ -214,13 +224,16 @@ public theorem character_orthogonality (q : ℕ) [NeZero q] (m : ℕ)
     ∑ x : Fin m → ZMod q, character q m ξ x * starRingEnd ℂ (character q m η x) =
       if ξ = η then ((q : ℂ) ^ m) else 0 := by
   -- By Fubini's theorem, we can interchange the order of summation.
-  have h_fubini : ∑ x : Fin m → ZMod q, character q m (ξ - η) x = ∏ j : Fin m, ∑ x : ZMod q, additiveChar q ((ξ - η) j) x := by
-    rw [ Finset.prod_sum ];
-    refine' Finset.sum_bij ( fun x _ => fun i _ => x i ) _ _ _ _ <;> simp +decide [ character ];
-    · simp +decide [ funext_iff ];
-    · exact fun b => ⟨ fun i => b i ( Finset.mem_univ i ), funext fun i => funext fun _ => rfl ⟩;
-  split_ifs with h <;> simp_all +decide [ character_mul_conj ];
-  exact Finset.prod_eq_zero ( Finset.mem_univ ( Classical.choose ( Function.ne_iff.mp h ) ) ) ( by rw [ additiveChar_sum_eq_ite ] ; simp +decide [ sub_eq_zero, Classical.choose_spec ( Function.ne_iff.mp h ) ] )
+  have h_fubini : ∑ x : Fin m → ZMod q, character q m (ξ - η) x = ∏ j : Fin m,
+      ∑ x : ZMod q, additiveChar q ((ξ - η) j) x := by
+    rw [ Finset.prod_sum ]
+    refine' Finset.sum_bij ( fun x _ => fun i _ => x i ) _ _ _ _ <;> simp +decide [ character ]
+    · simp +decide [ funext_iff ]
+    · exact fun b => ⟨ fun i => b i ( Finset.mem_univ i ), funext fun i => funext fun _ => rfl ⟩
+  split_ifs with h <;> simp_all +decide [ character_mul_conj ]
+  exact Finset.prod_eq_zero ( Finset.mem_univ ( Classical.choose ( Function.ne_iff.mp h ) ) ) ( by
+    rw [ additiveChar_sum_eq_ite ]
+    simp +decide [ sub_eq_zero, Classical.choose_spec ( Function.ne_iff.mp h ) ] )
 
 /--
 **Fourier inversion formula.**
@@ -229,13 +242,15 @@ $f(x) = \sum_{\xi \in G} \widehat{f}(\xi) \cdot \chi_\xi(x)$.
 public theorem dft_inversion (q : ℕ) [NeZero q] (m : ℕ)
     (f : (Fin m → ZMod q) → ℂ) (x : Fin m → ZMod q) :
     f x = ∑ ξ : Fin m → ZMod q, dft q m f ξ * character q m ξ x := by
-  simp +decide [ dft, Finset.mul_sum _ _ _, mul_comm, mul_left_comm ];
+  simp +decide [ dft, Finset.mul_sum _ _ _, mul_comm, mul_left_comm ]
   -- By the orthogonality of the characters, the inner sum over ξ is q^m if x = y and 0 otherwise.
-  have h_orthogonality : ∀ y : Fin m → ZMod q, ∑ ξ : Fin m → ZMod q, (character q m ξ x) * (starRingEnd ℂ (character q m ξ y)) = if x = y then (q : ℂ) ^ m else 0 := by
-    convert character_orthogonality q m x using 1;
-    unfold character; ring_nf;
-    unfold additiveChar; simp +decide [ mul_comm ] ;
-  rw [ Finset.sum_comm ];
+  have h_orthogonality : ∀ y : Fin m → ZMod q, ∑ ξ : Fin m → ZMod q,
+      (character q m ξ x) * (starRingEnd ℂ (character q m ξ y))
+      = if x = y then (q : ℂ) ^ m else 0 := by
+    convert character_orthogonality q m x using 1
+    unfold character; ring_nf
+    unfold additiveChar; simp +decide [ mul_comm ]
+  rw [ Finset.sum_comm ]
   simp_all +decide [ ← Finset.mul_sum _ _ _ ]
 
 /-! ### Plancherel / Parseval identity -/
@@ -250,17 +265,19 @@ theorem plancherel_identity (q : ℕ) [NeZero q] (m : ℕ)
     (f g : (Fin m → ZMod q) → ℂ) :
     (1 / (q : ℂ) ^ m) * ∑ x : Fin m → ZMod q, f x * starRingEnd ℂ (g x) =
       ∑ ξ : Fin m → ZMod q, dft q m f ξ * starRingEnd ℂ (dft q m g ξ) := by
-  unfold dft; simp +decide [ mul_assoc, Finset.mul_sum _ _ _, Finset.sum_mul ] ;
+  unfold dft; simp +decide [ mul_assoc, Finset.mul_sum _ _ _, Finset.sum_mul ]
   -- By the orthogonality of the characters, the inner sum over ξ is zero unless x = y.
-  have h_inner : ∀ x y : Fin m → ZMod q, ∑ ξ : Fin m → ZMod q, character q m ξ x * starRingEnd ℂ (character q m ξ y) = if x = y then (q : ℂ) ^ m else 0 := by
-    intro x y;
-    have := character_orthogonality q m;
-    convert this x y using 1;
+  have h_inner : ∀ x y : Fin m → ZMod q, ∑ ξ : Fin m → ZMod q,
+      character q m ξ x * starRingEnd ℂ (character q m ξ y) = if x = y then (q : ℂ) ^ m else 0 := by
+    intro x y
+    have := character_orthogonality q m
+    convert this x y using 1
     unfold character; simp +decide
-    unfold additiveChar; simp +decide [ mul_comm ] ;
-  simp +decide only [mul_left_comm];
-  rw [ Finset.sum_comm, Finset.sum_congr rfl ] ; intros ; rw [ Finset.sum_comm ] ; simp +decide [ ← Finset.mul_sum _ _ _ ] ; ring_nf;
-  simp_all +decide [ mul_assoc, mul_comm, mul_left_comm, pow_mul ];
+    unfold additiveChar; simp +decide [ mul_comm ]
+  simp +decide only [mul_left_comm]
+  rw [ Finset.sum_comm, Finset.sum_congr rfl ] ; intros
+  rw [ Finset.sum_comm ] ; simp +decide [ ← Finset.mul_sum _ _ _ ] ; ring_nf
+  simp_all +decide [ mul_assoc, mul_comm, mul_left_comm, pow_mul ]
   simp +decide [ sq, mul_assoc, NeZero.ne ]
 
 /-! ### Local deviation function -/
@@ -279,10 +296,11 @@ For any `t : ZMod p` and `S : Finset (ZMod p)`, the number of `h : ZMod p` with
 -/
 lemma card_filter_add_mem (p : ℕ) [NeZero p] (t : ZMod p) (S : Finset (ZMod p)) :
     (Finset.univ.filter fun h : ZMod p => t + h ∈ S).card = S.card := by
-  -- The function h ↦ t + h is a bijection from ZMod p to ZMod p, so the cardinality of the preimage of S under this function is equal to the cardinality of S.
+  -- The function h ↦ t + h is a bijection from ZMod p to ZMod p, so
+  -- the cardinality of the preimage of S under this function is equal to the cardinality of S.
   have h_bij : Finset.image (fun h => t + h) (Finset.univ.filter (fun h => t + h ∈ S)) = S := by
-    ext x; aesop;
-  rw [ ← h_bij, Finset.card_image_of_injective _ ( add_right_injective t ) ];
+    ext x; aesop
+  rw [ ← h_bij, Finset.card_image_of_injective _ ( add_right_injective t ) ]
   aesop
 
 /--
@@ -296,7 +314,8 @@ theorem sum_tupleCount_eq_card_pow_nat (k : ℕ) (hk : 1 ≤ k) (p : ℕ) [NeZer
   unfold tupleCount
   rcases k with ( _ | k ) <;> simp_all +decide [ Fin.forall_fin_succ ]
   -- Goal: ∑ x, #{t | t ∈ Ω p ∧ ∀ i, t + x i ∈ Ω p} = (Ω p).card ^ (k + 1)
-  have h_count : ∀ t ∈ Ω p, (Finset.univ.filter fun h : Fin k → ZMod p => ∀ i, t + h i ∈ Ω p).card = (Ω p).card ^ k := by
+  have h_count : ∀ t ∈ Ω p, (Finset.univ.filter fun h : Fin k → ZMod p => ∀ i, t + h i ∈ Ω p).card =
+      (Ω p).card ^ k := by
     intro t _
     rw [show (Finset.univ.filter fun h : Fin k → ZMod p => ∀ i, t + h i ∈ Ω p) =
       Finset.image (fun y : Fin k → ↑(Ω p) => fun i => (y i : ZMod p) - t) Finset.univ from ?_]
@@ -382,7 +401,8 @@ where $\mu_p = |\Omega_p|^k / p^{k-1}$. The factor $(1 - |\Omega_p|/p)$ is essen
 it ensures that when $\Omega_p$ is nearly full, the Fourier coefficients are
 near-zero, making the divisor sum in the Möbius synthesis absolutely convergent. -/
 @[expose]
-public def WellDistributedFourier (ε : ℝ) (p : ℕ) [Fact p.Prime] (Ω : Finset (ZMod p)) (k : ℕ) : Prop :=
+public def WellDistributedFourier (ε : ℝ) (p : ℕ) [Fact p.Prime]
+    (Ω : Finset (ZMod p)) (k : ℕ) : Prop :=
   ∀ (ξ : Fin (k - 1) → ZMod p), ξ ≠ 0 →
     ‖dft p (k - 1) (fun h => (tupleCount Ω (Fin.cons 0 h) : ℂ)) ξ‖ ≤
     (1 - (Ω.card : ℝ) / p) * (p : ℝ) ^ (-ε) * ((Ω.card : ℝ) ^ k / (p : ℝ) ^ (k - 1))
@@ -426,27 +446,34 @@ lemma WellDistributed_implies_WellDistributedFourier
     WellDistributedFourier ε p Ω k := by
   intro ξξ hξ_ne_zero
   have h_sum_zero : ∑ r : Fin (k - 1) → ZMod p, starRingEnd ℂ (character p (k - 1) ξξ r) = 0 := by
-    convert sum_star_character_eq_zero p ( k - 1 ) ξξ hξ_ne_zero using 1;
+    convert sum_star_character_eq_zero p ( k - 1 ) ξξ hξ_ne_zero using 1
   -- Apply the triangle inequality to the sum.
-  have h_triangle : ‖(1 / (p : ℂ) ^ (k - 1)) * ∑ r : Fin (k - 1) → ZMod p, (tupleCount Ω (Fin.cons 0 r) - ((Ω.card : ℂ) ^ k / (p : ℂ) ^ (k - 1))) * starRingEnd ℂ (character p (k - 1) ξξ r)‖ ≤ (1 / (p : ℝ) ^ (k - 1)) * ∑ r : Fin (k - 1) → ZMod p, |(tupleCount Ω (Fin.cons 0 r) : ℝ) - ((Ω.card : ℝ) ^ k / (p : ℝ) ^ (k - 1))| := by
-    have h_triangle : ∀ r : Fin (k - 1) → ZMod p, ‖(tupleCount Ω (Fin.cons 0 r) - ((Ω.card : ℂ) ^ k / (p : ℂ) ^ (k - 1))) * starRingEnd ℂ (character p (k - 1) ξξ r)‖ ≤ |(tupleCount Ω (Fin.cons 0 r) : ℝ) - ((Ω.card : ℝ) ^ k / (p : ℝ) ^ (k - 1))| := by
+  have h_triangle : ‖(1 / (p : ℂ) ^ (k - 1)) * ∑ r : Fin (k - 1) → ZMod p,
+      (tupleCount Ω (Fin.cons 0 r) - ((Ω.card : ℂ) ^ k / (p : ℂ) ^ (k - 1)))
+      * starRingEnd ℂ (character p (k - 1) ξξ r)‖
+    ≤ (1 / (p : ℝ) ^ (k - 1)) * ∑ r : Fin (k - 1) → ZMod p,
+      |(tupleCount Ω (Fin.cons 0 r) : ℝ) - ((Ω.card : ℝ) ^ k / (p : ℝ) ^ (k - 1))| := by
+    have h_triangle : ∀ r : Fin (k - 1) → ZMod p,
+        ‖(tupleCount Ω (Fin.cons 0 r) - ((Ω.card : ℂ) ^ k / (p : ℂ) ^ (k - 1)))
+          * starRingEnd ℂ (character p (k - 1) ξξ r)‖
+        ≤ |(tupleCount Ω (Fin.cons 0 r) : ℝ) - ((Ω.card : ℝ) ^ k / (p : ℝ) ^ (k - 1))| := by
       intro r
-      simp [norm_character];
-      convert Complex.norm_real _ |> le_of_eq using 1;
-      norm_num [ Complex.normSq, Complex.norm_def ];
-    rw [ norm_mul, norm_div ];
-    gcongr;
-    · exact_mod_cast pow_pos ( Nat.Prime.pos Fact.out ) _;
-    · norm_num;
-    · norm_num [ Complex.norm_pow ];
-    · exact le_trans ( norm_sum_le _ _ ) ( Finset.sum_le_sum fun _ _ => h_triangle _ );
-  refine le_trans ?_ ( h_triangle.trans ?_ );
-  · unfold dft; simp +decide [ sub_mul ] ;
-    simp_all +decide [ ← Finset.mul_sum _ _ _ ];
-  · have := hWD.2;
-    rw [ div_mul_eq_mul_div, div_le_iff₀ ] <;> norm_cast at * <;> simp_all +decide only [Nat.cast_pow,
-      one_div, Complex.norm_mul, norm_inv, norm_pow, RCLike.norm_natCast, one_mul];
-    · nlinarith;
+      simp [norm_character]
+      convert Complex.norm_real _ |> le_of_eq using 1
+      norm_num [ Complex.normSq, Complex.norm_def ]
+    rw [ norm_mul, norm_div ]
+    gcongr
+    · exact_mod_cast pow_pos ( Nat.Prime.pos Fact.out ) _
+    · norm_num
+    · norm_num [ Complex.norm_pow ]
+    · exact le_trans ( norm_sum_le _ _ ) ( Finset.sum_le_sum fun _ _ => h_triangle _ )
+  refine le_trans ?_ ( h_triangle.trans ?_ )
+  · unfold dft; simp +decide [ sub_mul ]
+    simp_all +decide [ ← Finset.mul_sum _ _ _ ]
+  · have := hWD.2
+    rw [ div_mul_eq_mul_div, div_le_iff₀ ] <;> norm_cast at * <;>
+      simp_all +decide only [Nat.cast_pow, Complex.norm_mul]
+    · nlinarith
     · exact pow_pos ( Nat.Prime.pos Fact.out ) _
 
 /-! ### Box Fourier transform decay -/
@@ -460,7 +487,7 @@ lemma boxIndicator_eq_prod (q : ℕ) [NeZero q] (m : ℕ)
     (B : Box m) (s : ℝ) (x : Fin m → ZMod q) :
     boxIndicator q m B s x = ∏ j : Fin m,
       if (x j).val ∈ Finset.Icc 1 ⌊s * B.sides j⌋₊ then (1 : ℂ) else 0 := by
-  unfold boxIndicator; split_ifs <;> simp_all +decide [ Finset.prod_ite ] ;
+  unfold boxIndicator; split_ifs <;> simp_all +decide [ Finset.prod_ite ]
 
 /--
 The DFT of the box indicator factors as a product of 1D DFTs.
@@ -474,14 +501,18 @@ public lemma dft_boxIndicator_eq_prod (q : ℕ) [NeZero q] (m : ℕ)
       ∏ j : Fin m, dft q 1
         (fun x => if (x 0).val ∈ Finset.Icc 1 ⌊s * B.sides j⌋₊ then (1 : ℂ) else 0)
         (fun _ => ξ j) := by
-  unfold dft;
-  nontriviality;
-  simp +decide [ boxIndicator_eq_prod, Finset.prod_mul_distrib, Finset.prod_const ];
-  rw [ Finset.prod_sum ];
-  refine' Or.inl ( Finset.sum_bij ( fun x _ => fun i _ => fun _ => x i ) _ _ _ _ ) <;> simp +decide [ character ];
-  · simp +decide [ funext_iff ];
-  · exact fun b => ⟨ fun i => b i ( Finset.mem_univ i ) 0, funext fun i => funext fun _ => funext fun _ => by simp +decide [ Fin.eq_zero ] ⟩;
-  · exact fun a => by rw [ ← Finset.prod_mul_distrib ] ; exact Finset.prod_congr rfl fun _ _ => by split_ifs <;> ring;
+  unfold dft
+  nontriviality
+  simp +decide [ boxIndicator_eq_prod, Finset.prod_mul_distrib, Finset.prod_const ]
+  rw [ Finset.prod_sum ]
+  refine' Or.inl ( Finset.sum_bij ( fun x _ => fun i _ => fun _ => x i ) _ _ _ _ ) <;>
+    simp +decide [ character ]
+  · simp +decide [ funext_iff ]
+  · exact fun b => ⟨ fun i => b i ( Finset.mem_univ i ) 0,
+      funext fun i => funext fun _ => funext fun _ => by simp +decide [ Fin.eq_zero ] ⟩
+  · exact fun a => by
+      rw [ ← Finset.prod_mul_distrib ]
+      exact Finset.prod_congr rfl fun _ _ => by split_ifs <;> ring
 
 /-! ### CRT frequency equivalence -/
 
@@ -493,8 +524,8 @@ image in `ZMod p`.
 lemma natCast_div_prime_ne_zero (q : ℕ) [NeZero q] (hq : Squarefree q)
     (p : q.primeFactors) :
     ((q / p : ℕ) : ZMod p) ≠ 0 := by
-  rw [ Ne.eq_def, ZMod.natCast_eq_zero_iff ];
-  rw [ Nat.dvd_div_iff_mul_dvd ] <;> norm_num [ Nat.mem_primeFactors.mp p.2 ];
+  rw [ Ne.eq_def, ZMod.natCast_eq_zero_iff ]
+  rw [ Nat.dvd_div_iff_mul_dvd ] <;> norm_num [ Nat.mem_primeFactors.mp p.2 ]
   exact fun h => absurd ( hq.squarefree_of_dvd h ) ( by rw [ Nat.squarefree_mul_iff ] ; aesop )
 
 /-- The **CRT frequency equivalence**: maps a global frequency `ξ ∈ ZMod q` to its
@@ -546,79 +577,105 @@ public lemma additiveChar_crt_split (q : ℕ) [NeZero q] (hq : Squarefree q)
           (crtFrequencyEquiv q hq ξ p)
           (crtRingEquiv q hq x p)
       ) := by
-  unfold additiveChar; simp +decide [ mul_comm ] ;
-  rw [ ← Complex.exp_sum ];
-  -- By the properties of the exponential function and the definition of `crtFrequencyEquiv`, we can rewrite the right-hand side of the equation.
-  have h_exp : (ξ * x).cast / (q : ℂ) - ∑ p ∈ q.primeFactors.attach, ((crtFrequencyEquiv q hq) ξ p * (crtRingEquiv q hq) x p).val / (p : ℂ) ∈ Set.range (fun n : ℤ => (n : ℂ)) := by
+  unfold additiveChar; simp +decide [ mul_comm ]
+  rw [ ← Complex.exp_sum ]
+  -- By the properties of the exponential function and the definition of `crtFrequencyEquiv`,
+  -- we can rewrite the right-hand side of the equation.
+  have h_exp : (ξ * x).cast / (q : ℂ) - ∑ p ∈ q.primeFactors.attach, ((crtFrequencyEquiv q hq) ξ p
+      * (crtRingEquiv q hq) x p).val / (p : ℂ) ∈ Set.range (fun n : ℤ => (n : ℂ)) := by
     -- By the properties of the Chinese Remainder Theorem, we know that
-    have h_crt : (ξ * x).val ≡ ∑ p ∈ q.primeFactors.attach, ((crtFrequencyEquiv q hq) ξ p * (crtRingEquiv q hq) x p).val * (q / p : ℕ) [MOD q] := by
-      have h_crt : ∀ p ∈ q.primeFactors.attach, (ξ * x).val ≡ ((crtFrequencyEquiv q hq ξ p) * (crtRingEquiv q hq x p)).val * (q / p : ℕ) [MOD p] := by
+    have h_crt : (ξ * x).val ≡ ∑ p ∈ q.primeFactors.attach, ((crtFrequencyEquiv q hq) ξ p
+        * (crtRingEquiv q hq) x p).val * (q / p : ℕ) [MOD q] := by
+      have h_crt : ∀ p ∈ q.primeFactors.attach, (ξ * x).val ≡ ((crtFrequencyEquiv q hq ξ p)
+          * (crtRingEquiv q hq x p)).val * (q / p : ℕ) [MOD p] := by
         intro p hp
-        have h_crt : (ξ * x).val ≡ ((crtRingEquiv q hq (ξ * x) p).val) * (q / p : ℕ) * ((q / p : ℕ)⁻¹ : ZMod p).val [MOD p] := by
+        have h_crt : (ξ * x).val ≡ ((crtRingEquiv q hq (ξ * x) p).val)
+            * (q / p : ℕ) * ((q / p : ℕ)⁻¹ : ZMod p).val [MOD p] := by
           have h_crt : (q / p : ℕ) * ((q / p : ℕ)⁻¹ : ZMod p).val ≡ 1 [MOD p] := by
-            haveI := Fact.mk ( Nat.prime_of_mem_primeFactors p.2 ) ; simp +decide [ ← ZMod.natCast_eq_natCast_iff ] ;
-            rw [ ZMod.mul_inv_of_unit ];
-            rw [ isUnit_iff_ne_zero ];
-            rw [ Ne.eq_def, ZMod.natCast_eq_zero_iff ];
-            rw [ Nat.dvd_div_iff_mul_dvd ];
-            · exact fun h => absurd ( hq.squarefree_of_dvd h ) ( by rw [ Nat.squarefree_mul_iff ] ; aesop );
-            · exact Nat.dvd_of_mem_primeFactors p.2;
-          simp_all +decide [ ← ZMod.natCast_eq_natCast_iff, mul_assoc ];
+            haveI := Fact.mk ( Nat.prime_of_mem_primeFactors p.2 )
+            simp +decide [ ← ZMod.natCast_eq_natCast_iff ]
+            rw [ ZMod.mul_inv_of_unit ]
+            rw [ isUnit_iff_ne_zero ]
+            rw [ Ne.eq_def, ZMod.natCast_eq_zero_iff ]
+            rw [ Nat.dvd_div_iff_mul_dvd ]
+            · exact fun h => absurd ( hq.squarefree_of_dvd h ) ( by
+                rw [ Nat.squarefree_mul_iff ] ; aesop )
+            · exact Nat.dvd_of_mem_primeFactors p.2
+          simp_all +decide [ ← ZMod.natCast_eq_natCast_iff, mul_assoc ]
           have h_crt : (ξ * x).cast = ((crtRingEquiv q hq (ξ * x) p).val : ZMod p) := by
-            convert rfl;
-            convert ZMod.natCast_zmod_val _;
-            · convert rfl;
-              convert crtRingEquiv_apply_eq_castHom q hq ( ξ * x ) p using 1;
-            · exact ⟨ Nat.ne_of_gt ( Nat.pos_of_mem_primeFactors p.2 ) ⟩;
-          aesop;
-        simp_all +decide [ ← ZMod.natCast_eq_natCast_iff, mul_assoc ];
-        simp +decide [ mul_assoc, mul_comm, mul_left_comm, crtFrequencyEquiv ];
-        haveI := Fact.mk ( Nat.prime_of_mem_primeFactors p.2 ) ; simp +decide [ ← mul_assoc ] ;
-      have h_crt : ∀ p ∈ q.primeFactors.attach, (ξ * x).val ≡ ∑ p ∈ q.primeFactors.attach, ((crtFrequencyEquiv q hq ξ p) * (crtRingEquiv q hq x p)).val * (q / p : ℕ) [MOD p] := by
+            convert rfl
+            convert ZMod.natCast_zmod_val _
+            · convert rfl
+              convert crtRingEquiv_apply_eq_castHom q hq ( ξ * x ) p using 1
+            · exact ⟨ Nat.ne_of_gt ( Nat.pos_of_mem_primeFactors p.2 ) ⟩
+          aesop
+        simp_all +decide [ ← ZMod.natCast_eq_natCast_iff, mul_assoc ]
+        simp +decide [ mul_assoc, mul_comm, mul_left_comm, crtFrequencyEquiv ]
+        haveI := Fact.mk ( Nat.prime_of_mem_primeFactors p.2 ) ; simp +decide [ ← mul_assoc ]
+      have h_crt : ∀ p ∈ q.primeFactors.attach, (ξ * x).val
+          ≡ ∑ p ∈ q.primeFactors.attach, ((crtFrequencyEquiv q hq ξ p)
+            * (crtRingEquiv q hq x p)).val * (q / p : ℕ) [MOD p] := by
         intro p hp
-        have h_crt_sum : ∑ p_1 ∈ q.primeFactors.attach, ((crtFrequencyEquiv q hq ξ p_1) * (crtRingEquiv q hq x p_1)).val * (q / p_1 : ℕ) ≡ ((crtFrequencyEquiv q hq ξ p) * (crtRingEquiv q hq x p)).val * (q / p : ℕ) [MOD p] := by
+        have h_crt_sum : ∑ p_1 ∈ q.primeFactors.attach, ((crtFrequencyEquiv q hq ξ p_1)
+              * (crtRingEquiv q hq x p_1)).val * (q / p_1 : ℕ)
+            ≡ ((crtFrequencyEquiv q hq ξ p)
+              * (crtRingEquiv q hq x p)).val * (q / p : ℕ) [MOD p] := by
           rw [ ← ZMod.natCast_eq_natCast_iff, Nat.cast_sum ]
           rw [ Finset.sum_eq_single p ]
           · intro a _ ha_ne
-            have h_coprime : Nat.Coprime a.val p.val := Nat.coprime_primes (Nat.prime_of_mem_primeFactors a.2) (Nat.prime_of_mem_primeFactors p.2) |>.mpr (Subtype.coe_injective.ne ha_ne)
-            have h_mul_dvd : a.val * p.val ∣ q := Nat.Coprime.mul_dvd_of_dvd_of_dvd h_coprime (Nat.dvd_of_mem_primeFactors a.2) (Nat.dvd_of_mem_primeFactors p.2)
+            have h_coprime : Nat.Coprime a.val p.val := Nat.coprime_primes
+              (Nat.prime_of_mem_primeFactors a.2) (Nat.prime_of_mem_primeFactors p.2) |>.mpr
+                (Subtype.coe_injective.ne ha_ne)
+            have h_mul_dvd : a.val * p.val ∣ q := Nat.Coprime.mul_dvd_of_dvd_of_dvd h_coprime
+              (Nat.dvd_of_mem_primeFactors a.2) (Nat.dvd_of_mem_primeFactors p.2)
             have h_dvd_div : p.val ∣ q / a.val := Nat.dvd_div_of_mul_dvd h_mul_dvd
-            have h_zero : (q / a.val : ZMod p.val) = 0 := (ZMod.natCast_eq_zero_iff (q / a.val) p.val).mpr h_dvd_div
+            have h_zero : (q / a.val : ZMod p.val) = 0 :=
+              (ZMod.natCast_eq_zero_iff (q / a.val) p.val).mpr h_dvd_div
             simp [ h_zero ]
           · exact fun hp_not_mem => (hp_not_mem hp).elim
-        exact Eq.trans ( by solve_by_elim ) h_crt_sum.symm;
-      rw [ Nat.modEq_iff_dvd ] at *;
-      have h_crt : (∏ p ∈ q.primeFactors.attach, (p : ℤ)) ∣ (∑ p ∈ q.primeFactors.attach, ((crtFrequencyEquiv q hq ξ p) * (crtRingEquiv q hq x p)).val * (q / p : ℕ)) - (ξ * x).val := by
-        convert Finset.prod_dvd_of_coprime _ _;
+        exact Eq.trans ( by solve_by_elim ) h_crt_sum.symm
+      rw [ Nat.modEq_iff_dvd ] at *
+      have h_crt : (∏ p ∈ q.primeFactors.attach, (p : ℤ)) ∣ (∑ p ∈ q.primeFactors.attach,
+          ((crtFrequencyEquiv q hq ξ p) * (crtRingEquiv q hq x p)).val
+          * (q / p : ℕ)) - (ξ * x).val := by
+        convert Finset.prod_dvd_of_coprime _ _
         · intros p hp q hq hpq; exact (by
-          have := Nat.coprime_primes ( Nat.prime_of_mem_primeFactors p.2 ) ( Nat.prime_of_mem_primeFactors q.2 ) ; aesop;);
-        · exact fun p hp => by simpa using h_crt p hp |> Nat.ModEq.dvd;
+          have := Nat.coprime_primes ( Nat.prime_of_mem_primeFactors p.2 )
+            ( Nat.prime_of_mem_primeFactors q.2 ) ; aesop )
+        · exact fun p hp => by simpa using h_crt p hp |> Nat.ModEq.dvd
       have h_prod_eq_q : (∏ p ∈ q.primeFactors.attach, (p : ℤ)) = (q : ℤ) := by
         rw [ ← Nat.cast_prod ] ; norm_cast
         exact (Finset.prod_attach _ _).trans (Nat.prod_primeFactors_of_squarefree hq)
       rw [ h_prod_eq_q ] at h_crt
       exact h_crt
-    obtain ⟨ k, hk ⟩ := h_crt.symm.dvd;
-    use k;
-    have h_calc : (q : ℂ) * (((ξ * x).val : ℂ) / (q : ℂ) - ∑ p ∈ q.primeFactors.attach, (((crtFrequencyEquiv q hq ξ p) * (crtRingEquiv q hq x p)).val : ℂ) / (p : ℂ)) = (q : ℂ) * (k : ℂ) := by
+    obtain ⟨ k, hk ⟩ := h_crt.symm.dvd
+    use k
+    have h_calc : (q : ℂ) * (((ξ * x).val : ℂ) / (q : ℂ) - ∑ p ∈ q.primeFactors.attach,
+        (((crtFrequencyEquiv q hq ξ p) * (crtRingEquiv q hq x p)).val : ℂ) / (p : ℂ))
+        = (q : ℂ) * (k : ℂ) := by
       calc
-        (q : ℂ) * (((ξ * x).val : ℂ) / (q : ℂ) - ∑ p ∈ q.primeFactors.attach, (((crtFrequencyEquiv q hq ξ p) * (crtRingEquiv q hq x p)).val : ℂ) / (p : ℂ))
-          = (q : ℂ) * (((ξ * x).val : ℂ) / (q : ℂ)) - (q : ℂ) * ∑ p ∈ q.primeFactors.attach, (((crtFrequencyEquiv q hq ξ p) * (crtRingEquiv q hq x p)).val : ℂ) / (p : ℂ) := by ring
-        _ = ((ξ * x).val : ℂ) - ∑ p ∈ q.primeFactors.attach, (((crtFrequencyEquiv q hq ξ p) * (crtRingEquiv q hq x p)).val : ℂ) * (q / p : ℕ) := by
+        (q : ℂ) * (((ξ * x).val : ℂ) / (q : ℂ) - ∑ p ∈ q.primeFactors.attach,
+            (((crtFrequencyEquiv q hq ξ p) * (crtRingEquiv q hq x p)).val : ℂ) / (p : ℂ))
+          = (q : ℂ) * (((ξ * x).val : ℂ) / (q : ℂ)) - (q : ℂ) * ∑ p ∈ q.primeFactors.attach,
+              (((crtFrequencyEquiv q hq ξ p) * (crtRingEquiv q hq x p)).val : ℂ) / (p : ℂ) := by
+                ring
+        _ = ((ξ * x).val : ℂ) - ∑ p ∈ q.primeFactors.attach,
+            (((crtFrequencyEquiv q hq ξ p) * (crtRingEquiv q hq x p)).val : ℂ) * (q / p : ℕ) := by
           rw [ mul_div_cancel₀ _ (Nat.cast_ne_zero.mpr (NeZero.ne q)) ]
           rw [ Finset.mul_sum ]
           congr 1
           apply Finset.sum_congr rfl
           intro p hp
-          rw [ Nat.cast_div ( Nat.dvd_of_mem_primeFactors p.2 ) ( Nat.cast_ne_zero.mpr <| Nat.ne_of_gt <| Nat.pos_of_mem_primeFactors p.2 ) ]
+          rw [ Nat.cast_div ( Nat.dvd_of_mem_primeFactors p.2 )
+            ( Nat.cast_ne_zero.mpr <| Nat.ne_of_gt <| Nat.pos_of_mem_primeFactors p.2 ) ]
           ring
         _ = (q : ℂ) * (k : ℂ) := by exact_mod_cast hk
     have h_final := mul_left_cancel₀ (Nat.cast_ne_zero.mpr (NeZero.ne q) : (q : ℂ) ≠ 0) h_calc.symm
     rw [ ZMod.cast_eq_val (ξ * x) ]
     exact_mod_cast h_final
-  obtain ⟨ n, hn ⟩ := h_exp;
+  obtain ⟨ n, hn ⟩ := h_exp
   rw [ Complex.exp_eq_exp_iff_exists_int ]
-  refine ⟨ n, ?_ ⟩;
+  refine ⟨ n, ?_ ⟩
   change (n : ℂ) = _ at hn; rw [ hn ]
   rw [ sub_mul, Finset.sum_mul _ _ (2 * ↑Real.pi * I) ]
   ring_nf
@@ -632,10 +689,10 @@ The sum of `‖dft I_S (-ξ)‖` over all `ξ` equals the sum of `‖dft I_S ξ�
 lemma sum_norm_dft_neg_eq (q : ℕ) [NeZero q] (m : ℕ) (f : (Fin m → ZMod q) → ℂ) :
     ∑ ξ : Fin m → ZMod q, ‖dft q m f (-ξ)‖ =
     ∑ ξ : Fin m → ZMod q, ‖dft q m f ξ‖ := by
-  apply Finset.sum_bij (fun ξ _ => -ξ);
-  · exact fun _ _ => Finset.mem_univ _;
-  · aesop;
-  · exact fun b _ => ⟨ -b, Finset.mem_univ _, neg_neg b ⟩;
+  apply Finset.sum_bij (fun ξ _ => -ξ)
+  · exact fun _ _ => Finset.mem_univ _
+  · aesop
+  · exact fun b _ => ⟨ -b, Finset.mem_univ _, neg_neg b ⟩
   · grind
 
 /--
@@ -649,13 +706,15 @@ public lemma spatial_to_frequency_swap (q : ℕ) [NeZero q] (m : ℕ)
       ∑ ξ : Fin m → ZMod q,
         ((q : ℂ) ^ m) * dft q m f ξ * dft q m g (-ξ) := by
   -- By Fubini's theorem, we can interchange the order of summation.
-  have h_fubini : ∑ h : Fin m → ZMod q, g h * (∑ ξ : Fin m → ZMod q, dft q m f ξ * character q m ξ h) = ∑ ξ : Fin m → ZMod q, dft q m f ξ * (∑ h : Fin m → ZMod q, g h * character q m ξ h) := by
-    simpa only [ mul_assoc, mul_left_comm, Finset.mul_sum _ _ _ ] using Finset.sum_comm;
-  convert h_fubini using 2;
-  · exact congrArg _ ( dft_inversion q m f _ );
-  · unfold dft;
-    field_simp;
-    unfold character; congr! 2; simp +decide [ starRingEnd_additiveChar ] ;
+  have h_fubini : ∑ h : Fin m → ZMod q, g h * (∑ ξ : Fin m → ZMod q,
+      dft q m f ξ * character q m ξ h) = ∑ ξ : Fin m → ZMod q,
+      dft q m f ξ * (∑ h : Fin m → ZMod q, g h * character q m ξ h) := by
+    simpa only [ mul_assoc, mul_left_comm, Finset.mul_sum _ _ _ ] using Finset.sum_comm
+  convert h_fubini using 2
+  · exact congrArg _ ( dft_inversion q m f _ )
+  · unfold dft
+    field_simp
+    unfold character; congr! 2; simp +decide [ starRingEnd_additiveChar ]
 
 
 
@@ -674,23 +733,31 @@ public noncomputable def diffMap (q : ℕ) [NeZero q] (m : ℕ) (y : Fin m → Z
 /-- `diffMap` is a left inverse of `cumSum`. -/
 public lemma diffMap_cumSum (q : ℕ) [NeZero q] (m : ℕ) (x : Fin m → ZMod q) :
     diffMap q m (cumSum q m x) = x := by
-  unfold cumSum diffMap; ext j; induction j ; simp +decide [*] ;
-  induction' ‹ℕ› with n ih <;> simp_all +decide;
-  · rw [ show ( Iic ⟨ 0, by assumption ⟩ : Finset ( Fin m ) ) = { ⟨ 0, by assumption ⟩ } by ext ⟨ i, hi ⟩ ; aesop ] ; norm_num;
-  · rw [ show ( Iic ⟨ n + 1, by linarith ⟩ : Finset ( Fin m ) ) = Iic ⟨ n, by linarith ⟩ ∪ { ⟨ n + 1, by linarith ⟩ } from ?_, Finset.sum_union ] <;> norm_num [ Finset.sum_singleton, Finset.sum_union, Finset.disjoint_singleton_right ];
+  unfold cumSum diffMap; ext j; induction j ; simp +decide [*]
+  induction' ‹ℕ› with n ih <;> simp_all +decide
+  · rw [ show ( Iic ⟨ 0, by assumption ⟩ : Finset ( Fin m ) ) = { ⟨ 0, by assumption ⟩ } by
+      ext ⟨ i, hi ⟩ ; aesop ]
+    norm_num
+  · rw [ show ( Iic ⟨ n + 1, by linarith ⟩ : Finset ( Fin m ) )
+        = Iic ⟨ n, by linarith ⟩ ∪ { ⟨ n + 1, by linarith ⟩ } from ?_, Finset.sum_union ] <;>
+      norm_num [ Finset.sum_singleton, Finset.sum_union, Finset.disjoint_singleton_right ]
     grind +locals
 
 /-- `cumSum` is a left inverse of `diffMap`. -/
 public lemma cumSum_diffMap (q : ℕ) [NeZero q] (m : ℕ) (y : Fin m → ZMod q) :
     cumSum q m (diffMap q m y) = y := by
-  funext j;
-  induction' j with j ih;
-  induction' j with j ih;
-  · unfold cumSum diffMap; simp +decide ;
-    rw [ show ( Iic ⟨ 0, ih ⟩ : Finset ( Fin m ) ) = { ⟨ 0, ih ⟩ } by ext ⟨ i, hi ⟩ ; aesop ] ; aesop;
-  · unfold cumSum diffMap at *;
-    rw [ show ( Iic ⟨ j + 1, ih ⟩ : Finset ( Fin m ) ) = Finset.Iic ⟨ j, by linarith ⟩ ∪ { ⟨ j + 1, ih ⟩ } from ?_, Finset.sum_union ] <;> norm_num;
-    · rename_i h; specialize h ( Nat.lt_of_succ_lt ih ) ; simp_all +decide [ Finset.sum_sub_distrib ] ;
+  funext j
+  induction' j with j ih
+  induction' j with j ih
+  · unfold cumSum diffMap; simp +decide
+    rw [ show ( Iic ⟨ 0, ih ⟩ : Finset ( Fin m ) ) = { ⟨ 0, ih ⟩ } by ext ⟨ i, hi ⟩ ; aesop ]
+    aesop
+  · unfold cumSum diffMap at *
+    rw [ show ( Iic ⟨ j + 1, ih ⟩ : Finset ( Fin m ) )
+        = Finset.Iic ⟨ j, by linarith ⟩ ∪ { ⟨ j + 1, ih ⟩ } from ?_, Finset.sum_union ] <;>
+      norm_num
+    · rename_i h; specialize h ( Nat.lt_of_succ_lt ih )
+      simp_all +decide [ Finset.sum_sub_distrib ]
     · grind
 
 /-- The cumulative sum map is an equivalence. -/
@@ -714,36 +781,44 @@ at frequency `freqDiff ξ` evaluated at `cumSum x`. This is Abel summation by pa
 private lemma character_cumSum_eq (q : ℕ) [NeZero q] (m : ℕ)
     (ξ x : Fin m → ZMod q) :
     character q m ξ x = character q m (freqDiff q m ξ) (cumSum q m x) := by
-  -- By Abel summation by parts, we can rewrite the sum of the products of ξ and x as the sum of the products of the frequency differences and the cumulative sums.
-  have h_abel : ∑ j : Fin m, (ξ j) * (x j) = ∑ j : Fin m, (freqDiff q m ξ j) * (cumSum q m x j) := by
-    induction' m with m ih;
-    · rfl;
-    · simp +decide [ Fin.sum_univ_castSucc, freqDiff, cumSum ] at *;
-      rw [ show ( Finset.Iic ( Fin.last m ) : Finset ( Fin ( m + 1 ) ) ) = Finset.univ from Finset.eq_univ_of_forall fun i => Finset.mem_Iic.mpr ( Fin.le_last _ ) ] ; simp +decide [Fin.sum_univ_castSucc] ; ring_nf;
-      rw [ add_comm, Finset.sum_sub_distrib ];
-      simp +decide [add_assoc, Finset.mul_sum _ _ _, ih];
-      rw [ ← Finset.sum_sub_distrib ] ; rw [ ← Finset.sum_add_distrib ] ; congr ; ext i ; split_ifs <;> simp_all +decide [add_comm] ; ring_nf;
-      · rw [ ← Finset.sum_sub_distrib ];
+  -- By Abel summation by parts, we can rewrite the sum of the products of ξ and x as the sum of
+  -- the products of the frequency differences and the cumulative sums.
+  have h_abel : ∑ j : Fin m, (ξ j) * (x j) = ∑ j : Fin m,
+      (freqDiff q m ξ j) * (cumSum q m x j) := by
+    induction' m with m ih
+    · rfl
+    · simp +decide [ Fin.sum_univ_castSucc, freqDiff, cumSum ] at *
+      rw [ show ( Finset.Iic ( Fin.last m ) : Finset ( Fin ( m + 1 ) ) ) = Finset.univ from
+          Finset.eq_univ_of_forall fun i => Finset.mem_Iic.mpr ( Fin.le_last _ ) ]
+      simp +decide [Fin.sum_univ_castSucc] ; ring_nf
+      rw [ add_comm, Finset.sum_sub_distrib ]
+      simp +decide [add_assoc, Finset.mul_sum _ _ _, ih]
+      rw [ ← Finset.sum_sub_distrib ] ; rw [ ← Finset.sum_add_distrib ] ; congr ; ext i
+      split_ifs <;> simp_all +decide [add_comm] ; ring_nf
+      · rw [ ← Finset.sum_sub_distrib ]
         refine Finset.sum_bij (fun a _ => a.castSucc) ?_ ?_ ?_ ?_
         · intro a ha; simp [Finset.mem_Iic] at ha ⊢; exact Fin.castSucc_le_castSucc_iff.mpr ha
         · intro a₁ _ a₂ _ h; exact Fin.castSucc_injective _ h
         · intro b hb
           simp [Finset.mem_Iic] at hb
           have hb_lt : (b : ℕ) < m := Fin.lt_def.mp (lt_of_le_of_lt hb (Fin.castSucc_lt_last i))
-          exact ⟨⟨(b : ℕ), hb_lt⟩, Finset.mem_Iic.mpr (by simp [Fin.le_iff_val_le_val] at hb ⊢; exact hb), by simp⟩
-        · intro a _; rfl;
-      · cases ‹m ≤ i + 1›.eq_or_lt <;> simp_all +decide [Fin.last];
-        · repeat rw [ show ( Iic i.castSucc : Finset ( Fin ( m + 1 ) ) ) = Finset.image ( Fin.castSucc ) ( Iic i ) from ?_, Finset.sum_image ] <;> norm_num [ Fin.ext_iff ];
-        · linarith [ Fin.is_lt i ];
-  unfold character;
-  unfold additiveChar; simp_all +decide ;
-  convert Complex.exp_eq_exp_iff_exists_int.mpr _ using 1;
-  rw [ ← Complex.exp_sum ];
-  rw [ ← Complex.exp_sum ];
-  use ( ∑ j : Fin m, ( ξ j * x j |> ZMod.val ) - ∑ j : Fin m, ( freqDiff q m ξ j * cumSum q m x j |> ZMod.val ) ) / q;
-  rw [ Int.cast_div ] <;> norm_num [ ← Finset.sum_div _ _ _, h_abel ];
-  · simp +decide [← Finset.mul_sum _ _ _] ; ring;
-  · simp_all +decide [ ← ZMod.intCast_zmod_eq_zero_iff_dvd ];
+          exact ⟨⟨(b : ℕ), hb_lt⟩, Finset.mem_Iic.mpr (by
+            simp [Fin.le_iff_val_le_val] at hb ⊢; exact hb), by simp⟩
+        · intro a _; rfl
+      · cases ‹m ≤ i + 1›.eq_or_lt <;> simp_all +decide [Fin.last]
+        · repeat rw [ show ( Iic i.castSucc : Finset ( Fin ( m + 1 ) ) ) = Finset.image
+            ( Fin.castSucc ) ( Iic i ) from ?_, Finset.sum_image ] <;> norm_num [ Fin.ext_iff ]
+        · linarith [ Fin.is_lt i ]
+  unfold character
+  unfold additiveChar; simp_all +decide
+  convert Complex.exp_eq_exp_iff_exists_int.mpr _ using 1
+  rw [ ← Complex.exp_sum ]
+  rw [ ← Complex.exp_sum ]
+  use ( ∑ j : Fin m, ( ξ j * x j |> ZMod.val ) - ∑ j : Fin m,
+    ( freqDiff q m ξ j * cumSum q m x j |> ZMod.val ) ) / q
+  rw [ Int.cast_div ] <;> norm_num [ ← Finset.sum_div _ _ _, h_abel ]
+  · simp +decide [← Finset.mul_sum _ _ _] ; ring
+  · simp_all +decide [ ← ZMod.intCast_zmod_eq_zero_iff_dvd ]
   · exact NeZero.out
 
 /-- DFT sum transform via changing variables `y = cumSum x`. -/
@@ -751,21 +826,26 @@ public lemma dft_sum_transform (q : ℕ) [NeZero q] (m : ℕ)
     (g : (Fin m → ZMod q) → ℂ) (ξ : Fin m → ZMod q) :
     dft q m (fun x => g (fun j => ∑ i ∈ Finset.Iic j, x i)) ξ =
     dft q m g (fun j => ξ j - if h_lt : (j : ℕ) + 1 < m then ξ ⟨(j : ℕ) + 1, h_lt⟩ else 0) := by
-  -- By changing variables using the equivalence between the sum over x and the sum over y, we can rewrite the left-hand side.
-  have h_change_var : ∑ x : Fin m → ZMod q, g (cumSum q m x) * starRingEnd ℂ (character q m ξ x) = ∑ y : Fin m → ZMod q, g y * starRingEnd ℂ (character q m (freqDiff q m ξ) y) := by
-    apply Finset.sum_bij (fun x _ => cumSum q m x);
-    · grind;
-    · intro a₁ _ a₂ _ h; have := diffMap_cumSum q m a₁; have := diffMap_cumSum q m a₂; aesop;
-    · exact fun b _ => ⟨ diffMap q m b, Finset.mem_univ _, cumSum_diffMap q m b ⟩;
-    · exact fun x _ => by rw [ character_cumSum_eq ] ;
-  unfold dft; aesop;
+  -- By changing variables using the equivalence between the sum over x and the sum over y,
+  -- we can rewrite the left-hand side.
+  have h_change_var :
+      ∑ x : Fin m → ZMod q, g (cumSum q m x) * starRingEnd ℂ (character q m ξ x)
+      = ∑ y : Fin m → ZMod q, g y * starRingEnd ℂ (character q m (freqDiff q m ξ) y) := by
+    apply Finset.sum_bij (fun x _ => cumSum q m x)
+    · grind
+    · intro a₁ _ a₂ _ h; have := diffMap_cumSum q m a₁; have := diffMap_cumSum q m a₂; aesop
+    · exact fun b _ => ⟨ diffMap q m b, Finset.mem_univ _, cumSum_diffMap q m b ⟩
+    · exact fun x _ => by rw [ character_cumSum_eq ]
+  unfold dft; aesop
 
 /-- The integer-to-ZMod map is injective on {1, ..., n} when n < q. -/
 private lemma intCast_injective_on_range (q : ℕ) [NeZero q] {n : ℕ} (hn : n < q)
     {a b : ℤ} (ha : a ∈ Finset.Icc 1 (n : ℤ)) (hb : b ∈ Finset.Icc 1 (n : ℤ))
     (heq : (a : ZMod q) = (b : ZMod q)) : a = b := by
-  rw [ ZMod.intCast_eq_intCast_iff ] at heq;
-  rw [ Int.ModEq ] at heq ; rw [ Int.emod_eq_of_lt, Int.emod_eq_of_lt ] at heq <;> linarith [ Finset.mem_Icc.mp ha, Finset.mem_Icc.mp hb ] ;
+  rw [ ZMod.intCast_eq_intCast_iff ] at heq
+  rw [ Int.ModEq ] at heq
+  rw [ Int.emod_eq_of_lt, Int.emod_eq_of_lt ] at heq <;>
+    linarith [ Finset.mem_Icc.mp ha, Finset.mem_Icc.mp hb ]
 
 /--
 The difference map from cumulative h to increments d_j = h_j - h_{j-1} relates
@@ -780,13 +860,19 @@ private lemma inScaledBox_iff_boxIndicator_diffs (q : ℕ) [NeZero q] (k : ℕ) 
     ∀ j : Fin (k - 1),
       let d_j : ℤ := h j - if (j : ℕ) = 0 then 0 else h ⟨j - 1, by omega⟩
       1 ≤ d_j ∧ d_j ≤ ⌊s * X.sides j⌋ := by
-  constructor <;> intro H <;> simp_all +decide [ inScaledBox ];
-  · intro j; specialize H j; split_ifs at H ⊢ <;> norm_cast at *;
-    · exact ⟨ by linarith, Int.le_of_lt_add_one <| by rw [ ← @Int.cast_lt ℝ ] ; push_cast; linarith [ Int.lt_floor_add_one ( s * X.sides j ) ] ⟩;
-    · exact ⟨ by linarith, Int.le_of_lt_add_one <| by rw [ ← @Int.cast_lt ℝ ] ; push_cast; linarith [ Int.lt_floor_add_one ( s * X.sides j ) ] ⟩;
-  · intro i; specialize H i; split_ifs at * <;> norm_cast at * ;
-    · exact ⟨ by linarith, by linarith [ Int.floor_le ( s * X.sides i ), ( by norm_cast; linarith : ( h i : ℝ ) ≤ ⌊s * X.sides i⌋ ) ] ⟩;
-    · exact ⟨ by linarith, by linarith [ Int.floor_le ( s * X.sides i ), show ( h i : ℝ ) ≤ ⌊s * X.sides i⌋ + h ⟨ i - 1, Nat.lt_of_le_of_lt ( Nat.sub_le _ _ ) i.2 ⟩ by exact_mod_cast H.2 ] ⟩
+  constructor <;> intro H <;> simp_all +decide [ inScaledBox ]
+  · intro j; specialize H j; split_ifs at H ⊢ <;> norm_cast at *
+    · exact ⟨ by linarith, Int.le_of_lt_add_one <| by
+        rw [ ← @Int.cast_lt ℝ ] ; push_cast; linarith [ Int.lt_floor_add_one ( s * X.sides j ) ] ⟩
+    · exact ⟨ by linarith, Int.le_of_lt_add_one <| by
+        rw [ ← @Int.cast_lt ℝ ] ; push_cast; linarith [ Int.lt_floor_add_one ( s * X.sides j ) ] ⟩
+  · intro i; specialize H i; split_ifs at * <;> norm_cast at *
+    · exact ⟨ by linarith, by
+        linarith [ Int.floor_le ( s * X.sides i ), ( by
+          norm_cast; linarith : ( h i : ℝ ) ≤ ⌊s * X.sides i⌋ ) ] ⟩
+    · exact ⟨ by linarith, by
+        linarith [ Int.floor_le ( s * X.sides i ), show ( h i : ℝ ) ≤ ⌊s * X.sides i⌋ + h ⟨ i - 1,
+            Nat.lt_of_le_of_lt ( Nat.sub_le _ _ ) i.2 ⟩ by exact_mod_cast H.2 ] ⟩
 
 /--
 Step 1: Change variables from cumulative h to differences d.
@@ -801,44 +887,74 @@ public lemma inScaledBox_sum_eq_diff_sum (k : ℕ) (hk : 2 ≤ k)
       f h =
     ∑ d ∈ Fintype.piFinset (fun j : Fin (k - 1) => Finset.Icc 1 ⌊s * X.sides j⌋),
       f (fun j => ∑ i ∈ Finset.Iic j, d i) := by
-  apply Finset.sum_bij (fun h _ => fun j => h j - if j.val = 0 then 0 else h ⟨j.val - 1, by omega⟩) _ _ _ _ <;> simp [Finset.mem_filter]
-  · intro a _ hX a_3; specialize hX a_3; split_ifs at * <;> simp_all +decide ;
-    · exact Int.le_floor.2 hX.2;
-    · exact ⟨ by linarith, Int.le_of_lt_add_one <| by rw [ ← @Int.cast_lt ℝ ] ; push_cast; linarith [ Int.lt_floor_add_one ( s * X.sides a_3 ) ] ⟩;
-  · intro a₁ _ ha₂ a₂ _ ha₄ h; ext j; induction' j with j ih; simp_all +decide [ funext_iff ] ;
-    induction' j with j ih <;> simp_all +decide [ Fin.forall_iff ];
-    · simpa using h 0 ih;
-    · grind;
+  apply Finset.sum_bij (fun h _ => fun j =>
+      h j - if j.val = 0 then 0 else h ⟨j.val - 1, by omega⟩) _ _ _ _ <;> simp [Finset.mem_filter]
+  · intro a _ hX a_3; specialize hX a_3; split_ifs at * <;> simp_all +decide
+    · exact Int.le_floor.2 hX.2
+    · exact ⟨ by linarith, Int.le_of_lt_add_one <| by
+        rw [ ← @Int.cast_lt ℝ ] ; push_cast
+        linarith [ Int.lt_floor_add_one ( s * X.sides a_3 ) ] ⟩
+  · intro a₁ _ ha₂ a₂ _ ha₄ h; ext j; induction' j with j ih; simp_all +decide [ funext_iff ]
+    induction' j with j ih <;> simp_all +decide [ Fin.forall_iff ]
+    · simpa using h 0 ih
+    · grind
   · intro b hb
     use fun j => ∑ i ∈ Finset.Iic j, b i
     constructor
-    all_goals generalize_proofs at *;
+    all_goals generalize_proofs at *
     · refine' ⟨ _, _ ⟩
-      all_goals generalize_proofs at *;
+      all_goals generalize_proofs at *
       · intro a
         have h_sum_le : ∑ i ∈ Finset.Iic a, b i ≤ ∑ i, ⌊s * X.sides i⌋ := by
-          exact le_trans ( Finset.sum_le_sum fun _ _ => hb _ |>.2 ) ( Finset.sum_le_sum_of_subset_of_nonneg ( Finset.subset_univ _ ) fun _ _ _ => Int.floor_nonneg.mpr ( mul_nonneg hs ( X.sides_pos _ |> le_of_lt ) ) )
+          exact le_trans ( Finset.sum_le_sum fun _ _ => hb _ |>.2 )
+            ( Finset.sum_le_sum_of_subset_of_nonneg ( Finset.subset_univ _ ) fun _ _ _ =>
+              Int.floor_nonneg.mpr ( mul_nonneg hs ( X.sides_pos _ |> le_of_lt ) ) )
         have h_sum_ge : 1 ≤ ∑ i ∈ Finset.Iic a, b i := by
-          exact le_trans ( hb a |>.1 ) ( Finset.single_le_sum ( fun i _ => by linarith [ hb i ] ) ( by simp ) )
+          exact le_trans ( hb a |>.1 ) ( Finset.single_le_sum ( fun i _ => by
+            linarith [ hb i ] ) ( by simp ) )
         exact ⟨h_sum_ge, by
-          exact le_trans h_sum_le ( Int.le_of_lt_add_one <| by rw [ ← @Int.cast_lt ℝ ] ; push_cast; nlinarith [ Int.le_ceil ( s * ∑ i, X.sides i ), show ( ∑ i : Fin ( k - 1 ), ⌊s * X.sides i⌋ : ℝ ) ≤ s * ∑ i : Fin ( k - 1 ), X.sides i from by rw [ Finset.mul_sum _ _ _ ] ; exact Finset.sum_le_sum fun i _ => Int.floor_le _ ] ) ;⟩;
-      · intro j; specialize hb j; rcases j with ⟨ _ | j, hj ⟩ <;> simp_all +decide ;
-        · rw [ show ( Iic ⟨ 0, hj ⟩ : Finset ( Fin ( k - 1 ) ) ) = { ⟨ 0, hj ⟩ } by ext ⟨ i, hi ⟩ ; aesop ] ; norm_num ; exact ⟨ by norm_cast; linarith, by exact Int.le_floor.mp hb.2 ⟩ ;
-        · rw [ show ( Iic ⟨ j + 1, hj ⟩ : Finset ( Fin ( k - 1 ) ) ) = Iic ⟨ j, by omega ⟩ ∪ { ⟨ j + 1, hj ⟩ } from ?_, Finset.sum_union ] <;> norm_num [ Finset.sum_singleton, Finset.sum_Ioc_succ_top, (Nat.succ_eq_succ ▸ Finset.Icc_succ_left_eq_Ioc) ] at *;
-          · exact ⟨ by linarith, by linarith [ show ( b ⟨ j + 1, hj ⟩ : ℝ ) ≤ s * X.sides ⟨ j + 1, hj ⟩ from le_trans ( mod_cast hb.2 ) ( Int.floor_le _ ) ] ⟩;
-          · grind;
-    · ext j; rcases j with ⟨ _ | j, hj ⟩ <;> simp +decide ; ring_nf;
-      · rw [ show ( Iic ⟨ 0, hj ⟩ : Finset ( Fin ( k - 1 ) ) ) = { ⟨ 0, hj ⟩ } by ext ⟨ i, hi ⟩ ; aesop ] ; norm_num;
-      · rw [ show ( Iic ⟨ j + 1, hj ⟩ : Finset ( Fin ( k - 1 ) ) ) = Iic ⟨ j, by omega ⟩ ∪ { ⟨ j + 1, hj ⟩ } from ?_, Finset.sum_union ] <;> norm_num [ Finset.sum_singleton, Finset.mem_Iic ];
-        ext ⟨ i, hi ⟩ ; simp +decide [le_iff_lt_or_eq] ; omega;
-  · intro a _ _; congr; ext j; rw [ show ( ∑ x ∈ Iic j, a x ) = ∑ x ∈ Iic j, ( if x.val = 0 then 0 else a ⟨ x.val - 1, by omega ⟩ ) + a j from ?_ ] ; ring;
-    induction' j with j ih;
-    induction' j with j ih <;> simp_all +decide [Finset.sum_ite];
-    · rw [ show ( Iic ⟨ 0, ih ⟩ : Finset ( Fin ( k - 1 ) ) ) = { ⟨ 0, ih ⟩ } by ext ⟨ x, hx ⟩ ; aesop ] ; aesop;
-    · rw [ show ( Iic ⟨ j + 1, by linarith ⟩ : Finset ( Fin ( k - 1 ) ) ) = Finset.Iic ⟨ j, by linarith ⟩ ∪ { ⟨ j + 1, by linarith ⟩ } from ?_, Finset.sum_union ] <;> norm_num [ Finset.sum_singleton, Finset.sum_union, Finset.sum_Ioc_succ_top, (Nat.succ_eq_succ ▸ Finset.Icc_succ_left_eq_Ioc) ];
-      · rw [ Finset.sum_filter, Finset.sum_insert ] <;> norm_num [ ih ( by linarith ) ];
-        rw [ add_comm, Finset.sum_ite ] ; aesop;
-      · ext ⟨ x, hx ⟩ ; simp +decide [ Fin.le_iff_val_le_val ] ; omega;
+          exact le_trans h_sum_le ( Int.le_of_lt_add_one <| by
+            rw [ ← @Int.cast_lt ℝ ] ; push_cast; nlinarith [ Int.le_ceil ( s * ∑ i, X.sides i ),
+              show ( ∑ i : Fin ( k - 1 ), ⌊s * X.sides i⌋ : ℝ )
+                     ≤ s * ∑ i : Fin ( k - 1 ), X.sides i from by
+                rw [ Finset.mul_sum _ _ _ ]
+                exact Finset.sum_le_sum fun i _ => Int.floor_le _ ] ) ⟩
+      · intro j; specialize hb j; rcases j with ⟨ _ | j, hj ⟩ <;> simp_all +decide
+        · rw [ show ( Iic ⟨ 0, hj ⟩ : Finset ( Fin ( k - 1 ) ) ) = { ⟨ 0, hj ⟩ } by
+            ext ⟨ i, hi ⟩ ; aesop ]
+          norm_num
+          exact ⟨ by norm_cast; linarith, by exact Int.le_floor.mp hb.2 ⟩
+        · rw [ show ( Iic ⟨ j + 1, hj ⟩ : Finset ( Fin ( k - 1 ) ) )
+                      = Iic ⟨ j, by omega ⟩ ∪ { ⟨ j + 1, hj ⟩ } from ?_, Finset.sum_union ] <;>
+            norm_num [ Finset.sum_singleton, Finset.sum_Ioc_succ_top,
+              (Nat.succ_eq_succ ▸ Finset.Icc_succ_left_eq_Ioc) ] at *
+          · exact ⟨ by linarith, by
+              linarith [ show ( b ⟨ j + 1, hj ⟩ : ℝ ) ≤ s * X.sides ⟨ j + 1, hj ⟩ from
+                le_trans ( mod_cast hb.2 ) ( Int.floor_le _ ) ] ⟩
+          · grind
+    · ext j; rcases j with ⟨ _ | j, hj ⟩ <;> simp +decide ; ring_nf
+      · rw [ show ( Iic ⟨ 0, hj ⟩ : Finset ( Fin ( k - 1 ) ) ) = { ⟨ 0, hj ⟩ } by
+          ext ⟨ i, hi ⟩ ; aesop ] ; norm_num
+      · rw [ show ( Iic ⟨ j + 1, hj ⟩ : Finset ( Fin ( k - 1 ) ) )
+                    = Iic ⟨ j, by omega ⟩ ∪ { ⟨ j + 1, hj ⟩ } from ?_, Finset.sum_union ] <;>
+          norm_num [ Finset.sum_singleton, Finset.mem_Iic ]
+        ext ⟨ i, hi ⟩
+        simp +decide [le_iff_lt_or_eq] ; omega
+  · intro a _ _; congr; ext j
+    rw [ show ( ∑ x ∈ Iic j, a x ) = ∑ x ∈ Iic j, ( if x.val = 0 then 0
+      else a ⟨ x.val - 1, by omega ⟩ ) + a j from ?_ ] ; ring
+    induction' j with j ih
+    induction' j with j ih <;> simp_all +decide [Finset.sum_ite]
+    · rw [ show ( Iic ⟨ 0, ih ⟩ : Finset ( Fin ( k - 1 ) ) ) = { ⟨ 0, ih ⟩ } by
+        ext ⟨ x, hx ⟩ ; aesop ] ; aesop
+    · rw [ show ( Iic ⟨ j + 1, by linarith ⟩ : Finset ( Fin ( k - 1 ) ) )
+                  = Finset.Iic ⟨ j, by linarith ⟩ ∪ { ⟨ j + 1, by linarith ⟩ } from ?_,
+          Finset.sum_union ] <;>
+        norm_num [ Finset.sum_singleton, Finset.sum_union, Finset.sum_Ioc_succ_top,
+          (Nat.succ_eq_succ ▸ Finset.Icc_succ_left_eq_Ioc) ]
+      · rw [ Finset.sum_filter, Finset.sum_insert ] <;> norm_num [ ih ( by linarith ) ]
+        rw [ add_comm, Finset.sum_ite ] ; aesop
+      · ext ⟨ x, hx ⟩ ; simp +decide [ Fin.le_iff_val_le_val ] ; omega
 
 /--
 Step 2: Map integer differences to ZMod q. Under `hbox` (⌊s*b_j⌋₊ < q),
@@ -853,49 +969,57 @@ private lemma diff_sum_eq_zmod_sum (k : ℕ) (hk : 2 ≤ k)
       g (fun i => (∑ j ∈ Finset.Iic i, d j : ZMod q)) =
     ∑ x : Fin (k - 1) → ZMod q,
       boxIndicator q (k - 1) X s x * g (cumSum q (k - 1) x) := by
-  -- The set of `x : Fin (k - 1) → ZMod q` where `boxIndicator X s x ≠ 0` is exactly the image of `piFinset (fun j => Icc 1 ⌊s * X.sides j⌋)` under the standard map `d ↦ (fun j => (d j : ZMod q))`.
+  -- The set of `x : Fin (k - 1) → ZMod q` where `boxIndicator X s x ≠ 0` is exactly
+  -- the image of `piFinset (fun j => Icc 1 ⌊s * X.sides j⌋)` under the standard map
+  -- `d ↦ (fun j => (d j : ZMod q))`.
   have h_image : {x : Fin (k - 1) → ZMod q | boxIndicator q (k - 1) X s x ≠ 0} =
-    Set.image (fun d : Fin (k - 1) → ℤ => fun j => (d j : ZMod q)) (Fintype.piFinset fun j => Icc 1 ⌊s * X.sides j⌋) := by
-      ext x; simp [boxIndicator];
-      constructor <;> intro h;
-      · use fun j => (x j).val;
-        simp_all +decide [Pi.le_def];
-        constructor <;> intro i <;> specialize h i;
-        · rcases q with ( _ | _ | q ) <;> norm_cast;
-          · grind;
-          · grind;
-          · exact Nat.one_le_cast.mpr h.1;
-        · convert Int.ofNat_le.mpr h.2 using 1;
-          · cases q <;> aesop;
-          · exact Eq.symm <| Int.toNat_of_nonneg <| Int.floor_nonneg.2 <| mul_nonneg hs <| le_of_lt <| X.sides_pos i;
-      · rcases h with ⟨ d, ⟨ hd₁, hd₂ ⟩, rfl ⟩ ; simp_all +decide [ Pi.le_def ] ;
-        intro i; specialize hd₁ i; specialize hd₂ i; rcases d_i : d i with ( _ | _ | d_i ) <;> simp_all +decide ;
-        · rw [ Int.le_floor ] at hd₂ ; norm_cast at *;
-          rw [ Nat.mod_eq_of_lt ];
-          · exact ⟨ hd₁, Nat.le_floor <| mod_cast hd₂ ⟩;
-          · exact lt_of_le_of_lt ( Nat.le_floor <| mod_cast hd₂ ) ( hbox i );
-        · tauto;
-  -- By definition of `boxIndicator`, we can restrict the sum to the image of `piFinset (fun j => Icc 1 ⌊s * X.sides j⌋)`.
+    Set.image (fun d : Fin (k - 1) → ℤ => fun j => (d j : ZMod q))
+      (Fintype.piFinset fun j => Icc 1 ⌊s * X.sides j⌋) := by
+      ext x; simp [boxIndicator]
+      constructor <;> intro h
+      · use fun j => (x j).val
+        simp_all +decide [Pi.le_def]
+        constructor <;> intro i <;> specialize h i
+        · rcases q with ( _ | _ | q ) <;> norm_cast
+          · grind
+          · grind
+          · exact Nat.one_le_cast.mpr h.1
+        · convert Int.ofNat_le.mpr h.2 using 1
+          · cases q <;> aesop
+          · exact Eq.symm <| Int.toNat_of_nonneg <| Int.floor_nonneg.2 <| mul_nonneg hs <|
+              le_of_lt <| X.sides_pos i
+      · rcases h with ⟨ d, ⟨ hd₁, hd₂ ⟩, rfl ⟩ ; simp_all +decide [ Pi.le_def ]
+        intro i; specialize hd₁ i; specialize hd₂ i
+        rcases d_i : d i with ( _ | _ | d_i ) <;> simp_all +decide
+        · rw [ Int.le_floor ] at hd₂ ; norm_cast at *
+          rw [ Nat.mod_eq_of_lt ]
+          · exact ⟨ hd₁, Nat.le_floor <| mod_cast hd₂ ⟩
+          · exact lt_of_le_of_lt ( Nat.le_floor <| mod_cast hd₂ ) ( hbox i )
+        · tauto
+  -- By definition of `boxIndicator`, we can restrict the sum to the image of
+  -- `piFinset (fun j => Icc 1 ⌊s * X.sides j⌋)`.
   have h_sum_image : ∑ x, boxIndicator q (k - 1) X s x * g (cumSum q (k - 1) x) =
-      ∑ x ∈ Finset.image (fun d : Fin (k - 1) → ℤ => fun j => (d j : ZMod q)) (Fintype.piFinset fun j => Icc 1 ⌊s * X.sides j⌋), g (cumSum q (k - 1) x) := by
-        rw [ ← Finset.sum_subset ];
-        any_goals exact Finset.univ.filter fun x => boxIndicator q ( k - 1 ) X s x ≠ 0;
-        · refine' Finset.sum_bij ( fun x hx => x ) _ _ _ _ <;> simp_all +decide [ Set.ext_iff ];
-          · exact fun a x hx₁ hx₂ hx₃ => ⟨ x, fun i => ⟨ hx₁ i, hx₂ i ⟩, hx₃ ⟩;
-          · exact fun a ha => ⟨ a, ⟨ fun i => ha i |>.1, fun i => ha i |>.2 ⟩, rfl ⟩;
-          · grind +locals;
-        · exact filter_subset (fun x => boxIndicator q (k - 1) X s x ≠ 0) univ;
-        · aesop;
-  rw [ h_sum_image, Finset.sum_image ];
-  · unfold cumSum; aesop;
-  · intros d hd d' hd' h_eq;
-    ext j; specialize h_eq; replace h_eq := congr_fun h_eq j; simp_all +decide [ ZMod.intCast_eq_intCast_iff ] ;
-    rw [ Int.ModEq ] at h_eq;
-    rw [ Int.emod_eq_of_lt, Int.emod_eq_of_lt ] at h_eq;
-    · exact h_eq;
-    · exact le_trans ( by norm_num ) ( hd'.1 j );
-    · exact lt_of_le_of_lt ( hd'.2 j ) ( Int.floor_lt.mpr ( Nat.lt_of_floor_lt ( hbox j ) ) );
-    · exact le_trans ( by norm_num ) ( hd.1 j );
+      ∑ x ∈ Finset.image (fun d : Fin (k - 1) → ℤ => fun j => (d j : ZMod q))
+        (Fintype.piFinset fun j => Icc 1 ⌊s * X.sides j⌋), g (cumSum q (k - 1) x) := by
+        rw [ ← Finset.sum_subset ]
+        any_goals exact Finset.univ.filter fun x => boxIndicator q ( k - 1 ) X s x ≠ 0
+        · refine' Finset.sum_bij ( fun x hx => x ) _ _ _ _ <;> simp_all +decide [ Set.ext_iff ]
+          · exact fun a x hx₁ hx₂ hx₃ => ⟨ x, fun i => ⟨ hx₁ i, hx₂ i ⟩, hx₃ ⟩
+          · exact fun a ha => ⟨ a, ⟨ fun i => ha i |>.1, fun i => ha i |>.2 ⟩, rfl ⟩
+          · grind +locals
+        · exact filter_subset (fun x => boxIndicator q (k - 1) X s x ≠ 0) univ
+        · aesop
+  rw [ h_sum_image, Finset.sum_image ]
+  · unfold cumSum; aesop
+  · intros d hd d' hd' h_eq
+    ext j; specialize h_eq; replace h_eq := congr_fun h_eq j
+    simp_all +decide [ ZMod.intCast_eq_intCast_iff ]
+    rw [ Int.ModEq ] at h_eq
+    rw [ Int.emod_eq_of_lt, Int.emod_eq_of_lt ] at h_eq
+    · exact h_eq
+    · exact le_trans ( by norm_num ) ( hd'.1 j )
+    · exact lt_of_le_of_lt ( hd'.2 j ) ( Int.floor_lt.mpr ( Nat.lt_of_floor_lt ( hbox j ) ) )
+    · exact le_trans ( by norm_num ) ( hd.1 j )
     · exact lt_of_le_of_lt ( hd.2 j ) ( Int.floor_lt.mpr ( Nat.lt_of_floor_lt ( hbox j ) ) )
 
 /-- The sum over integer lattice points in the scaled box equals the `ZMod q` sum

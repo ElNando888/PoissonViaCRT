@@ -74,7 +74,10 @@ lemma local_factor_le_k_rpow (p : ℕ) (ε : ℝ) (k : ℕ)
     (hrp : 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ)) :
     (p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) ≤
       (k : ℝ) * (p : ℝ) ^ (-ε) := by
-  exact mul_le_mul_of_nonneg_right ( by convert mul_le_mul_of_nonneg_left hrp ( Nat.cast_nonneg p ) using 1 ; rw [ mul_div_cancel₀ _ ( Nat.cast_ne_zero.mpr hp.ne_zero ) ] ) ( Real.rpow_nonneg ( Nat.cast_nonneg p ) _ )
+  exact mul_le_mul_of_nonneg_right ( by
+      convert mul_le_mul_of_nonneg_left hrp ( Nat.cast_nonneg p ) using 1
+      rw [ mul_div_cancel₀ _ ( Nat.cast_ne_zero.mpr hp.ne_zero ) ] )
+    ( Real.rpow_nonneg ( Nat.cast_nonneg p ) _ )
 
 /-- Product version of `local_factor_le_k_rpow`: the product
 over a subset `T ⊆ q.primeFactors` of the local Euler weight
@@ -87,12 +90,18 @@ public lemma prod_local_factor_le (T : Finset ℕ) (ε : ℝ) (k : ℕ) (q : ℕ
     (hrp : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ)) :
     ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) ≤
       ∏ p ∈ T, ((k : ℝ) * (p : ℝ) ^ (-ε)) := by
-  apply Finset.prod_le_prod;
-  · intro p hp;
-    refine mul_nonneg ( mul_nonneg ( Nat.cast_nonneg _ ) ?_ ) ( Real.rpow_nonneg ( Nat.cast_nonneg _ ) _ );
-    have := Nat.prime_of_mem_primeFactors ( hT_sub hp );
-    haveI := Fact.mk this; exact sub_nonneg_of_le ( div_le_one_of_le₀ ( mod_cast le_trans ( Finset.card_le_univ _ ) ( by norm_num ) ) ( Nat.cast_nonneg _ ) ) ;
-  · exact fun p hp => mul_le_mul_of_nonneg_right ( by have := hrp p ( Nat.prime_of_mem_primeFactors ( hT_sub hp ) ) ; rw [ le_div_iff₀ ( Nat.cast_pos.mpr ( Nat.Prime.pos ( Nat.prime_of_mem_primeFactors ( hT_sub hp ) ) ) ) ] at this; nlinarith ) ( Real.rpow_nonneg ( Nat.cast_nonneg p ) _ )
+  apply Finset.prod_le_prod
+  · intro p hp
+    refine mul_nonneg ( mul_nonneg ( Nat.cast_nonneg _ ) ?_ )
+      ( Real.rpow_nonneg ( Nat.cast_nonneg _ ) _ )
+    have := Nat.prime_of_mem_primeFactors ( hT_sub hp )
+    haveI := Fact.mk this
+    exact sub_nonneg_of_le ( div_le_one_of_le₀
+      ( mod_cast le_trans ( Finset.card_le_univ _ ) ( by norm_num ) ) ( Nat.cast_nonneg _ ) )
+  · exact fun p hp => mul_le_mul_of_nonneg_right ( by
+      have := hrp p ( Nat.prime_of_mem_primeFactors ( hT_sub hp ) )
+      rw [ le_div_iff₀ ( Nat.cast_pos.mpr ( Nat.Prime.pos ( Nat.prime_of_mem_primeFactors
+        ( hT_sub hp ) ) ) ) ] at this; nlinarith ) ( Real.rpow_nonneg ( Nat.cast_nonneg p ) _ )
 
 /-! ## Combined Euler Weight and Tail-Sum Decay
 
@@ -116,8 +125,8 @@ public lemma combinedEulerWeight_nonneg (ε : ℝ) (k : ℕ) (Ω : ∀ p : ℕ, 
     0 ≤ combinedEulerWeight ε k Ω p := by
   refine mul_nonneg ?_ (Real.rpow_nonneg (Nat.cast_nonneg _) _)
   haveI := Fact.mk hp
-  exact sub_nonneg.2 <| div_le_one_of_le₀ (mod_cast le_trans (Finset.card_le_univ _) <| by norm_num)
-    <| Nat.cast_nonneg _
+  exact sub_nonneg.2 <| div_le_one_of_le₀
+    (mod_cast le_trans (Finset.card_le_univ _) <| by norm_num) <| Nat.cast_nonneg _
 
 /-- With the spacing hypothesis, `combinedEulerWeight ≤ k · p^{−(1+ε)}`. -/
 lemma combinedEulerWeight_le (ε : ℝ) (hε : 0 < ε) (k : ℕ) (Ω : ∀ p : ℕ, Finset (ZMod p))
@@ -125,7 +134,7 @@ lemma combinedEulerWeight_le (ε : ℝ) (hε : 0 < ε) (k : ℕ) (Ω : ∀ p : �
     (p : ℕ) (hp : p.Prime) :
     combinedEulerWeight ε k Ω p ≤ k * (p : ℝ) ^ (-(1 + ε)) := by
   convert mul_le_mul_of_nonneg_right (hrp p hp)
-    (Real.rpow_nonneg (Nat.cast_nonneg p) (-ε)) using 1 ; ring_nf;
+    (Real.rpow_nonneg (Nat.cast_nonneg p) (-ε)) using 1 ; ring_nf
   rw [show (-1 - ε : ℝ) = -1 + (-ε) by ring, Real.rpow_add (Nat.cast_pos.mpr hp.pos),
     Real.rpow_neg_one]
   ring
@@ -172,19 +181,24 @@ is a divisor of `q`.
 public lemma prod_mem_divisors_of_subset (q : ℕ) (hq : Squarefree q)
     (T : Finset ℕ) (hT : T ⊆ q.primeFactors) :
     (∏ p ∈ T, p) ∈ q.divisors := by
-  apply Nat.mem_divisors.mpr;
-  exact ⟨ Nat.prod_primeFactors_dvd q |> fun x => dvd_trans ( by apply_rules [ Finset.prod_dvd_prod_of_subset ] ) x, hq.ne_zero ⟩
+  apply Nat.mem_divisors.mpr
+  exact ⟨ Nat.prod_primeFactors_dvd q |> fun x =>
+    dvd_trans ( by apply_rules [ Finset.prod_dvd_prod_of_subset ] ) x, hq.ne_zero ⟩
 
 /-- For two subsets of `q.primeFactors`, equal products imply equal sets. -/
 public lemma prod_injective_on_primeFactors (q : ℕ)
     (T₁ T₂ : Finset ℕ) (hT₁ : T₁ ⊆ q.primeFactors) (hT₂ : T₂ ⊆ q.primeFactors)
     (h : ∏ p ∈ T₁, p = ∏ p ∈ T₂, p) : T₁ = T₂ := by
-  apply_fun fun x => x.primeFactors at h;
+  apply_fun fun x => x.primeFactors at h
   -- Since the prime factors of a product of primes is just the set of those primes, we can conclude that T₁ = T₂.
-  have h_prime_factors : ∀ (T : Finset ℕ), (∀ p ∈ T, Nat.Prime p) → (∏ p ∈ T, p).primeFactors = T := by
-    intros T hT_prime; induction T using Finset.induction <;> simp_all +decide;
-    rw [ Nat.primeFactors_mul, ‹ ( ∏ p ∈ _, p |> Nat.primeFactors ) = _› ] <;> aesop;
-  rw [ h_prime_factors T₁ fun p hp => Nat.prime_of_mem_primeFactors ( hT₁ hp ), h_prime_factors T₂ fun p hp => Nat.prime_of_mem_primeFactors ( hT₂ hp ) ] at h ; aesop
+  have h_prime_factors :
+    ∀ (T : Finset ℕ), (∀ p ∈ T, Nat.Prime p) → (∏ p ∈ T, p).primeFactors = T := by
+      intros T hT_prime; induction T using Finset.induction <;> simp_all +decide
+      rw [ Nat.primeFactors_mul, ‹ ( ∏ p ∈ _, p |> Nat.primeFactors ) = _› ] <;> aesop
+  rw [ h_prime_factors T₁ fun p hp => Nat.prime_of_mem_primeFactors ( hT₁ hp ),
+    h_prime_factors T₂ fun p hp => Nat.prime_of_mem_primeFactors ( hT₂ hp ) ] at h
+  subst h
+  simp_all only
 
 /-- Every divisor of squarefree `q` is the product of its prime factors,
 which form a subset of `q.primeFactors`. -/
@@ -204,18 +218,22 @@ rewrite powerset sums as divisor sums.
 public lemma sum_powerset_eq_sum_divisors (q : ℕ) (hq : Squarefree q) (f : ℕ → ℝ) :
     ∑ T ∈ q.primeFactors.powerset, ∏ p ∈ T, f p =
       ∑ d ∈ q.divisors, ∏ p ∈ d.primeFactors, f p := by
-  apply Finset.sum_bij (fun T _ => ∏ p ∈ T, p);
-  · exact fun T hT => prod_mem_divisors_of_subset q hq T ( Finset.mem_powerset.mp hT );
-  · exact fun T₁ hT₁ T₂ hT₂ h => prod_injective_on_primeFactors q T₁ T₂ ( Finset.mem_powerset.mp hT₁ ) ( Finset.mem_powerset.mp hT₂ ) h;
-  · intro d hd;
-    have := divisor_eq_prod_primeFactors q hq d hd; aesop;
+  apply Finset.sum_bij (fun T _ => ∏ p ∈ T, p)
+  · exact fun T hT => prod_mem_divisors_of_subset q hq T ( Finset.mem_powerset.mp hT )
+  · exact fun T₁ hT₁ T₂ hT₂ h => prod_injective_on_primeFactors q T₁ T₂
+      ( Finset.mem_powerset.mp hT₁ ) ( Finset.mem_powerset.mp hT₂ ) h
+  · intro d hd
+    have := divisor_eq_prod_primeFactors q hq d hd; aesop
   · intro T hT
     have h_prime_factors : (∏ p ∈ T, p).primeFactors = T := by
-      have h_prime_factors : ∀ {T : Finset ℕ}, (∀ p ∈ T, Nat.Prime p) → (∏ p ∈ T, p).primeFactors = T := by
-        intros T hT; induction T using Finset.induction <;> simp_all +decide;
-        rw [ Nat.primeFactors_mul, ‹ ( ∏ p ∈ _, p |> Nat.primeFactors ) = _› ] <;> simp_all +decide [ Nat.Prime.ne_zero, Finset.prod_eq_zero_iff ];
-        exact fun h => Nat.not_prime_zero ( hT.2 _ h );
-      exact h_prime_factors fun p hp => Nat.prime_of_mem_primeFactors <| Finset.mem_powerset.mp hT hp
+      have h_prime_factors : ∀ {T : Finset ℕ},
+      (∀ p ∈ T, Nat.Prime p) → (∏ p ∈ T, p).primeFactors = T := by
+        intros T hT; induction T using Finset.induction <;> simp_all +decide
+        rw [ Nat.primeFactors_mul, ‹ ( ∏ p ∈ _, p |> Nat.primeFactors ) = _› ] <;>
+          simp_all +decide [ Nat.Prime.ne_zero, Finset.prod_eq_zero_iff ]
+        exact fun h => Nat.not_prime_zero ( hT.2 _ h )
+      exact h_prime_factors fun p hp =>
+        Nat.prime_of_mem_primeFactors <| Finset.mem_powerset.mp hT hp
     rw [h_prime_factors]
 
 /--
@@ -230,26 +248,29 @@ public lemma sum_powerset_nonempty_filtered_eq (q : ℕ) (hq : Squarefree q)
       ∏ p ∈ T, f p =
     ∑ d ∈ (nontrivDivisors q).filter (fun (d : ℕ) => ¬((d : ℝ) ≤ s)),
       ∏ p ∈ d.primeFactors, f p := by
-  apply Finset.sum_bij (fun T hT => ∏ p ∈ T, p);
-  · simp +zetaDelta at *;
+  apply Finset.sum_bij (fun T hT => ∏ p ∈ T, p)
+  · simp +zetaDelta at *
     intro T hT_sub hT_nonempty hT_prod
     have hT_div : ∏ p ∈ T, p ∣ q := by
       convert prod_mem_divisors_of_subset q hq T hT_sub |> Nat.dvd_of_mem_divisors
     have hT_pos : 1 < ∏ p ∈ T, p := by
-      exact lt_of_lt_of_le ( Nat.Prime.one_lt ( Nat.prime_of_mem_primeFactors ( hT_sub ( Classical.choose_spec ( Finset.nonempty_of_ne_empty hT_nonempty ) ) ) ) ) ( Nat.le_of_dvd ( Finset.prod_pos fun p hp => Nat.pos_of_mem_primeFactors ( hT_sub hp ) ) ( Finset.dvd_prod_of_mem _ ( Classical.choose_spec ( Finset.nonempty_of_ne_empty hT_nonempty ) ) ) )
-    exact ⟨⟨⟨hT_div, by
-      aesop⟩, hT_pos⟩, hT_prod⟩;
-  · grind +suggestions;
-  · intro d hd;
-    use d.primeFactors;
-    have := divisor_eq_prod_primeFactors q hq d ( by aesop );
-    simp_all +decide;
-    exact ⟨ ⟨ by linarith, by linarith ⟩, by rw [ ← Nat.cast_prod, this.2 ] ; exact hd.2 ⟩;
+      exact lt_of_lt_of_le ( Nat.Prime.one_lt ( Nat.prime_of_mem_primeFactors ( hT_sub
+        ( Classical.choose_spec ( Finset.nonempty_of_ne_empty hT_nonempty ) ) ) ) )
+        ( Nat.le_of_dvd ( Finset.prod_pos fun p hp => Nat.pos_of_mem_primeFactors ( hT_sub hp ) )
+          ( Finset.dvd_prod_of_mem _ ( Classical.choose_spec
+            ( Finset.nonempty_of_ne_empty hT_nonempty ) ) ) )
+    exact ⟨⟨⟨hT_div, by aesop⟩, hT_pos⟩, hT_prod⟩
+  · grind +suggestions
+  · intro d hd
+    use d.primeFactors
+    have := divisor_eq_prod_primeFactors q hq d ( by aesop )
+    simp_all +decide
+    exact ⟨ ⟨ by linarith, by linarith ⟩, by rw [ ← Nat.cast_prod, this.2 ] ; exact hd.2 ⟩
   · have h_prod_prime_factors : ∀ T ∈ q.primeFactors.powerset, (∏ p ∈ T, p).primeFactors = T := by
-      intro T hT; induction T using Finset.induction <;> simp_all +decide;
-      rw [ Nat.primeFactors_mul, Finset.insert_eq ] <;> simp_all +decide [ Finset.subset_iff ];
-      · exact hT.1.1.ne_zero;
-      · exact Finset.prod_ne_zero_iff.mpr fun x hx => Nat.Prime.ne_zero ( hT.2 x hx |>.1 );
+      intro T hT; induction T using Finset.induction <;> simp_all +decide
+      rw [ Nat.primeFactors_mul, Finset.insert_eq ] <;> simp_all +decide [ Finset.subset_iff ]
+      · exact hT.1.1.ne_zero
+      · exact Finset.prod_ne_zero_iff.mpr fun x hx => Nat.Prime.ne_zero ( hT.2 x hx |>.1 )
     grind
 
 /-! ### General transport lemmas for arbitrary summands -/
@@ -261,16 +282,23 @@ public lemma sum_nonempty_powerset_eq_sum_nontrivial_divisors (q : ℕ) (hq : Sq
     (g : Finset ℕ → ℝ) :
     ∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅), g T =
       ∑ d ∈ nontrivDivisors q, g d.primeFactors := by
-  apply Finset.sum_bij (fun T hT => ∏ p ∈ T, p);
-  · simp +zetaDelta at *;
-    intro a ha₁ ha₂; refine' ⟨ ⟨ _, _ ⟩, _ ⟩;
-    · have := prod_mem_divisors_of_subset q hq a ha₁; aesop;
-    · aesop;
-    · exact lt_of_lt_of_le ( Nat.Prime.one_lt ( Nat.prime_of_mem_primeFactors ( ha₁ ( Classical.choose_spec ( Finset.nonempty_of_ne_empty ha₂ ) ) ) ) ) ( Nat.le_of_dvd ( Finset.prod_pos fun p hp => Nat.pos_of_mem_primeFactors ( ha₁ hp ) ) ( Finset.dvd_prod_of_mem _ ( Classical.choose_spec ( Finset.nonempty_of_ne_empty ha₂ ) ) ) );
-  · exact fun a₁ ha₁ a₂ ha₂ h => prod_injective_on_primeFactors q a₁ a₂ ( Finset.mem_powerset.mp ( Finset.mem_filter.mp ha₁ |>.1 ) ) ( Finset.mem_powerset.mp ( Finset.mem_filter.mp ha₂ |>.1 ) ) h;
-  · intro d hd; use d.primeFactors; simp_all +decide;
-    exact ⟨ ⟨ Nat.primeFactors_mono hd.1.1 hd.1.2, by linarith, by linarith ⟩, Nat.prod_primeFactors_of_squarefree <| hq.squarefree_of_dvd hd.1.1 ⟩;
-  · simp +contextual;
+  apply Finset.sum_bij (fun T hT => ∏ p ∈ T, p)
+  · simp +zetaDelta at *
+    intro a ha₁ ha₂; refine' ⟨ ⟨ _, _ ⟩, _ ⟩
+    · have := prod_mem_divisors_of_subset q hq a ha₁; aesop
+    · aesop
+    · exact lt_of_lt_of_le ( Nat.Prime.one_lt ( Nat.prime_of_mem_primeFactors ( ha₁
+        ( Classical.choose_spec ( Finset.nonempty_of_ne_empty ha₂ ) ) ) ) )
+        ( Nat.le_of_dvd ( Finset.prod_pos fun p hp => Nat.pos_of_mem_primeFactors ( ha₁ hp ) )
+          ( Finset.dvd_prod_of_mem _ ( Classical.choose_spec
+            ( Finset.nonempty_of_ne_empty ha₂ ) ) ) )
+  · exact fun a₁ ha₁ a₂ ha₂ h => prod_injective_on_primeFactors q a₁ a₂
+      ( Finset.mem_powerset.mp ( Finset.mem_filter.mp ha₁ |>.1 ) )
+      ( Finset.mem_powerset.mp ( Finset.mem_filter.mp ha₂ |>.1 ) ) h
+  · intro d hd; use d.primeFactors; simp_all +decide
+    exact ⟨ ⟨ Nat.primeFactors_mono hd.1.1 hd.1.2, by linarith, by linarith ⟩,
+      Nat.prod_primeFactors_of_squarefree <| hq.squarefree_of_dvd hd.1.1 ⟩
+  · simp +contextual
     intro T hT_sub hT_nonempty
     have hT_prime_factors : (∏ p ∈ T, p).primeFactors = T := by
       exact Nat.primeFactors_prod fun p hp => Nat.prime_of_mem_primeFactors <| hT_sub hp
@@ -290,7 +318,11 @@ public lemma sum_nonempty_powerset_filtered_le_eq (q : ℕ) (hq : Squarefree q)
     have hT_sub := Finset.mem_powerset.mp hT_pw
     refine ⟨⟨?_, ?_⟩, ?_⟩
     · have := prod_mem_divisors_of_subset q hq T hT_sub; aesop
-    · exact lt_of_lt_of_le ( Nat.Prime.one_lt ( Nat.prime_of_mem_primeFactors ( hT_sub ( Classical.choose_spec ( Finset.nonempty_of_ne_empty hT_ne ) ) ) ) ) ( Nat.le_of_dvd ( Finset.prod_pos fun p hp => Nat.pos_of_mem_primeFactors ( hT_sub hp ) ) ( Finset.dvd_prod_of_mem _ ( Classical.choose_spec ( Finset.nonempty_of_ne_empty hT_ne ) ) ) )
+    · exact lt_of_lt_of_le ( Nat.Prime.one_lt ( Nat.prime_of_mem_primeFactors ( hT_sub
+        ( Classical.choose_spec ( Finset.nonempty_of_ne_empty hT_ne ) ) ) ) )
+        ( Nat.le_of_dvd ( Finset.prod_pos fun p hp => Nat.pos_of_mem_primeFactors ( hT_sub hp ) )
+          ( Finset.dvd_prod_of_mem _ ( Classical.choose_spec
+            ( Finset.nonempty_of_ne_empty hT_ne ) ) ) )
     · convert hT_le using 1; push_cast; rfl
   · intro a₁ ha₁ a₂ ha₂ h
     exact prod_injective_on_primeFactors q a₁ a₂
@@ -301,7 +333,8 @@ public lemma sum_nonempty_powerset_filtered_le_eq (q : ℕ) (hq : Squarefree q)
     obtain ⟨⟨hd_div, hd_gt⟩, hd_le⟩ := hd
     use d.primeFactors
     have hd_sq := hq.squarefree_of_dvd (Nat.dvd_of_mem_divisors hd_div)
-    refine ⟨⟨⟨Finset.mem_powerset.mpr (Nat.primeFactors_mono (Nat.dvd_of_mem_divisors hd_div) (Squarefree.ne_zero hq)), ?_⟩, ?_⟩, ?_⟩
+    refine ⟨⟨⟨Finset.mem_powerset.mpr (Nat.primeFactors_mono (Nat.dvd_of_mem_divisors hd_div)
+        (Squarefree.ne_zero hq)), ?_⟩, ?_⟩, ?_⟩
     · intro h_empty
       have : d ≠ 0 := by linarith
       have : d ≠ 1 := by linarith
@@ -433,7 +466,8 @@ public lemma modifiedEulerWeight_le (ε : ℝ) (hε : 0 < ε) (hε2 : ε ≤ 1) 
   have h_pow : (p : ℝ) ^ (-2 : ℝ) ≤ (p : ℝ) ^ (-(1 + ε)) := by
     apply Real.rpow_le_rpow_of_exponent_le h_p
     linarith
-  have h2 : (k : ℝ)^2 * C_gamma * (p : ℝ) ^ (-2 : ℝ) ≤ (k : ℝ)^2 * C_gamma * (p : ℝ) ^ (-(1 + ε)) := by
+  have h2 :
+      (k : ℝ)^2 * C_gamma * (p : ℝ) ^ (-2 : ℝ) ≤ (k : ℝ)^2 * C_gamma * (p : ℝ) ^ (-(1 + ε)) := by
     apply mul_le_mul_of_nonneg_left h_pow
     positivity
   rw [add_mul]

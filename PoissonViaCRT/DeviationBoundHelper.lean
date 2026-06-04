@@ -133,7 +133,7 @@ public noncomputable def localCount {m : ℕ} (Ω : ∀ p : ℕ, Finset (ZMod p)
 public lemma localCount_nonneg {Ω : ∀ p : ℕ, Finset (ZMod p)} {q : ℕ} [NeZero q]
     {h : Fin k → ZMod q} {p : ℕ} :
     0 ≤ localCount Ω q h p := by
-  unfold localCount; split_ifs <;> norm_cast ;
+  unfold localCount; split_ifs <;> norm_cast
   exact Nat.zero_le _
 
 /-- `localCount` at a prime factor is at most `p`. -/
@@ -141,10 +141,10 @@ public lemma localCount_le {q : ℕ} [NeZero q]
     (p : ℕ) (hp : p ∈ q.primeFactors) (Ω : ∀ p : ℕ, Finset (ZMod p))
     (h : Fin k → ZMod q) :
     localCount Ω q h p ≤ (p : ℝ) := by
-  unfold localCount;
-  simp +zetaDelta at *;
-  split_ifs;
-  haveI := Fact.mk hp.1; exact_mod_cast le_trans ( Finset.card_filter_le _ _ ) ( by norm_num ) ;
+  unfold localCount
+  simp +zetaDelta at *
+  split_ifs
+  haveI := Fact.mk hp.1; exact_mod_cast le_trans ( Finset.card_filter_le _ _ ) ( by norm_num )
 
 /-- `localMean` is nonneg. -/
 public lemma localMean_nonneg (k : ℕ) (Ω : ∀ p : ℕ, Finset (ZMod p)) (p : ℕ) :
@@ -155,10 +155,12 @@ public lemma localMean_nonneg (k : ℕ) (Ω : ∀ p : ℕ, Finset (ZMod p)) (p :
 public lemma localMean_le (k : ℕ) (hk : 1 ≤ k) (Ω : ∀ p : ℕ, Finset (ZMod p)) (p : ℕ)
     (hp : p.Prime) :
     localMean k Ω p ≤ (p : ℝ) := by
-  unfold localMean;
-  rcases p with ( _ | _ | p ) <;> norm_num at *;
-  rw [ div_le_iff₀ ] <;> norm_cast <;> norm_num;
-  exact le_trans ( Nat.pow_le_pow_left ( show Finset.card ( Ω ( p + 1 + 1 ) ) ≤ p + 1 + 1 from le_trans ( Finset.card_le_univ _ ) ( by norm_num ) ) _ ) ( by cases k <;> simp_all +decide [ pow_succ' ] )
+  unfold localMean
+  rcases p with ( _ | _ | p ) <;> norm_num at *
+  rw [ div_le_iff₀ ] <;> norm_cast <;> norm_num
+  exact le_trans ( Nat.pow_le_pow_left ( show Finset.card ( Ω ( p + 1 + 1 ) ) ≤ p + 1 + 1 from
+    le_trans ( Finset.card_le_univ _ ) ( by norm_num ) ) _ )
+    ( by cases k <;> simp_all +decide [ pow_succ' ] )
 
 /-- Uniform bound on the absolute local deviation: `|N_k(h mod p, Ω_p) - μ_p| ≤ p ^ k`.
 
@@ -184,6 +186,7 @@ lemma abs_localCount_sub_localMean_le {k : ℕ} (hk : 1 ≤ k) (q : ℕ) [NeZero
     (p : ℕ) (hp : p ∈ q.primeFactors) (Ω : ∀ p : ℕ, Finset (ZMod p))
     (h : Fin k → ZMod q) :
     |localCount Ω q h p - localMean k Ω p| ≤ (p : ℝ) ^ k := by
-  exact le_trans ( abs_localCount_sub_localMean_le_p hk q p hp Ω h ) ( mod_cast Nat.le_self_pow ( by linarith ) _ )
+  exact le_trans ( abs_localCount_sub_localMean_le_p hk q p hp Ω h )
+    ( mod_cast Nat.le_self_pow ( by linarith ) _ )
 
 end PoissonCRT
