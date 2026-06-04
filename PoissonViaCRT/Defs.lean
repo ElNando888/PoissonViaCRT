@@ -245,20 +245,27 @@ public def GammaStructure.ofTuple (c : ℕ) (hc : Squarefree c) (h : Fin k → �
     exact Nat.pos_of_ne_zero (by
       intro heq
       rw [Nat.gcd_eq_zero_iff] at heq
-      exact h_dist i j hij (by have := heq.2; rw [Int.natAbs_eq_zero, sub_eq_zero] at this; exact this.symm))
+      exact h_dist i j hij
+        (by have := heq.2; rw [Int.natAbs_eq_zero, sub_eq_zero] at this; exact this.symm))
   sqfree := fun i j hij => by
     rw [gammaOfTuple_of_ne c h hij]
     exact hc.gcd_left _
   compat := fun i j l hij hjl hil => by
     simp only [gammaOfTuple_of_ne c h hij, gammaOfTuple_of_ne c h hjl,
       gammaOfTuple_of_ne c h hil]
-    refine' Nat.dvd_gcd ( Nat.dvd_trans ( Nat.gcd_dvd_left _ _ ) ( Nat.gcd_dvd_left _ _ ) ) _;
-    convert Int.dvd_natAbs.mpr ( Int.dvd_add ( Int.gcd_dvd_right _ _ |> Int.dvd_trans <| Int.natCast_dvd.mpr <| Nat.gcd_dvd_right _ _ ) ( Int.gcd_dvd_right _ _ |> Int.dvd_trans <| Int.natCast_dvd.mpr <| Nat.gcd_dvd_right _ _ ) ) using 1 ; ring_nf;
-    rotate_left;
-    exact 0;
-    exact 0;
-    norm_num [ Int.gcd, Int.natAbs_mul ];
-    rw [ show -h i + h l = ( h j - h i ) + ( -h j + h l ) by ring ] ; exact Int.natAbs_dvd_natAbs.mpr ( dvd_add ( Int.natCast_dvd.mpr ( Nat.dvd_trans ( Nat.gcd_dvd_left _ _ ) ( Nat.gcd_dvd_right _ _ ) ) ) ( Int.natCast_dvd.mpr ( Nat.dvd_trans ( Nat.gcd_dvd_right _ _ ) ( Nat.gcd_dvd_right _ _ ) ) ) ) ;
+    refine' Nat.dvd_gcd ( Nat.dvd_trans ( Nat.gcd_dvd_left _ _ ) ( Nat.gcd_dvd_left _ _ ) ) _
+    convert Int.dvd_natAbs.mpr ( Int.dvd_add ( Int.gcd_dvd_right _ _ |> Int.dvd_trans <|
+      Int.natCast_dvd.mpr <| Nat.gcd_dvd_right _ _ ) ( Int.gcd_dvd_right _ _ |> Int.dvd_trans <|
+        Int.natCast_dvd.mpr <| Nat.gcd_dvd_right _ _ ) ) using 1 ; ring_nf
+    rotate_left
+    exact 0
+    exact 0
+    norm_num [ Int.gcd, Int.natAbs_mul ]
+    rw [ show -h i + h l = ( h j - h i ) + ( -h j + h l ) by ring ]
+    exact Int.natAbs_dvd_natAbs.mpr ( dvd_add
+      ( Int.natCast_dvd.mpr ( Nat.dvd_trans ( Nat.gcd_dvd_left _ _ ) ( Nat.gcd_dvd_right _ _ ) ) )
+      ( Int.natCast_dvd.mpr ( Nat.dvd_trans ( Nat.gcd_dvd_right _ _ ) ( Nat.gcd_dvd_right _ _ ) ) )
+    )
 
 /-- `M_γ(H)` sums `M_Γ(H)` over all `Γ` with `γ(Γ) = γ` (equation ✱₀ from §3.1). -/
 @[expose]
@@ -295,7 +302,8 @@ public def WellDistributed (ε : ℝ) (p : ℕ) [Fact p.Prime] (Ω : Finset (ZMo
     ≤ (1 - Ω.card / p : ℝ) * (p : ℝ) ^ (-ε) * ((Ω.card : ℝ) ^ k / (p : ℝ) ^ (k - 1))) ∧
   (∑ r : Fin (k - 1) → ZMod p,
     |(tupleCount Ω (Fin.cons 0 r) : ℝ) - (Ω.card : ℝ) ^ k / (p : ℝ) ^ (k - 1)|
-    ≤ (p : ℝ) ^ (k - 1) * (1 - Ω.card / p : ℝ) * (p : ℝ) ^ (-ε) * ((Ω.card : ℝ) ^ k / (p : ℝ) ^ (k - 1)))
+    ≤ (p : ℝ) ^ (k - 1) * (1 - Ω.card / p : ℝ) * (p : ℝ) ^ (-ε)
+      * ((Ω.card : ℝ) ^ k / (p : ℝ) ^ (k - 1)))
 
 /-- The critical exponent `λ_k = min_τ (k-1-v(τ))/w(τ)` from §3.2.
 For `k ≥ 4`, `λ_k = 1/(k-1)`.-/

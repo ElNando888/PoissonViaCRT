@@ -46,17 +46,18 @@ public lemma inScaledBox_cons_strictMono {m : ℕ} (X : Box m) (s : ℝ) (hs : 1
     (h : Fin m → ℤ)
     (hbox : inScaledBox X s (fun _ => 0) h) :
     StrictMono (extendH m h) := by
-  unfold extendH;
-  intro i j hij;
-  induction' j using Fin.inductionOn with j ih;
-  · tauto;
-  · cases lt_or_eq_of_le ( show i ≤ Fin.castSucc j from Nat.le_of_lt_succ hij ) <;> simp_all +decide [ Fin.cons ];
-    · have := hbox j;
-      rcases j with ⟨ _ | j, hj ⟩ <;> norm_num at *;
-      linarith;
-    · have := hbox j;
-      rcases j with ⟨ _ | j, hj ⟩ <;> norm_num at *;
-      · linarith;
+  unfold extendH
+  intro i j hij
+  induction' j using Fin.inductionOn with j ih
+  · tauto
+  · cases lt_or_eq_of_le ( show i ≤ Fin.castSucc j from Nat.le_of_lt_succ hij ) <;>
+      simp_all +decide [ Fin.cons ]
+    · have := hbox j
+      rcases j with ⟨ _ | j, hj ⟩ <;> norm_num at *
+      linarith
+    · have := hbox j
+      rcases j with ⟨ _ | j, hj ⟩ <;> norm_num at *
+      · linarith
       · linarith
 
 /-
@@ -66,25 +67,37 @@ public lemma inScaledBox_cons_le_ceil {m : ℕ} (X : Box m) (s : ℝ) (hs : 1 �
     (h : Fin m → ℤ)
     (hbox : inScaledBox X s (fun _ => 0) h) (i : Fin (m + 1)) :
     extendH m h i ≤ ⌈s * ∑ j, X.sides j⌉ := by
-  induction i using Fin.inductionOn <;> norm_num at *;
-  · exact Int.le_of_lt_add_one ( by rw [ show extendH m h 0 = 0 by rfl ] ; exact lt_add_of_le_of_pos ( Int.ceil_nonneg ( mul_nonneg ( by positivity ) ( Finset.sum_nonneg fun _ _ => le_of_lt ( X.sides_pos _ ) ) ) ) zero_lt_one );
-  · rename_i i hi;
-    have h_ind : ∀ j : Fin (m + 1), extendH m h j ≤ s * ∑ k ∈ Finset.univ.filter (fun k => k.val < j.val), X.sides k := by
-      intro j;
-      induction' j using Fin.inductionOn with j ih;
-      · norm_num [ extendH ];
-      · have := hbox j;
-        rcases j with ⟨ _ | j, hj ⟩ <;> norm_num [ Finset.sum_filter, Finset.sum_range_succ ] at *;
-        · rcases m with ( _ | _ | m ) <;> norm_num [ Fin.sum_univ_succ ] at *;
-          · contradiction;
-          · exact this.2;
-          · exact this.2;
-        · simp_all +decide [Finset.sum_ite];
-          rw [ show ( Finset.filter ( fun x : Fin m => ( x : ℕ ) ≤ j + 1 ) Finset.univ : Finset ( Fin m ) ) = Finset.filter ( fun x : Fin m => ( x : ℕ ) ≤ j ) Finset.univ ∪ { ⟨ j + 1, hj ⟩ } from ?_, Finset.sum_union ] <;> norm_num;
-          · linarith!;
-          · grind;
-    refine' Int.le_of_lt_add_one _;
-    exact_mod_cast ( by nlinarith [ h_ind ( Fin.succ i ), Int.le_ceil ( s * ∑ j : Fin m, X.sides j ), show ( ∑ k : Fin m with k.val < ( i.succ : ℕ ), X.sides k ) ≤ ∑ j : Fin m, X.sides j from Finset.sum_le_sum_of_subset_of_nonneg ( fun x hx => Finset.mem_univ _ ) fun _ _ _ => le_of_lt ( X.sides_pos _ ) ] : ( extendH m h ( Fin.succ i ) : ℝ ) < ⌈s * ∑ j : Fin m, X.sides j⌉ + 1 )
+  induction i using Fin.inductionOn <;> norm_num at *
+  · exact Int.le_of_lt_add_one ( by
+      rw [ show extendH m h 0 = 0 by rfl ]
+      exact lt_add_of_le_of_pos ( Int.ceil_nonneg ( mul_nonneg ( by positivity )
+        ( Finset.sum_nonneg fun _ _ => le_of_lt ( X.sides_pos _ ) ) ) ) zero_lt_one )
+  · rename_i i hi
+    have h_ind : ∀ j : Fin (m + 1),
+      extendH m h j ≤ s * ∑ k ∈ Finset.univ.filter (fun k => k.val < j.val), X.sides k := by
+      intro j
+      induction' j using Fin.inductionOn with j ih
+      · norm_num [ extendH ]
+      · have := hbox j
+        rcases j with ⟨ _ | j, hj ⟩ <;> norm_num [ Finset.sum_filter, Finset.sum_range_succ ] at *
+        · rcases m with ( _ | _ | m ) <;> norm_num [ Fin.sum_univ_succ ] at *
+          · contradiction
+          · exact this.2
+          · exact this.2
+        · simp_all +decide [Finset.sum_ite]
+          rw [ show ( Finset.filter ( fun x : Fin m => ( x : ℕ ) ≤ j + 1 )
+            Finset.univ : Finset ( Fin m ) ) = Finset.filter ( fun x : Fin m => ( x : ℕ ) ≤ j )
+              Finset.univ ∪ { ⟨ j + 1, hj ⟩ } from ?_, Finset.sum_union ] <;> norm_num
+          · linarith!
+          · grind
+    refine' Int.le_of_lt_add_one _
+    exact_mod_cast ( by
+      nlinarith [ h_ind ( Fin.succ i ), Int.le_ceil ( s * ∑ j : Fin m, X.sides j ),
+        show ( ∑ k : Fin m with k.val < ( i.succ : ℕ ), X.sides k ) ≤
+          ∑ j : Fin m, X.sides j
+          from Finset.sum_le_sum_of_subset_of_nonneg ( fun x hx => Finset.mem_univ _ )
+            fun _ _ _ => le_of_lt ( X.sides_pos _ ) ] :
+        ( extendH m h ( Fin.succ i ) : ℝ ) < ⌈s * ∑ j : Fin m, X.sides j⌉ + 1 )
 
 /-
 The extended values are nonneg.
@@ -94,12 +107,12 @@ public lemma inScaledBox_cons_nonneg {m : ℕ} (X : Box m) (s : ℝ) (hs : 1 ≤
     (hbox : inScaledBox X s (fun _ => 0) h) (i : Fin (m + 1)) :
     (0 : ℤ) ≤ extendH m h i := by
   -- We prove the statement using induction on the size of the block $\textit{m}$.
-  induction' m with m ih;
-  · fin_cases i ; rfl;
-  · refine' Fin.cases _ ( fun i => _ ) i <;> simp_all +decide [ Fin.forall_fin_succ, extendH ];
-    induction' i using Fin.inductionOn with i IH;
-    · have := hbox 0; simp_all +decide [ Fin.forall_fin_succ, inScaledBox ] ;
-      linarith;
+  induction' m with m ih
+  · fin_cases i ; rfl
+  · refine' Fin.cases _ ( fun i => _ ) i <;> simp_all +decide [ Fin.forall_fin_succ, extendH ]
+    induction' i using Fin.inductionOn with i IH
+    · have := hbox 0; simp_all +decide [ Fin.forall_fin_succ, inScaledBox ]
+      linarith
     · exact le_trans IH ( le_of_lt ( by have := hbox i.succ; aesop ) )
 
 /-
@@ -112,18 +125,23 @@ public lemma injective_fin_cons_of_large {m : ℕ} (X : Box m) (s : ℝ) (hs : 1
     Function.Injective (Fin.cons (0 : ZMod p) (fun i => (h i : ZMod p))) := by
   -- By definition of `extendH`, we know that `extendH m h` is injective.
   have h_injured : Function.Injective (extendH m h) := by
-    convert StrictMono.injective ( inScaledBox_cons_strictMono X s hs h hbox ) using 1;
+    convert StrictMono.injective ( inScaledBox_cons_strictMono X s hs h hbox ) using 1
   -- Since all values of `extendH m h` are in `[0, p-1]`, the map to `ZMod p` is injective.
   have h_injured_mod_p : Function.Injective (fun i => (extendH m h i : ZMod p)) := by
     intro i j hij
     have h_eq : extendH m h i = extendH m h j := by
-      have h_eq : ∀ i j : Fin (m + 1), 0 ≤ extendH m h i ∧ extendH m h i < p ∧ 0 ≤ extendH m h j ∧ extendH m h j < p := by
-        exact fun i j => ⟨ inScaledBox_cons_nonneg X s hs h hbox i, lt_of_le_of_lt ( inScaledBox_cons_le_ceil X s hs h hbox i ) hp, inScaledBox_cons_nonneg X s hs h hbox j, lt_of_le_of_lt ( inScaledBox_cons_le_ceil X s hs h hbox j ) hp ⟩;
-      simp_all +decide [ ZMod.intCast_eq_intCast_iff' ];
-      exact Int.modEq_iff_dvd.mp hij.symm |> fun ⟨ k, hk ⟩ => by nlinarith [ show k = 0 by nlinarith [ h_eq i j ] ] ;
-    exact h_injured h_eq;
-  convert h_injured_mod_p using 1;
-  exact funext fun i => by cases i using Fin.cases <;> simp +decide [ extendH ] ;
+      have h_eq : ∀ i j : Fin (m + 1), 0 ≤ extendH m h i ∧ extendH m h i < p ∧
+        0 ≤ extendH m h j ∧ extendH m h j < p := by
+        exact fun i j => ⟨ inScaledBox_cons_nonneg X s hs h hbox i,
+          lt_of_le_of_lt ( inScaledBox_cons_le_ceil X s hs h hbox i ) hp,
+                           inScaledBox_cons_nonneg X s hs h hbox j,
+          lt_of_le_of_lt ( inScaledBox_cons_le_ceil X s hs h hbox j ) hp ⟩
+      simp_all +decide [ ZMod.intCast_eq_intCast_iff' ]
+      exact Int.modEq_iff_dvd.mp hij.symm |> fun ⟨ k, hk ⟩ => by
+        nlinarith [ show k = 0 by nlinarith [ h_eq i j ] ]
+    exact h_injured h_eq
+  convert h_injured_mod_p using 1
+  exact funext fun i => by cases i using Fin.cases <;> simp +decide [ extendH ]
 
 /-! ## 2. Non-injectivity implies divisibility of some difference -/
 
@@ -142,13 +160,15 @@ public lemma collision_indicator_le_sum_pairs {m : ℕ} (p : ℕ) (hp : 1 ≤ p)
      then (0 : ℝ) else 1) ≤
     ∑ ij ∈ pairsBelow m,
       if (p : ℤ) ∣ (extendH m h ij.2 - extendH m h ij.1) then 1 else 0 := by
-  split_ifs <;> simp_all +decide [ Function.Injective ];
-  rename_i h; rcases h with ⟨ i, j, hij, h ⟩ ; rcases lt_trichotomy i j with hij' | rfl | hij' <;> simp_all +decide [ Fin.cons, extendH ] ;
-  · refine' ⟨ ⟨ i, j ⟩, _ ⟩ ; simp_all +decide [ pairsBelow ];
-    simp_all +decide [ Fin.cases, ← ZMod.intCast_zmod_eq_zero_iff_dvd ];
-    induction i using Fin.inductionOn <;> induction j using Fin.inductionOn <;> aesop;
-  · refine' ⟨ ⟨ j, i ⟩, _ ⟩ ; simp_all +decide [ pairsBelow ];
-    simp_all +decide [ ← ZMod.intCast_zmod_eq_zero_iff_dvd ];
+  split_ifs <;> simp_all +decide [ Function.Injective ]
+  rename_i h
+  rcases h with ⟨ i, j, hij, h ⟩
+  rcases lt_trichotomy i j with hij' | rfl | hij' <;> simp_all +decide [ Fin.cons, extendH ]
+  · refine' ⟨ ⟨ i, j ⟩, _ ⟩ ; simp_all +decide [ pairsBelow ]
+    simp_all +decide [ Fin.cases, ← ZMod.intCast_zmod_eq_zero_iff_dvd ]
+    induction i using Fin.inductionOn <;> induction j using Fin.inductionOn <;> aesop
+  · refine' ⟨ ⟨ j, i ⟩, _ ⟩ ; simp_all +decide [ pairsBelow ]
+    simp_all +decide [ ← ZMod.intCast_zmod_eq_zero_iff_dvd ]
     cases i using Fin.inductionOn <;> cases j using Fin.inductionOn <;> aesop
 
 /-! ## 3. Helper: indicator vanishes for large primes -/

@@ -67,25 +67,32 @@ theorem stirlingSecond_le_choose_pow_aux :
     stirlingSecond (m + d) m ≤ ((m + d).choose 2) ^ d := by
   -- We proceed by induction on $d$.
   intro d m hd hm
-  induction' d with d ih generalizing m;
-  · contradiction;
-  · induction' hm with m hm ih <;> simp_all +decide [ Nat.pow_succ' ];
-    · refine' Nat.recOn d _ _ <;> simp_all +decide [ Nat.stirlingSecond, Nat.choose ];
-      grind +suggestions;
-    · by_cases hd : 1 ≤ d <;> simp_all +decide [ Nat.stirlingSecond_succ_succ, Nat.choose_two_succ ];
-      · have h_combined : (m + 2 + d).choose 2 ^ (d + 1) ≥ (m + 1) * (m + 1 + d).choose 2 ^ d + (m + 1 + d).choose 2 ^ (d + 1) := by
-          have h_combined : (m + 2 + d).choose 2 ^ (d + 1) ≥ ((m + 1 + d).choose 2 + (m + 1)) * (m + 1 + d).choose 2 ^ d := by
-            rw [ show m + 2 + d = m + 1 + d + 1 by ring, Nat.choose_two_succ ];
-            rw [ pow_succ' ];
-            exact Nat.mul_le_mul ( by linarith ) ( Nat.pow_le_pow_left ( by linarith ) _ );
-          grind;
-        have h_combined : (m + 1) * (m + 1 + d).stirlingSecond (m + 1) + (m + 1 + d).stirlingSecond m ≤ (m + 1) * (m + 1 + d).choose 2 ^ d + (m + 1 + d).choose 2 ^ (d + 1) := by
-          apply Nat.add_le_add;
-          · exact Nat.mul_le_mul_left _ ( by simpa only [ add_comm, add_left_comm, add_assoc ] using ‹∀ m : ℕ, 1 ≤ m → ( m + d ).stirlingSecond m ≤ ( m + d ).choose 2 ^ d› ( m + 1 ) ( by linarith ) );
-          · grind;
-        convert h_combined.trans ‹_› using 1;
-        ring_nf;
-      · simp_all +decide [ Nat.stirlingSecond_eq_zero_of_lt ];
+  induction' d with d ih generalizing m
+  · contradiction
+  · induction' hm with m hm ih <;> simp_all +decide [ Nat.pow_succ' ]
+    · refine' Nat.recOn d _ _ <;> simp_all +decide [ Nat.stirlingSecond, Nat.choose ]
+      grind +suggestions
+    · by_cases hd : 1 ≤ d <;> simp_all +decide [ Nat.stirlingSecond_succ_succ, Nat.choose_two_succ ]
+      · have h_combined : (m + 2 + d).choose 2 ^ (d + 1)
+          ≥ (m + 1) * (m + 1 + d).choose 2 ^ d + (m + 1 + d).choose 2 ^ (d + 1) := by
+          have h_combined : (m + 2 + d).choose 2 ^ (d + 1)
+            ≥ ((m + 1 + d).choose 2 + (m + 1)) * (m + 1 + d).choose 2 ^ d := by
+            rw [ show m + 2 + d = m + 1 + d + 1 by ring, Nat.choose_two_succ ]
+            rw [ pow_succ' ]
+            exact Nat.mul_le_mul ( by linarith ) ( Nat.pow_le_pow_left ( by linarith ) _ )
+          grind
+        have h_combined : (m + 1) * (m + 1 + d).stirlingSecond (m + 1)
+          + (m + 1 + d).stirlingSecond m
+          ≤ (m + 1) * (m + 1 + d).choose 2 ^ d + (m + 1 + d).choose 2 ^ (d + 1) := by
+          apply Nat.add_le_add
+          · exact Nat.mul_le_mul_left _ ( by
+              simpa only [ add_comm, add_left_comm, add_assoc ]
+                using ‹∀ m : ℕ, 1 ≤ m → ( m + d ).stirlingSecond m
+                  ≤ ( m + d ).choose 2 ^ d› ( m + 1 ) ( by linarith ) )
+          · grind
+        convert h_combined.trans ‹_› using 1
+        ring_nf
+      · simp_all +decide [ Nat.stirlingSecond_eq_zero_of_lt ]
         simp_all +arith +decide [ Nat.stirlingSecond_self ]
 
 /-- Apply a permutation `σ` of `{0, …, k-1}` to a Gamma
@@ -505,19 +512,22 @@ theorem GammaStructure.gammaProd_perm_invariant
     · simp +decide [GammaStructure.permute]; try rfl
     · simp +decide [Finset.mem_Iio]; try rfl
 
-/-- Every entry `Γ.gamma i j` is bounded by `Γ.gammaProd`. When `i = j` the entry is zero;
+/-- Every entry `Γ.gamma i j` is bounded by `Γ.gammaProd`. When `i = j` the entry is zero
 otherwise it divides `gammaRow (max i j)` which in turn divides `gammaProd`. -/
 lemma GammaStructure.gamma_le_gammaProd
     (Γ : GammaStructure k) (i j : Fin k) :
     Γ.gamma i j ≤ Γ.gammaProd := by
-  by_cases hij : i = j;
-  · simp +decide [ hij, Γ.diag ];
-  · -- Since $i \neq j$, we have $Γ.gamma i j \mid Γ.gammaRow (max i j)$ by definition of `gammaRow`.
+  by_cases hij : i = j
+  · simp +decide [ hij, Γ.diag ]
+  · -- Since $i \neq j$, we have $Γ.gamma i j \mid Γ.gammaRow (max i j)$
+    -- by definition of `gammaRow`.
     have h_div : Γ.gamma i j ∣ Γ.gammaRow (max i j) := by
-      cases le_total i j <;> simp_all +decide [ GammaStructure.gammaRow ];
-      · exact Finset.dvd_lcm ( Finset.mem_Iio.mpr ( lt_of_le_of_ne ‹_› hij ) );
-      · exact Finset.dvd_lcm ( Finset.mem_Iio.mpr ( lt_of_le_of_ne ‹_› ( Ne.symm hij ) ) ) |> dvd_trans ( by simp +decide [ Γ.symm ] );
-    exact Nat.le_of_dvd ( Γ.gammaProd_pos ) ( dvd_trans h_div ( Finset.dvd_prod_of_mem _ ( Finset.mem_univ _ ) ) )
+      cases le_total i j <;> simp_all +decide [ GammaStructure.gammaRow ]
+      · exact Finset.dvd_lcm ( Finset.mem_Iio.mpr ( lt_of_le_of_ne ‹_› hij ) )
+      · exact Finset.dvd_lcm ( Finset.mem_Iio.mpr ( lt_of_le_of_ne ‹_› ( Ne.symm hij ) ) ) |>
+          dvd_trans ( by simp +decide [ Γ.symm ] )
+    exact Nat.le_of_dvd ( Γ.gammaProd_pos )
+      ( dvd_trans h_div ( Finset.dvd_prod_of_mem _ ( Finset.mem_univ _ ) ) )
 
 /-! ### Finset of Gamma structures with fixed product -/
 
@@ -561,13 +571,14 @@ public noncomputable def finsetGammaStructures (γ : ℕ) : Finset (GammaStructu
 @[simp]
 public theorem mem_finsetGammaStructures {γ : ℕ} {Γ : GammaStructure k} :
     Γ ∈ finsetGammaStructures γ ↔ Γ.gammaProd = γ := by
-  constructor;
-  · unfold finsetGammaStructures;
-    simp +zetaDelta at *;
-    rintro x hx₁ hx₂ hx₃ hx₄ hx₅ hx₆ hx₇ rfl; exact hx₇;
-  · intro h;
-    simp +decide [ ← h, finsetGammaStructures ];
-    exact ⟨ Γ.gamma, ⟨ fun i j => Γ.gamma_le_gammaProd i j, Γ.diag, Γ.symm, Γ.pos, Γ.sqfree, Γ.compat, rfl ⟩, rfl ⟩
+  constructor
+  · unfold finsetGammaStructures
+    simp +zetaDelta at *
+    rintro x hx₁ hx₂ hx₃ hx₄ hx₅ hx₆ hx₇ rfl; exact hx₇
+  · intro h
+    simp +decide [ ← h, finsetGammaStructures ]
+    exact ⟨ Γ.gamma, ⟨ fun i j =>
+      Γ.gamma_le_gammaProd i j, Γ.diag, Γ.symm, Γ.pos, Γ.sqfree, Γ.compat, rfl ⟩, rfl ⟩
 
 /-! ### Bound on number of Gamma structures
 (Lemma 3.1) -/
@@ -575,38 +586,41 @@ public theorem mem_finsetGammaStructures {γ : ℕ} {Γ : GammaStructure k} :
 /-- Each off-diagonal entry of a `GammaStructure` divides `gammaProd`. -/
 lemma GammaStructure.gamma_dvd_gammaProd (Γ : GammaStructure k) (i j : Fin k)
     (hij : i ≠ j) : Γ.gamma i j ∣ Γ.gammaProd := by
-  unfold GammaStructure.gammaProd; cases le_total i j <;> simp_all +decide ;
-  · -- Since Γ.gamma i j divides Γ.gammaRow j and Γ.gammaRow j divides Γ.gammaProd, we have Γ.gamma i j ∣ Γ.gammaProd.
+  unfold GammaStructure.gammaProd; cases le_total i j <;> simp_all +decide
+  · -- Since Γ.gamma i j divides Γ.gammaRow j and Γ.gammaRow j divides Γ.gammaProd, we have
+    -- Γ.gamma i j ∣ Γ.gammaProd.
     have h_div : Γ.gamma i j ∣ Γ.gammaRow j := by
       exact Finset.dvd_lcm ( Finset.mem_Iio.mpr ( lt_of_le_of_ne ‹_› hij ) )
-    exact dvd_trans h_div (Finset.dvd_prod_of_mem _ (Finset.mem_univ _));
-  · refine' dvd_trans _ ( Finset.dvd_prod_of_mem _ ( Finset.mem_univ i ) );
-    exact Finset.dvd_lcm ( Finset.mem_Iio.mpr ( lt_of_le_of_ne ‹_› ( Ne.symm hij ) ) ) |> dvd_trans ( by simp +decide [ Γ.symm ] )
+    exact dvd_trans h_div (Finset.dvd_prod_of_mem _ (Finset.mem_univ _))
+  · refine' dvd_trans _ ( Finset.dvd_prod_of_mem _ ( Finset.mem_univ i ) )
+    exact Finset.dvd_lcm ( Finset.mem_Iio.mpr ( lt_of_le_of_ne ‹_› ( Ne.symm hij ) ) ) |>
+      dvd_trans ( by simp +decide [ Γ.symm ] )
 
 /-- The number of squarefree divisors of `n` is `2 ^ n.primeFactors.card`. -/
 lemma card_squarefree_divisors (n : ℕ) (hn : n ≠ 0) :
     (n.divisors.filter Squarefree).card = 2 ^ n.primeFactors.card := by
-  convert Nat.divisors_filter_squarefree hn using 1;
-  constructor <;> intro h;
-  · exact divisors_filter_squarefree hn;
-  · convert congr_arg Multiset.card h using 1;
+  convert Nat.divisors_filter_squarefree hn using 1
+  constructor <;> intro h
+  · exact divisors_filter_squarefree hn
+  · convert congr_arg Multiset.card h using 1
     simp +decide [ Nat.factors_eq ]
 
 /-- Each off-diagonal entry of `Γ` with `Γ.gammaProd = γ` is a squarefree divisor of `γ`. -/
 lemma GammaStructure.gamma_mem_squarefree_divisors {Γ : GammaStructure k} {γ : ℕ}
     (hΓ : Γ.gammaProd = γ) (i j : Fin k) (hij : i ≠ j) :
     Γ.gamma i j ∈ γ.divisors.filter Squarefree := by
-  refine' Finset.mem_filter.mpr ⟨ Nat.mem_divisors.mpr ⟨ hΓ ▸ GammaStructure.gamma_dvd_gammaProd Γ i j hij, _ ⟩, Γ.sqfree i j hij ⟩;
+  refine' Finset.mem_filter.mpr ⟨ Nat.mem_divisors.mpr
+    ⟨ hΓ ▸ GammaStructure.gamma_dvd_gammaProd Γ i j hij, _ ⟩, Γ.sqfree i j hij ⟩
   exact hΓ ▸ Nat.pos_iff_ne_zero.mp ( Γ.gammaProd_pos )
 
 /-- The number of ordered pairs `(i, j)` with `i < j` in `Fin k` is `k.choose 2`. -/
 lemma card_upper_triangular_pairs (k : ℕ) :
     (Finset.univ.filter (fun p : Fin k × Fin k => p.1 < p.2)).card = k.choose 2 := by
-  rw [ Nat.choose_two_right ];
-  convert Finset.card_filter ( fun p : Fin k × Fin k => p.1 < p.2 ) Finset.univ using 1;
-  erw [ Finset.sum_product ];
-  rw [ ← Finset.sum_range_id ];
-  simp +decide [ Finset.filter_lt_eq_Ioi ];
+  rw [ Nat.choose_two_right ]
+  convert Finset.card_filter ( fun p : Fin k × Fin k => p.1 < p.2 ) Finset.univ using 1
+  erw [ Finset.sum_product ]
+  rw [ ← Finset.sum_range_id ]
+  simp +decide [ Finset.filter_lt_eq_Ioi ]
   rw [ ← Finset.sum_range_reflect, Finset.sum_range ]
 
 /-- The number of Gamma structures with a fixed product `γ(Γ) = γ` is bounded by
@@ -615,36 +629,46 @@ public theorem countGammaStructures_le (γ : ℕ) (hγ : 0 < γ) :
     (finsetGammaStructures γ : Finset (GammaStructure k)).card ≤
       (2 ^ k.choose 2) ^ γ.primeFactors.card := by
   -- Each GammaStructure is determined by its upper triangular entries gamma(i,j) for i < j.
-  have h_upper_triangular : ∀ Γ₁ Γ₂ : GammaStructure k, Γ₁.gammaProd = γ → Γ₂.gammaProd = γ → (∀ i j, i < j → Γ₁.gamma i j = Γ₂.gamma i j) → Γ₁ = Γ₂ := by
+  have h_upper_triangular : ∀ Γ₁ Γ₂ : GammaStructure k, Γ₁.gammaProd =
+    γ → Γ₂.gammaProd = γ → (∀ i j, i < j → Γ₁.gamma i j = Γ₂.gamma i j) → Γ₁ = Γ₂ := by
     intros Γ₁ Γ₂ hΓ₁ hΓ₂ h_eq
     apply GammaStructure.ext_iff.mpr
     ext i j
     by_cases hij : i = j
     generalize_proofs at *; (
-    simp +decide [ hij, Γ₁.diag, Γ₂.diag ]);
-    cases lt_or_gt_of_ne hij <;> [ exact h_eq _ _ ‹_› ; exact Γ₁.symm i j ▸ Γ₂.symm i j ▸ h_eq _ _ ‹_› ];
+    simp +decide [ hij, Γ₁.diag, Γ₂.diag ])
+    cases lt_or_gt_of_ne hij <;>
+      [ exact h_eq _ _ ‹_› ; exact Γ₁.symm i j ▸ Γ₂.symm i j ▸ h_eq _ _ ‹_› ]
   -- Define a map from GammaStructure k to (Fin k → Fin k → ℕ) by f(Γ) = Γ.gamma.
-  set f : GammaStructure k → (Fin k → Fin k → ℕ) := fun Γ => Γ.gamma;
-  -- The image of `finsetGammaStructures γ` under `f` is a subset of the set of functions from `{p : Fin k × Fin k // p.1 < p.2}` to `(γ.divisors.filter Squarefree)`.
-  have h_image : (Finset.image f (finsetGammaStructures γ)).card ≤ (Finset.univ.filter (fun p : Fin k × Fin k => p.1 < p.2)).prod (fun p => (γ.divisors.filter Squarefree).card) := by
-    have h_image : (Finset.image f (finsetGammaStructures γ)).card ≤ (Finset.image (fun Γ : GammaStructure k => fun p : {p : Fin k × Fin k // p.1 < p.2} => Γ.gamma p.val.1 p.val.2) (finsetGammaStructures γ)).card := by
-      rw [ Finset.card_image_of_injOn, Finset.card_image_of_injOn ];
-      · intros Γ₁ hΓ₁ Γ₂ hΓ₂ h_eq;
-        exact h_upper_triangular Γ₁ Γ₂ ( by simpa using hΓ₁ ) ( by simpa using hΓ₂ ) fun i j hij => congr_fun h_eq ⟨ ( i, j ), hij ⟩;
-      · exact fun Γ₁ hΓ₁ Γ₂ hΓ₂ h => GammaStructure.ext_iff.mpr h;
-    refine le_trans h_image ?_;
-    refine' le_trans ( Finset.card_le_card <| Finset.image_subset_iff.mpr _ ) _;
-    exact Finset.image ( fun p : { p : Fin k × Fin k // p.1 < p.2 } → { x : ℕ // x ∈ γ.divisors.filter Squarefree } => fun p' => p p' |>.1 ) ( Finset.univ );
-    · simp +zetaDelta at *;
-      exact fun Γ hΓ => ⟨ fun p => ⟨ Γ.gamma p.val.1 p.val.2, GammaStructure.gamma_mem_squarefree_divisors hΓ p.val.1 p.val.2 ( ne_of_lt p.prop ) ⟩, rfl ⟩;
-    · refine' le_trans ( Finset.card_image_le ) _;
-      simp +decide [ Fintype.card_subtype ];
-  rw [ Finset.card_image_of_injOn ] at h_image;
-  · refine le_trans h_image ?_;
-    rw [ card_squarefree_divisors γ hγ.ne' ];
-    rw [ Finset.prod_const, card_upper_triangular_pairs ];
-    rw [ ← pow_mul, mul_comm, pow_mul ];
-  · intro Γ₁ hΓ₁ Γ₂ hΓ₂ h_eq; specialize h_upper_triangular Γ₁ Γ₂; aesop;
+  set f : GammaStructure k → (Fin k → Fin k → ℕ) := fun Γ => Γ.gamma
+  -- The image of `finsetGammaStructures γ` under `f` is a subset of the set of functions
+  -- from `{p : Fin k × Fin k // p.1 < p.2}` to `(γ.divisors.filter Squarefree)`.
+  have h_image : (Finset.image f (finsetGammaStructures γ)).card
+    ≤ (Finset.univ.filter (fun p : Fin k × Fin k => p.1 < p.2)).prod
+      (fun p => (γ.divisors.filter Squarefree).card) := by
+    have h_image : (Finset.image f (finsetGammaStructures γ)).card
+      ≤ (Finset.image (fun Γ : GammaStructure k => fun p : {p : Fin k × Fin k // p.1 < p.2} =>
+        Γ.gamma p.val.1 p.val.2) (finsetGammaStructures γ)).card := by
+      rw [ Finset.card_image_of_injOn, Finset.card_image_of_injOn ]
+      · intros Γ₁ hΓ₁ Γ₂ hΓ₂ h_eq
+        exact h_upper_triangular Γ₁ Γ₂ ( by simpa using hΓ₁ ) ( by simpa using hΓ₂ ) fun i j hij =>
+          congr_fun h_eq ⟨ ( i, j ), hij ⟩
+      · exact fun Γ₁ hΓ₁ Γ₂ hΓ₂ h => GammaStructure.ext_iff.mpr h
+    refine le_trans h_image ?_
+    refine' le_trans ( Finset.card_le_card <| Finset.image_subset_iff.mpr _ ) _
+    exact Finset.image ( fun p : { p : Fin k × Fin k // p.1 < p.2 } →
+        { x : ℕ // x ∈ γ.divisors.filter Squarefree } => fun p' => p p' |>.1 ) ( Finset.univ )
+    · simp +zetaDelta at *
+      exact fun Γ hΓ => ⟨ fun p => ⟨ Γ.gamma p.val.1 p.val.2,
+        GammaStructure.gamma_mem_squarefree_divisors hΓ p.val.1 p.val.2 ( ne_of_lt p.prop ) ⟩, rfl ⟩
+    · refine' le_trans ( Finset.card_image_le ) _
+      simp +decide [ Fintype.card_subtype ]
+  rw [ Finset.card_image_of_injOn ] at h_image
+  · refine le_trans h_image ?_
+    rw [ card_squarefree_divisors γ hγ.ne' ]
+    rw [ Finset.prod_const, card_upper_triangular_pairs ]
+    rw [ ← pow_mul, mul_comm, pow_mul ]
+  · intro Γ₁ hΓ₁ Γ₂ hΓ₂ h_eq; specialize h_upper_triangular Γ₁ Γ₂; aesop
 
 /-! ### Helper lemmas for Proposition 3.2 -/
 
@@ -738,43 +762,54 @@ lemma card_filtered_le_prod_of_fiber_dvd
       (∀ i : Fin n, i < j → h i = h' i) →
         (m j : ℤ) ∣ (h j - h' j)) :
     S.card ≤ ∏ j : Fin n, (H / m j + 1) := by
-  induction' n with n ih;
-  · exact le_trans ( Finset.card_le_univ _ ) ( by norm_num );
+  induction' n with n ih
+  · exact le_trans ( Finset.card_le_univ _ ) ( by norm_num )
   · -- Let `proj` be the projection onto the first `n` coordinates.
-    set proj : (Fin (Nat.succ n) → ℤ) → (Fin n → ℤ) := fun h => fun i => h (Fin.castSucc i);
-    nontriviality;
+    set proj : (Fin (Nat.succ n) → ℤ) → (Fin n → ℤ) := fun h => fun i => h (Fin.castSucc i)
+    nontriviality
     -- Let `I := S.image proj`.
-    set I := S.image proj with hI_def;
-    -- For each `g ∈ I`, the fiber `F_g := S.filter (fun h => proj h = g)` has cardinality at most `H / m (last n) + 1`.
-    have h_fiber_card : ∀ g ∈ I, (S.filter (fun h => proj h = g)).card ≤ H / m (Fin.last n) + 1 := by
+    set I := S.image proj with hI_def
+    -- For each `g ∈ I`, the fiber `F_g := S.filter (fun h => proj h = g)` has cardinality
+    -- at most `H / m (last n) + 1`.
+    have h_fiber_card : ∀ g ∈ I,
+        (S.filter (fun h => proj h = g)).card ≤ H / m (Fin.last n) + 1 := by
       intro g hg
-      have h_fiber : ∀ h ∈ S.filter (fun h => proj h = g), ∀ h' ∈ S.filter (fun h => proj h = g), (m (Fin.last n) : ℤ) ∣ (h (Fin.last n) - h' (Fin.last n)) := by
-        intros h hh h' hh';
-        apply hfib (Fin.last n) h (Finset.mem_filter.mp hh).left h' (Finset.mem_filter.mp hh').left;
+      have h_fiber : ∀ h ∈ S.filter (fun h => proj h = g), ∀ h' ∈ S.filter (fun h => proj h = g),
+          (m (Fin.last n) : ℤ) ∣ (h (Fin.last n) - h' (Fin.last n)) := by
+        intros h hh h' hh'
+        apply hfib (Fin.last n) h (Finset.mem_filter.mp hh).left h' (Finset.mem_filter.mp hh').left
         intro i hi
         have h1 := (Finset.mem_filter.mp hh).2
         have h2 := (Finset.mem_filter.mp hh').2
         have h1' := congr_fun h1 ⟨i, hi⟩
         have h2' := congr_fun h2 ⟨i, hi⟩
-        exact h1'.trans h2'.symm;
-      have h_fiber_card : (Finset.image (fun h => h (Fin.last n)) (S.filter (fun h => proj h = g))).card ≤ H / m (Fin.last n) + 1 := by
-        have h_fiber_card : ∀ x ∈ Finset.image (fun h => h (Fin.last n)) (S.filter (fun h => proj h = g)), ∀ y ∈ Finset.image (fun h => h (Fin.last n)) (S.filter (fun h => proj h = g)), (m (Fin.last n) : ℤ) ∣ (x - y) := by
+        exact h1'.trans h2'.symm
+      have h_fiber_card :
+          (Finset.image (fun h => h (Fin.last n)) (S.filter (fun h => proj h = g))).card
+          ≤ H / m (Fin.last n) + 1 := by
+        have h_fiber_card :
+            ∀ x ∈ Finset.image (fun h => h (Fin.last n)) (S.filter (fun h => proj h = g)),
+            ∀ y ∈ Finset.image (fun h => h (Fin.last n)) (S.filter (fun h => proj h = g)),
+            (m (Fin.last n) : ℤ) ∣ (x - y) := by
           intro x hx y hy
           simp only [Finset.mem_image, Finset.mem_filter] at hx hy
           obtain ⟨a, ⟨haS, _⟩, rfl⟩ := hx
           obtain ⟨b, ⟨hbS, _⟩, rfl⟩ := hy
-          exact h_fiber a (Finset.mem_filter.mpr ⟨haS, ‹_›⟩) b (Finset.mem_filter.mpr ⟨hbS, ‹_›⟩);
-        have := @card_set_pairwise_dvd_le ( m ( Fin.last n ) ) ( hm ( Fin.last n ) ) H ( Finset.image ( fun h => h ( Fin.last n ) ) ( Finset.filter ( fun h => proj h = g ) S ) ) ?_ ?_;
-        · rw [ div_add_one, le_div_iff₀ ] at this <;> norm_cast at *;
-          · nlinarith [ Nat.div_add_mod H ( m ( Fin.last n ) ), Nat.mod_lt H ( hm ( Fin.last n ) ), hm ( Fin.last n ) ];
-          · exact hm _;
-          · linarith [ hm ( Fin.last n ) ];
+          exact h_fiber a (Finset.mem_filter.mpr ⟨haS, ‹_›⟩) b (Finset.mem_filter.mpr ⟨hbS, ‹_›⟩)
+        have := @card_set_pairwise_dvd_le ( m ( Fin.last n ) ) ( hm ( Fin.last n ) ) H
+            ( Finset.image ( fun h => h ( Fin.last n ) )
+              ( Finset.filter ( fun h => proj h = g ) S ) ) ?_ ?_
+        · rw [ div_add_one, le_div_iff₀ ] at this <;> norm_cast at *
+          · nlinarith [ Nat.div_add_mod H ( m ( Fin.last n ) ), Nat.mod_lt H ( hm ( Fin.last n ) ),
+              hm ( Fin.last n ) ]
+          · exact hm _
+          · linarith [ hm ( Fin.last n ) ]
         · intro x hx
           simp only [Finset.mem_image, Finset.mem_filter] at hx
           obtain ⟨a, ⟨haS, _⟩, rfl⟩ := hx
-          exact hS a haS (Fin.last n);
-        · exact h_fiber_card;
-      rwa [ Finset.card_image_of_injOn ] at h_fiber_card;
+          exact hS a haS (Fin.last n)
+        · exact h_fiber_card
+      rwa [ Finset.card_image_of_injOn ] at h_fiber_card
       intro h hh h' hh' h_eq
       have hhinit := (Finset.mem_filter.mp hh).2
       have hh'init := (Finset.mem_filter.mp hh').2
@@ -786,14 +821,14 @@ lemma card_filtered_le_prod_of_fiber_dvd
         have hcast : Fin.castSucc ⟨i.val, hi⟩ = i := by ext; simp
         rw [hcast] at hh1 hh2; linarith
       · have : i = Fin.last n := le_antisymm (Fin.le_last _) (by omega)
-        rw [this]; exact h_eq;
+        rw [this]; exact h_eq
     -- By the induction hypothesis, we have $I.card \leq \prod_{j : Fin n} (H / m j + 1)$.
     have h_ind : I.card ≤ ∏ j : Fin n, (H / m (Fin.castSucc j) + 1) := by
-      apply ih (fun j => m (Fin.castSucc j)) (fun j => hm (Fin.castSucc j)) I;
+      apply ih (fun j => m (Fin.castSucc j)) (fun j => hm (Fin.castSucc j)) I
       · intro a ha i
         simp only [I, Finset.mem_image] at ha
         obtain ⟨a', ha'S, rfl⟩ := ha
-        exact hS a' ha'S (Fin.castSucc i);
+        exact hS a' ha'S (Fin.castSucc i)
       · intro j a ha b hb hab
         simp only [I, Finset.mem_image] at ha hb
         obtain ⟨a', ha'S, rfl⟩ := ha
@@ -806,11 +841,12 @@ lemma card_filtered_le_prod_of_fiber_dvd
         have := hab ⟨i.val, hlt⟩ (by simp [Fin.lt_def] at hi ⊢; exact hi)
         simp only [proj] at this
         have hcast : Fin.castSucc ⟨i.val, hlt⟩ = i := by ext; simp
-        rw [hcast] at this; exact this;
+        rw [hcast] at this; exact this
     have h_card_S : S.card = ∑ g ∈ I, (S.filter (fun h => proj h = g)).card := by
-      exact Finset.card_eq_sum_card_image proj S;
-    rw [ h_card_S, Fin.prod_univ_castSucc ];
-    exact le_trans ( Finset.sum_le_sum h_fiber_card ) ( by simpa [ mul_comm ] using Nat.mul_le_mul_right ( H / m ( Fin.last n ) + 1 ) h_ind )
+      exact Finset.card_eq_sum_card_image proj S
+    rw [ h_card_S, Fin.prod_univ_castSucc ]
+    exact le_trans ( Finset.sum_le_sum h_fiber_card )
+      ( by simpa [ mul_comm ] using Nat.mul_le_mul_right ( H / m ( Fin.last n ) + 1 ) h_ind )
 
 /-! ### Upper bound on `M_Γ(H)` (Proposition 3.2) -/
 

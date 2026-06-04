@@ -58,13 +58,21 @@ The number of integers in `[1, S]` in a congruence class mod `M` is at most
 -/
 private lemma card_Icc_filter_dvd_le (S : ℤ) (hS : 0 ≤ S) (M : ℤ) (hM : 0 < M) (a : ℤ) :
     ((Finset.Icc 1 S).filter (fun x => (M : ℤ) ∣ (x - a))).card ≤ (S / M + 1).toNat := by
-  -- The set of integers in [1, S] satisfying M | (x - a) forms an arithmetic progression with common difference M.
-  have h_arith_prog : Finset.filter (fun x => M ∣ x - a) (Finset.Icc 1 S) ⊆ Finset.image (fun k => M * k + a) (Finset.Icc ((1 - a + M - 1) / M) ((S - a) / M)) := by
-    intro x hx; obtain ⟨ k, hk ⟩ := Finset.mem_filter.mp hx |>.2; simp_all +decide [ sub_eq_iff_eq_add' ] ;
-    exact ⟨ k, ⟨ by rw [ Int.ediv_le_iff_le_mul ] <;> linarith, by rw [ Int.le_ediv_iff_mul_le ] <;> linarith ⟩, by ring ⟩;
-  refine' le_trans ( Finset.card_le_card h_arith_prog ) _;
-  rw [ Finset.card_image_of_injective _ fun x y hxy => by nlinarith ] ; norm_num;
-  exact Classical.or_iff_not_imp_right.2 fun h => by nlinarith [ Int.mul_ediv_add_emod ( S - a ) M, Int.emod_nonneg ( S - a ) hM.ne', Int.emod_lt_of_pos ( S - a ) hM, Int.mul_ediv_add_emod S M, Int.emod_nonneg S hM.ne', Int.emod_lt_of_pos S hM, Int.mul_ediv_add_emod ( 1 - a + M - 1 ) M, Int.emod_nonneg ( 1 - a + M - 1 ) hM.ne', Int.emod_lt_of_pos ( 1 - a + M - 1 ) hM ] ;
+  -- The set of integers in [1, S] satisfying M | (x - a) forms an arithmetic progression with
+  -- common difference M.
+  have h_arith_prog : Finset.filter (fun x => M ∣ x - a) (Finset.Icc 1 S) ⊆
+    Finset.image (fun k => M * k + a) (Finset.Icc ((1 - a + M - 1) / M) ((S - a) / M)) := by
+    intro x hx
+    obtain ⟨ k, hk ⟩ := Finset.mem_filter.mp hx |>.2; simp_all +decide [ sub_eq_iff_eq_add' ]
+    exact ⟨ k, ⟨ by rw [ Int.ediv_le_iff_le_mul ] <;>
+      linarith, by rw [ Int.le_ediv_iff_mul_le ] <;> linarith ⟩, by ring ⟩
+  refine' le_trans ( Finset.card_le_card h_arith_prog ) _
+  rw [ Finset.card_image_of_injective _ fun x y hxy => by nlinarith ] ; norm_num
+  exact Classical.or_iff_not_imp_right.2 fun h => by
+    nlinarith [ Int.mul_ediv_add_emod ( S - a ) M, Int.emod_nonneg ( S - a ) hM.ne',
+      Int.emod_lt_of_pos ( S - a ) hM, Int.mul_ediv_add_emod S M, Int.emod_nonneg S hM.ne',
+      Int.emod_lt_of_pos S hM, Int.mul_ediv_add_emod ( 1 - a + M - 1 ) M,
+      Int.emod_nonneg ( 1 - a + M - 1 ) hM.ne', Int.emod_lt_of_pos ( 1 - a + M - 1 ) hM ]
 
 /--
 When `U` contains a prime exceeding `⌈s * ∑ sides⌉`, every collision indicator
@@ -77,9 +85,10 @@ private lemma collision_sum_eq_zero_of_large_prime (m : ℕ) (X : Box m) (s : �
         (fun h => inScaledBox X s (fun _ => 0) h)),
       (∏ q ∈ U, if Function.Injective (Fin.cons (0 : ZMod q) (fun i => (h i : ZMod q)))
        then (0:ℝ) else 1) = 0 := by
-  refine Finset.sum_eq_zero fun h hh => ?_;
-  convert Finset.prod_eq_zero hp₀_mem _;
-  convert indicator_zero_of_large_prime X s hs h ( Finset.mem_filter.mp hh |>.2 ) p₀ ( hU p₀ hp₀_mem ) hp₀_large using 1
+  refine Finset.sum_eq_zero fun h hh => ?_
+  convert Finset.prod_eq_zero hp₀_mem _
+  convert indicator_zero_of_large_prime X s hs h ( Finset.mem_filter.mp hh |>.2 ) p₀
+    ( hU p₀ hp₀_mem ) hp₀_large using 1
 
 /-- `pairsBelow m` is nonempty when `m ≥ 1`. -/
 private lemma pairsBelow_nonempty (m : ℕ) (hm : 1 ≤ m) : (pairsBelow m).Nonempty := by
@@ -98,16 +107,22 @@ lemma card_filter_coprime_dvd_le (S : ℤ) (hS : 0 ≤ S)
     (c : ℕ → ℤ) :
     ((Finset.Icc 1 S).filter (fun x => ∀ p ∈ U, (p : ℤ) ∣ (x - c p))).card ≤
       (S / ∏ p ∈ U, (p : ℤ) + 1).toNat := by
-  -- By LatticeCounting.crt_finset, there exists A : ℤ such that ∀ p ∈ U, A ≡ c p [ZMOD p], and any x satisfying all congruences has x ≡ A [ZMOD ∏ p∈U, p], i.e., (∏ p∈U, p) | (x - A).
-  obtain ⟨A, hA⟩ : ∃ A : ℤ, (∀ p ∈ U, (p : ℤ) ∣ (A - c p)) ∧ ∀ x : ℤ, (∀ p ∈ U, (p : ℤ) ∣ (x - c p)) → (∏ p ∈ U, (p : ℤ)) ∣ (x - A) := by
-    have := LatticeCounting.crt_finset U ( fun p => p ) ?_ c;
-    · simp_all +decide [ Int.modEq_iff_dvd ];
-      obtain ⟨ A, hA₁, hA₂ ⟩ := this; use A; simp_all +decide [ dvd_sub_comm ] ;
-    · exact fun i hi j hj hij => by have := Nat.coprime_primes ( hprime i hi ) ( hprime j hj ) ; tauto;
-  nontriviality;
-  convert card_Icc_filter_dvd_le S hS ( ∏ p ∈ U, ( p : ℤ ) ) ( Finset.prod_pos fun p hp => Nat.cast_pos.mpr ( Nat.Prime.pos ( hprime p hp ) ) ) A using 2;
-  ext x; simp;
-  exact fun _ _ => ⟨ fun hx => hA.2 x hx, fun hx => fun p hp => by simpa using dvd_trans ( Finset.dvd_prod_of_mem _ hp ) hx |> fun h => by simpa using dvd_add h ( hA.1 p hp ) ⟩
+  -- By LatticeCounting.crt_finset, there exists A : ℤ such that ∀ p ∈ U, A ≡ c p [ZMOD p],
+  -- and any x satisfying all congruences has x ≡ A [ZMOD ∏ p∈U, p], i.e., (∏ p∈U, p) | (x - A).
+  obtain ⟨A, hA⟩ : ∃ A : ℤ, (∀ p ∈ U, (p : ℤ) ∣ (A - c p)) ∧
+    ∀ x : ℤ, (∀ p ∈ U, (p : ℤ) ∣ (x - c p)) → (∏ p ∈ U, (p : ℤ)) ∣ (x - A) := by
+    have := LatticeCounting.crt_finset U ( fun p => p ) ?_ c
+    · simp_all +decide [ Int.modEq_iff_dvd ]
+      obtain ⟨ A, hA₁, hA₂ ⟩ := this; use A; simp_all +decide [ dvd_sub_comm ]
+    · exact fun i hi j hj hij => by
+        have := Nat.coprime_primes ( hprime i hi ) ( hprime j hj ) ; tauto
+  nontriviality
+  convert card_Icc_filter_dvd_le S hS ( ∏ p ∈ U, ( p : ℤ ) ) ( Finset.prod_pos fun p hp =>
+    Nat.cast_pos.mpr ( Nat.Prime.pos ( hprime p hp ) ) ) A using 2
+  ext x; simp
+  exact fun _ _ => ⟨ fun hx => hA.2 x hx, fun hx => fun p hp => by
+    simpa using dvd_trans ( Finset.dvd_prod_of_mem _ hp ) hx |>
+      fun h => by simpa using dvd_add h ( hA.1 p hp ) ⟩
 
 /--
 For `h ∈ validHForSigma`, each coordinate `h k` lies in `[1, S]`.
@@ -116,7 +131,7 @@ lemma validHForSigma_coord_mem_Icc (m : ℕ) (X : Box m) (s : ℝ) (U : Finset �
     (σ : ∀ p ∈ U, Fin (m + 1) × Fin (m + 1))
     (h : Fin m → ℤ) (hh : h ∈ validHForSigma m X s U σ) (k : Fin m) :
     1 ≤ h k ∧ h k ≤ ⌈s * ∑ i, X.sides i⌉ := by
-  unfold validHForSigma at hh;
+  unfold validHForSigma at hh
   grind
 
 /-- `extendH m h j = extendH m h' j` when `h` and `h'` agree on coordinates `< k`
@@ -149,14 +164,14 @@ lemma validHForSigma_divisibility_at_coord (m : ℕ) (X : Box m) (s : ℝ)
     (hc : c = fun p => if hp : p ∈ U then extendH m h_prefix (σ p hp).1 else 0) :
     ∀ p ∈ U.filter (fun p => ∃ hp_mem : p ∈ U, (σ p hp_mem).2 = k.succ),
       (p : ℤ) ∣ (h k - c p) := by
-  simp_all +decide [ validHForSigma ];
+  simp_all +decide [ validHForSigma ]
   intro p hp_mem hp_eq
   have h_div : (p : ℤ) ∣ (extendH m h (σ p hp_mem).2 - extendH m h (σ p hp_mem).1) := by
-    grind +suggestions;
-  convert h_div using 1;
-  rw [ hp_eq, extendH ];
-  rw [ extendH_agree_of_lt m h h_prefix k hh_agree ( σ p hp_mem |>.1 ) ];
-  · rfl;
+    grind +suggestions
+  convert h_div using 1
+  rw [ hp_eq, extendH ]
+  rw [ extendH_agree_of_lt m h h_prefix k hh_agree ( σ p hp_mem |>.1 ) ]
+  · rfl
   · exact hp_eq ▸ Finset.mem_filter.mp ( h_sigma p hp_mem ) |>.2
 
 /--
@@ -171,28 +186,37 @@ private lemma collision_sum_le_sigma_sum (m : ℕ) (X : Box m) (s : ℝ) (hs : 1
        then (0:ℝ) else 1) : ℝ)
     ≤ ∑ σ ∈ U.pi (fun _ => pairsBelow m),
       ((validHForSigma m X s U (fun p hp => σ p hp)).card : ℝ) := by
-  have h_union_bound : ∀ h ∈ ((Fintype.piFinset fun _ => Finset.Icc (1:ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+  have h_bound : ∀ h ∈ ((Fintype.piFinset fun _ => Finset.Icc (1:ℤ) ⌈s * ∑ i, X.sides i⌉).filter
       (fun h => inScaledBox X s (fun _ => 0) h)),
       (∏ p ∈ U, if Function.Injective (Fin.cons (0 : ZMod p) (fun i => (h i : ZMod p)))
        then (0:ℝ) else 1) ≤
-      ∑ σ ∈ U.pi (fun _ => pairsBelow m), (∏ p ∈ U.attach, if (p : ℤ) ∣ (extendH m h (σ p p.2).2 - extendH m h (σ p p.2).1) then 1 else 0) := by
+      ∑ σ ∈ U.pi (fun _ => pairsBelow m), (∏ p ∈ U.attach,
+        if (p : ℤ) ∣ (extendH m h (σ p p.2).2 - extendH m h (σ p p.2).1) then 1 else 0) := by
         intro h hh
-        have h_indicator : (∏ p ∈ U, (if Function.Injective (Fin.cons (0 : ZMod p) (fun i => (h i : ZMod p))) then (0:ℝ) else 1)) ≤ (∏ p ∈ U, (∑ ij ∈ pairsBelow m, if (p : ℤ) ∣ (extendH m h ij.2 - extendH m h ij.1) then 1 else 0)) := by
-          apply Finset.prod_le_prod;
-          · exact fun _ _ => by split_ifs <;> norm_num;
-          · intro p hp; specialize hU p hp; have := collision_indicator_le_sum_pairs p ( Nat.Prime.pos hU ) h; aesop;
-        convert h_indicator using 1;
-        rw [ Finset.prod_sum ];
-  refine' le_trans ( Finset.sum_le_sum h_union_bound ) _;
-  rw [ Finset.sum_comm ];
-  refine' Finset.sum_le_sum fun σ _ => _;
-  refine' le_trans _ ( Nat.cast_le.mpr <| Finset.card_le_card <| show validHForSigma m X s U ( fun p hp => σ p hp ) ⊇ _ from _ );
-  rotate_left;
-  exact Finset.filter ( fun h => inScaledBox X s ( fun _ => 0 ) h ∧ ∀ p ∈ U, ∀ hp : p ∈ U, ( p : ℤ ) ∣ ( extendH m h ( σ p hp |>.2 ) - extendH m h ( σ p hp |>.1 ) ) ) ( Fintype.piFinset fun _ => Finset.Icc 1 ⌈s * ∑ i, X.sides i⌉ );
-  · intro h hh; unfold validHForSigma; aesop;
-  · simp +decide [ Finset.prod_ite ];
-    simp +decide [ zero_pow_eq ];
-    exact Finset.card_mono fun x hx => by aesop;
+        have h_indicator : (∏ p ∈ U, (if Function.Injective (Fin.cons (0 : ZMod p)
+          (fun i => (h i : ZMod p))) then (0:ℝ) else 1)) ≤ (∏ p ∈ U, (∑ ij ∈ pairsBelow m,
+            if (p : ℤ) ∣ (extendH m h ij.2 - extendH m h ij.1) then 1 else 0)) := by
+          apply Finset.prod_le_prod
+          · exact fun _ _ => by split_ifs <;> norm_num
+          · intro p hp
+            specialize hU p hp
+            have := collision_indicator_le_sum_pairs p ( Nat.Prime.pos hU ) h
+            aesop
+        convert h_indicator using 1
+        rw [ Finset.prod_sum ]
+  refine' le_trans ( Finset.sum_le_sum h_bound ) _
+  rw [ Finset.sum_comm ]
+  refine' Finset.sum_le_sum fun σ _ => _
+  refine' le_trans _ ( Nat.cast_le.mpr <| Finset.card_le_card <|
+    show validHForSigma m X s U ( fun p hp => σ p hp ) ⊇ _ from _ )
+  rotate_left
+  exact Finset.filter ( fun h => inScaledBox X s ( fun _ => 0 ) h ∧ ∀ p ∈ U, ∀ hp : p ∈ U,
+    ( p : ℤ ) ∣ ( extendH m h ( σ p hp |>.2 ) - extendH m h ( σ p hp |>.1 ) ) )
+    ( Fintype.piFinset fun _ => Finset.Icc 1 ⌈s * ∑ i, X.sides i⌉ )
+  · intro h hh; unfold validHForSigma; aesop
+  · simp +decide [ Finset.prod_ite ]
+    simp +decide [ zero_pow_eq ]
+    exact Finset.card_mono fun x hx => by aesop
 
 /--
 Algebraic bound: `∏_j (S/M_j + 1) ≤ S^m/∏ p + 2^m * S^(m-1)` in ℝ,
@@ -204,24 +228,41 @@ private lemma prod_int_div_add_one_le (m : ℕ) (S : ℤ) (hS : 1 ≤ S)
     (∏ j : Fin m, ((S / M j + 1).toNat : ℝ)) ≤
       (S : ℝ) ^ m / ∏ j, (M j : ℝ) + 2 ^ m * (S : ℝ) ^ (m - 1) := by
   -- By the multinomial expansion, we have:
-  have h_multinomial : (∏ j, (S / M j + 1 : ℝ)) = (∑ I ∈ Finset.powerset (Finset.univ : Finset (Fin m)), (∏ j ∈ I, (S / M j : ℝ))) := by
-    simp +decide [Finset.prod_add];
-  -- Each term with $I \subsetneq \text{Finset.univ}$ has $|I| \leq m-1$, and each factor $S/M_j \leq S$ (since $M_j \geq 1$). So the product $\leq S^{m-1}$.
-  have h_subset_bound : ∑ I ∈ Finset.powerset (Finset.univ : Finset (Fin m)) \ {Finset.univ}, (∏ j ∈ I, (S / M j : ℝ)) ≤ (2^m - 1) * S^(m-1) := by
-    refine' le_trans ( Finset.sum_le_sum fun I hI => show ∏ j ∈ I, ( S : ℝ ) / M j ≤ S ^ ( m - 1 ) from _ ) _;
-    · refine' le_trans ( Finset.prod_le_prod _ fun i hi => div_le_self ( by positivity ) ( mod_cast hM i ) ) _ <;> norm_num;
-      · exact fun _ _ => div_nonneg ( by positivity ) ( by norm_cast; linarith [ hM ‹_› ] );
-      · exact pow_le_pow_right₀ ( mod_cast hS ) ( Nat.le_sub_one_of_lt ( lt_of_lt_of_le ( Finset.card_lt_card ( Finset.ssubset_iff_subset_ne.mpr ⟨ Finset.subset_univ _, by aesop ⟩ ) ) ( by simp ) ) );
-    · norm_num [ Finset.card_sdiff, Finset.card_singleton, Finset.card_univ ];
-  refine' le_trans _ ( le_trans ( add_le_add_left h_subset_bound _ ) _ );
-  convert h_multinomial.le.trans' _ using 1;
-  rw [ Finset.sum_eq_sum_diff_singleton_add ( Finset.mem_powerset.mpr ( Finset.subset_univ ( Finset.univ : Finset ( Fin m ) ) ) ) ];
-  · gcongr;
-    rw [ div_add_one, le_div_iff₀ ] <;> norm_cast;
-    · nlinarith [ Int.mul_ediv_add_emod S ( M ‹_› ), Int.emod_nonneg S ( by linarith [ hM ‹_› ] : ( M ‹_› ) ≠ 0 ), Int.emod_lt_of_pos S ( by linarith [ hM ‹_› ] : ( M ‹_› ) > 0 ), Int.toNat_of_nonneg ( by nlinarith [ hM ‹_›, Int.mul_ediv_add_emod S ( M ‹_› ), Int.emod_nonneg S ( by linarith [ hM ‹_› ] : ( M ‹_› ) ≠ 0 ), Int.emod_lt_of_pos S ( by linarith [ hM ‹_› ] : ( M ‹_› ) > 0 ) ] : 0 ≤ S / M ‹_› + 1 ) ];
-    · grind +extAll;
-    · linarith [ hM ‹_› ];
-  · norm_num [ Finset.prod_div_distrib ] ; ring_nf ; norm_num;
+  have h_multinomial : (∏ j, (S / M j + 1 : ℝ)) =
+      (∑ I ∈ Finset.powerset (Finset.univ : Finset (Fin m)), (∏ j ∈ I, (S / M j : ℝ))) := by
+    simp +decide [Finset.prod_add]
+  -- Each term with $I \subsetneq \text{Finset.univ}$ has $|I| \leq m-1$, and each factor
+  -- $S/M_j \leq S$ (since $M_j \geq 1$). So the product $\leq S^{m-1}$.
+  have h_subset_bound : ∑ I ∈ Finset.powerset (Finset.univ : Finset (Fin m)) \ {Finset.univ},
+      (∏ j ∈ I, (S / M j : ℝ)) ≤ (2^m - 1) * S^(m-1) := by
+    refine' le_trans ( Finset.sum_le_sum fun I hI =>
+      show ∏ j ∈ I, ( S : ℝ ) / M j ≤ S ^ ( m - 1 ) from _ ) _
+    · refine' le_trans ( Finset.prod_le_prod _ fun i hi =>
+        div_le_self ( by positivity ) ( mod_cast hM i ) ) _ <;> norm_num
+      · exact fun _ _ => div_nonneg ( by positivity ) ( by norm_cast; linarith [ hM ‹_› ] )
+      · exact pow_le_pow_right₀ ( mod_cast hS )
+          ( Nat.le_sub_one_of_lt ( lt_of_lt_of_le
+            ( Finset.card_lt_card ( Finset.ssubset_iff_subset_ne.mpr
+              ⟨ Finset.subset_univ _, by aesop ⟩ ) )
+            ( by simp ) ) )
+    · norm_num [ Finset.card_sdiff, Finset.card_singleton, Finset.card_univ ]
+  refine' le_trans _ ( le_trans ( add_le_add_left h_subset_bound _ ) _ )
+  convert h_multinomial.le.trans' _ using 1
+  rw [ Finset.sum_eq_sum_diff_singleton_add ( Finset.mem_powerset.mpr ( Finset.subset_univ
+    ( Finset.univ : Finset ( Fin m ) ) ) ) ]
+  · gcongr
+    rw [ div_add_one, le_div_iff₀ ] <;> norm_cast
+    · nlinarith [ Int.mul_ediv_add_emod S ( M ‹_› ),
+        Int.emod_nonneg S ( by linarith [ hM ‹_› ] : ( M ‹_› ) ≠ 0 ),
+        Int.emod_lt_of_pos S ( by linarith [ hM ‹_› ] : ( M ‹_› ) > 0 ),
+        Int.toNat_of_nonneg ( by
+          nlinarith [ hM ‹_›, Int.mul_ediv_add_emod S ( M ‹_› ),
+            Int.emod_nonneg S ( by linarith [ hM ‹_› ] : ( M ‹_› ) ≠ 0 ),
+            Int.emod_lt_of_pos S ( by linarith [ hM ‹_› ] : ( M ‹_› ) > 0 ) ] :
+          0 ≤ S / M ‹_› + 1 ) ]
+    · grind +extAll
+    · linarith [ hM ‹_› ]
+  · norm_num [ Finset.prod_div_distrib ] ; ring_nf ; norm_num
     positivity
 
 /--
@@ -240,49 +281,88 @@ private lemma collision_sum_main_bound (m : ℕ) (hm : 1 ≤ m) (X : Box m) (s :
     ≤ (2 ^ m * (∑ i, X.sides i + 1) ^ m : ℝ) *
       (s ^ m / ∏ p ∈ U, (p : ℝ) + s ^ (m - 1 : ℕ)) *
       ∏ _ ∈ U, ((pairsBelow m).card : ℝ) := by
-  convert collision_sum_le_sigma_sum m X s hs U hU |> le_trans <| ?_ using 1;
+  convert collision_sum_le_sigma_sum m X s hs U hU |> le_trans <| ?_ using 1
   -- Apply the bound on the cardinality of `validHForSigma`.
-  have h_card_bound : ∀ σ ∈ U.pi (fun _ => pairsBelow m), ((validHForSigma m X s U (fun p hp => σ p hp)).card : ℝ) ≤ (⌈s * ∑ i, X.sides i⌉ : ℝ) ^ m / (∏ p ∈ U, (p : ℝ)) + 2 ^ m * (⌈s * ∑ i, X.sides i⌉ : ℝ) ^ (m - 1) := by
+  have h_card_bound : ∀ σ ∈ U.pi (fun _ => pairsBelow m),
+    ((validHForSigma m X s U (fun p hp => σ p hp)).card : ℝ)
+      ≤ (⌈s * ∑ i, X.sides i⌉ : ℝ) ^ m / (∏ p ∈ U, (p : ℝ))
+        + 2 ^ m * (⌈s * ∑ i, X.sides i⌉ : ℝ) ^ (m - 1) := by
     intro σ hσ
-    have h_card_bound : ((validHForSigma m X s U (fun p hp => σ p hp)).card : ℝ) ≤ ∏ j : Fin m, ((⌈s * ∑ i, X.sides i⌉ : ℤ) / (∏ p ∈ U.filter (fun p => ∃ hp_mem : p ∈ U, (σ p hp_mem).2 = j.succ), (p : ℤ)) + 1).toNat := by
-      convert seq_bound_nat _ _ _ using 1;
-      norm_cast;
-      exact inferInstance;
-      intro k h_prefix;
-      refine' le_trans ( Finset.card_le_card <| Finset.image_subset_iff.mpr _ ) _;
-      exact Finset.filter ( fun x => ∀ p ∈ U.filter ( fun p => ∃ hp_mem : p ∈ U, ( σ p hp_mem ).2 = k.succ ), ( p : ℤ ) ∣ ( x - ( if hp : p ∈ U then extendH m h_prefix ( σ p hp ).1 else 0 ) ) ) ( Finset.Icc 1 ⌈s * ∑ i, X.sides i⌉ );
-      · simp +zetaDelta at *;
-        intro x hx hx'; exact ⟨ validHForSigma_coord_mem_Icc m X s U ( fun p hp => σ p hp ) x hx k, fun p hp hp' => validHForSigma_divisibility_at_coord m X s U hU ( fun p hp => σ p hp ) hσ k h_prefix x hx hx' ( fun p => if hp : p ∈ U then extendH m h_prefix ( σ p hp ).1 else 0 ) rfl p ( Finset.mem_filter.mpr ⟨ hp, ⟨ hp, hp' ⟩ ⟩ ) ⟩ ;
-      · convert card_filter_coprime_dvd_le _ _ _ _ _ using 1;
-        · exact Int.ceil_nonneg ( mul_nonneg ( by positivity ) ( Finset.sum_nonneg fun _ _ => le_of_lt ( X.sides_pos _ ) ) );
-        · grind;
-    refine le_trans h_card_bound ?_;
-    convert prod_int_div_add_one_le m ( ⌈s * ∑ i, X.sides i⌉ ) ( Int.ceil_pos.mpr <| mul_pos ( zero_lt_one.trans_le hs ) <| Finset.sum_pos ( fun _ _ => X.sides_pos _ ) ⟨ ⟨ 0, hm ⟩, Finset.mem_univ _ ⟩ ) ( fun j => ∏ p ∈ U.filter fun p => ∃ hp_mem : p ∈ U, ( σ p hp_mem ).2 = j.succ, ( p : ℤ ) ) _ using 1;
-    · norm_cast;
-    · simp +decide [ Finset.prod_filter ];
-      rw [ Finset.prod_comm ];
-      refine' congr rfl ( Finset.prod_congr rfl fun p hp => _ );
+    have h_card_bound : ((validHForSigma m X s U (fun p hp => σ p hp)).card : ℝ)
+        ≤ ∏ j : Fin m, ((⌈s * ∑ i, X.sides i⌉ : ℤ) / (∏ p ∈ U.filter (fun p =>
+          ∃ hp_mem : p ∈ U, (σ p hp_mem).2 = j.succ), (p : ℤ)) + 1).toNat := by
+      convert seq_bound_nat _ _ _ using 1
+      norm_cast
+      exact inferInstance
+      intro k h_prefix
+      refine' le_trans ( Finset.card_le_card <| Finset.image_subset_iff.mpr _ ) _
+      exact Finset.filter ( fun x => ∀ p ∈ U.filter ( fun p =>
+        ∃ hp_mem : p ∈ U, ( σ p hp_mem ).2 = k.succ ),
+          ( p : ℤ ) ∣ ( x - ( if hp : p ∈ U then extendH m h_prefix ( σ p hp ).1 else 0 ) ) )
+        ( Finset.Icc 1 ⌈s * ∑ i, X.sides i⌉ )
+      · simp +zetaDelta at *
+        intro x hx hx'
+        exact ⟨ validHForSigma_coord_mem_Icc m X s U ( fun p hp => σ p hp ) x hx k, fun p hp hp' =>
+          validHForSigma_divisibility_at_coord m X s U hU ( fun p hp => σ p hp ) hσ k h_prefix x hx
+            hx' ( fun p =>
+              if hp : p ∈ U then
+                extendH m h_prefix ( σ p hp ).1 else 0 ) rfl p
+                  ( Finset.mem_filter.mpr ⟨ hp, ⟨ hp, hp' ⟩ ⟩ ) ⟩
+      · convert card_filter_coprime_dvd_le _ _ _ _ _ using 1
+        · exact Int.ceil_nonneg ( mul_nonneg ( by positivity )
+            ( Finset.sum_nonneg fun _ _ => le_of_lt ( X.sides_pos _ ) ) )
+        · grind
+    refine le_trans h_card_bound ?_
+    convert prod_int_div_add_one_le m ( ⌈s * ∑ i, X.sides i⌉ )
+      ( Int.ceil_pos.mpr <| mul_pos ( zero_lt_one.trans_le hs ) <|
+        Finset.sum_pos ( fun _ _ => X.sides_pos _ ) ⟨ ⟨ 0, hm ⟩, Finset.mem_univ _ ⟩ )
+          ( fun j => ∏ p ∈ U.filter fun p => ∃ hp_mem : p ∈ U, ( σ p hp_mem ).2 = j.succ,
+            ( p : ℤ ) ) _ using 1
+    · norm_cast
+    · simp +decide [ Finset.prod_filter ]
+      rw [ Finset.prod_comm ]
+      refine' congr rfl ( Finset.prod_congr rfl fun p hp => _ )
       rw [ Finset.prod_eq_single ( ( σ p hp ).2.pred <| by
-        have := Finset.mem_filter.mp ( Finset.mem_pi.mp hσ p hp ) ; aesop; ) ] <;> simp +decide [ hp ];
-      grind;
-    · exact fun j => le_trans ( by norm_num ) ( Finset.prod_le_prod ( fun _ _ => by positivity ) fun _ _ => Nat.cast_le.mpr ( Nat.Prime.pos ( hU _ ( by aesop ) ) ) );
-  refine' le_trans ( Finset.sum_le_sum h_card_bound ) _;
+        have := Finset.mem_filter.mp ( Finset.mem_pi.mp hσ p hp ) ; aesop ) ] <;>
+          simp +decide [ hp ]
+      grind
+    · exact fun j => le_trans ( by norm_num )
+        ( Finset.prod_le_prod ( fun _ _ => by positivity ) fun _ _ =>
+          Nat.cast_le.mpr ( Nat.Prime.pos ( hU _ ( by aesop ) ) ) )
+  refine' le_trans ( Finset.sum_le_sum h_card_bound ) _
   -- Apply the bound on the cardinality of `pairsBelow`.
-  have h_pairsBelow_card : (⌈s * ∑ i, X.sides i⌉ : ℝ) ^ m / (∏ p ∈ U, (p : ℝ)) + 2 ^ m * (⌈s * ∑ i, X.sides i⌉ : ℝ) ^ (m - 1) ≤ 2 ^ m * (∑ i, X.sides i + 1) ^ m * (s ^ m / (∏ p ∈ U, (p : ℝ)) + s ^ (m - 1)) := by
+  have h_pairsBelow_card : (⌈s * ∑ i, X.sides i⌉ : ℝ) ^ m / (∏ p ∈ U, (p : ℝ))
+      + 2 ^ m * (⌈s * ∑ i, X.sides i⌉ : ℝ) ^ (m - 1)
+      ≤ 2 ^ m * (∑ i, X.sides i + 1) ^ m * (s ^ m / (∏ p ∈ U, (p : ℝ)) + s ^ (m - 1)) := by
     -- Apply the bound on the cardinality of `pairsBelow` and simplify.
-    have h_pairsBelow_card_simplified : (⌈s * ∑ i, X.sides i⌉ : ℝ) ^ m ≤ (s * (∑ i, X.sides i + 1)) ^ m ∧ (⌈s * ∑ i, X.sides i⌉ : ℝ) ^ (m - 1) ≤ (s * (∑ i, X.sides i + 1)) ^ (m - 1) := by
-      constructor <;> gcongr;
-      · exact_mod_cast Int.ceil_nonneg ( mul_nonneg ( by positivity ) ( Finset.sum_nonneg fun _ _ => le_of_lt ( X.sides_pos _ ) ) );
-      · nlinarith [ Int.ceil_lt_add_one ( s * ∑ i, X.sides i ), show 0 ≤ ∑ i, X.sides i from Finset.sum_nonneg fun _ _ => le_of_lt ( X.sides_pos _ ) ];
-      · exact_mod_cast Int.ceil_nonneg ( mul_nonneg ( by positivity ) ( Finset.sum_nonneg fun _ _ => le_of_lt ( X.sides_pos _ ) ) );
-      · nlinarith [ Int.ceil_lt_add_one ( s * ∑ i, X.sides i ), show 0 ≤ ∑ i, X.sides i from Finset.sum_nonneg fun _ _ => le_of_lt ( X.sides_pos _ ) ];
-    refine le_trans ( add_le_add ( div_le_div_of_nonneg_right h_pairsBelow_card_simplified.1 <| Finset.prod_nonneg fun _ _ => Nat.cast_nonneg _ ) <| mul_le_mul_of_nonneg_left h_pairsBelow_card_simplified.2 <| by positivity ) ?_ ; ring_nf ;
-    refine' add_le_add _ _;
-    · rw [ show s + s * ∑ i, X.sides i = s * ( 1 + ∑ i, X.sides i ) by ring, mul_pow ] ; ring_nf;
-      exact le_mul_of_one_le_right ( mul_nonneg ( mul_nonneg ( inv_nonneg.2 ( Finset.prod_nonneg fun _ _ => Nat.cast_nonneg _ ) ) ( pow_nonneg ( by positivity ) _ ) ) ( pow_nonneg ( add_nonneg zero_le_one ( Finset.sum_nonneg fun _ _ => le_of_lt ( X.sides_pos _ ) ) ) _ ) ) ( one_le_pow₀ ( by norm_num ) );
-    · rw [ show ( s + s * ∑ i, X.sides i ) = s * ( 1 + ∑ i, X.sides i ) by ring, mul_pow ] ; ring_nf ;
-      exact mul_le_mul_of_nonneg_right ( mul_le_mul_of_nonneg_left ( pow_le_pow_right₀ ( by linarith [ show 0 ≤ ∑ i, X.sides i from Finset.sum_nonneg fun _ _ => le_of_lt ( X.sides_pos _ ) ] ) ( Nat.pred_le _ ) ) ( by positivity ) ) ( by positivity );
-  convert mul_le_mul_of_nonneg_right h_pairsBelow_card _ using 1 <;> norm_num [ mul_comm ];
+    have h_pairsBelow_card_simplified : (⌈s * ∑ i, X.sides i⌉ : ℝ) ^ m
+      ≤ (s * (∑ i, X.sides i + 1)) ^ m ∧
+      (⌈s * ∑ i, X.sides i⌉ : ℝ) ^ (m - 1) ≤ (s * (∑ i, X.sides i + 1)) ^ (m - 1) := by
+      constructor <;> gcongr
+      · exact_mod_cast Int.ceil_nonneg ( mul_nonneg ( by positivity )
+          ( Finset.sum_nonneg fun _ _ => le_of_lt ( X.sides_pos _ ) ) )
+      · nlinarith [ Int.ceil_lt_add_one ( s * ∑ i, X.sides i ),
+          show 0 ≤ ∑ i, X.sides i from Finset.sum_nonneg fun _ _ => le_of_lt ( X.sides_pos _ ) ]
+      · exact_mod_cast Int.ceil_nonneg ( mul_nonneg ( by positivity )
+          ( Finset.sum_nonneg fun _ _ => le_of_lt ( X.sides_pos _ ) ) )
+      · nlinarith [ Int.ceil_lt_add_one ( s * ∑ i, X.sides i ),
+          show 0 ≤ ∑ i, X.sides i from Finset.sum_nonneg fun _ _ => le_of_lt ( X.sides_pos _ ) ]
+    refine le_trans ( add_le_add ( div_le_div_of_nonneg_right h_pairsBelow_card_simplified.1 <|
+      Finset.prod_nonneg fun _ _ => Nat.cast_nonneg _ ) <|
+        mul_le_mul_of_nonneg_left h_pairsBelow_card_simplified.2 <| by positivity ) ?_ ; ring_nf
+    refine' add_le_add _ _
+    · rw [ show s + s * ∑ i, X.sides i = s * ( 1 + ∑ i, X.sides i ) by ring, mul_pow ] ; ring_nf
+      exact le_mul_of_one_le_right ( mul_nonneg
+        ( mul_nonneg ( inv_nonneg.2 ( Finset.prod_nonneg fun _ _ => Nat.cast_nonneg _ ) )
+          ( pow_nonneg ( by positivity ) _ ) )
+        ( pow_nonneg ( add_nonneg zero_le_one ( Finset.sum_nonneg fun _ _ =>
+          le_of_lt ( X.sides_pos _ ) ) ) _ ) ) ( one_le_pow₀ ( by norm_num ) )
+    · rw [ show ( s + s * ∑ i, X.sides i ) = s * ( 1 + ∑ i, X.sides i ) by ring, mul_pow ]
+      ring_nf
+      exact mul_le_mul_of_nonneg_right ( mul_le_mul_of_nonneg_left ( pow_le_pow_right₀ ( by
+        linarith [ show 0 ≤ ∑ i, X.sides i from Finset.sum_nonneg fun _ _ =>
+          le_of_lt ( X.sides_pos _ ) ] ) ( Nat.pred_le _ ) ) ( by positivity ) ) ( by positivity )
+  convert mul_le_mul_of_nonneg_right h_pairsBelow_card _ using 1 <;> norm_num [ mul_comm ]
   ring
 
 /-! ## Main results -/

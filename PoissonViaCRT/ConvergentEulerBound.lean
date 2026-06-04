@@ -137,7 +137,8 @@ theorem convergentEulerPartitionSum_le_bound {k : ℕ} (hk : 3 ≤ k) {ε : ℝ}
     (hΩ : ∀ p, (Ω p).card ≤ p) :
     convergentEulerPartitionSum ε Ω S ≤ convergentEulerBoundConstant k ε Ω := by
   unfold convergentEulerPartitionSum convergentEulerBoundConstant
-  have h1 : ∏ p ∈ S, (1 + convergentEulerLocalWeight ε Ω p) ≤ ∏ p ∈ S, Real.exp (convergentEulerLocalWeight ε Ω p) := by
+  have h1 : ∏ p ∈ S, (1 + convergentEulerLocalWeight ε Ω p) ≤ ∏ p ∈ S,
+      Real.exp (convergentEulerLocalWeight ε Ω p) := by
     apply Finset.prod_le_prod
     · intro p _
       exact add_nonneg one_pos.le (convergentEulerLocalWeight_nonneg ε Ω p (hΩ p))

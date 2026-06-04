@@ -144,15 +144,17 @@ public theorem counting_function_multiplicative {k : ℕ} (q : ℕ) [NeZero q] (
         (letI : NeZero (p : ℕ) := ⟨(Nat.mem_primeFactors.mp p.2).1.ne_zero⟩
          tupleCount (Ω p.val)
           (fun i => ZMod.castHom (Nat.dvd_of_mem_primeFactors p.2) (ZMod p) (h i))) := by
-  unfold tupleCount;
-  rw [ ← Fintype.card_piFinset ];
-  fapply Finset.card_bij;
-  use fun a ha p => crtRingEquiv q hq a p;
-  · simp +contextual [ crtRingEquiv_apply_eq_castHom ];
-  · exact fun a₁ ha₁ a₂ ha₂ h => by simpa using crtRingEquiv q hq |>.injective <| funext fun p => congr_fun h p;
-  · intro b hb;
-    refine' ⟨ ( crtRingEquiv q hq ).symm b, _, _ ⟩ <;> simp_all +decide [ Fintype.mem_piFinset ];
-    intro i p hp hpq hq; specialize hb p hp hpq hq i; convert hb using 1;
-    have := crtRingEquiv_apply_eq_castHom q ‹_› ( ( crtRingEquiv q ‹_› ).symm b ) ⟨ p, by aesop ⟩ ; aesop;
+  unfold tupleCount
+  rw [ ← Fintype.card_piFinset ]
+  fapply Finset.card_bij
+  use fun a ha p => crtRingEquiv q hq a p
+  · simp +contextual [ crtRingEquiv_apply_eq_castHom ]
+  · exact fun a₁ ha₁ a₂ ha₂ h => by
+      simpa using crtRingEquiv q hq |>.injective <| funext fun p => congr_fun h p
+  · intro b hb
+    refine' ⟨ ( crtRingEquiv q hq ).symm b, _, _ ⟩ <;> simp_all +decide [ Fintype.mem_piFinset ]
+    intro i p hp hpq hq; specialize hb p hp hpq hq i; convert hb using 1
+    have := crtRingEquiv_apply_eq_castHom q ‹_› ( ( crtRingEquiv q ‹_› ).symm b ) ⟨ p, by aesop ⟩
+    simp_all only [RingEquiv.apply_symm_apply, ZMod.castHom_apply]
 
 end PoissonCRT
