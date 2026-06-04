@@ -104,13 +104,13 @@ The product of a finite set of primes is squarefree.
 -/
 public lemma prod_primes_squarefree (s : Finset Nat.Primes) :
     Squarefree (s.prod (fun p => (p : ℕ))) := by
-  induction' s using Finset.induction with p s h ih;
-  · norm_num;
-  · rw [ Finset.prod_insert h ];
-    rw [ Nat.squarefree_mul_iff ];
-    refine' ⟨ Nat.Coprime.prod_right fun q hq => _, p.2.squarefree, ih ⟩;
-    have := Nat.coprime_primes p.2 q.2;
-    exact this.mpr fun con => h <| by convert hq; exact Subtype.ext con;
+  induction' s using Finset.induction with p s h ih
+  · norm_num
+  · rw [ Finset.prod_insert h ]
+    rw [ Nat.squarefree_mul_iff ]
+    refine' ⟨ Nat.Coprime.prod_right fun q hq => _, p.2.squarefree, ih ⟩
+    have := Nat.coprime_primes p.2 q.2
+    exact this.mpr fun con => h <| by convert hq; exact Subtype.ext con
 
 /-- Inverse map: a `Finset Nat.Primes` ↦ product of the primes, which is squarefree. -/
 @[expose]
@@ -146,9 +146,9 @@ public lemma right_inv (q : SquarefreeNat) :
     factorsToSqfree (sqfreeToFactors q) = q := by
   -- By definition of prime factors, the product of the prime factors of q is equal to q.
   have h_prod_factors : (q.val.primeFactors.subtype Nat.Prime).prod (fun p => (p : ℕ)) = q.val := by
-    convert Nat.prod_primeFactors_of_squarefree q.prop;
-    refine' Finset.prod_bij ( fun p hp => p ) _ _ _ _ <;> simp +decide;
-    tauto;
+    convert Nat.prod_primeFactors_of_squarefree q.prop
+    refine' Finset.prod_bij ( fun p hp => p ) _ _ _ _ <;> simp +decide
+    tauto
   exact Subtype.ext h_prod_factors
 
 /--
@@ -196,6 +196,8 @@ analysis of squarefree moduli. -/
 
 section Transport
 
+open Classical Finset Nat
+
 variable {M : Type*}
 
 /-- For `T ⊆ q.primeFactors` and squarefree `q`, the product `∏ p ∈ T, p`
@@ -203,9 +205,9 @@ is a divisor of `q`. -/
 public lemma prod_mem_divisors_of_subset (q : SquarefreeNat)
     (T : Finset ℕ) (hT : T ⊆ q.val.primeFactors) :
     (∏ p ∈ T, p) ∈ q.val.divisors := by
-  apply Nat.mem_divisors.mpr
-  exact ⟨dvd_trans (Finset.prod_dvd_prod_of_subset T q.val.primeFactors (fun x => x) hT)
-    (Nat.prod_primeFactors_dvd q.val), q.ne_zero⟩
+  apply mem_divisors.mpr
+  exact ⟨dvd_trans (prod_dvd_prod_of_subset T q.val.primeFactors (fun x => x) hT)
+    (prod_primeFactors_dvd q.val), q.ne_zero⟩
 
 /-- For two subsets of `q.primeFactors`, equal products imply equal sets. -/
 public lemma prod_injective_on_primeFactors (q : SquarefreeNat)
@@ -213,10 +215,10 @@ public lemma prod_injective_on_primeFactors (q : SquarefreeNat)
     (h : ∏ p ∈ T₁, p = ∏ p ∈ T₂, p) : T₁ = T₂ := by
   apply_fun fun x => x.primeFactors at h
   have h_pf : ∀ (T : Finset ℕ), (∀ p ∈ T, Nat.Prime p) → (∏ p ∈ T, p).primeFactors = T := by
-    intros T hT_prime; induction T using Finset.induction <;> simp_all +decide;
-    rw [Nat.primeFactors_mul, ‹(∏ p ∈ _, p |> Nat.primeFactors) = _›] <;> aesop
-  rw [h_pf T₁ (fun p hp => Nat.prime_of_mem_primeFactors (hT₁ hp)),
-      h_pf T₂ (fun p hp => Nat.prime_of_mem_primeFactors (hT₂ hp))] at h
+    intros T hT_prime; induction T using Finset.induction <;> simp_all +decide
+    rw [primeFactors_mul, ‹(∏ p ∈ _, p |> Nat.primeFactors) = _›] <;> aesop
+  rw [h_pf T₁ (fun p hp => prime_of_mem_primeFactors (hT₁ hp)),
+      h_pf T₂ (fun p hp => prime_of_mem_primeFactors (hT₂ hp))] at h
   exact h
 
 /-- Every divisor of squarefree `q` is the product of its prime factors,
@@ -224,9 +226,9 @@ which form a subset of `q.primeFactors`. -/
 public lemma divisor_eq_prod_primeFactors (q : SquarefreeNat)
     (d : ℕ) (hd : d ∈ q.val.divisors) :
     d.primeFactors ∈ q.val.primeFactors.powerset ∧ ∏ p ∈ d.primeFactors, p = d := by
-  have hd_dvd := Nat.dvd_of_mem_divisors hd
-  exact ⟨Finset.mem_powerset.mpr (Nat.primeFactors_mono hd_dvd q.ne_zero),
-         Nat.prod_primeFactors_of_squarefree (q.prop.squarefree_of_dvd hd_dvd)⟩
+  have hd_dvd := dvd_of_mem_divisors hd
+  exact ⟨mem_powerset.mpr (primeFactors_mono hd_dvd q.ne_zero),
+         prod_primeFactors_of_squarefree (q.prop.squarefree_of_dvd hd_dvd)⟩
 
 /--
 **Core transport (general summand):** any function `g : Finset ℕ → M` summed
@@ -240,17 +242,21 @@ public lemma sum_powerset_eq_nontrivialDivisors [AddCommMonoid M]
     (q : SquarefreeNat) (g : Finset ℕ → M) :
     ∑ T ∈ q.val.primeFactors.powerset.filter (· ≠ ∅), g T =
       ∑ d ∈ q.nontrivialDivisors, g d.primeFactors := by
-  refine' Finset.sum_bij ( fun T hT => ∏ p ∈ T, p ) _ _ _ _ <;> simp +decide;
-  · intro T hT hne₂;
-    refine' ⟨ ⟨ _, q.ne_zero ⟩, _ ⟩;
+  refine' Finset.sum_bij ( fun T hT => ∏ p ∈ T, p ) _ _ _ _ <;> simp +decide
+  · intro T hT hne₂
+    refine' ⟨ ⟨ _, q.ne_zero ⟩, _ ⟩
     · have h_prod_div : ∏ p ∈ T, p ∣ ∏ p ∈ q.val.primeFactors, p := by
-        apply_rules [ Finset.prod_dvd_prod_of_subset ];
-      convert h_prod_div using 1;
-      exact Eq.symm ( Nat.prod_primeFactors_of_squarefree q.2 );
-    · exact lt_of_lt_of_le ( Nat.Prime.one_lt ( Nat.prime_of_mem_primeFactors ( hT ( Classical.choose_spec ( Finset.nonempty_of_ne_empty hne₂ ) ) ) ) ) ( Nat.le_of_dvd ( Finset.prod_pos fun p hp => Nat.pos_of_mem_primeFactors ( hT hp ) ) ( Finset.dvd_prod_of_mem _ ( Classical.choose_spec ( Finset.nonempty_of_ne_empty hne₂ ) ) ) );
-  · grind +suggestions;
-  · intro b hb hq hb'; use Nat.primeFactors b; simp_all +decide [ Finset.subset_iff ] ;
-    exact ⟨ ⟨ fun x hx hx' hx'' => dvd_trans hx' hb, by linarith, by linarith ⟩, Nat.prod_primeFactors_of_squarefree ( q.2.squarefree_of_dvd hb ) ⟩;
+        apply_rules [ prod_dvd_prod_of_subset ]
+      convert h_prod_div using 1
+      exact Eq.symm ( prod_primeFactors_of_squarefree q.2 )
+    · exact lt_of_lt_of_le
+        ( Prime.one_lt (prime_of_mem_primeFactors (hT (choose_spec (nonempty_of_ne_empty hne₂)))))
+        ( le_of_dvd ( prod_pos fun p hp => Nat.pos_of_mem_primeFactors ( hT hp ) )
+                    ( dvd_prod_of_mem _ ( choose_spec ( nonempty_of_ne_empty hne₂ ) ) ) )
+  · grind +suggestions
+  · intro b hb hq hb'; use Nat.primeFactors b; simp_all +decide [ subset_iff ]
+    exact ⟨ ⟨ fun x hx hx' hx'' => dvd_trans hx' hb, by linarith, by linarith ⟩,
+            prod_primeFactors_of_squarefree ( q.2.squarefree_of_dvd hb ) ⟩
   · grind +suggestions
 
 end Transport

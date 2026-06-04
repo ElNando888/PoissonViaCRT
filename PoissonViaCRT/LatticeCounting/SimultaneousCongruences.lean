@@ -54,7 +54,7 @@ omit [DecidableEq α] in
 theorem pairwise_coprime_subtype (U : Finset α) (M : α → ℕ)
     (hcop : (U : Set α).Pairwise (fun i j => Nat.Coprime (M i) (M j))) :
     Pairwise (Function.onFun Nat.Coprime (fun (i : U) => M i)) := by
-  intro i j hij;
+  intro i j hij
   convert hcop i.2 j.2 ( Subtype.coe_injective.ne hij ) using 1
 
 omit [DecidableEq α] in
@@ -69,8 +69,9 @@ theorem pairwise_coprime_intCast (U : Finset α) (M : α → ℕ)
 omit [DecidableEq α] in
 private theorem prod_subtype_eq (U : Finset α) (M : α → ℕ) :
     ∏ i ∈ U, M i = ∏ i : U, M i := by
-  convert Finset.prod_attach U M ; exact Finset.prod_bij ( fun i hi ↦ ⟨ i, by aesop ⟩ ) ( by aesop ) ( by aesop ) ( by aesop ) ( by aesop ) ;
-  convert Finset.prod_attach U M using 1 ;
+  convert Finset.prod_attach U M
+  exact Finset.prod_bij ( fun i hi ↦ ⟨ i, by aesop ⟩ ) (by aesop) (by aesop) (by aesop) (by aesop)
+  convert Finset.prod_attach U M using 1
 
 /-- The `ZMod.prodEquivPi` isomorphism reindexed over a `Finset`. -/
 private noncomputable def crt_equiv (U : Finset α) (M : α → ℕ)
@@ -98,28 +99,34 @@ public theorem crt_finset (U : Finset α) (M : α → ℕ)
     ∃ A : ℤ, (∀ i ∈ U, A ≡ a i [ZMOD (M i)]) ∧
       ∀ B : ℤ, (∀ i ∈ U, B ≡ a i [ZMOD (M i)]) →
         B ≡ A [ZMOD (∏ i ∈ U, M i)] := by
-  -- By the Chinese Remainder Theorem, there exists an integer $A$ such that $A \equiv a_i \pmod{M_i}$ for all $i \in U$.
+  -- By the Chinese Remainder Theorem, there exists an integer $A$ such that
+  -- $A \equiv a_i \pmod{M_i}$ for all $i \in U$.
   obtain ⟨A, hA⟩ : ∃ A : ℤ, ∀ i ∈ U, A ≡ a i [ZMOD M i] := by
     -- By the properties of the Chinese Remainder Theorem, such an $A$ exists.
     have h_crt : ∀ i ∈ U, ∃ x : ℤ, x ≡ a i [ZMOD (M i)] ∧ ∀ j ∈ U, j ≠ i → x ≡ 0 [ZMOD (M j)] := by
-      -- For each $i \in U$, let $y_i$ be the multiplicative inverse of $\prod_{j \neq i} M_j$ modulo $M_i$.
+      -- For each $i \in U$, let $y_i$ be the multiplicative inverse of
+      -- $\prod_{j \neq i} M_j$ modulo $M_i$.
       intro i hi
       obtain ⟨y_i, hy_i⟩ : ∃ y_i : ℤ, y_i * (∏ j ∈ U \ {i}, (M j : ℤ)) ≡ 1 [ZMOD (M i : ℤ)] := by
         have h_coprime : Nat.Coprime (∏ j ∈ U \ {i}, (M j)) (M i) := by
-          exact Nat.Coprime.prod_left fun j hj => hcop ( Finset.mem_sdiff.mp hj |>.1 ) hi ( by aesop );
-        have := Nat.gcd_eq_gcd_ab ( ∏ j ∈ U \ { i }, M j ) ( M i );
-        exact ⟨ Nat.gcdA ( ∏ j ∈ U \ { i }, M j ) ( M i ), Int.modEq_iff_dvd.mpr ⟨ Nat.gcdB ( ∏ j ∈ U \ { i }, M j ) ( M i ), by push_cast at *; linarith ⟩ ⟩;
-      use y_i * (∏ j ∈ U \ {i}, (M j : ℤ)) * (a i);
-      exact ⟨ by simpa using hy_i.mul_right _, fun j hj hij => Int.modEq_zero_iff_dvd.mpr <| dvd_mul_of_dvd_left ( dvd_mul_of_dvd_right ( Finset.dvd_prod_of_mem _ <| by aesop ) _ ) _ ⟩;
-    choose! x hx₁ hx₂ using h_crt;
-    use ∑ i ∈ U, x i;
-    intro i hi; simp_all +decide only [Int.ModEq];
-    rw [ Finset.sum_int_mod, Finset.sum_eq_single i ] <;> aesop;
-  refine' ⟨ A, hA, fun B hB => _ ⟩;
-  simp_all +decide [ Int.modEq_iff_dvd ];
-  convert Finset.prod_dvd_of_coprime _ _ <;> simp_all +decide [ dvd_sub_comm ];
-  · exact pairwise_coprime_intCast U M hcop;
-  · exact fun i hi => by simpa using dvd_sub ( hA i hi ) ( hB i hi ) ;
+          exact Nat.Coprime.prod_left fun j hj => hcop ( Finset.mem_sdiff.mp hj |>.1 ) hi (by aesop)
+        have := Nat.gcd_eq_gcd_ab ( ∏ j ∈ U \ { i }, M j ) ( M i )
+        exact ⟨ Nat.gcdA ( ∏ j ∈ U \ { i }, M j ) ( M i ),
+          Int.modEq_iff_dvd.mpr ⟨ Nat.gcdB ( ∏ j ∈ U \ { i }, M j ) ( M i ),
+            by push_cast at *; linarith ⟩ ⟩
+      use y_i * (∏ j ∈ U \ {i}, (M j : ℤ)) * (a i)
+      exact ⟨ by simpa using hy_i.mul_right _, fun j hj hij =>
+        Int.modEq_zero_iff_dvd.mpr <|
+          dvd_mul_of_dvd_left ( dvd_mul_of_dvd_right ( Finset.dvd_prod_of_mem _ <| by aesop) _) _⟩
+    choose! x hx₁ hx₂ using h_crt
+    use ∑ i ∈ U, x i
+    intro i hi; simp_all +decide only [Int.ModEq]
+    rw [ Finset.sum_int_mod, Finset.sum_eq_single i ] <;> aesop
+  refine' ⟨ A, hA, fun B hB => _ ⟩
+  simp_all +decide [ Int.modEq_iff_dvd ]
+  convert Finset.prod_dvd_of_coprime _ _ <;> simp_all +decide [ dvd_sub_comm ]
+  · exact pairwise_coprime_intCast U M hcop
+  · exact fun i hi => by simpa using dvd_sub ( hA i hi ) ( hB i hi )
 
 /-- **Divisibility form of CRT.** If `x` satisfies `x ≡ a i [ZMOD M i]` for all `i ∈ U` with
 pairwise coprime moduli, then `(∏ i ∈ U, ↑(M i)) ∣ (x - A)` where `A` is the CRT solution. -/
@@ -129,7 +136,7 @@ public theorem crt_finset_dvd (U : Finset α) (M : α → ℕ)
     ∃ A : ℤ, (∀ i ∈ U, A ≡ a i [ZMOD (M i)]) ∧
       (∏ i ∈ U, (M i : ℤ)) ∣ (x - A) := by
   -- Apply the Chinese Remainder Theorem to obtain the existence of such an A.
-  obtain ⟨A, hA⟩ := crt_finset U M hcop a;
+  obtain ⟨A, hA⟩ := crt_finset U M hcop a
   exact ⟨ A, hA.1, Int.modEq_iff_dvd.mp ( hA.2 x hx |> Int.ModEq.symm ) ⟩
 
 /-! ### Partition factoring -/
@@ -146,8 +153,13 @@ public theorem crt_partition {β : Type*} [DecidableEq β] (U : Finset α) (M : 
       ∀ j ∈ U.image c,
         ∃ Aj : ℤ, (∀ i ∈ U.filter (c · = j), Aj ≡ a i [ZMOD (M i)]) ∧
           x ≡ Aj [ZMOD (∏ i ∈ U.filter (c · = j), M i)] := by
-  refine' ⟨ _, _ ⟩ <;> intro h;
-  · aesop;
-  · intro i hi; specialize h ( c i ) ( Finset.mem_image_of_mem c hi ) ; obtain ⟨ Aj, hAj₁, hAj₂ ⟩ := h; have := hAj₂.of_dvd ( Finset.dvd_prod_of_mem _ ( by aesop ) : ( M i : ℤ ) ∣ ∏ i ∈ Finset.filter ( fun x => c x = c i ) U, ( M i : ℤ ) ) ; simp_all +decide [ Int.ModEq ] ;
+  refine' ⟨ _, _ ⟩ <;> intro h
+  · aesop
+  · intro i hi
+    specialize h ( c i ) ( Finset.mem_image_of_mem c hi )
+    obtain ⟨ Aj, hAj₁, hAj₂ ⟩ := h
+    have := hAj₂.of_dvd ( Finset.dvd_prod_of_mem _ ( by aesop ) :
+      ( M i : ℤ ) ∣ ∏ i ∈ Finset.filter ( fun x => c x = c i ) U, ( M i : ℤ ) )
+    simp_all +decide [ Int.ModEq ]
 
 end LatticeCounting

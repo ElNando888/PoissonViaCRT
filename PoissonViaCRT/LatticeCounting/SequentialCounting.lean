@@ -73,29 +73,44 @@ private lemma seq_bound_aux {m : ℕ} {α : Type*} [DecidableEq α]
     (k : ℕ) (hk : k ≤ m) (h_prefix : Fin m → α) :
     (X.filter (fun h => AgreeOn k h h_prefix)).card ≤
       ∏ j ∈ Finset.univ.filter (fun j : Fin m => k ≤ (j : ℕ)), B j := by
-  induction' n : m - k with d hd generalizing k h_prefix X;
-  · simp_all +decide [ Nat.sub_eq_zero_iff_le ];
-    cases le_antisymm hk n;
-    rw [ Finset.prod_eq_one ];
-    · exact Finset.card_le_one.mpr fun x hx y hy => agreeOn_m_eq ( Finset.mem_filter.mp hx |>.2 ) ▸ agreeOn_m_eq ( Finset.mem_filter.mp hy |>.2 ) ▸ rfl;
-    · grind;
+  induction' n : m - k with d hd generalizing k h_prefix X
+  · simp_all +decide [ Nat.sub_eq_zero_iff_le ]
+    cases le_antisymm hk n
+    rw [ Finset.prod_eq_one ]
+    · exact Finset.card_le_one.mpr fun x hx y hy =>
+        agreeOn_m_eq ( Finset.mem_filter.mp hx |>.2 ) ▸
+        agreeOn_m_eq ( Finset.mem_filter.mp hy |>.2 ) ▸ rfl
+    · grind
   · -- Let `k' : Fin m := ⟨k, by omega⟩`.
     obtain ⟨k', hk'⟩ : ∃ k' : Fin m, k = k'.val := by
-      exact ⟨ ⟨ k, by omega ⟩, rfl ⟩;
+      exact ⟨ ⟨ k, by omega ⟩, rfl ⟩
     -- By `card_le_card` and `card_biUnion_le`, card of filter ≤ sum over V of card of each piece.
-    have h_card_biUnion : (Finset.filter (fun h => AgreeOn k h h_prefix) X).card ≤ ∑ a ∈ Finset.image (fun h => h k') (Finset.filter (fun h => AgreeOn k h h_prefix) X), (Finset.filter (fun h => AgreeOn (k + 1) h (Function.update h_prefix k' a)) X).card := by
-      have h_card_biUnion : Finset.filter (fun h => AgreeOn k h h_prefix) X ⊆ Finset.biUnion (Finset.image (fun h => h k') (Finset.filter (fun h => AgreeOn k h h_prefix) X)) (fun a => Finset.filter (fun h => AgreeOn (k + 1) h (Function.update h_prefix k' a)) X) := by
-        simp +decide [ Finset.subset_iff, AgreeOn ];
-        grind;
-      exact le_trans ( Finset.card_le_card h_card_biUnion ) ( Finset.card_biUnion_le );
+    have h_card_biUnion :
+      (Finset.filter (fun h => AgreeOn k h h_prefix) X).card
+      ≤ ∑ a ∈ Finset.image (fun h => h k') (Finset.filter (fun h => AgreeOn k h h_prefix) X),
+        (Finset.filter (fun h => AgreeOn (k + 1) h (Function.update h_prefix k' a)) X).card := by
+      have h_card_biUnion :
+        Finset.filter (fun h => AgreeOn k h h_prefix) X ⊆ Finset.biUnion
+          (Finset.image (fun h => h k') (Finset.filter (fun h => AgreeOn k h h_prefix) X))
+          (fun a => Finset.filter (fun h =>
+            AgreeOn (k + 1) h (Function.update h_prefix k' a)) X) := by
+        simp +decide [ Finset.subset_iff, AgreeOn ]
+        grind
+      exact le_trans ( Finset.card_le_card h_card_biUnion ) ( Finset.card_biUnion_le )
     -- By IH (at `k+1`), each piece has card ≤ `∏ j ∈ univ.filter (fun j => k+1 ≤ j), B j`.
-    have h_card_piece : ∀ a ∈ Finset.image (fun h => h k') (Finset.filter (fun h => AgreeOn k h h_prefix) X), (Finset.filter (fun h => AgreeOn (k + 1) h (Function.update h_prefix k' a)) X).card ≤ ∏ j ∈ Finset.filter (fun j : Fin m => k + 1 ≤ j.val) Finset.univ, B j := by
-      intro a ha;
-      convert hd X h_bound ( k + 1 ) ( by omega ) ( Function.update h_prefix k' a ) ( by omega ) using 1;
-    refine' le_trans h_card_biUnion ( le_trans ( Finset.sum_le_sum h_card_piece ) _ );
-    simp +decide [ hk' ];
-    rw [ show ( Finset.filter ( fun x : Fin m => k' ≤ x ) Finset.univ ) = Finset.filter ( fun x : Fin m => k' < x ) Finset.univ ∪ { k' } from ?_, Finset.prod_union ] <;> norm_num;
-    · rw [ mul_comm ] ; gcongr ; aesop;
+    have h_card_piece : ∀ a ∈ Finset.image (fun h => h k')
+        (Finset.filter (fun h => AgreeOn k h h_prefix) X),
+        (Finset.filter (fun h => AgreeOn (k + 1) h (Function.update h_prefix k' a)) X).card
+        ≤ ∏ j ∈ Finset.filter (fun j : Fin m => k + 1 ≤ j.val) Finset.univ, B j := by
+      intro a ha
+      convert hd X h_bound ( k + 1 ) ( by omega ) ( Function.update h_prefix k' a ) ( by omega )
+        using 1
+    refine' le_trans h_card_biUnion ( le_trans ( Finset.sum_le_sum h_card_piece ) _ )
+    simp +decide [ hk' ]
+    rw [ show ( Finset.filter ( fun x : Fin m => k' ≤ x ) Finset.univ ) =
+              Finset.filter ( fun x : Fin m => k' < x ) Finset.univ ∪ { k' }
+              from ?_, Finset.prod_union ] <;> norm_num
+    · rw [ mul_comm ] ; gcongr ; aesop
     · grind
 
 /-
@@ -108,12 +123,14 @@ public lemma seq_bound_nat {m : ℕ} {α : Type*} [DecidableEq α]
     (h_bound : ∀ (k : Fin m) (h_prefix : Fin m → α),
         ((X.filter (fun h => AgreeOn (k : ℕ) h h_prefix)).image (fun h => h k)).card ≤ B k) :
     X.card ≤ ∏ j : Fin m, B j := by
-  nontriviality;
-  contrapose! h_bound;
-  by_contra h_contra;
-  convert seq_bound_aux X B ( fun k h_prefix => le_of_not_gt fun h => h_contra ⟨ k, h_prefix, h ⟩ ) 0 bot_le 0 using 1 ; simp +decide [ agreeOn_zero ];
-  · grind +qlia;
+  nontriviality
+  contrapose! h_bound
+  by_contra h_contra
+  convert seq_bound_aux X B ( fun k h_prefix => le_of_not_gt fun h => h_contra ⟨ k, h_prefix, h ⟩ )
+          0 bot_le 0 using 1
+  simp +decide [ agreeOn_zero ]
+  · grind +qlia
   · exact ⟨ fun _ => Classical.choice ( show Nonempty α from by
-                                          exact ⟨ Classical.choose ( Finset.card_pos.mp ( pos_of_gt h_bound ) ) ‹_› ⟩ ) ⟩
+      exact ⟨ Classical.choose ( Finset.card_pos.mp ( pos_of_gt h_bound ) ) ‹_› ⟩ ) ⟩
 
 end LatticeCounting
