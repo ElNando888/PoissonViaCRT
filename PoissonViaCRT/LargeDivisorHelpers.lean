@@ -70,11 +70,16 @@ public lemma scaled_box_card_le {k : ℕ} (hk : 2 ≤ k) (X : Box (k - 1)) (C_lp
       (fun h => inScaledBox X s (fun _ => 0) h)).card : ℝ) ≤
     (X.volume + C_lp) * s ^ (k - 1 : ℕ) := by
   -- Apply the lemma hC_lp with v = 0 and s ≥ 1.
-  have h_card : |((#({h ∈ Fintype.piFinset fun x => Icc 1 ⌈s * ∑ i, X.sides i⌉ | inScaledBox X s (fun _ => 0) h}) : ℝ) - s ^ (k - 1) * X.volume)| ≤ C_lp * s ^ ((k - 1 : ℕ) - 1 : ℤ) := by
-    exact hC_lp _ ( fun _ => ⟨ by norm_num, by norm_num ⟩ ) _ hs;
-  rcases k with ( _ | _ | k ) <;> norm_num at *;
-  norm_num [ pow_succ, abs_le ] at *;
-  nlinarith [ pow_le_pow_right₀ hs k.zero_le, show 0 ≤ X.volume from Finset.prod_nonneg fun _ _ => le_of_lt ( X.sides_pos _ ) ]
+  have h_card :
+      |((#({h ∈ Fintype.piFinset fun x =>
+        Icc 1 ⌈s * ∑ i, X.sides i⌉ | inScaledBox X s (fun _ => 0) h}) : ℝ)
+      - s ^ (k - 1) * X.volume)|
+      ≤ C_lp * s ^ ((k - 1 : ℕ) - 1 : ℤ) := by
+    exact hC_lp _ ( fun _ => ⟨ by norm_num, by norm_num ⟩ ) _ hs
+  rcases k with ( _ | _ | k ) <;> norm_num at *
+  norm_num [ pow_succ, abs_le ] at *
+  nlinarith [ pow_le_pow_right₀ hs k.zero_le,
+    show 0 ≤ X.volume from Finset.prod_nonneg fun _ _ => le_of_lt ( X.sides_pos _ ) ]
 
 /-! ## 2. Box monotonicity and bounds -/
 
@@ -85,13 +90,13 @@ is used to establish injectivity of the residue projection. -/
 lemma inScaledBox_strictMono {n : ℕ} (hn : 1 ≤ n) (X : Box n) (s : ℝ) (h : Fin n → ℤ)
     (hbox : inScaledBox X s (fun _ => 0) h) :
     StrictMono h ∧ (0 : ℤ) < h ⟨0, by omega⟩ := by
-  refine' ⟨ fun i j hij => _, _ ⟩;
-  · induction' j with j hj generalizing i;
-    induction' j with j hj generalizing i;
-    · tauto;
-    · have := hbox ⟨ j + 1, by linarith ⟩ ; norm_num at *;
-      grind;
-  · have := hbox ⟨ 0, hn ⟩ ; aesop;
+  refine' ⟨ fun i j hij => _, _ ⟩
+  · induction' j with j hj generalizing i
+    induction' j with j hj generalizing i
+    · tauto
+    · have := hbox ⟨ j + 1, by linarith ⟩ ; norm_num at *
+      grind
+  · have := hbox ⟨ 0, hn ⟩ ; aesop
 
 /-- Every coordinate of a lattice point in the scaled box
 satisfies `h i ≤ s · ∑ X.sides`. Combined with
@@ -103,15 +108,23 @@ lemma inScaledBox_le_sum_sides {n : ℕ} (hn : 1 ≤ n) (X : Box n) (s : ℝ) (h
     (h i : ℝ) ≤ s * ∑ j, X.sides j := by
   have h_le_sum : ∀ i : Fin n, (h i : ℝ) ≤ s * ∑ j ∈ Finset.Iic i, X.sides j := by
     intro i
-    induction' i with i ih;
-    induction' i with i ih;
-    · have := hbox ⟨ 0, ih ⟩ ; simp_all +decide only [sub_zero, ↓reduceIte, Int.cast_pos, ge_iff_le];
-      exact le_trans this.2 ( mul_le_mul_of_nonneg_left ( Finset.single_le_sum ( fun a _ => le_of_lt ( X.sides_pos a ) ) ( by simp ) ) hs.le );
-    · have := hbox ⟨ i + 1, ih ⟩;
-      rw [ show ( Finset.Iic ⟨ i + 1, ih ⟩ : Finset ( Fin n ) ) = Finset.Iic ⟨ i, by linarith ⟩ ∪ { ⟨ i + 1, ih ⟩ } from ?_, Finset.sum_union ] <;> norm_num at *;
-      · linarith [ ‹∀ ( ih : i < n ), ( h ⟨ i, ih ⟩ : ℝ ) ≤ s * ∑ j ∈ Iic ⟨ i, ih ⟩, X.sides j› ( Nat.lt_of_succ_lt ih ) ];
-      · grind;
-  exact le_trans ( h_le_sum i ) ( mul_le_mul_of_nonneg_left ( Finset.sum_le_sum_of_subset_of_nonneg ( Finset.subset_univ _ ) fun _ _ _ => le_of_lt ( X.sides_pos _ ) ) hs.le )
+    induction' i with i ih
+    induction' i with i ih
+    · have := hbox ⟨ 0, ih ⟩
+      simp_all +decide only [sub_zero, ↓reduceIte, Int.cast_pos, ge_iff_le]
+      exact le_trans this.2 ( mul_le_mul_of_nonneg_left ( Finset.single_le_sum ( fun a _ =>
+        le_of_lt ( X.sides_pos a ) ) ( by simp ) ) hs.le )
+    · have := hbox ⟨ i + 1, ih ⟩
+      rw [ show
+          ( Finset.Iic ⟨ i + 1, ih ⟩ : Finset ( Fin n ) )
+          = Finset.Iic ⟨ i, by linarith ⟩ ∪ { ⟨ i + 1, ih ⟩ } from ?_, Finset.sum_union ] <;>
+            norm_num at *
+      · linarith [ ‹∀ ( ih : i < n ), ( h ⟨ i, ih ⟩ : ℝ ) ≤ s * ∑ j ∈ Iic ⟨ i, ih ⟩, X.sides j›
+          ( Nat.lt_of_succ_lt ih ) ]
+      · grind
+  exact le_trans ( h_le_sum i )
+    ( mul_le_mul_of_nonneg_left ( Finset.sum_le_sum_of_subset_of_nonneg
+      ( Finset.subset_univ _ ) fun _ _ _ => le_of_lt ( X.sides_pos _ ) ) hs.le )
 
 /-! ## 3. Injectivity of Fin.cons 0 h modulo large primes -/
 
@@ -133,8 +146,9 @@ lemma fin_cons_castHom_injective {n : ℕ} (hn : 1 ≤ n) (q : ℕ) [NeZero q]
     Function.Injective (fun i : Fin (n + 1) =>
       ZMod.castHom hp_dvd (ZMod p) (g i)) := by
   intro i j hij
-  simp at hij ⊢;
-  -- Since $p$ is prime and $p > \lceil s \sum_{i} X.sides i \rceil$, the values $h_i$ are distinct modulo $p$.
+  simp at hij ⊢
+  -- Since $p$ is prime and $p > \lceil s \sum_{i} X.sides i \rceil$, the values $h_i$
+  -- are distinct modulo $p$.
   have h_distinct_mod_p : ∀ i j : Fin n, i ≠ j → ¬(h i : ZMod p) = (h j : ZMod p) := by
     have h_distinct_mod_p : ∀ i j : Fin n, i ≠ j → ¬(h i : ℤ) ≡ (h j : ℤ) [ZMOD p] := by
       intros i j hij h_eq_mod_p
@@ -143,41 +157,53 @@ lemma fin_cons_castHom_injective {n : ℕ} (hn : 1 ≤ n) (q : ℕ) [NeZero q]
           have h_eq : ∀ i : Fin n, 0 < h i ∧ h i ≤ ⌈s * ∑ i, X.sides i⌉₊ := by
             intros i
             have h_pos : 0 < h i := by
-              have := inScaledBox_strictMono hn X s h hbox; exact this.2.trans_le ( this.1.monotone ( Nat.zero_le _ ) ) ;
+              have := inScaledBox_strictMono hn X s h hbox
+              exact this.2.trans_le ( this.1.monotone ( Nat.zero_le _ ) )
             have h_le : h i ≤ ⌈s * ∑ i, X.sides i⌉₊ := by
               have h_le : (h i : ℝ) ≤ s * ∑ i, X.sides i := by
-                exact inScaledBox_le_sum_sides hn X s hs h hbox i;
+                exact inScaledBox_le_sum_sides hn X s hs h hbox i
               exact_mod_cast h_le.trans ( Nat.le_ceil _ )
-            exact ⟨h_pos, h_le⟩;
-          exact abs_sub_lt_iff.mpr ⟨ by linarith [ h_eq i, h_eq j ], by linarith [ h_eq i, h_eq j ] ⟩;
-        exact eq_of_sub_eq_zero ( by simpa [ sub_eq_iff_eq_add ] using Int.modEq_iff_dvd.mp h_eq_mod_p.symm |> fun ⟨ k, hk ⟩ => by nlinarith [ show k = 0 by nlinarith [ abs_lt.mp h_eq ] ] );
+            exact ⟨h_pos, h_le⟩
+          exact abs_sub_lt_iff.mpr ⟨ by linarith [ h_eq i, h_eq j ],
+            by linarith [ h_eq i, h_eq j ] ⟩
+        exact eq_of_sub_eq_zero ( by
+          simpa [ sub_eq_iff_eq_add ]
+            using Int.modEq_iff_dvd.mp h_eq_mod_p.symm |> fun ⟨ k, hk ⟩ => by
+              nlinarith [ show k = 0 by nlinarith [ abs_lt.mp h_eq ] ] )
       -- Since $h$ is strictly monotone, if $h i = h j$, then $i = j$, contradicting $hij$.
       have h_strict_mono : StrictMono h := by
-        exact inScaledBox_strictMono hn X s h hbox |>.1;
-      exact hij ( h_strict_mono.injective h_eq );
-    simp_all +decide [ ← ZMod.intCast_eq_intCast_iff ];
-  rcases j with ⟨ _ | j, hj ⟩ <;> rcases hij with ⟨ _ | hij, hij ⟩ <;> norm_num at *;
+        exact inScaledBox_strictMono hn X s h hbox |>.1
+      exact hij ( h_strict_mono.injective h_eq )
+    simp_all +decide [ ← ZMod.intCast_eq_intCast_iff ]
+  rcases j with ⟨ _ | j, hj ⟩ <;> rcases hij with ⟨ _ | hij, hij ⟩ <;> norm_num at *
   · have h_pos : 0 < h ⟨‹_›, by linarith⟩ := by
-      exact inScaledBox_strictMono hn X s h hbox |>.2.trans_le ( inScaledBox_strictMono hn X s h hbox |>.1.monotone ( Nat.zero_le _ ) );
+      exact inScaledBox_strictMono hn X s h hbox |>.2.trans_le
+        ( inScaledBox_strictMono hn X s h hbox |>.1.monotone ( Nat.zero_le _ ) )
     have h_lt_p : (h ⟨‹_›, by linarith⟩ : ℤ) < p := by
       have h_lt_p : (h ⟨‹_›, by linarith⟩ : ℝ) ≤ s * ∑ i, X.sides i := by
-        apply inScaledBox_le_sum_sides hn X s hs h hbox ⟨_, by linarith⟩;
-      exact_mod_cast h_lt_p.trans_lt ( Nat.lt_of_ceil_lt hp_large );
+        apply inScaledBox_le_sum_sides hn X s hs h hbox ⟨_, by linarith⟩
+      exact_mod_cast h_lt_p.trans_lt ( Nat.lt_of_ceil_lt hp_large )
     have h_cast_ne_zero : ∀ (x : ℤ), 0 < x → x < p → (x : ZMod p) ≠ 0 := by
-      intro x hx_pos hx_lt_p hx_zero; haveI := Fact.mk hp; simp_all +decide [ ZMod.intCast_zmod_eq_zero_iff_dvd ] ;
-      linarith [ Int.le_of_dvd hx_pos hx_zero ];
-    simp +zetaDelta at *;
-    erw [ Fin.cons ] ; aesop;
+      intro x hx_pos hx_lt_p hx_zero
+      haveI := Fact.mk hp
+      simp_all +decide [ ZMod.intCast_zmod_eq_zero_iff_dvd ]
+      linarith [ Int.le_of_dvd hx_pos hx_zero ]
+    simp +zetaDelta at *
+    erw [ Fin.cons ] ; aesop
   · have h_cast_ne_zero : ¬(h ⟨j, by linarith⟩ : ZMod p) = 0 := by
       have h_cast_ne_zero : 0 < h ⟨j, by linarith⟩ ∧ h ⟨j, by linarith⟩ < p := by
-        have := inScaledBox_strictMono hn X s h hbox;
-        exact ⟨ this.1.monotone ( Nat.zero_le _ ) |> lt_of_lt_of_le this.2, by have := inScaledBox_le_sum_sides hn X s hs h hbox ⟨ j, by linarith ⟩ ; exact_mod_cast this.trans_lt ( Nat.lt_of_ceil_lt hp_large ) ⟩;
-      rw [ ZMod.intCast_zmod_eq_zero_iff_dvd ] ; exact fun h => by linarith [ Int.le_of_dvd ( by linarith ) h ] ;
-    simp +decide [ i ];
-    simp +decide [ Fin.cons ] ; aesop;
+        have := inScaledBox_strictMono hn X s h hbox
+        exact ⟨ this.1.monotone ( Nat.zero_le _ ) |> lt_of_lt_of_le this.2, by
+          have := inScaledBox_le_sum_sides hn X s hs h hbox ⟨ j, by linarith ⟩
+          exact_mod_cast this.trans_lt ( Nat.lt_of_ceil_lt hp_large ) ⟩
+      rw [ ZMod.intCast_zmod_eq_zero_iff_dvd ]
+      exact fun h => by linarith [ Int.le_of_dvd ( by linarith ) h ]
+    simp +decide [ i ]
+    simp +decide [ Fin.cons ] ; aesop
   · have h_cast : ∀ (x : ℤ), (x : ZMod q).cast = (x : ZMod p) := by
-      cases q <;> cases p <;> aesop;
-    exact fun h => Classical.not_not.1 fun h' => h_distinct_mod_p ⟨ j, by linarith ⟩ ⟨ _, by linarith ⟩ ( by simpa [ Fin.ext_iff ] using h' ) <| h_cast _ ▸ h_cast _ ▸ h
+      cases q <;> cases p <;> aesop
+    exact fun h => Classical.not_not.1 fun h' => h_distinct_mod_p ⟨ j, by linarith ⟩
+      ⟨ _, by linarith ⟩ ( by simpa [ Fin.ext_iff ] using h' ) <| h_cast _ ▸ h_cast _ ▸ h
 
 /-! ## 4. Weil bound for large primes -/
 
@@ -198,9 +224,10 @@ public lemma localCount_deviation_weil (ε : ℝ) {n : ℕ} (hn : 1 ≤ n)
     |localCount Ω q (Fin.cons (0 : ZMod q) (fun i => (h i : ZMod q))) p -
       localMean (n + 1) Ω p| ≤
     (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) * localMean (n + 1) Ω p := by
-  unfold localCount localMean; simp +decide [ *, Fin.cons ] ;
-  convert hWD.1 _ _ using 1;
-  convert fin_cons_castHom_injective hn q X s hs p hp_prime ( Nat.dvd_of_mem_primeFactors hp_factor ) ( mod_cast hp_large ) h hbox using 1
+  unfold localCount localMean; simp +decide [ *, Fin.cons ]
+  convert hWD.1 _ _ using 1
+  convert fin_cons_castHom_injective hn q X s hs p hp_prime
+    ( Nat.dvd_of_mem_primeFactors hp_factor ) ( mod_cast hp_large ) h hbox using 1
 
 /-! ## 5. Per-`h` pointwise bound on the deviation product -/
 
@@ -223,19 +250,36 @@ public lemma deviation_prod_pointwise_le (ε : ℝ) {n : ℕ} (hn : 1 ≤ n)
     (∏ p ∈ T.filter (· ≤ B_max), (p : ℝ)) *
     (∏ p ∈ T.filter (B_max < ·),
       (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) * localMean (n + 1) Ω p) := by
-  -- Split the product into two parts: one over primes in T that are less than or equal to B_max, and the other over primes in T that are greater than B_max.
-  have h_split : ∏ p ∈ T, (localCount Ω q (Fin.cons 0 (fun i => (h i : ZMod q))) p - localMean (n + 1) Ω p) = (∏ p ∈ T.filter (fun p => p ≤ B_max), (localCount Ω q (Fin.cons 0 (fun i => (h i : ZMod q))) p - localMean (n + 1) Ω p)) * (∏ p ∈ T.filter (fun p => B_max < p), (localCount Ω q (Fin.cons 0 (fun i => (h i : ZMod q))) p - localMean (n + 1) Ω p)) := by
-    rw [ ← Finset.prod_union ( Finset.disjoint_filter.mpr fun _ _ _ => by linarith ) ] ; congr ; ext ; by_cases h : ‹ℕ› ≤ B_max <;> aesop;
+  -- Split the product into two parts: one over primes in T that are less than or equal to B_max,
+  -- and the other over primes in T that are greater than B_max.
+  have h_split :
+      ∏ p ∈ T, (localCount Ω q (Fin.cons 0 (fun i => (h i : ZMod q))) p - localMean (n + 1) Ω p)
+      = (∏ p ∈ T.filter (fun p => p ≤ B_max),
+        (localCount Ω q (Fin.cons 0 (fun i => (h i : ZMod q))) p - localMean (n + 1) Ω p))
+        * (∏ p ∈ T.filter (fun p => B_max < p),
+        (localCount Ω q (Fin.cons 0 (fun i => (h i : ZMod q))) p - localMean (n + 1) Ω p)) := by
+    rw [ ← Finset.prod_union ( Finset.disjoint_filter.mpr fun _ _ _ => by linarith ) ]
+    congr ; ext ; by_cases h : ‹ℕ› ≤ B_max <;> aesop
   -- Apply the bounds to each part of the product.
-  have h_bounds : ∀ p ∈ T.filter (fun p => p ≤ B_max), |localCount Ω q (Fin.cons 0 (fun i => (h i : ZMod q))) p - localMean (n + 1) Ω p| ≤ (p : ℝ) := by
+  have h_bounds : ∀ p ∈ T.filter (fun p => p ≤ B_max),
+      |localCount Ω q (Fin.cons 0 (fun i => (h i : ZMod q))) p - localMean (n + 1) Ω p|
+      ≤ (p : ℝ) := by
     intros p hp
-    apply abs_localCount_sub_localMean_le_p (by linarith) q p (hT (Finset.mem_filter.mp hp).left) Ω (Fin.cons 0 (fun i => (h i : ZMod q)));
-  have h_bounds_large : ∀ p ∈ T.filter (fun p => B_max < p), |localCount Ω q (Fin.cons 0 (fun i => (h i : ZMod q))) p - localMean (n + 1) Ω p| ≤ (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) * localMean (n + 1) Ω p := by
-    intro p hp;
-    convert localCount_deviation_weil ε hn Ω q X s hs p ( Nat.prime_of_mem_primeFactors ( hT ( Finset.mem_filter.mp hp |>.1 ) ) ) ( hT ( Finset.mem_filter.mp hp |>.1 ) ) _ _ h hbox using 1;
-    · grind;
-    · grind;
-  rw [ h_split, abs_mul, Finset.abs_prod, Finset.abs_prod ];
-  exact mul_le_mul ( Finset.prod_le_prod ( fun _ _ => abs_nonneg _ ) h_bounds ) ( Finset.prod_le_prod ( fun _ _ => abs_nonneg _ ) h_bounds_large ) ( Finset.prod_nonneg fun _ _ => abs_nonneg _ ) ( Finset.prod_nonneg fun _ _ => Nat.cast_nonneg _ )
+    apply abs_localCount_sub_localMean_le_p (by linarith) q p (hT (Finset.mem_filter.mp hp).left) Ω
+      (Fin.cons 0 (fun i => (h i : ZMod q)))
+  have h_bounds_large : ∀ p ∈ T.filter (fun p => B_max < p),
+      |localCount Ω q (Fin.cons 0 (fun i => (h i : ZMod q))) p - localMean (n + 1) Ω p|
+      ≤ (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) * localMean (n + 1) Ω p := by
+    intro p hp
+    convert localCount_deviation_weil ε hn Ω q X s hs p
+      ( Nat.prime_of_mem_primeFactors ( hT ( Finset.mem_filter.mp hp |>.1 ) ) )
+      ( hT ( Finset.mem_filter.mp hp |>.1 ) ) _ _ h hbox using 1
+    · grind
+    · grind
+  rw [ h_split, abs_mul, Finset.abs_prod, Finset.abs_prod ]
+  exact mul_le_mul ( Finset.prod_le_prod ( fun _ _ => abs_nonneg _ ) h_bounds )
+    ( Finset.prod_le_prod ( fun _ _ => abs_nonneg _ ) h_bounds_large )
+    ( Finset.prod_nonneg fun _ _ => abs_nonneg _ )
+    ( Finset.prod_nonneg fun _ _ => Nat.cast_nonneg _ )
 
 end PoissonCRT

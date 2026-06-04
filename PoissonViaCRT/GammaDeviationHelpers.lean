@@ -58,8 +58,9 @@ public lemma prod_primes_squarefree (T : Finset ℕ) (q : ℕ) [NeZero q]
   have h_distinct_primes : ∀ p ∈ T, Nat.Prime p :=
     fun p hp => Nat.prime_of_mem_primeFactors <| hT hp
   have h_prod_squarefree : ∀ {S : Finset ℕ}, (∀ p ∈ S, Nat.Prime p) → Squarefree (∏ p ∈ S, p) := by
-    intros S hS; induction S using Finset.induction <;> simp_all +decide [ Nat.squarefree_mul_iff ] ;
-    exact ⟨ Nat.Coprime.prod_right fun p hp => hS.1.coprime_iff_not_dvd.mpr fun h => ‹¬_› <| by have := Nat.prime_dvd_prime_iff_eq hS.1 ( hS.2 p hp ) ; aesop, hS.1.squarefree ⟩;
+    intros S hS; induction S using Finset.induction <;> simp_all +decide [ Nat.squarefree_mul_iff ]
+    exact ⟨ Nat.Coprime.prod_right fun p hp => hS.1.coprime_iff_not_dvd.mpr fun h => ‹¬_› <| by
+      have := Nat.prime_dvd_prime_iff_eq hS.1 ( hS.2 p hp ) ; aesop, hS.1.squarefree ⟩
   exact h_prod_squarefree h_distinct_primes
 
 /-! ## Lower bound: gammaProdOfBoxPoint ≥ 1 -/
@@ -109,10 +110,12 @@ lemma lcm_le_pow_card {ι : Type*} [DecidableEq ι]
     (S : Finset ι) (f : ι → ℕ) (H : ℕ) (hH : 0 < H)
     (hf : ∀ i ∈ S, f i ≤ H) :
     S.lcm f ≤ H ^ S.card := by
-  by_cases h : ∏ i ∈ S, f i = 0;
-  · simp_all +decide [ Finset.prod_eq_zero_iff ];
-    obtain ⟨ a, ha, ha' ⟩ := h; exact le_trans ( Finset.lcm_eq_zero_iff.mpr ⟨ a, ha, ha' ⟩ |> le_of_eq ) ( Nat.zero_le _ ) ;
-  · exact le_trans ( Nat.le_of_dvd ( Nat.pos_of_ne_zero h ) ( lcm_dvd_prod _ _ ) ) ( Finset.prod_le_pow_card _ _ _ hf )
+  by_cases h : ∏ i ∈ S, f i = 0
+  · simp_all +decide [ Finset.prod_eq_zero_iff ]
+    obtain ⟨ a, ha, ha' ⟩ := h
+    exact le_trans ( Finset.lcm_eq_zero_iff.mpr ⟨ a, ha, ha' ⟩ |> le_of_eq ) ( Nat.zero_le _ )
+  · exact le_trans ( Nat.le_of_dvd ( Nat.pos_of_ne_zero h ) ( lcm_dvd_prod _ _ ) )
+      ( Finset.prod_le_pow_card _ _ _ hf )
 
 /--
 `gammaProdOfBoxPoint T h ≤ H^((n+1)*(n+1))` when all pairwise
@@ -127,12 +130,15 @@ public lemma gammaProdOfBoxPoint_le {n : ℕ}
     (h_diff_pos : let h' : Fin (n + 1) → ℤ := Fin.cons (0 : ℤ) h
       ∀ i j : Fin (n + 1), i ≠ j → 0 < Int.natAbs (h' j - h' i)) :
     gammaProdOfBoxPoint T h ≤ H ^ ((n + 1) * (n + 1)) := by
-  refine' le_trans ( Finset.prod_le_prod' _ ) _;
-  use fun i => H ^ ( Finset.card ( Finset.Iio i ) );
-  · intro i hi; apply lcm_le_pow_card; aesop;
-    exact fun j hj => Nat.le_trans ( Nat.le_of_dvd ( h_diff_pos _ _ ( ne_of_lt ( Finset.mem_Iio.mp hj ) ) ) ( Nat.gcd_dvd_right _ _ ) ) ( h_diff_le _ _ );
-  · rw [ Finset.prod_pow_eq_pow_sum ];
-    exact pow_le_pow_right₀ hH ( le_trans ( Finset.sum_le_sum fun _ _ => show # ( Finset.Iio _ ) ≤ n + 1 from by simp +arith +decide ) ( by simp +arith +decide ) )
+  refine' le_trans ( Finset.prod_le_prod' _ ) _
+  use fun i => H ^ ( Finset.card ( Finset.Iio i ) )
+  · intro i hi; apply lcm_le_pow_card; aesop
+    exact fun j hj =>
+      Nat.le_trans ( Nat.le_of_dvd ( h_diff_pos _ _ ( ne_of_lt ( Finset.mem_Iio.mp hj ) ) )
+        ( Nat.gcd_dvd_right _ _ ) ) ( h_diff_le _ _ )
+  · rw [ Finset.prod_pow_eq_pow_sum ]
+    exact pow_le_pow_right₀ hH ( le_trans ( Finset.sum_le_sum fun _ _ =>
+      show # ( Finset.Iio _ ) ≤ n + 1 from by simp +arith +decide ) ( by simp +arith +decide ) )
 
 /-! ## Fiber cardinality helpers -/
 
@@ -149,7 +155,10 @@ public lemma fin_cons_zero_injective {n : ℕ} (hn : 1 ≤ n)
     exact lt_of_le_of_lt ( Nat.pred_le _ ) i.2))) := by
       intro i; specialize hbox i; aesop
     generalize_proofs at *
-    intro i j hij; induction' j with j hj ih ; induction' i with i hi ih' ; simp_all +decide [ Nat.add_one_le_iff ]
+    intro i j hij
+    induction' j with j hj ih
+    induction' i with i hi ih'
+    simp_all +decide [ Nat.add_one_le_iff ]
     induction hij <;> simp_all +decide
     · specialize h_diff_pos ⟨ i + 1, hj ⟩ ; aesop
     · grind
@@ -158,7 +167,8 @@ public lemma fin_cons_zero_injective {n : ℕ} (hn : 1 ≤ n)
     have := hbox ⟨0, by omega⟩
     simp at this
     exact lt_of_lt_of_le this.1 ( h_mono.monotone ( Nat.zero_le _ ) )
-  exact ⟨ fun i hi => ne_of_lt ( h_pos i ), fun i => ⟨ ne_of_gt ( h_pos i ), fun j hij => h_mono.injective.ne hij ⟩ ⟩
+  exact ⟨ fun i hi => ne_of_lt ( h_pos i ),
+    fun i => ⟨ ne_of_gt ( h_pos i ), fun j hij => h_mono.injective.ne hij ⟩ ⟩
 
 /--
 Positive differences from distinct Fin.cons 0 h entries.
@@ -169,7 +179,9 @@ public lemma fin_cons_zero_diff_pos {n : ℕ} (hn : 1 ≤ n)
     (hbox : inScaledBox X s (fun _ => 0) h) :
     let h' : Fin (n + 1) → ℤ := Fin.cons (0 : ℤ) h
     ∀ i j : Fin (n + 1), i ≠ j → 0 < Int.natAbs (h' j - h' i) := by
-  exact fun i j hij => Int.natAbs_pos.mpr ( sub_ne_zero.mpr <| by simpa [ Fin.ext_iff ] using fin_cons_zero_injective hn X s h hbox i j hij |> fun h => Ne.symm h )
+  exact fun i j hij => Int.natAbs_pos.mpr ( sub_ne_zero.mpr <| by
+    simpa [ Fin.ext_iff ] using fin_cons_zero_injective hn X s h hbox i j hij |> fun h =>
+      Ne.symm h )
 
 /-- The `GammaStructure.ofTuple` constructed from `c = ∏ T` has
     `gammaProd` equal to `gammaProdOfBoxPoint T h`. -/
@@ -198,27 +210,42 @@ lemma ofTuple_gamma_dvd_sqfreepart {k : ℕ}
     (i j : Fin k) (hij : i ≠ j) :
     (GammaStructure.ofTuple c hc h' h_dist).gamma i j ∣
       (GammaStructure.ofTuple c hc h' h_dist).sqfreepart := by
-  have h_gamma_div_gammaProd : (GammaStructure.ofTuple c hc h' h_dist).gamma i j ∣ (GammaStructure.ofTuple c hc h' h_dist).gammaProd := by
-    have h_gamma_div_gammaRow : (GammaStructure.ofTuple c hc h' h_dist).gamma i j ∣ (GammaStructure.ofTuple c hc h' h_dist).gammaRow (max i j) := by
-      cases le_total i j <;> simp_all +decide [ GammaStructure.gammaRow ];
-      · exact Finset.dvd_lcm ( Finset.mem_Iio.mpr ( lt_of_le_of_ne ‹_› hij ) );
-      · convert Finset.dvd_lcm ( Finset.mem_Iio.mpr ( show j < i from lt_of_le_of_ne ‹_› ( Ne.symm hij ) ) ) using 1;
-        congr! 1;
-        exact funext fun x => GammaStructure.symm _ _ _;
-    exact dvd_trans h_gamma_div_gammaRow ( Finset.dvd_prod_of_mem _ ( Finset.mem_univ _ ) );
-  -- Since $\gamma_{ij}$ is squarefree and divides $\gammaProd$, it must divide the radical of $\gammaProd$.
-  have h_gamma_div_radical : ∀ {d : ℕ}, Squarefree d → d ∣ (GammaStructure.ofTuple c hc h' h_dist).gammaProd → d ∣ (GammaStructure.ofTuple c hc h' h_dist).sqfreepart := by
+  have h_gamma_div_gammaProd :
+      (GammaStructure.ofTuple c hc h' h_dist).gamma i j ∣
+        (GammaStructure.ofTuple c hc h' h_dist).gammaProd := by
+    have h_gamma_div_gammaRow :
+        (GammaStructure.ofTuple c hc h' h_dist).gamma i j ∣
+          (GammaStructure.ofTuple c hc h' h_dist).gammaRow (max i j) := by
+      cases le_total i j <;> simp_all +decide [ GammaStructure.gammaRow ]
+      · exact Finset.dvd_lcm ( Finset.mem_Iio.mpr ( lt_of_le_of_ne ‹_› hij ) )
+      · convert Finset.dvd_lcm ( Finset.mem_Iio.mpr ( show j < i from
+          lt_of_le_of_ne ‹_› ( Ne.symm hij ) ) ) using 1
+        congr! 1
+        exact funext fun x => GammaStructure.symm _ _ _
+    exact dvd_trans h_gamma_div_gammaRow ( Finset.dvd_prod_of_mem _ ( Finset.mem_univ _ ) )
+  -- Since $\gamma_{ij}$ is squarefree and divides $\gammaProd$, it must divide the radical
+  -- of $\gammaProd$.
+  have h_gamma_div_radical :
+      ∀ {d : ℕ}, Squarefree d → d ∣ (GammaStructure.ofTuple c hc h' h_dist).gammaProd →
+        d ∣ (GammaStructure.ofTuple c hc h' h_dist).sqfreepart := by
     intros d hd hd_div_gammaProd
-    have h_prime_factors : ∀ p ∈ d.primeFactors, p ∈ (GammaStructure.ofTuple c hc h' h_dist).gammaProd.primeFactors := by
-      simp +zetaDelta at *;
-      exact fun p pp dp _ => ⟨ pp, dvd_trans dp hd_div_gammaProd, Nat.ne_of_gt <| Nat.pos_of_ne_zero <| by
-        exact Nat.ne_of_gt <| GammaStructure.gammaProd_pos _ ⟩;
-    have h_prime_factors : d ∣ ∏ p ∈ (GammaStructure.ofTuple c hc h' h_dist).gammaProd.primeFactors, p := by
-      rw [ ← Finset.prod_sdiff <| show d.primeFactors ⊆ ( GammaStructure.ofTuple c hc h' h_dist ).gammaProd.primeFactors from fun p hp => h_prime_factors p hp ];
-      rw [ Nat.prod_primeFactors_of_squarefree hd ];
-      exact dvd_mul_left _ _;
-    convert h_prime_factors using 1;
-  exact h_gamma_div_radical ( by exact ( GammaStructure.ofTuple c hc h' h_dist ).sqfree i j hij ) h_gamma_div_gammaProd
+    have h_prime_factors :
+        ∀ p ∈ d.primeFactors,
+          p ∈ (GammaStructure.ofTuple c hc h' h_dist).gammaProd.primeFactors := by
+      simp +zetaDelta at *
+      exact fun p pp dp _ =>
+          ⟨ pp, dvd_trans dp hd_div_gammaProd, Nat.ne_of_gt <| Nat.pos_of_ne_zero <| by
+        exact Nat.ne_of_gt <| GammaStructure.gammaProd_pos _ ⟩
+    have h_prime_factors :
+        d ∣ ∏ p ∈ (GammaStructure.ofTuple c hc h' h_dist).gammaProd.primeFactors, p := by
+      rw [ ← Finset.prod_sdiff <|
+        show d.primeFactors ⊆ ( GammaStructure.ofTuple c hc h' h_dist ).gammaProd.primeFactors from
+          fun p hp => h_prime_factors p hp ]
+      rw [ Nat.prod_primeFactors_of_squarefree hd ]
+      exact dvd_mul_left _ _
+    convert h_prime_factors using 1
+  exact h_gamma_div_radical ( by
+    exact ( GammaStructure.ofTuple c hc h' h_dist ).sqfree i j hij ) h_gamma_div_gammaProd
 
 /-- For `GammaStructure.ofTuple`, the sqfreepart divides c.
     Every prime dividing gammaProd must divide some gcd(c, d), hence c. -/

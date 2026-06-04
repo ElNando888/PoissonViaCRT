@@ -70,8 +70,8 @@ theorem countTuplesWithGamma_bound_of_gammaProd_le
     (Γ : GammaStructure (k + 1)) (γ H : ℕ) (hΓ : Γ.gammaProd = γ)
     (hγ_le : γ ≤ H) :
     (countTuplesWithGamma Γ H : ℝ) ≤ 2 ^ k * (H : ℝ) ^ k / γ := by
-  convert countTuples_bound_small_gamma Γ H _;
-  · grind;
+  convert countTuples_bound_small_gamma Γ H _
+  · grind
   · exact fun i => le_trans ( gammaRow_le_of_gammaProd_le Γ H ( by linarith ) i ) ( by linarith )
 
 /-! ### Decomposition of M_γ(H) -/
@@ -95,15 +95,18 @@ theorem countTuplesWithGammaProd_le_sum (γ H : ℕ) (_hγ : 0 < γ) (_hH : 0 < 
         Nat.gcd Γ.sqfreepart (Int.natAbs (h j - h i)) = Γ.gamma i j) :
     (countTuplesWithGammaProd k γ H : ℝ) ≤
       ∑ Γ ∈ S, (countTuplesWithGamma Γ H : ℝ) := by
-  norm_cast;
-  refine' le_trans _ ( Finset.card_biUnion_le );
-  refine' le_trans _ ( Finset.card_mono _ );
-  rotate_left;
-  exact Finset.filter ( fun h => h 0 = 0 ∧ ( ∀ i j, ¬i = j → h i ≠ h j ) ∧ ( ∀ i, 0 ≤ h i ∧ h i ≤ H ) ∧ ∃ Γ ∈ S, ∀ i j, ¬i = j → Γ.sqfreepart.gcd ( h j - h i |> Int.natAbs ) = Γ.gamma i j ) ( Fintype.piFinset fun _ => Finset.Icc 0 H );
-  · simp +contextual [ Finset.subset_iff ];
-  · rw [ ← Set.ncard_coe_finset ];
-    apply_rules [ Set.ncard_le_ncard ];
-    · intro h hh; specialize hS_cover h; aesop;
+  norm_cast
+  refine' le_trans _ ( Finset.card_biUnion_le )
+  refine' le_trans _ ( Finset.card_mono _ )
+  rotate_left
+  exact Finset.filter ( fun h => h 0 = 0 ∧ ( ∀ i j, ¬i = j → h i ≠ h j )
+      ∧ ( ∀ i, 0 ≤ h i ∧ h i ≤ H )
+      ∧ ∃ Γ ∈ S, ∀ i j, ¬i = j → Γ.sqfreepart.gcd ( h j - h i |> Int.natAbs ) = Γ.gamma i j )
+    ( Fintype.piFinset fun _ => Finset.Icc 0 H )
+  · simp +contextual [ Finset.subset_iff ]
+  · rw [ ← Set.ncard_coe_finset ]
+    apply_rules [ Set.ncard_le_ncard ]
+    · intro h hh; specialize hS_cover h; aesop
     · exact Set.toFinite _
 
 /-! ### Small-γ bound on M_γ(H) -/

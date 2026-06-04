@@ -31,7 +31,7 @@ equals the finset itself.
 -/
 lemma primeFactors_prod_primes {S : Finset ℕ} (hS : ∀ p ∈ S, Nat.Prime p) :
     (∏ p ∈ S, p).primeFactors = S := by
-  induction S using Finset.induction <;> simp_all +decide;
+  induction S using Finset.induction <;> simp_all +decide
   rw [ Nat.primeFactors_mul, hS.1.primeFactors ] <;> aesop
 
 /--
@@ -41,7 +41,7 @@ its `freqDivisor`, provided `q` is squarefree.
 lemma freqSupport_eq_primeFactors_freqDivisor (q m : ℕ) [NeZero q]
     (hq : Squarefree q) (ξ : Fin m → ZMod q) :
     freqSupport q m ξ = (freqDivisor q m ξ).primeFactors := by
-  rw [ eq_comm, freqDivisor, primeFactors_prod_primes ];
+  rw [ eq_comm, freqDivisor, primeFactors_prod_primes ]
   exact fun p hp => Nat.prime_of_mem_primeFactors <| freqSupport_subset_primeFactors q m ξ hp
 
 /--
@@ -59,14 +59,15 @@ lemma prod_one_sub_le_pow_div (k : ℕ) (hk : 2 ≤ k)
     ∏ p ∈ freqSupport q m ξ, (1 - (Ω p).card / (p : ℝ)) ≤
       (k : ℝ) ^ (freqDivisor q m ξ).primeFactors.card /
         (freqDivisor q m ξ : ℝ) := by
-  convert Finset.prod_le_prod ?_ fun p hp => hrp p ?_ using 1;
-  · simp +zetaDelta at *;
-    rw [ ← Nat.cast_prod, freqDivisor, freqSupport_eq_primeFactors_freqDivisor q m hq ξ ];
-    rw [ Nat.primeFactors_prod ] ; aesop;
-  · intro p hp;
-    refine' sub_nonneg_of_le _;
-    refine' div_le_one_of_le₀ _ ( Nat.cast_nonneg _ );
-    haveI := Fact.mk ( show Nat.Prime p from by { unfold freqSupport at hp; aesop } ) ; exact_mod_cast le_trans ( Finset.card_le_univ _ ) ( by norm_num ) ;
+  convert Finset.prod_le_prod ?_ fun p hp => hrp p ?_ using 1
+  · simp +zetaDelta at *
+    rw [ ← Nat.cast_prod, freqDivisor, freqSupport_eq_primeFactors_freqDivisor q m hq ξ ]
+    rw [ Nat.primeFactors_prod ] ; aesop
+  · intro p hp
+    refine' sub_nonneg_of_le _
+    refine' div_le_one_of_le₀ _ ( Nat.cast_nonneg _ )
+    haveI := Fact.mk ( show Nat.Prime p from by { unfold freqSupport at hp; aesop } )
+    exact_mod_cast le_trans ( Finset.card_le_univ _ ) ( by norm_num )
   · exact Nat.prime_of_mem_primeFactors ( Finset.mem_filter.mp hp |>.1 )
 
 /--
@@ -86,33 +87,48 @@ lemma dft_g_norm_tight_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
       ↑(∏ p ∈ q.primeFactors, localMean k Ω p)) ξ‖ ≤
     (k : ℝ) ^ d.primeFactors.card * (d : ℝ) ^ (-(1 + ε)) *
       ∏ p ∈ q.primeFactors, localMean k Ω p := by
-  by_cases hd : d = 0;
-  · contrapose! hξ; have := freqDivisor_dvd q ( k - 1 ) ξ; simp_all +decide;
-  · refine' le_trans ( deviation_dft_q1_q2_bound k hk ε hε q hq_sq Ω _ ξ hξ ) _;
-    · grind;
-    · refine' mul_le_mul_of_nonneg_right _ ( Finset.prod_nonneg fun p hp => localMean_nonneg _ _ _ );
-      refine' le_trans ( Finset.prod_le_prod _ fun p hp => mul_le_mul_of_nonneg_right ( hrp p _ ) ( Real.rpow_nonneg ( Nat.cast_nonneg _ ) _ ) ) _;
-      · intro p hp; exact mul_nonneg ( sub_nonneg.2 <| div_le_one_of_le₀ ( mod_cast by
-          haveI := Fact.mk ( show Nat.Prime p from by { exact Nat.prime_of_mem_primeFactors <| Finset.mem_filter.mp hp |>.1 } ) ; exact le_trans ( Finset.card_le_univ _ ) ( by simp +decide ) ; ) <| Nat.cast_nonneg _ ) <| Real.rpow_nonneg ( Nat.cast_nonneg _ ) _;
-      · exact Nat.prime_of_mem_primeFactors ( freqSupport_subset_primeFactors q ( k - 1 ) ξ hp );
-      · -- The product of � the� terms simplifies to $k^{(\text{number � of� primes})} \cdot \left(\prod_{p \in \text{freqSupport}} p\right)^ �{-�1 - \varepsilon}$.
-        have h_prod_simplified : ∏ p ∈ freqSupport q (k - 1) ξ, (k : ℝ) / p * p ^ (-ε) = (k : ℝ) ^ (freqSupport q (k - 1) ξ).card * (∏ p ∈ freqSupport q (k - 1) ξ, p : ℝ) ^ (-(1 + ε)) := by
-          rw [ Finset.prod_mul_distrib, Finset.prod_div_distrib, Finset.prod_const, Finset.card_eq_sum_ones ];
-          rw [ Real.finset_prod_rpow _ _ fun x hx => Nat.cast_nonneg _ ];
-          rw [ div_mul_eq_mul_div, div_eq_iff ];
-          · rw [ mul_assoc, ← Real.rpow_add_one ( Finset.prod_ne_zero_iff.mpr fun p hp => Nat.cast_ne_zero.mpr <| Nat.ne_of_gt <| Nat.pos_of_mem_primeFactors <| freqSupport_subset_primeFactors _ _ _ hp ) ] ; ring_nf;
-          · exact Finset.prod_ne_zero_iff.mpr fun p hp => Nat.cast_ne_zero.mpr <| Nat.ne_of_gt <| Nat.pos_of_mem_primeFactors <| Finset.mem_filter.mp hp |>.1;
-        rw [ h_prod_simplified, ← ‹freqDivisor q ( k - 1 ) ξ = d›, freqSupport_eq_primeFactors_freqDivisor q ( k - 1 ) hq_sq ξ ];
-        rw [ ← Nat.cast_prod, Nat.prod_primeFactors_of_squarefree ];
+  by_cases hd : d = 0
+  · contrapose! hξ; have := freqDivisor_dvd q ( k - 1 ) ξ; simp_all +decide
+  · refine' le_trans ( deviation_dft_q1_q2_bound k hk ε hε q hq_sq Ω _ ξ hξ ) _
+    · grind
+    · refine' mul_le_mul_of_nonneg_right _ ( Finset.prod_nonneg fun p hp => localMean_nonneg _ _ _ )
+      refine' le_trans ( Finset.prod_le_prod _ fun p hp =>
+          mul_le_mul_of_nonneg_right ( hrp p _ ) ( Real.rpow_nonneg ( Nat.cast_nonneg _ ) _ ) ) _
+      · intro p hp
+        exact mul_nonneg ( sub_nonneg.2 <| div_le_one_of_le₀ ( mod_cast by
+          haveI :=
+            Fact.mk ( show Nat.Prime p from by
+              { exact Nat.prime_of_mem_primeFactors <| Finset.mem_filter.mp hp |>.1 } )
+          exact le_trans ( Finset.card_le_univ _ ) ( by simp +decide ) ; ) <| Nat.cast_nonneg _ ) <|
+            Real.rpow_nonneg ( Nat.cast_nonneg _ ) _
+      · exact Nat.prime_of_mem_primeFactors ( freqSupport_subset_primeFactors q ( k - 1 ) ξ hp )
+      · -- The product of � the� terms simplifies to $k^{(\text{number � of� primes})} \cdot
+        -- \left(\prod_{p \in \text{freqSupport}} p\right)^ �{-�1 - \varepsilon}$.
+        have h_prod_simplified :
+            ∏ p ∈ freqSupport q (k - 1) ξ, (k : ℝ) / p * p ^ (-ε)
+            = (k : ℝ) ^ (freqSupport q (k - 1) ξ).card
+              * (∏ p ∈ freqSupport q (k - 1) ξ, p : ℝ) ^ (-(1 + ε)) := by
+          rw [ Finset.prod_mul_distrib, Finset.prod_div_distrib, Finset.prod_const,
+            Finset.card_eq_sum_ones ]
+          rw [ Real.finset_prod_rpow _ _ fun x hx => Nat.cast_nonneg _ ]
+          rw [ div_mul_eq_mul_div, div_eq_iff ]
+          · rw [ mul_assoc, ← Real.rpow_add_one ( Finset.prod_ne_zero_iff.mpr fun p hp =>
+              Nat.cast_ne_zero.mpr <| Nat.ne_of_gt <| Nat.pos_of_mem_primeFactors <|
+              freqSupport_subset_primeFactors _ _ _ hp ) ] ; ring_nf
+          · exact Finset.prod_ne_zero_iff.mpr fun p hp => Nat.cast_ne_zero.mpr <| Nat.ne_of_gt <|
+              Nat.pos_of_mem_primeFactors <| Finset.mem_filter.mp hp |>.1
+        rw [ h_prod_simplified, ← ‹freqDivisor q ( k - 1 ) ξ = d›,
+          freqSupport_eq_primeFactors_freqDivisor q ( k - 1 ) hq_sq ξ ]
+        rw [ ← Nat.cast_prod, Nat.prod_primeFactors_of_squarefree ]
         exact hq_sq.squarefree_of_dvd ( freqDivisor_dvd q ( k - 1 ) ξ )
 
 
 
 /-- **Analytic Lossy Divisor Sum Bound**
 This lemma bounds the lossy divisor sum by `C s^{-ε/2}`.
-Since `k^{ω(d)} d^{-ε} \log d \le d(q)^2 \log q \le q^{o(1)}`, and `hsp` forces `s \ge q^{\lambda - ε}`,
-the sum decays as `s^{-1} q^{o(1)} \le s^{-1} s^{o(1)} \le s^{-ε/2}` (for `ε < 1`).
-Formalizing this analytic decay requires the classical sub-polynomial growth bound
+Since `k^{ω(d)} d^{-ε} \log d \le d(q)^2 \log q \le q^{o(1)}`, and `hsp` forces
+`s \ge q^{\lambda - ε}`, the sum decays as `s^{-1} q^{o(1)} \le s^{-1} s^{o(1)} \le s^{-ε/2}`
+(for `ε < 1`). Formalizing this analytic decay requires the classical sub-polynomial growth bound
 for the divisor function `d(n) \le C_δ n^δ` for all `δ > 0`.
 While elementary, this precise upper bound for the divisor function is currently absent
 from both Mathlib and `PrimeNumberTheoremAnd` (which only possess the crude `d(n) \le n` bound).
