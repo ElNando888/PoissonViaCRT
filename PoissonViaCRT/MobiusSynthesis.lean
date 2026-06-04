@@ -76,8 +76,8 @@ counting function. -/
 lemma tupleCount_eq_prod_localCount {k : ℕ} (q : ℕ) [NeZero q] (hq : Squarefree q)
     (Ω : ∀ p : ℕ, Finset (ZMod p)) (h : Fin k → ZMod q) :
     (tupleCount (crtSubset q Ω) h : ℝ) = ∏ p ∈ q.primeFactors, localCount Ω q h p := by
-  rw [ counting_function_multiplicative, Nat.cast_prod ];
-  · refine' Finset.prod_bij ( fun p hp => p.val ) _ _ _ _ <;> simp +decide [ localCount ];
+  rw [ counting_function_multiplicative, Nat.cast_prod ]
+  · refine' Finset.prod_bij ( fun p hp => p.val ) _ _ _ _ <;> simp +decide [ localCount ]
   · assumption
 
 -- `globalMean_eq_prod_localMean` is now in `SmallDivisorHelpers.lean`.
@@ -119,10 +119,11 @@ lemma deviation_zero_of_card_eq_q {k : ℕ} (hk : 2 ≤ k) (q : ℕ) [NeZero q]
         (fun h => inScaledBox X s (fun _ => 0) h)),
       ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
         (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| * s = 0 := by
-  simp_all;
-  rw [ Finset.sum_congr rfl fun x hx => by rw [ show tupleCount ( crtSubset q Ω ) ( Fin.cons 0 fun i => ( x i : ZMod q ) ) = q from by
-                                                  convert tupleCount_univ ( Fin.cons 0 fun i => ( x i : ZMod q ) );
-                                                  exact Finset.eq_of_subset_of_card_le ( Finset.subset_univ _ ) ( by aesop ) ] ];
+  simp_all
+  rw [ Finset.sum_congr rfl fun x hx =>
+    by rw [ show tupleCount ( crtSubset q Ω ) ( Fin.cons 0 fun i => ( x i : ZMod q ) ) = q from by
+      convert tupleCount_univ ( Fin.cons 0 fun i => ( x i : ZMod q ) )
+      exact Finset.eq_of_subset_of_card_le ( Finset.subset_univ _ ) ( by aesop ) ] ]
   cases k <;> simp_all +decide [ pow_succ, mul_div_cancel_left₀, NeZero.ne ]
 
 /-! ### Helpers for deviation_final_synthesis -/
@@ -137,12 +138,12 @@ lemma spacing_forces_eps_le_lambda (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 �
     (hsp : ∀ (p : ℕ), p.Prime →
       (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε)) :
     ε ≤ lambdaExponent k := by
-  have := hsp 2 Nat.prime_two;
-  contrapose! this;
+  have := hsp 2 Nat.prime_two
+  contrapose! this
   refine lt_of_lt_of_le ( Real.rpow_lt_rpow_of_exponent_lt ( by norm_num ) ( sub_neg.mpr this ) ) ?_
   norm_num
-  rw [ one_le_div ] <;> norm_cast;
-  · exact le_trans ( Finset.card_le_univ _ ) ( by norm_num );
+  rw [ one_le_div ] <;> norm_cast
+  · exact le_trans ( Finset.card_le_univ _ ) ( by norm_num )
   · exact Finset.card_pos.mpr ( hΩ 2 Nat.prime_two )
 
 /-- When `ε = λ_k`, all local subsets are full, so the deviation is zero. -/
@@ -153,8 +154,8 @@ lemma all_full_of_eps_eq_lambda (ε : ℝ) (k : ℕ) (hk : 2 ≤ k)
       (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
     (heq : ε = lambdaExponent k) :
     ∀ (p : ℕ), p.Prime → (Ω p).card = p := by
-  intro p pp; specialize hsp p pp; simp_all +decide [ div_le_iff₀ ] ;
-  haveI := Fact.mk pp; exact le_antisymm ( le_trans ( Finset.card_le_univ _ ) ( by norm_num ) ) hsp;
+  intro p pp; specialize hsp p pp; simp_all +decide [ div_le_iff₀ ]
+  haveI := Fact.mk pp; exact le_antisymm ( le_trans ( Finset.card_le_univ _ ) ( by norm_num ) ) hsp
 
 /--
 When all local subsets are full (`Ω_p = ZMod p` for all primes `p`), the CRT subset
@@ -164,14 +165,14 @@ lemma crtSubset_full_of_all_full (q : ℕ) [NeZero q]
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hall : ∀ (p : ℕ), p.Prime → (Ω p).card = p) :
     (crtSubset q Ω).card = q := by
-  nontriviality;
-  convert Finset.card_univ;
-  all_goals try infer_instance;
-  · ext x;
-    simp +decide [ crtSubset ];
+  nontriviality
+  convert Finset.card_univ
+  all_goals try infer_instance
+  · ext x
+    simp +decide [ crtSubset ]
     intro p pp dp _; specialize hall p pp; haveI := Fact.mk pp
     rw [ Finset.eq_of_subset_of_card_le ( Finset.subset_univ ( Ω p ) ) ] ; simp_all only [mem_univ]
-    simp +decide [ hall, ZMod.card ];
+    simp +decide [ hall, ZMod.card ]
   · cases q <;> aesop
 
 /-! ### Large-divisor bounds
@@ -305,29 +306,63 @@ lemma deviation_expression_fixed_delta (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk :
   obtain ⟨K₁, hK₁_pos, hK₁⟩ :=
     deviation_small_divisors ε hε k hk Ω hΩ hWD hsp hrp hε_lt X C_lp hC_lp_pos hC_lp
   obtain ⟨K₂, hK₂_pos, hK₂⟩ :=
-    deviation_large_divisors ε hε k hk Ω hΩ hWD hsp hrp hε_lt X C_lp hC_lp_pos hC_lp;
-  refine' ⟨ K₁ + K₂, add_pos hK₁_pos hK₂_pos, fun q _ hq ↦ _ ⟩;
+    deviation_large_divisors ε hε k hk Ω hΩ hWD hsp hrp hε_lt X C_lp hC_lp_pos hC_lp
+  refine' ⟨ K₁ + K₂, add_pos hK₁_pos hK₂_pos, fun q _ hq ↦ _ ⟩
   -- Apply the triangle inequality to the sum, using divisor sums directly.
-  have h_triangle : |(1 / (crtSubset q Ω).card : ℝ) * ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈(q : ℝ) / (crtSubset q Ω).card * ∑ i, X.sides i⌉).filter (fun h => inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) (fun _ => 0) h)), ((tupleCount (crtSubset q Ω) (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) - ∏ p ∈ q.primeFactors, localMean k Ω p)| ≤ ∑ d ∈ q.divisors.filter (1 < ·), |∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈(q : ℝ) / (crtSubset q Ω).card * ∑ i, X.sides i⌉).filter (fun h => inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) (fun _ => 0) h)), (1 / (crtSubset q Ω).card : ℝ) * ((∏ p ∈ d.primeFactors, (localCount Ω q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p - localMean k Ω p)) * ∏ p ∈ q.primeFactors \ d.primeFactors, localMean k Ω p)| := by
-    have h_triangle : |∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈(q : ℝ) / (crtSubset q Ω).card * ∑ i, X.sides i⌉).filter (fun h => inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) (fun _ => 0) h)), ((tupleCount (crtSubset q Ω) (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) - ∏ p ∈ q.primeFactors, localMean k Ω p)| ≤ ∑ d ∈ q.divisors.filter (1 < ·), |∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈(q : ℝ) / (crtSubset q Ω).card * ∑ i, X.sides i⌉).filter (fun h => inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) (fun _ => 0) h)), ((∏ p ∈ d.primeFactors, (localCount Ω q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p - localMean k Ω p)) * ∏ p ∈ q.primeFactors \ d.primeFactors, localMean k Ω p)| := by
-      have h_triangle : ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈(q : ℝ) / (crtSubset q Ω).card * ∑ i, X.sides i⌉).filter (fun h => inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) (fun _ => 0) h)), ((tupleCount (crtSubset q Ω) (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) - ∏ p ∈ q.primeFactors, localMean k Ω p) = ∑ d ∈ q.divisors.filter (1 < ·), ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈(q : ℝ) / (crtSubset q Ω).card * ∑ i, X.sides i⌉).filter (fun h => inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) (fun _ => 0) h)), ((∏ p ∈ d.primeFactors, (localCount Ω q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p - localMean k Ω p)) * ∏ p ∈ q.primeFactors \ d.primeFactors, localMean k Ω p) := by
-        rw [ ← Finset.sum_comm ];
-        refine' Finset.sum_congr rfl fun x hx => _;
-        convert deviation_product_difference q hq Ω ( Fin.cons 0 fun i => ( x i : ZMod q ) ) using 1;
-        · grind;
-        · grind;
-      exact h_triangle.symm ▸ Finset.abs_sum_le_sum_abs _ _;
+  have h_triangle :
+      |(1 / (crtSubset q Ω).card : ℝ) * ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+        Finset.Icc (1 : ℤ) ⌈(q : ℝ) / (crtSubset q Ω).card * ∑ i, X.sides i⌉).filter (fun h =>
+          inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) (fun _ => 0) h)),
+            ((tupleCount (crtSubset q Ω) (Fin.cons (0 : ZMod q) fun i =>
+              (h i : ZMod q)) : ℝ) - ∏ p ∈ q.primeFactors, localMean k Ω p)|
+      ≤ ∑ d ∈ q.divisors.filter (1 < ·), |∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+        Finset.Icc (1 : ℤ) ⌈(q : ℝ) / (crtSubset q Ω).card * ∑ i, X.sides i⌉).filter (fun h =>
+          inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) (fun _ => 0) h)),
+            (1 / (crtSubset q Ω).card : ℝ)
+            * ((∏ p ∈ d.primeFactors, (localCount Ω q (Fin.cons (0 : ZMod q) fun i =>
+              (h i : ZMod q)) p - localMean k Ω p)) * ∏ p ∈ q.primeFactors \ d.primeFactors,
+                localMean k Ω p)| := by
+    have h_triangle :
+        |∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+          Finset.Icc (1 : ℤ) ⌈(q : ℝ) / (crtSubset q Ω).card * ∑ i, X.sides i⌉).filter (fun h =>
+            inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) (fun _ => 0) h)),
+              ((tupleCount (crtSubset q Ω) (Fin.cons (0 : ZMod q) fun i =>
+                (h i : ZMod q)) : ℝ) - ∏ p ∈ q.primeFactors, localMean k Ω p)|
+        ≤ ∑ d ∈ q.divisors.filter (1 < ·), |∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+          Finset.Icc (1 : ℤ) ⌈(q : ℝ) / (crtSubset q Ω).card * ∑ i, X.sides i⌉).filter (fun h =>
+            inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) (fun _ => 0) h)),
+              ((∏ p ∈ d.primeFactors, (localCount Ω q (Fin.cons (0 : ZMod q) fun i =>
+                (h i : ZMod q)) p - localMean k Ω p)) * ∏ p ∈ q.primeFactors \ d.primeFactors,
+                  localMean k Ω p)| := by
+      have h_triangle :
+          ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+            Finset.Icc (1 : ℤ) ⌈(q : ℝ) / (crtSubset q Ω).card * ∑ i, X.sides i⌉).filter (fun h =>
+              inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) (fun _ => 0) h)),
+                ((tupleCount (crtSubset q Ω) (Fin.cons (0 : ZMod q) fun i =>
+                  (h i : ZMod q)) : ℝ) - ∏ p ∈ q.primeFactors, localMean k Ω p)
+                = ∑ d ∈ q.divisors.filter (1 < ·), ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+                  Finset.Icc (1 : ℤ) ⌈(q : ℝ) / (crtSubset q Ω).card * ∑ i, X.sides i⌉).filter
+                    (fun h => inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) (fun _ => 0) h)),
+                      ((∏ p ∈ d.primeFactors, (localCount Ω q (Fin.cons (0 : ZMod q) fun i =>
+                        (h i : ZMod q)) p - localMean k Ω p))
+                        * ∏ p ∈ q.primeFactors \ d.primeFactors, localMean k Ω p) := by
+        rw [ ← Finset.sum_comm ]
+        refine' Finset.sum_congr rfl fun x hx => _
+        convert deviation_product_difference q hq Ω ( Fin.cons 0 fun i => ( x i : ZMod q ) ) using 1
+        · grind
+        · grind
+      exact h_triangle.symm ▸ Finset.abs_sum_le_sum_abs _ _
     convert mul_le_mul_of_nonneg_left h_triangle ( show ( 0 : ℝ ) ≤ 1 / ( # ( crtSubset q Ω ) : ℝ )
-      by positivity ) using 1;
-    · rw [ abs_mul, abs_of_nonneg ( by positivity ) ];
+      by positivity ) using 1
+    · rw [ abs_mul, abs_of_nonneg ( by positivity ) ]
     · simp +decide only [← Finset.mul_sum _ _ _, abs_mul,
-          abs_of_nonneg (by positivity : (0 : ℝ) ≤ 1 / (#(crtSubset q Ω)))];
-  convert h_triangle.trans _ using 1;
-  · rw [ globalMean_eq_prod_localMean k q hq Ω ];
+          abs_of_nonneg (by positivity : (0 : ℝ) ≤ 1 / (#(crtSubset q Ω)))]
+  convert h_triangle.trans _ using 1
+  · rw [ globalMean_eq_prod_localMean k q hq Ω ]
   · -- Split the d-sum by (d : ℝ) ≤ s via sum_filter_add_sum_filter_not,
     -- matching deviation_small_divisors (≤ s) and deviation_large_divisors (> s).
-    convert add_le_add ( hK₁ q hq ) ( hK₂ q hq ) using 1;
-    · rw [ Finset.sum_filter_add_sum_filter_not ];
+    convert add_le_add ( hK₁ q hq ) ( hK₂ q hq ) using 1
+    · rw [ Finset.sum_filter_add_sum_filter_not ]
     · ring
 
 /-- **Core per-`q` deviation bound with uniform exponent.** -/

@@ -153,32 +153,46 @@ local subset and find a global element mapping to them.
 private lemma crtSubset_card_pos (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty) (q : ℕ) [NeZero q] :
     0 < (crtSubset q Ω).card := by
-  by_contra! h_contra;
-  -- By the Chinese Remainder Theorem, there exists an integer $x$ such that $x \equiv a_p \pmod{p}$ for each prime $p$ dividing $q$.
+  by_contra! h_contra
+  -- By the Chinese Remainder Theorem, there exists an integer $x$ such that
+  -- $x \equiv a_p \pmod{p}$ for each prime $p$ dividing $q$.
   obtain ⟨x, hx⟩ : ∃ x : ℕ, ∀ p ∈ Nat.primeFactors q, (x : ZMod p) ∈ Ω p := by
-    -- By the Chinese Remainder Theorem, there exists an integer $x$ such that $x \equiv a_p \pmod{p}$ for each prime $p$ dividing $q$. Use this fact.
-    have h_crt : ∀ {ps : Finset ℕ}, (∀ p ∈ ps, Nat.Prime p) → (∀ p ∈ ps, (Ω p).Nonempty) → ∃ x : ℕ, ∀ p ∈ ps, (x : ZMod p) ∈ Ω p := by
+    -- By the Chinese Remainder Theorem, there exists an integer $x$ such that
+    -- $x \equiv a_p \pmod{p}$ for each prime $p$ dividing $q$. Use this fact.
+    have h_crt : ∀ {ps : Finset ℕ}, (∀ p ∈ ps, Nat.Prime p) → (∀ p ∈ ps, (Ω p).Nonempty) →
+        ∃ x : ℕ, ∀ p ∈ ps, (x : ZMod p) ∈ Ω p := by
       intros ps hps hΩps
-      have h_crt : ∀ p ∈ ps, ∃ x_p : ℕ, (x_p : ZMod p) ∈ Ω p ∧ ∀ q ∈ ps, q ≠ p → x_p ≡ 0 [MOD q] := by
+      have h_crt :
+          ∀ p ∈ ps, ∃ x_p : ℕ, (x_p : ZMod p) ∈ Ω p ∧ ∀ q ∈ ps, q ≠ p → x_p ≡ 0 [MOD q] := by
         intro p hp
         obtain ⟨a_p, ha_p⟩ : ∃ a_p : ℕ, (a_p : ZMod p) ∈ Ω p := by
-          haveI := Fact.mk ( hps p hp ) ; exact Exists.elim ( hΩps p hp ) fun x hx => ⟨ x.val, by simpa using hx ⟩ ;
+          haveI := Fact.mk ( hps p hp )
+          exact Exists.elim ( hΩps p hp ) fun x hx => ⟨ x.val, by simpa using hx ⟩
         obtain ⟨x_p, hx_p⟩ : ∃ x_p : ℕ, x_p ≡ a_p [MOD p] ∧ ∀ q ∈ ps, q ≠ p → x_p ≡ 0 [MOD q] := by
-          -- By the Chinese Remainder Theorem, there exists an integer $x_p$ such that $x_p \equiv a_p \pmod{p}$ and $x_p \equiv 0 \pmod{q}$ for all $q \in ps$ with $q \neq p$.
-          obtain ⟨x_p, hx_p⟩ : ∃ x_p : ℕ, x_p ≡ a_p [MOD p] ∧ x_p ≡ 0 [MOD (∏ q ∈ ps.erase p, q)] := by
+          -- By the Chinese Remainder Theorem, there exists an integer $x_p$ such that
+          -- $x_p \equiv a_p \pmod{p}$ and $x_p \equiv 0 \pmod{q}$ for all $q \in ps$ with
+          -- $q \neq p$.
+          obtain ⟨x_p, hx_p⟩ : ∃ x_p : ℕ, x_p ≡ a_p [MOD p]
+              ∧ x_p ≡ 0 [MOD (∏ q ∈ ps.erase p, q)] := by
             have h_crt : Nat.gcd p (∏ q ∈ ps.erase p, q) = 1 := by
-              exact Nat.Coprime.prod_right fun q hq => by have := Nat.coprime_primes ( hps p hp ) ( hps q ( Finset.mem_of_mem_erase hq ) ) ; aesop;
-            have := Nat.chineseRemainder h_crt;
-            exact ⟨ _, this a_p 0 |>.2 ⟩;
-          exact ⟨ x_p, hx_p.1, fun q hq hqp => hx_p.2.of_dvd <| Finset.dvd_prod_of_mem _ <| by aesop ⟩
-        use x_p;
-        simp_all +decide [ ← ZMod.natCast_eq_natCast_iff ];
-      choose! x hx₁ hx₂ using h_crt;
-      use ∑ p ∈ ps, x p; intro p hp; simp_all +decide [ ← ZMod.natCast_eq_natCast_iff ] ;
-      rw [ Finset.sum_eq_single p ] <;> aesop;
-    exact h_crt ( fun p hp => Nat.prime_of_mem_primeFactors hp ) ( fun p hp => hΩ p ( Nat.prime_of_mem_primeFactors hp ) );
-  simp_all +decide [ Finset.ext_iff, crtSubset ];
-  obtain ⟨ p, hp₁, hp₂, hp₃, hp₄ ⟩ := h_contra x; specialize hx p hp₁ hp₂ hp₃; aesop;
+              exact Nat.Coprime.prod_right fun q hq => by
+                have := Nat.coprime_primes ( hps p hp ) ( hps q ( Finset.mem_of_mem_erase hq ) )
+                aesop
+            have := Nat.chineseRemainder h_crt
+            exact ⟨ _, this a_p 0 |>.2 ⟩
+          exact ⟨ x_p, hx_p.1, fun q hq hqp =>
+            hx_p.2.of_dvd <| Finset.dvd_prod_of_mem _ <| by aesop ⟩
+        use x_p
+        simp_all +decide [ ← ZMod.natCast_eq_natCast_iff ]
+      choose! x hx₁ hx₂ using h_crt
+      use ∑ p ∈ ps, x p; intro p hp; simp_all +decide [ ← ZMod.natCast_eq_natCast_iff ]
+      rw [ Finset.sum_eq_single p ] <;> aesop
+    exact h_crt ( fun p hp => Nat.prime_of_mem_primeFactors hp )
+      ( fun p hp => hΩ p ( Nat.prime_of_mem_primeFactors hp ) )
+  simp_all +decide [ Finset.ext_iff, crtSubset ]
+  obtain ⟨ p, hp₁, hp₂, hp₃, hp₄ ⟩ := h_contra x
+  specialize hx p hp₁ hp₂ hp₃
+  aesop
 
 /--
 The spacing `s_q = q / |Ω_q|` is at least 1, which follows from the fact that
@@ -187,17 +201,17 @@ The spacing `s_q = q / |Ω_q|` is at least 1, which follows from the fact that
 private lemma spacing_ge_one (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty) (q : ℕ) [NeZero q] :
     1 ≤ (q : ℝ) / (crtSubset q Ω).card := by
-  rw [ one_le_div ] <;> norm_cast;
-  · exact le_trans ( Finset.card_le_univ _ ) ( by norm_num );
+  rw [ one_le_div ] <;> norm_cast
+  · exact le_trans ( Finset.card_le_univ _ ) ( by norm_num )
   · exact crtSubset_card_pos Ω hΩ q
 
 
 /-! ### Intermediate lemmas for Proposition 3.6 -/
 
 /--
-**Lattice point box bound**: Count of lattice points in a scaled box `sX` deviates from `s^m · vol(X)`
-by at most `C_X · s^{m-1}`. This is a standard lattice point result obtained using the telescoping
-product bound on the product of floors.
+**Lattice point box bound**: Count of lattice points in a scaled box `sX` deviates from
+`s^m · vol(X)` by at most `C_X · s^{m-1}`. This is a standard lattice point result obtained using
+the telescoping product bound on the product of floors.
 -/
 lemma lattice_point_box_bound (m : ℕ) (X : Box m) :
     ∃ C : ℝ, 0 < C ∧ ∀ (v : Fin m → ℝ), (∀ i, 0 ≤ v i ∧ v i ≤ 1) → ∀ (s : ℝ), 1 ≤ s →
@@ -257,20 +271,25 @@ lemma euler_product_convergence
       ∀ (d : ℕ), d ∣ q → 1 < d →
         |∏ p ∈ d.primeFactors,
           ((1 : ℝ) - (Ω p).card / p) * (p : ℝ) ^ (-ε)| ≤ C := by
-  refine' ⟨ 1, zero_lt_one, fun q hq d hd hd' => _ ⟩;
-  rw [ Finset.abs_prod ];
-  refine Finset.prod_le_one ?_ ?_ <;> norm_num;
-  · exact fun _ _ _ _ => by positivity;
-  · intro p pp dp _; rw [ abs_of_nonneg ( Real.rpow_nonneg ( Nat.cast_nonneg _ ) _ ) ] ; rw [ abs_of_nonneg ] <;> norm_num;
-    · exact le_trans ( mul_le_of_le_one_left ( by positivity ) ( sub_le_self _ ( by positivity ) ) ) ( by simpa using Real.rpow_le_rpow_of_exponent_le ( mod_cast pp.one_lt.le ) ( neg_nonpos.mpr hε.le ) );
-    · rw [ div_le_iff₀ ] <;> norm_cast <;> haveI := Fact.mk pp <;> simp_all;
-      · haveI := Fact.mk pp; exact le_trans ( Finset.card_le_univ _ ) ( by norm_num ) ;
+  refine' ⟨ 1, zero_lt_one, fun q hq d hd hd' => _ ⟩
+  rw [ Finset.abs_prod ]
+  refine Finset.prod_le_one ?_ ?_ <;> norm_num
+  · exact fun _ _ _ _ => by positivity
+  · intro p pp dp _
+    rw [ abs_of_nonneg ( Real.rpow_nonneg ( Nat.cast_nonneg _ ) _ ) ]
+    rw [ abs_of_nonneg ] <;> norm_num
+    · exact le_trans
+        ( mul_le_of_le_one_left ( by positivity ) ( sub_le_self _ ( by positivity ) ) )
+        ( by simpa using Real.rpow_le_rpow_of_exponent_le
+              ( mod_cast pp.one_lt.le ) ( neg_nonpos.mpr hε.le ) )
+    · rw [ div_le_iff₀ ] <;> norm_cast <;> haveI := Fact.mk pp <;> simp_all
+      · haveI := Fact.mk pp; exact le_trans ( Finset.card_le_univ _ ) ( by norm_num )
       · exact pp.pos
 
 /--
 **Complete period cancellation application**: For a divisor `d > 1` of `q`,
 the sum of the error product over lattice points `h` in the scaled box `sX` is
-bounded using complete period cancellation. 
+bounded using complete period cancellation.
 
 Combining the lattice point box bound and the deviation bound, the overall error
 in the `k`-level correlation is bounded by `C / s_q^δ` for some `δ > 0`.
@@ -283,8 +302,8 @@ lemma complete_period_cancellation_apply
     (hsp : ∀ (p : ℕ), p.Prime →
       (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
     (hrp : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ))
-    (h_lp : ∀ (X : Box (k - 1)), ∃ C : ℝ, 0 < C ∧ ∀ (v : Fin (k - 1) → ℝ), (∀ i, 0 ≤ v i ∧ v i ≤ 1) →
-      ∀ (s : ℝ), 1 ≤ s →
+    (h_lp : ∀ (X : Box (k - 1)), ∃ C : ℝ, 0 < C
+      ∧ ∀ (v : Fin (k - 1) → ℝ), (∀ i, 0 ≤ v i ∧ v i ≤ 1) → ∀ (s : ℝ), 1 ≤ s →
       |(((Fintype.piFinset fun _ : Fin (k - 1) =>
           Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
         (fun h => inScaledBox X s v h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
@@ -308,33 +327,43 @@ lemma complete_period_cancellation_apply
     have h_card_pos : 0 < (Ω_q.card : ℝ) := Nat.cast_pos.mpr (crtSubset_card_pos Ω hΩ q)
     have hq_pos : 0 < (q : ℝ) := Nat.cast_pos.mpr (NeZero.pos q)
 
-    have h_main_term : |(Ω_q.card : ℝ) ^ (k - 1) / (q : ℝ) ^ (k - 1) * (S.card : ℝ) - X.volume| ≤ C_lp * s ^ (-1 : ℝ) := by
+    have h_main_term :
+        |(Ω_q.card : ℝ) ^ (k - 1) / (q : ℝ) ^ (k - 1) * (S.card : ℝ) - X.volume|
+        ≤ C_lp * s ^ (-1 : ℝ) := by
       have h_lp_spec := hC_lp_bound (fun _ => 0) (fun _ => ⟨by rfl, by norm_num⟩) s hs_ge
       have h_s_pow : (Ω_q.card : ℝ) ^ (k - 1) / (q : ℝ) ^ (k - 1) = s ^ (-((k : ℝ) - 1)) := by
         rw [← div_pow]
         have : ((Ω_q.card : ℝ) / (q : ℝ)) = s⁻¹ := (inv_div (q : ℝ) (Ω_q.card : ℝ)).symm
-        rw [this, inv_pow, ← Real.rpow_natCast, ← Real.rpow_neg (le_of_lt (div_pos hq_pos h_card_pos))]
+        rw [this, inv_pow, ← Real.rpow_natCast,
+          ← Real.rpow_neg (le_of_lt (div_pos hq_pos h_card_pos))]
         have h_sub : ((k - 1 : ℕ) : ℝ) = (k : ℝ) - (1 : ℕ) := Nat.cast_sub (show 1 ≤ k by linarith)
         rw [h_sub, Nat.cast_one]
       rw [h_s_pow]
       have h_mul := mul_le_mul_of_nonneg_left h_lp_spec (by positivity : 0 ≤ s ^ (-((k : ℝ) - 1)))
-      have h_abs : s ^ (-((k : ℝ) - 1)) * |(S.card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| = |s ^ (-((k : ℝ) - 1)) * (S.card : ℝ) - s ^ (-((k : ℝ) - 1)) * (s ^ (k - 1 : ℕ) * X.volume)| := by
+      have h_abs :
+          s ^ (-((k : ℝ) - 1)) * |(S.card : ℝ) - s ^ (k - 1 : ℕ) * X.volume|
+          = |s ^ (-((k : ℝ) - 1)) * (S.card : ℝ)
+             - s ^ (-((k : ℝ) - 1)) * (s ^ (k - 1 : ℕ) * X.volume)| := by
         calc s ^ (-((k : ℝ) - 1)) * |(S.card : ℝ) - s ^ (k - 1 : ℕ) * X.volume|
           _ = |s ^ (-((k : ℝ) - 1))| * |(S.card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| := by
             congr 1
             exact Eq.symm (abs_of_nonneg (by positivity))
-          _ = |s ^ (-((k : ℝ) - 1)) * ((S.card : ℝ) - s ^ (k - 1 : ℕ) * X.volume)| := by rw [← abs_mul]
-          _ = |s ^ (-((k : ℝ) - 1)) * (S.card : ℝ) - s ^ (-((k : ℝ) - 1)) * (s ^ (k - 1 : ℕ) * X.volume)| := by rw [mul_sub]
+          _ = |s ^ (-((k : ℝ) - 1)) * ((S.card : ℝ) - s ^ (k - 1 : ℕ) * X.volume)| := by
+            rw [← abs_mul]
+          _ = |s ^ (-((k : ℝ) - 1)) * (S.card : ℝ)
+               - s ^ (-((k : ℝ) - 1)) * (s ^ (k - 1 : ℕ) * X.volume)| := by rw [mul_sub]
       rw [h_abs] at h_mul
       have h_cancel : s ^ (-((k : ℝ) - 1)) * (s ^ (k - 1 : ℕ) * X.volume) = X.volume := by
         rw [← mul_assoc, ← Real.rpow_natCast, ← Real.rpow_add (div_pos hq_pos h_card_pos)]
         have : -((k : ℝ) - 1) + ((k - 1 : ℕ) : ℝ) = 0 := by
-          have h_sub : ((k - 1 : ℕ) : ℝ) = (k : ℝ) - (1 : ℕ) := Nat.cast_sub (show 1 ≤ k by linarith)
+          have h_sub : ((k - 1 : ℕ) : ℝ) = (k : ℝ) - (1 : ℕ) :=
+            Nat.cast_sub (show 1 ≤ k by linarith)
           rw [h_sub, Nat.cast_one]
           ring
         rw [this, Real.rpow_zero, one_mul]
       rw [h_cancel] at h_mul
-      have h_rhs : s ^ (-((k : ℝ) - 1)) * (C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1)) = C_lp * s ^ (-1 : ℝ) := by
+      have h_rhs :
+          s ^ (-((k : ℝ) - 1)) * (C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1)) = C_lp * s ^ (-1 : ℝ) := by
         rw [← mul_assoc, mul_comm (s ^ _), mul_assoc]
         congr 1
         have h_zpow : s ^ (((k - 1 : ℕ) : ℤ) - 1) = s ^ ((((k - 1 : ℕ) : ℤ) - 1 : ℤ) : ℝ) := by
@@ -343,36 +372,59 @@ lemma complete_period_cancellation_apply
         rw [← Real.rpow_add (div_pos hq_pos h_card_pos)]
         congr 1
         have hk_cast : ((k - 1 : ℕ) : ℝ) = (k : ℝ) - 1 := by
-          have h_sub : ((k - 1 : ℕ) : ℝ) = (k : ℝ) - (1 : ℕ) := Nat.cast_sub (show 1 ≤ k by linarith)
+          have h_sub : ((k - 1 : ℕ) : ℝ) = (k : ℝ) - (1 : ℕ) :=
+            Nat.cast_sub (show 1 ≤ k by linarith)
           rw [h_sub, Nat.cast_one]
-        have hk_cast2 : ((((k - 1 : ℕ) : ℤ) - 1 : ℤ) : ℝ) = ((k - 1 : ℕ) : ℝ) - 1 := by push_cast; rfl
+        have hk_cast2 : ((((k - 1 : ℕ) : ℤ) - 1 : ℤ) : ℝ) = ((k - 1 : ℕ) : ℝ) - 1 := by
+          push_cast; rfl
         rw [hk_cast2, hk_cast]
         ring
       rw [h_rhs] at h_mul
       exact h_mul
 
-    have h_deviation_term : |(crtSubset q Ω).card ^ (k - 1) / (q : ℝ) ^ (k - 1) * ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈((q : ℝ) / (crtSubset q Ω).card) * ∑ i, X.sides i⌉).filter (fun h => inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) (fun _ => (0 : ℝ)) h)).card - kCorrelation (crtSubset q Ω) X| ≤ K * ((q : ℝ) / (crtSubset q Ω).card) ^ (-δ₀ : ℝ) := by
-      convert hK_bound q hq_sq using 1;
-      unfold kCorrelation; norm_num [ Finset.sum_sub_distrib, mul_sub ] ;
-      rw [ abs_sub_comm ] ; ring_nf;
-      cases k <;> simp +decide [ pow_succ, mul_assoc ] at *;
-      by_cases h : ( # ( crtSubset q Ω ) : ℝ ) = 0 <;> simp +decide [ h ] at *;
-      · exact Or.inl ( by linarith );
-      · convert rfl;
-        exact Eq.symm <| Int.toNat_of_nonneg <| Int.ceil_nonneg <| mul_nonneg ( inv_nonneg.2 <| Nat.cast_nonneg _ ) <| mul_nonneg ( Nat.cast_nonneg _ ) <| Finset.sum_nonneg fun _ _ => le_of_lt <| X.sides_pos _;
+    have h_deviation_term :
+        |(crtSubset q Ω).card ^ (k - 1) / (q : ℝ) ^ (k - 1)
+          * ((Fintype.piFinset fun _ : Fin (k - 1) =>
+            Finset.Icc (1 : ℤ) ⌈((q : ℝ) / (crtSubset q Ω).card) * ∑ i, X.sides i⌉).filter
+              (fun h => inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) (fun _ => (0 : ℝ)) h)).card
+          - kCorrelation (crtSubset q Ω) X|
+        ≤ K * ((q : ℝ) / (crtSubset q Ω).card) ^ (-δ₀ : ℝ) := by
+      convert hK_bound q hq_sq using 1
+      unfold kCorrelation; norm_num [ Finset.sum_sub_distrib, mul_sub ]
+      rw [ abs_sub_comm ] ; ring_nf
+      cases k <;> simp +decide [ pow_succ, mul_assoc ] at *
+      by_cases h : ( # ( crtSubset q Ω ) : ℝ ) = 0 <;> simp +decide [ h ] at *
+      · exact Or.inl ( by linarith )
+      · convert rfl
+        exact Eq.symm <| Int.toNat_of_nonneg <| Int.ceil_nonneg <|
+          mul_nonneg ( inv_nonneg.2 <| Nat.cast_nonneg _ ) <|
+          mul_nonneg ( Nat.cast_nonneg _ ) <| Finset.sum_nonneg fun _ _ =>
+            le_of_lt <| X.sides_pos _
 
-    have h_triangle : |kCorrelation Ω_q X - X.volume| ≤ |(Ω_q.card : ℝ) ^ (k - 1) / (q : ℝ) ^ (k - 1) * (S.card : ℝ) - X.volume| + |(Ω_q.card : ℝ) ^ (k - 1) / (q : ℝ) ^ (k - 1) * (S.card : ℝ) - kCorrelation Ω_q X| := by
-      have h := abs_sub_le (kCorrelation Ω_q X) ((Ω_q.card : ℝ) ^ (k - 1) / (q : ℝ) ^ (k - 1) * (S.card : ℝ)) X.volume
-      have h_comm : |kCorrelation Ω_q X - (Ω_q.card : ℝ) ^ (k - 1) / (q : ℝ) ^ (k - 1) * (S.card : ℝ)| = |(Ω_q.card : ℝ) ^ (k - 1) / (q : ℝ) ^ (k - 1) * (S.card : ℝ) - kCorrelation Ω_q X| := abs_sub_comm _ _
+    have h_triangle :
+        |kCorrelation Ω_q X - X.volume|
+        ≤ |(Ω_q.card : ℝ) ^ (k - 1) / (q : ℝ) ^ (k - 1) * (S.card : ℝ) - X.volume|
+          + |(Ω_q.card : ℝ) ^ (k - 1) / (q : ℝ) ^ (k - 1) * (S.card : ℝ) - kCorrelation Ω_q X| := by
+      have h :=
+        abs_sub_le (kCorrelation Ω_q X)
+          ((Ω_q.card : ℝ) ^ (k - 1) / (q : ℝ) ^ (k - 1) * (S.card : ℝ)) X.volume
+      have h_comm :
+        |kCorrelation Ω_q X - (Ω_q.card : ℝ) ^ (k - 1) / (q : ℝ) ^ (k - 1) * (S.card : ℝ)|
+        = |(Ω_q.card : ℝ) ^ (k - 1) / (q : ℝ) ^ (k - 1) * (S.card : ℝ) - kCorrelation Ω_q X| :=
+          abs_sub_comm _ _
       rw [h_comm] at h
       rw [add_comm] at h
       exact h
 
     have h_final : (C_lp : ℝ) * s ^ (-1 : ℝ) + K * s ^ (-δ₀) ≤ (C_lp + K) * s ^ (-min δ₀ 1) := by
-      have h1 : s ^ (-1 : ℝ) ≤ s ^ (-(min δ₀ 1 : ℝ)) := Real.rpow_le_rpow_of_exponent_le hs_ge (by linarith [min_le_right δ₀ 1])
-      have h2 : s ^ (-δ₀) ≤ s ^ (-(min δ₀ 1 : ℝ)) := Real.rpow_le_rpow_of_exponent_le hs_ge (by linarith [min_le_left δ₀ 1])
+      have h1 : s ^ (-1 : ℝ) ≤ s ^ (-(min δ₀ 1 : ℝ)) :=
+        Real.rpow_le_rpow_of_exponent_le hs_ge (by linarith [min_le_right δ₀ 1])
+      have h2 : s ^ (-δ₀) ≤ s ^ (-(min δ₀ 1 : ℝ)) :=
+        Real.rpow_le_rpow_of_exponent_le hs_ge (by linarith [min_le_left δ₀ 1])
       calc C_lp * s ^ (-1 : ℝ) + K * s ^ (-δ₀)
-        _ ≤ C_lp * s ^ (-(min δ₀ 1 : ℝ)) + K * s ^ (-(min δ₀ 1 : ℝ)) := add_le_add (mul_le_mul_of_nonneg_left h1 hC_lp_pos.le) (mul_le_mul_of_nonneg_left h2 hK_pos.le)
+        _ ≤ C_lp * s ^ (-(min δ₀ 1 : ℝ)) + K * s ^ (-(min δ₀ 1 : ℝ)) :=
+          add_le_add (mul_le_mul_of_nonneg_left h1 hC_lp_pos.le)
+            (mul_le_mul_of_nonneg_left h2 hK_pos.le)
         _ = (C_lp + K) * s ^ (-(min δ₀ 1 : ℝ)) := by ring
 
     exact le_trans (le_trans h_triangle (add_le_add h_main_term h_deviation_term)) h_final
@@ -455,12 +507,16 @@ public theorem mainTheorem_precise
           C * ((q : ℝ) / (crtSubset q Ω).card) ^ (-δ) := by
   intro k hk2 hk_le X
   have h_lam : lambdaExponent K ≤ lambdaExponent k := by
-    unfold lambdaExponent; split_ifs ;
-    any_goals linarith;
-    any_goals rw [ div_le_div_iff₀ ] <;> nlinarith [ Real.sqrt_nonneg 17, Real.sq_sqrt ( show 0 ≤ 17 by norm_num ), show ( k : ℝ ) ≥ 2 by norm_cast, show ( K : ℝ ) ≥ k by norm_cast ];
-    · omega;
-    · omega;
-    · rw [ div_le_div_iff₀ ] <;> nlinarith [ Real.sqrt_nonneg 17, Real.sq_sqrt ( show 0 ≤ 17 by norm_num ), show ( K : ℝ ) ≥ 4 by norm_cast; omega ];
+    unfold lambdaExponent; split_ifs
+    any_goals linarith
+    any_goals rw [ div_le_div_iff₀ ] <;>
+      nlinarith [ Real.sqrt_nonneg 17, Real.sq_sqrt ( show 0 ≤ 17 by norm_num ),
+        show ( k : ℝ ) ≥ 2 by norm_cast, show ( K : ℝ ) ≥ k by norm_cast ]
+    · omega
+    · omega
+    · rw [ div_le_div_iff₀ ] <;>
+        nlinarith [ Real.sqrt_nonneg 17, Real.sq_sqrt ( show 0 ≤ 17 by norm_num ),
+          show ( K : ℝ ) ≥ 4 by norm_cast; omega ]
     · rw [ div_le_div_iff₀ ] <;> linarith [ show ( K : ℝ ) ≥ 4 by norm_cast; omega ]
   have hsp_k : ∀ (p : ℕ), p.Prime → (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε) := by
     intro p hp

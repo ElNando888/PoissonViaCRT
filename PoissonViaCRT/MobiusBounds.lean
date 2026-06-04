@@ -66,11 +66,11 @@ theorem divisor_sum_convergent_k_ge_3 {k : ℕ} (hk : 3 ≤ k) {ε : ℝ} (hε :
     (q : ℕ) (_hq : 0 < q) :
     ∑ d ∈ q.divisors.filter Squarefree, ((d : ℝ) ^ ((k : ℝ) - 2 + ε))⁻¹ ≤
       ∑' n : ℕ, ((n : ℝ) ^ ((k : ℝ) - 2 + ε))⁻¹ := by
-  refine' le_trans _ ( Summable.sum_le_tsum _ _ _ );
-  rotate_left;
-  exact q.divisors.filter fun d => Squarefree d;
-  · exact fun _ _ => by positivity;
-  · exact Real.summable_nat_rpow_inv.2 ( by linarith [ show ( k : ℝ ) ≥ 3 by norm_cast ] );
+  refine' le_trans _ ( Summable.sum_le_tsum _ _ _ )
+  rotate_left
+  exact q.divisors.filter fun d => Squarefree d
+  · exact fun _ _ => by positivity
+  · exact Real.summable_nat_rpow_inv.2 ( by linarith [ show ( k : ℝ ) ≥ 3 by norm_cast ] )
   · rfl
 
 /-! ## 2. Critical Exponent Divisor Bound for `k = 2`
@@ -95,7 +95,8 @@ convergent p-series.
 -/
 public theorem critical_exponent_divisor_bound (α : ℝ) (hα : 1 < α) (q : ℕ) (_hq : 0 < q) :
     ∑ d ∈ q.divisors, ((d : ℝ) ^ α)⁻¹ ≤ ∑' n : ℕ, ((n : ℝ) ^ α)⁻¹ := by
-  exact Summable.sum_le_tsum _ ( fun _ _ => by positivity ) ( by simpa using Real.summable_nat_rpow_inv.mpr hα )
+  exact Summable.sum_le_tsum _ ( fun _ _ => by positivity )
+    ( by simpa using Real.summable_nat_rpow_inv.mpr hα )
 
 /-! ## 3. Total Variation Bound
 

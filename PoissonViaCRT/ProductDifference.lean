@@ -49,7 +49,8 @@ public theorem prod_sub_prod_expansion {ι : Type*} {R : Type*} [CommRing R] [De
     (a b : ι → R) (S : Finset ι) :
     ∏ i ∈ S, a i - ∏ i ∈ S, b i =
       ∑ T ∈ S.powerset.filter (· ≠ ∅), (∏ i ∈ T, (a i - b i)) * ∏ i ∈ S \ T, b i := by
-  have h_prod_add : ∏ i ∈ S, a i = ∑ T ∈ S.powerset, (∏ i ∈ T, (a i - b i)) * (∏ i ∈ S \ T, b i) := by
-    convert Finset.prod_add _ _ _ using 2;
-    ring;
+  have h_prod_add :
+      ∏ i ∈ S, a i = ∑ T ∈ S.powerset, (∏ i ∈ T, (a i - b i)) * (∏ i ∈ S \ T, b i) := by
+    convert Finset.prod_add _ _ _ using 2
+    ring
   simp +decide [h_prod_add, Finset.filter_ne']

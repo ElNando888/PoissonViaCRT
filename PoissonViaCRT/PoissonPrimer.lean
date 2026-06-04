@@ -77,19 +77,23 @@ This equals `∏_{i=0}^{k-1} (r-i)/(q-i)`, proved by induction on `k`. -/
 theorem condExpectation_indicator (q k r : ℕ) (hk : k ≤ q) (hr : k ≤ r) (hrq : r ≤ q) :
     (Nat.choose (q - k) (r - k) : ℚ) / Nat.choose q r =
       ∏ i ∈ Finset.range k, ((r - i : ℚ) / (q - i)) := by
-  by_cases hqr : r = q;
-  · simp_all +decide [Finset.prod_eq_zero_iff, sub_eq_zero];
-  · induction' k with k ih generalizing r q <;> simp_all +decide [ Finset.prod_range_succ ];
-    · exact ne_of_gt <| Nat.choose_pos hrq;
-    · rw [ mul_div_mul_comm, ← ih ];
-      · rw [ div_mul_div_comm, div_eq_div_iff ] <;> norm_cast;
-        · rw [ Int.subNatNat_of_le hk.le, Int.subNatNat_of_le hr.le ];
-          rw [ show q - k = ( q - ( k + 1 ) ) + 1 by omega, show r - k = ( r - ( k + 1 ) ) + 1 by omega ] ; norm_cast ; simp +decide [ Nat.add_one_mul_choose_eq, mul_assoc, mul_comm ] ;
-        · exact Nat.ne_of_gt <| Nat.choose_pos hrq;
-        · exact mul_ne_zero ( Nat.cast_ne_zero.mpr ( Nat.ne_of_gt ( Nat.choose_pos hrq ) ) ) ( by rw [ Int.subNatNat_eq_coe ] ; linarith );
-      · grind;
-      · lia;
-      · linarith;
+  by_cases hqr : r = q
+  · simp_all +decide [Finset.prod_eq_zero_iff, sub_eq_zero]
+  · induction' k with k ih generalizing r q <;> simp_all +decide [ Finset.prod_range_succ ]
+    · exact ne_of_gt <| Nat.choose_pos hrq
+    · rw [ mul_div_mul_comm, ← ih ]
+      · rw [ div_mul_div_comm, div_eq_div_iff ] <;> norm_cast
+        · rw [ Int.subNatNat_of_le hk.le, Int.subNatNat_of_le hr.le ]
+          rw [ show q - k = ( q - ( k + 1 ) ) + 1 by omega,
+            show r - k = ( r - ( k + 1 ) ) + 1 by omega ]
+          norm_cast
+          simp +decide [ Nat.add_one_mul_choose_eq, mul_assoc, mul_comm ]
+        · exact Nat.ne_of_gt <| Nat.choose_pos hrq
+        · exact mul_ne_zero ( Nat.cast_ne_zero.mpr ( Nat.ne_of_gt ( Nat.choose_pos hrq ) ) ) ( by
+            rw [ Int.subNatNat_eq_coe ] ; linarith )
+      · grind
+      · lia
+      · linarith
       · assumption
 
 /-! ### Properties of the average spacing and density -/

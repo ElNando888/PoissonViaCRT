@@ -29,7 +29,8 @@ lattice points in a shifted scaled box `s · X + v` differs from the unshifted c
 ## Main results
 
 * `gapMap_injective` — the gap map `h ↦ (hᵢ − hᵢ₋₁)` is injective.
-* `inScaledBox_iff_gap` — the `inScaledBox` predicate is equivalent to per-coordinate gap conditions.
+* `inScaledBox_iff_gap` — the `inScaledBox` predicate is equivalent to per-coordinate gap
+  conditions.
 * `boundary_coord_card_le` — for each coordinate `j`, at most `2 · N^{m−1}` tuples differ between
   shifted and unshifted boxes.
 * `inScaledBox_symmDiff_card_le` — the full symmetric-difference bound `|S_v △ S_0| ≤ D · s^{m−1}`.

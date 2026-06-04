@@ -69,11 +69,11 @@ In the divisors antidiagonal of a positive integer `n`, the only pair `(a, b)` w
 -/
 lemma divisorsAntidiagonal_filter_snd_le_one {n : ℕ} (hn : 0 < n) :
     n.divisorsAntidiagonal.filter (fun x => ¬(1 < x.2)) = {(n, 1)} := by
-  ext;
-  norm_num +zetaDelta at *;
-  constructor;
-  · rintro ⟨ ⟨ h₁, h₂ ⟩, h₃ ⟩;
-    cases h₃.eq_or_lt <;> aesop;
+  ext
+  norm_num +zetaDelta at *
+  constructor
+  · rintro ⟨ ⟨ h₁, h₂ ⟩, h₃ ⟩
+    cases h₃.eq_or_lt <;> aesop
   · aesop
 
 /--
@@ -91,8 +91,14 @@ theorem crt_counting_mobius_decomp {n : ℕ} (hn : 0 < n) (f : ℕ → ℝ) :
     (↑(ArithmeticFunction.moebius n) : ℝ) * f 1 +
       ∑ x ∈ n.divisorsAntidiagonal.filter (fun x => 1 < x.2),
         (↑(ArithmeticFunction.moebius x.1) : ℝ) * f x.2 := by
-  have h_split : ∑ x ∈ n.divisorsAntidiagonal, (ArithmeticFunction.moebius x.1) * f x.2 = ∑ x ∈ n.divisorsAntidiagonal.filter (fun x => ¬(1 < x.2)), (ArithmeticFunction.moebius x.1) * f x.2 + ∑ x ∈ n.divisorsAntidiagonal.filter (fun x => 1 < x.2), (ArithmeticFunction.moebius x.1) * f x.2 := by
-    rw [ Finset.sum_filter, Finset.sum_filter ] ; rw [ ← Finset.sum_add_distrib ] ; congr ; ext ; split_ifs <;> aesop;
+  have h_split :
+      ∑ x ∈ n.divisorsAntidiagonal, (ArithmeticFunction.moebius x.1) * f x.2
+      = ∑ x ∈ n.divisorsAntidiagonal.filter (fun x => ¬(1 < x.2)), (ArithmeticFunction.moebius x.1)
+        * f x.2
+        + ∑ x ∈ n.divisorsAntidiagonal.filter (fun x => 1 < x.2), (ArithmeticFunction.moebius x.1)
+        * f x.2 := by
+    rw [ Finset.sum_filter, Finset.sum_filter ]
+    rw [ ← Finset.sum_add_distrib ] ; congr ; ext ; split_ifs <;> aesop
   rw [ h_split, divisorsAntidiagonal_filter_snd_le_one hn ] ; norm_num
 
 /-! ## 2. Divisor Contribution Bound
@@ -126,9 +132,11 @@ public theorem d_contribution_bound {ι : Type*} [Fintype ι] (f w : ι → ℝ)
     |∑ x, w x * f x| ≤ (∑ x, |w x - c|) * M := by
   -- By linearity of summation, we have:
   have h_sum_eq : ∑ x, w x * f x = ∑ x, (w x - c) * f x := by
-    simp +decide [ sub_mul, Finset.sum_sub_distrib ];
-    simp +decide [ ← Finset.mul_sum _ _ _, hf_sum ];
-  exact h_sum_eq.symm ▸ le_trans ( Finset.abs_sum_le_sum_abs _ _ ) ( by simpa only [ Finset.sum_mul _ _ _ ] using Finset.sum_le_sum fun i _ => by rw [ abs_mul ] ; exact mul_le_mul_of_nonneg_left ( hM i ) ( abs_nonneg _ ) )
+    simp +decide [ sub_mul, Finset.sum_sub_distrib ]
+    simp +decide [ ← Finset.mul_sum _ _ _, hf_sum ]
+  exact h_sum_eq.symm ▸ le_trans ( Finset.abs_sum_le_sum_abs _ _ )
+    ( by simpa only [ Finset.sum_mul _ _ _ ] using Finset.sum_le_sum fun i _ =>
+        by rw [ abs_mul ] ; exact mul_le_mul_of_nonneg_left ( hM i ) ( abs_nonneg _ ) )
 
 /-! ## 3. Divisor Sum Convergence
 

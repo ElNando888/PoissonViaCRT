@@ -61,33 +61,33 @@ public lemma count_inScaledBox_eq_prod_floor (m : ℕ)
         {d : Fin m → ℤ |
           ∀ i, 1 ≤ d i ∧ d i ≤ ⌊s * X.sides i⌋₊} := by
     ext h
-    simp [inScaledBox];
-    constructor;
+    simp [inScaledBox]
+    constructor
     · intro hh
       use fun i => h i -
         (if i.val = 0 then 0
          else h (Fin.mk (i.val - 1) (by
-          exact lt_of_le_of_lt (Nat.pred_le _) i.2)));
+          exact lt_of_le_of_lt (Nat.pred_le _) i.2)))
       refine' ⟨_, _⟩
-      all_goals generalize_proofs at *;
-      · intro i; specialize hh i;
-        split_ifs at hh ⊢ <;> norm_num at hh ⊢;
+      all_goals generalize_proofs at *
+      · intro i; specialize hh i
+        split_ifs at hh ⊢ <;> norm_num at hh ⊢
         · exact ⟨by norm_num [*]; linarith,
             by norm_num [*]
                exact Int.le_of_lt_add_one <| by
                  rw [← @Int.cast_lt ℝ]; push_cast
                  linarith [Nat.lt_floor_add_one
-                   (s * X.sides i)]⟩;
+                   (s * X.sides i)]⟩
         · exact ⟨by split_ifs; linarith,
             by split_ifs
                exact Int.le_of_lt_add_one <| by
                  rw [← @Int.cast_lt ℝ]; push_cast
                  linarith [Nat.lt_floor_add_one
-                   (s * X.sides i)]⟩;
-      · ext i; induction' i with i ih;
-        simp [Finset.sum_filter];
+                   (s * X.sides i)]⟩
+      · ext i; induction' i with i ih
+        simp [Finset.sum_filter]
         induction' i with i ih <;>
-          simp [Finset.sum_ite] at *;
+          simp [Finset.sum_ite] at *
         · rw [show (Finset.filter
               (fun x : Fin m => x ≤ ⟨0, ih⟩)
               Finset.univ : Finset (Fin m)) =
@@ -97,8 +97,8 @@ public lemma count_inScaledBox_eq_prod_floor (m : ℕ)
                 ⟨Finset.mem_univ _, le_rfl⟩,
                fun x hx => le_antisymm
                 (Finset.mem_filter.mp hx |>.2)
-                (Nat.zero_le _)⟩];
-          aesop;
+                (Nat.zero_le _)⟩]
+          aesop
         · rw [show (Finset.filter
               (fun x : Fin m =>
                 x ≤ ⟨i + 1, by linarith⟩)
@@ -110,29 +110,29 @@ public lemma count_inScaledBox_eq_prod_floor (m : ℕ)
             {⟨i + 1, by linarith⟩} from ?_,
             Finset.sum_union] <;>
           norm_num [Finset.sum_singleton,
-            Finset.sum_union, Finset.sum_filter];
-          · simp_all [Finset.sum_ite];
-            linarith [ih (Nat.lt_of_succ_lt ‹_›)];
-          · grind;
-    · rintro ⟨x, hx, rfl⟩ i;
+            Finset.sum_union, Finset.sum_filter]
+          · simp_all [Finset.sum_ite]
+            linarith [ih (Nat.lt_of_succ_lt ‹_›)]
+          · grind
+    · rintro ⟨x, hx, rfl⟩ i
       rcases i with ⟨_ | i, hi⟩ <;>
-        simp_all [Finset.sum_filter];
+        simp_all [Finset.sum_filter]
       · rcases m with (_ | _ | m) <;>
-          norm_num [Fin.sum_univ_succ] at *;
-        · contradiction;
+          norm_num [Fin.sum_univ_succ] at *
+        · contradiction
         · exact ⟨hx 0 |>.1,
             le_trans (mod_cast hx 0 |>.2)
               (Nat.floor_le (mul_nonneg
                 (by positivity)
-                (le_of_lt (X.sides_pos 0))))⟩;
+                (le_of_lt (X.sides_pos 0))))⟩
         · exact ⟨hx 0 |>.1,
             le_trans (mod_cast hx 0 |>.2)
               (Nat.floor_le (mul_nonneg
                 (by positivity)
-                (le_of_lt (X.sides_pos 0))))⟩;
+                (le_of_lt (X.sides_pos 0))))⟩
       · constructor <;>
           rw [← Finset.sum_filter,
-            ← Finset.sum_filter];
+            ← Finset.sum_filter]
         · rw [show (Finset.filter
               (fun a => a ≤ ⟨i + 1, hi⟩)
               Finset.univ : Finset (Fin m)) =
@@ -142,10 +142,10 @@ public lemma count_inScaledBox_eq_prod_floor (m : ℕ)
             {⟨i + 1, hi⟩} from ?_,
             Finset.sum_union] <;>
           norm_num [Finset.sum_singleton,
-            Finset.sum_union];
-          linarith [hx ⟨i + 1, hi⟩];
-          ext ⟨a, ha⟩;
-          simp [le_iff_lt_or_eq]; aesop;
+            Finset.sum_union]
+          linarith [hx ⟨i + 1, hi⟩]
+          ext ⟨a, ha⟩
+          simp [le_iff_lt_or_eq]; aesop
         · rw [show (Finset.filter
               (fun a => a ≤ ⟨i + 1, hi⟩)
               Finset.univ : Finset (Fin m)) =
@@ -154,16 +154,16 @@ public lemma count_inScaledBox_eq_prod_floor (m : ℕ)
               Finset.univ ∪
             {⟨i + 1, hi⟩} from ?_,
             Finset.sum_union] <;>
-          norm_num [Finset.sum_singleton, hx];
+          norm_num [Finset.sum_singleton, hx]
           · linarith [show (x ⟨i + 1, hi⟩ : ℝ) ≤
                 s * X.sides ⟨i + 1, hi⟩ by
               exact le_trans
                 (mod_cast hx _ |>.2)
                 (Nat.floor_le (mul_nonneg
                   (by positivity)
-                  (le_of_lt (X.sides_pos _))))];
-          · ext ⟨a, ha⟩;
-            simp [le_iff_lt_or_eq]; aesop;
+                  (le_of_lt (X.sides_pos _))))]
+          · ext ⟨a, ha⟩
+            simp [le_iff_lt_or_eq]; aesop
   have h_card :
       Finset.card (Finset.filter
         (fun h : Fin m → ℤ =>
@@ -178,32 +178,32 @@ public lemma count_inScaledBox_eq_prod_floor (m : ℕ)
         (Finset.Icc (fun _ => 1)
           (fun i => ⌊s * X.sides i⌋₊))) := by
     refine' congr_arg Finset.card
-      (Finset.ext fun x => _);
-    simp_all [Set.ext_iff];
-    constructor;
+      (Finset.ext fun x => _)
+    simp_all [Set.ext_iff]
+    constructor
     · exact fun h =>
         ⟨_, ⟨fun i => h.2.choose_spec.1 i |>.1,
              fun i => h.2.choose_spec.1 i |>.2⟩,
-         h.2.choose_spec.2⟩;
-    · rintro ⟨a, ⟨ha₁, ha₂⟩, rfl⟩;
-      refine' ⟨_, a, _, rfl⟩;
+         h.2.choose_spec.2⟩
+    · rintro ⟨a, ⟨ha₁, ha₂⟩, rfl⟩
+      refine' ⟨_, a, _, rfl⟩
       · intro i; refine' ⟨_, _⟩ <;>
-          norm_num [Finset.sum_le_sum, ha₁, ha₂];
-        ring_nf;
+          norm_num [Finset.sum_le_sum, ha₁, ha₂]
+        ring_nf
         (exact le_trans (ha₁ i)
           (Finset.single_le_sum
             (fun x _ => le_trans zero_le_one (ha₁ x))
             (Finset.mem_filter.mpr
-              ⟨Finset.mem_univ _, le_rfl⟩)));
+              ⟨Finset.mem_univ _, le_rfl⟩)))
         refine' le_trans
-          (Finset.sum_le_sum fun j hj => ha₂ j) _;
-        norm_num [Finset.mul_sum, Finset.sum_mul];
-        ring_nf;
-        (refine' mod_cast Nat.le_of_lt_succ _;
+          (Finset.sum_le_sum fun j hj => ha₂ j) _
+        norm_num [Finset.mul_sum, Finset.sum_mul]
+        ring_nf
+        (refine' mod_cast Nat.le_of_lt_succ _
          refine' Nat.lt_succ_of_le
           (Nat.le_trans
             (Finset.sum_le_sum_of_subset
-              (Finset.subset_univ _)) _);
+              (Finset.subset_univ _)) _)
          exact Nat.le_of_lt_succ <| by
           rw [← @Nat.cast_lt ℝ]; push_cast
           linarith [
@@ -213,16 +213,16 @@ public lemma count_inScaledBox_eq_prod_floor (m : ℕ)
               Finset.sum_le_sum fun _ _ =>
                 Nat.floor_le <| mul_nonneg
                   (zero_le_one.trans hs)
-                  (le_of_lt <| X.sides_pos _)]);
-      · exact fun i => ⟨ha₁ i, ha₂ i⟩;
-  convert h_card using 1;
-  · convert rfl;
+                  (le_of_lt <| X.sides_pos _)])
+      · exact fun i => ⟨ha₁ i, ha₂ i⟩
+  convert h_card using 1
+  · convert rfl
     exact Int.toNat_of_nonneg <|
       Int.ceil_nonneg <| mul_nonneg (by positivity) <|
         Finset.sum_nonneg fun _ _ =>
-          le_of_lt <| X.sides_pos _;
-  · rw [Finset.card_image_of_injOn];
-    · erw [Finset.card_map, Finset.card_pi]; aesop;
+          le_of_lt <| X.sides_pos _
+  · rw [Finset.card_image_of_injOn]
+    · erw [Finset.card_map, Finset.card_pi]; aesop
     · exact fun d _ d' _ h_eq =>
         prefixSum_injective m h_eq
 
@@ -238,27 +238,27 @@ public lemma prod_floor_approx (m : ℕ) (b : Fin m → ℝ)
       |(∏ i, (⌊s * b i⌋₊ : ℝ)) -
           s ^ m * ∏ i, b i| ≤
         C * s ^ ((m : ℤ) - 1) := by
-  rcases m with (_ | m) <;> norm_num at *;
+  rcases m with (_ | m) <;> norm_num at *
   · exact ⟨1, by norm_num,
-      fun s hs => by positivity⟩;
-  · induction' m with m ih;
-    · simp +zetaDelta at *;
+      fun s hs => by positivity⟩
+  · induction' m with m ih
+    · simp +zetaDelta at *
       exact ⟨1, zero_lt_one, fun s hs =>
         abs_sub_le_iff.mpr
           ⟨by linarith [Nat.floor_le (show 0 ≤ s * b 0 by positivity)],
-           by linarith [Nat.lt_floor_add_one (s * b 0)]⟩⟩;
+           by linarith [Nat.lt_floor_add_one (s * b 0)]⟩⟩
     · obtain ⟨C₁, hC₁, hC₁'⟩ :=
-        ih (fun i => b i.castSucc) fun i => hb _;
+        ih (fun i => b i.castSucc) fun i => hb _
       refine' ⟨C₁ * b (Fin.last _) +
         ∏ i : Fin (m + 1), b (Fin.castSucc i) + 1,
-        _, _⟩;
+        _, _⟩
       · exact add_pos_of_nonneg_of_pos
           (add_nonneg
             (mul_nonneg hC₁.le
               (le_of_lt (hb _)))
             (Finset.prod_nonneg fun _ _ =>
               le_of_lt (hb _)))
-          zero_lt_one;
+          zero_lt_one
       · intro s hs
         have h_prod :
             |∏ i : Fin (m + 2), ⌊s * b i⌋₊ -
@@ -304,8 +304,8 @@ public lemma prod_floor_approx (m : ℕ) (b : Fin m → ℝ)
                     b (Fin.castSucc i)) *
                   (s * b (Fin.last _)) := by
               rw [Fin.prod_univ_castSucc]; ring
-            rw [h_split, h_split'];
-            norm_num [abs_le];
+            rw [h_split, h_split']
+            norm_num [abs_le]
             constructor <;>
               cases abs_cases
                 (∏ i : Fin (m + 1),
@@ -327,8 +327,8 @@ public lemma prod_floor_approx (m : ℕ) (b : Fin m → ℝ)
                 show 0 ≤
                     (⌊s * b (Fin.last (m + 1))⌋₊
                       : ℝ) by
-                  positivity];
-          convert h_prod using 1;
+                  positivity]
+          convert h_prod using 1
         have h_ind :
             |∏ i : Fin (m + 1),
                 ⌊s * b (Fin.castSucc i)⌋₊ -
@@ -340,14 +340,14 @@ public lemma prod_floor_approx (m : ℕ) (b : Fin m → ℝ)
           refine' le_trans
             (mul_le_mul_of_nonneg_right
               (mod_cast hC₁' s hs)
-              (Nat.cast_nonneg _)) _;
-          rw [mul_assoc];
-          rw [mul_assoc, mul_assoc]; gcongr;
+              (Nat.cast_nonneg _)) _
+          rw [mul_assoc]
+          rw [mul_assoc, mul_assoc]; gcongr
           nlinarith [Nat.floor_le
             (show 0 ≤ s * b (Fin.last (m + 1)) by
               exact mul_nonneg (by positivity)
                 (le_of_lt (hb _))),
-            hb (Fin.last (m + 1))];
+            hb (Fin.last (m + 1))]
         have h_ind2 :
             s ^ (m + 1) *
               |⌊s * b (Fin.last _)⌋₊ -
@@ -369,8 +369,8 @@ public lemma prod_floor_approx (m : ℕ) (b : Fin m → ℝ)
                  ⟨by linarith, by linarith⟩))
               (by positivity))
             (Finset.prod_nonneg fun _ _ =>
-              le_of_lt (hb _));
-        norm_num [pow_succ'] at *;
+              le_of_lt (hb _))
+        norm_num [pow_succ'] at *
         nlinarith [pow_pos
           (zero_lt_one.trans_le hs) m]
 
