@@ -189,7 +189,7 @@ public lemma starRingEnd_additiveChar (q : ℕ) [NeZero q] (a x : ZMod q) :
       = Complex.exp (2 * Real.pi * Complex.I * (q - (a * x).val : ℤ) / (q : ℂ)) := by
     norm_num [ Complex.ext_iff, Complex.exp_re, Complex.exp_im ]
     norm_num [ sub_div, mul_sub, NeZero.ne ]
-    erw [ ZMod.cast_eq_val ] ; norm_cast ; aesop
+    rw [ ZMod.cast_eq_val ] ; norm_cast ; aesop
   unfold additiveChar
   cases eq_or_ne ( a * x ) 0 <;> simp_all +decide [ ZMod.neg_val ]
   rw [ Nat.cast_sub ]

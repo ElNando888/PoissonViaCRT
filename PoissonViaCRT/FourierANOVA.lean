@@ -615,7 +615,8 @@ lemma dft_interval_norm_at_nonzero (q : ℕ) [NeZero q] (L : ℕ)
       rw [ h_dft_bound, norm_mul, norm_div, norm_one, Complex.norm_natCast ]
     refine le_trans h_dft_bound ?_
     gcongr
-    erw [ Finset.sum_Ico_eq_sum_range ]
+    rw [show Finset.Icc 1 (min L (q - 1)) = Finset.Ico 1 (min L (q - 1) + 1) from rfl,
+      Finset.sum_Ico_eq_sum_range]
     convert geom_partial_sum_norm_le ( norm_star_additiveChar_one q ξ )
       ( star_additiveChar_one_ne_one q ξ hξ ) ( min L ( q - 1 ) ) using 1
     norm_num [ pow_add, Finset.mul_sum _ _ _ ]
@@ -675,7 +676,7 @@ lemma subgrid_freq_ne_zero (q d : ℕ) [NeZero q] [NeZero d] (hd : d ∣ q)
       simp_all +decide [ Nat.mul_div_cancel_left _ ( Nat.pos_of_ne_zero <| NeZero.ne d ) ]
       exact Nat.dvd_of_mul_dvd_mul_right ( Nat.pos_of_ne_zero ( by aesop_cat ) ) h_contra
     exact ha ( by rw [ ← ZMod.natCast_eq_zero_iff ] at h_div; aesop )
-  contrapose! h_mod; erw [ ZMod.natCast_eq_zero_iff ] at *; aesop
+  contrapose! h_mod; rw [ ZMod.natCast_eq_zero_iff ] at *; aesop
 
 /--
 For nonzero `a : ZMod d` with `d ∣ q`, the sine argument simplifies:
@@ -733,9 +734,9 @@ private lemma dft_subgrid_nonzero_term_bound (q d : ℕ) [NeZero q] [NeZero d]
       exact Nat.not_dvd_of_pos_of_lt ha.1 ( lt_of_le_of_lt ha.2 ( Nat.pred_lt ( NeZero.ne d ) ) )
   have h_subgrid_val_eq : ((a * (q / d) : ℕ) : ZMod q).val = a * (q / d) := by
     convert subgrid_val_eq q d hd a _
-    · erw [ ZMod.val_cast_of_lt ]
+    · rw [ ZMod.val_cast_of_lt ]
       linarith [ Finset.mem_Icc.mp ha, Nat.sub_add_cancel ( show 1 ≤ d from NeZero.pos d ) ]
-    · erw [ ZMod.val_cast_of_lt ]
+    · rw [ ZMod.val_cast_of_lt ]
       linarith [ Finset.mem_Icc.mp ha, Nat.sub_add_cancel ( show 1 ≤ d from
         Nat.pos_of_dvd_of_pos hd ( NeZero.pos q ) ) ]
     · contrapose! h_freq_ne_zero; simp_all +decide [ ZMod.natCast_eq_zero_iff ]
@@ -747,8 +748,9 @@ private lemma dft_subgrid_nonzero_term_bound (q d : ℕ) [NeZero q] [NeZero d]
 Sum of the 1D interval DFT over a subgrid of frequencies.
 -/
 public lemma dft_interval_subgrid_bound (q d : ℕ) [NeZero q] [NeZero d] (hd : d ∣ q) (L : ℕ) :
-    ∑ a : ZMod d, ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 L then (1 : ℂ) else 0) (fun _ => (((a.val * (q / d) : ℕ) : ZMod q)))‖ ≤
-      (L : ℝ) / q + (d : ℝ) / q * Real.log d + (d : ℝ) / q := by
+    ∑ a : ZMod d, ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 L then (1 : ℂ) else 0)
+      (fun _ => (((a.val * (q / d) : ℕ) : ZMod q)))‖
+    ≤ (L : ℝ) / q + (d : ℝ) / q * Real.log d + (d : ℝ) / q := by
   -- Split the sum into the term at a=0 and the sum over a≠0.
   have h_split : ∑ a : ZMod d,
       ‖dft q 1 (fun x => if (x 0).val ∈ Finset.Icc 1 L then (1 : ℂ) else 0)
@@ -758,7 +760,8 @@ public lemma dft_interval_subgrid_bound (q d : ℕ) [NeZero q] [NeZero d] (hd : 
           if (x 0).val ∈ Finset.Icc 1 L then (1 : ℂ) else 0) (fun _ => ↑(a * (q / d)))‖ := by
     rcases d with ( _ | _ | d ) <;> simp_all +decide
     · exact False.elim <| NeZero.ne 0 rfl
-    · erw [ Finset.sum_Ico_eq_sub _ _ ] <;> norm_num
+    · rw [show Finset.Icc 1 (d + 1) = Finset.Ico 1 (d + 1 + 1) from rfl,
+        Finset.sum_Ico_eq_sub _ _] <;> norm_num
       refine' Finset.sum_bij ( fun x _ => x.val ) _ _ _ _ <;> simp +decide
       · exact fun a => Nat.le_of_lt_succ <| ZMod.val_lt a
       · exact fun a₁ a₂ h => by

@@ -189,7 +189,7 @@ lemma fin_cons_castHom_injective {n : ℕ} (hn : 1 ≤ n) (q : ℕ) [NeZero q]
       simp_all +decide [ ZMod.intCast_zmod_eq_zero_iff_dvd ]
       linarith [ Int.le_of_dvd hx_pos hx_zero ]
     simp +zetaDelta at *
-    erw [ Fin.cons ] ; aesop
+    rw [ Fin.cons ] ; aesop
   · have h_cast_ne_zero : ¬(h ⟨j, by linarith⟩ : ZMod p) = 0 := by
       have h_cast_ne_zero : 0 < h ⟨j, by linarith⟩ ∧ h ⟨j, by linarith⟩ < p := by
         have := inScaledBox_strictMono hn X s h hbox

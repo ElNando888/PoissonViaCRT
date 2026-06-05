@@ -222,7 +222,9 @@ public lemma count_inScaledBox_eq_prod_floor (m : ℕ)
         Finset.sum_nonneg fun _ _ =>
           le_of_lt <| X.sides_pos _
   · rw [Finset.card_image_of_injOn]
-    · erw [Finset.card_map, Finset.card_pi]; aesop
+    · rw [show Finset.Icc (fun _ => (1 : ℤ)) (fun i => (⌊s * X.sides i⌋₊ : ℤ))
+               = Fintype.piFinset (fun i => Finset.Icc (1 : ℤ) (⌊s * X.sides i⌋₊ : ℤ)) from rfl,
+          Fintype.card_piFinset]; aesop
     · exact fun d _ d' _ h_eq =>
         prefixSum_injective m h_eq
 

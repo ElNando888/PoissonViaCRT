@@ -619,7 +619,8 @@ lemma card_upper_triangular_pairs (k : ℕ) :
     (Finset.univ.filter (fun p : Fin k × Fin k => p.1 < p.2)).card = k.choose 2 := by
   rw [ Nat.choose_two_right ]
   convert Finset.card_filter ( fun p : Fin k × Fin k => p.1 < p.2 ) Finset.univ using 1
-  erw [ Finset.sum_product ]
+  rw [show (Finset.univ : Finset (Fin k × Fin k)) = Finset.univ ×ˢ Finset.univ from rfl,
+    Finset.sum_product]
   rw [ ← Finset.sum_range_id ]
   simp +decide [ Finset.filter_lt_eq_Ioi ]
   rw [ ← Finset.sum_range_reflect, Finset.sum_range ]
@@ -957,7 +958,7 @@ public theorem countTuples_bound_small_gamma
       simp +decide [Fin.prod_univ_succ]
       simp +decide [Finset.lcm]
       exact Or.inl
-        (by erw [Finset.fold_empty]; norm_num)
+        (by change 1 * _ = _; rw [one_mul])
     · rw [mul_pow]
   · exact Nat.cast_pos.mpr
       (GammaStructure.gammaProd_pos Γ)
