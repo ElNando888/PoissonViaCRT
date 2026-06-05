@@ -225,8 +225,8 @@ private lemma L1_factorization (ε : ℝ) (k : ℕ) (Ω : ∀ p : ℕ, Finset (Z
     * ∏ p ∈ T, (combinedEulerWeight ε k Ω p * localMean k Ω p + (k : ℝ)^2 * C_gamma) := by
   simp +decide [Finset.prod_add, Finset.prod_mul_distrib, div_eq_mul_inv, mul_assoc, mul_comm,
     mul_left_comm, Finset.mul_sum _ _ _]
-  rw [ ← Finset.sum_add_distrib ] ; refine' Finset.sum_bij ( fun U _ => T \ U ) _ _ _ _ <;>
-    simp +decide
+  rw [ ← Finset.sum_add_distrib ]
+  apply Finset.sum_bij ( fun U _ => T \ U ) _ _ _ _ <;> simp +decide
   · intro a₁ ha₁ a₂ ha₂ h
     rw [ ← Finset.sdiff_sdiff_eq_self ha₁, h, Finset.sdiff_sdiff_eq_self ha₂ ]
   · exact fun b hb => ⟨ T \ b, by aesop_cat, by aesop_cat ⟩
@@ -475,7 +475,7 @@ private lemma prefactor_error_collapse (k : ℕ) (hk : 2 ≤ k) (q : ℕ) [NeZer
   · field_simp
     rw [ eq_div_iff ]
     · rw [ ← Finset.prod_sdiff hT_sub ] ; ring
-    · refine' Finset.prod_ne_zero_iff.mpr _
+    · apply Finset.prod_ne_zero_iff.mpr _
       intro p hp; have := hT_sub hp; simp_all +decide [ localMean ]
       constructor <;> intro h <;> have := hT_sub hp <;> simp_all +decide
       contrapose! hc; simp_all +decide [ crtSubset ]
@@ -498,7 +498,7 @@ private lemma per_factor_modifiedEulerWeight_bound (ε : ℝ) (k : ℕ)
       localMean k Ω p ≤
     modifiedEulerWeight ε k (C_γ * C_μ) Ω p := by
   by_cases h : localMean k Ω p = 0 <;> simp_all +decide [ div_eq_mul_inv ]
-  · refine' add_nonneg _ _
+  · apply add_nonneg _ _
     · exact combinedEulerWeight_nonneg ε k Ω p hp
     · positivity
   · have h_div :
@@ -602,8 +602,8 @@ public lemma per_T_deviation_le_modifiedEulerWeight (ε : ℝ) (hε : 0 < ε) (k
         rwa [ div_le_iff₀ ( show 0 < localMean k Ω p from ?_ ) ] at this
         exact div_pos ( pow_pos ( Nat.cast_pos.mpr ( Finset.card_pos.mpr ( hΩ p ( hT_primes
           p hp ) ) ) ) _ ) ( pow_pos ( Nat.cast_pos.mpr ( Nat.Prime.pos ( hT_primes p hp ) ) ) _ )
-    · refine' Finset.prod_pos fun p hp => _
-      refine' div_pos _ _
+    · refine Finset.prod_pos fun p hp => ?_
+      apply div_pos _ _
       · exact pow_pos ( Nat.cast_pos.mpr ( Finset.card_pos.mpr ( hΩ p ( hT_primes p hp ) ) ) ) _
       · exact_mod_cast pow_pos ( Nat.Prime.pos ( hT_primes p hp ) ) _
   -- Step 8: Error term bound

@@ -75,7 +75,7 @@ lemma box_card_upper_bound (m : ℕ) (X : Box m) (s : ℝ) (_hs : 1 ≤ s) :
         Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
       (fun h => inScaledBox X s (fun _ => 0) h)).card ≤
     (⌈s * ∑ i, X.sides i⌉₊) ^ m := by
-  refine' le_trans ( Finset.card_filter_le _ _ ) _
+  apply le_trans ( Finset.card_filter_le _ _ ) _
   norm_num [ Fintype.card_pi ]
   rfl
 
@@ -98,10 +98,10 @@ public lemma individual_deviation_bound (Ω : Finset (ZMod q)) (m : ℕ) (hΩ : 
     (g : Fin m → ZMod q) :
     |(tupleCount Ω (Fin.cons (0 : ZMod q) g) : ℝ) -
       (Ω.card : ℝ) ^ (m + 1) / (q : ℝ) ^ m| ≤ 2 * Ω.card := by
-  refine' abs_sub_le_iff.mpr ⟨ _, _ ⟩
-  · refine' le_trans ( sub_le_self _ <| by positivity ) _
+  apply abs_sub_le_iff.mpr ⟨ _, _ ⟩
+  · apply le_trans ( sub_le_self _ <| by positivity ) _
     exact_mod_cast le_trans ( tupleCount_le_card _ _ ) ( by linarith )
-  · refine' le_trans ( sub_le_self _ <| Nat.cast_nonneg _ ) _
+  · apply le_trans ( sub_le_self _ <| Nat.cast_nonneg _ ) _
     rw [ div_le_iff₀ ( pow_pos ( Nat.cast_pos.mpr <| NeZero.pos q ) _ ) ]
     rw [ pow_succ' ]
     gcongr

@@ -126,11 +126,11 @@ theorem dft_crt_factorization (q : ℕ) [NeZero q] (hq : Squarefree q)
   -- `hk` is not used in the proof but is retained for specification purposes.
   unfold dft; simp +decide [ Finset.prod_mul_distrib ]
   rw [ Finset.prod_sum ]
-  refine' congrArg₂ _ _ _
+  apply congrArg₂ _ _ _
   · rw [ Finset.prod_pow, ← Nat.cast_prod ]
     convert rfl
     convert prod_primeFactors_eq q hq |> Eq.symm
-  · refine' Finset.sum_bij _ _ _ _ _
+  · apply Finset.sum_bij _ _ _ _ _
     use fun a _ p _ j => crtRingEquiv q hq ( a j ) p
     · aesop
     · simp +decide [funext_iff]
@@ -145,13 +145,13 @@ theorem dft_crt_factorization (q : ℕ) [NeZero q] (hq : Squarefree q)
       · convert congr_arg ( ( ↑ ) : ℕ → ℂ ) ( counting_function_multiplicative q hq Ω
           ( Fin.cons 0 a ) ) using 1
         simp +decide [ crtRingEquiv_apply_eq_castHom ]
-        refine' Finset.prod_bij ( fun x _ => x.val ) _ _ _ _ <;> simp +decide [ Fin.cons ]
+        apply Finset.prod_bij ( fun x _ => x.val ) _ _ _ _ <;> simp +decide [ Fin.cons ]
         intro p hp hp' hq; congr; ext i; induction i using Fin.inductionOn <;> aesop
       · rw [ Finset.prod_comm ]
-        refine' Finset.prod_congr rfl fun x _ => _
+        refine Finset.prod_congr rfl fun x _ => ?_
         rw [ additiveChar_crt_split q hq ]
         rw [ map_prod ]
-        refine' Finset.prod_bij ( fun p hp => ⟨ p, hp ⟩ ) _ _ _ _ <;> aesop
+        apply Finset.prod_bij ( fun p hp => ⟨ p, hp ⟩ ) _ _ _ _ <;> aesop
 
 /--
 The sum of the global counting function over all `h` equals
@@ -213,7 +213,7 @@ lemma dft_tupleCount_norm_le_localMean (k : ℕ) (hk : 2 ≤ k) (ε : ℝ) (hε 
             unfold character; aesop
           have := sum_tupleCount_eq_card_pow k ( by linarith ) p Ω
           simp_all +decide [ div_eq_inv_mul ]
-        · refine' le_trans ( hwd ξ hξ ) _
+        · apply le_trans ( hwd ξ hξ ) _
           calc (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) * ((Ω p).card ^ k / (p : ℝ) ^ (k - 1))
               ≤ 1 * 1 * ((Ω p).card ^ k / (p : ℝ) ^ (k - 1)) := by
                 gcongr
@@ -293,26 +293,26 @@ public lemma deviation_dft_q1_q2_bound (k : ℕ) (hk : 2 ≤ k) (ε : ℝ) (hε 
       -- because the index is just a way to uniquely identify each element.
       have h_prod_eq : ∏ x ∈ q.primeFactors.attach.attach with x.val.val ∈ freqSupport q (k - 1) ξ,
           localMean k Ω x.val.val = ∏ x ∈ freqSupport q (k - 1) ξ, localMean k Ω x := by
-        refine' Finset.prod_bij ( fun x hx => x.val.val ) _ _ _ _ <;> simp +decide [ freqSupport ]
+        apply Finset.prod_bij ( fun x hx => x.val.val ) _ _ _ _ <;> simp +decide [ freqSupport ]
         grind
       rw [ Finset.prod_mul_distrib, h_prod_eq ]
       rw [ mul_assoc ]
-      refine' mul_le_mul _ _ _ _
-      · refine' le_of_eq _
-        refine' Finset.prod_bij ( fun x hx => x.val.val ) _ _ _ _ <;> simp +decide [ freqSupport ]
+      apply mul_le_mul _ _ _ _
+      · apply le_of_eq _
+        apply Finset.prod_bij ( fun x hx => x.val.val ) _ _ _ _ <;> simp +decide [ freqSupport ]
         grind +splitImp
       · rw [ ← Finset.prod_sdiff <|
           show freqSupport q ( k - 1 ) ξ ⊆ q.primeFactors from fun p hp => by
             exact Finset.mem_filter.mp hp |>.1 ]
         rw [ mul_comm ]
-        refine' le_of_eq _
-        refine' congrArg₂ _ ( Finset.prod_bij ( fun x hx => x.val.val ) _ _ _ _ ) rfl <;>
+        apply le_of_eq _
+        apply congrArg₂ _ ( Finset.prod_bij ( fun x hx => x.val.val ) _ _ _ _ ) rfl <;>
           simp +decide [ Finset.mem_sdiff, Finset.mem_filter ]
         tauto
       · exact mul_nonneg ( Finset.prod_nonneg fun _ _ => localMean_nonneg _ _ _ )
           ( Finset.prod_nonneg fun _ _ => localMean_nonneg _ _ _ )
-      · refine' Finset.prod_nonneg fun p hp => mul_nonneg _ _ <;> norm_num
-        · refine' div_le_one_of_le₀ _ ( Nat.cast_nonneg _ )
+      · refine Finset.prod_nonneg fun p hp => mul_nonneg ?_ ?_ <;> norm_num
+        · apply div_le_one_of_le₀ _ ( Nat.cast_nonneg _ )
           haveI := Fact.mk ( Nat.prime_of_mem_primeFactors ( Finset.mem_filter.mp hp |>.1 ) )
           exact_mod_cast le_trans ( Finset.card_le_univ _ ) ( by norm_num )
         · positivity
@@ -403,7 +403,7 @@ private lemma sum_inv_sin_pairing (q : ℕ) (hq : 1 ≤ q) :
       Finset.sum_union ] <;> norm_num [ Nat.cast_add_one_ne_zero ]
   · norm_num [ div_eq_mul_inv, mul_assoc, mul_comm, mul_left_comm, Finset.mul_sum _ _ _ ] at *
     norm_num [ ← mul_assoc, ← Finset.sum_add_distrib ] at *
-    refine' add_le_add _ _
+    apply add_le_add _ _
     · refine' Finset.sum_le_sum fun x hx => _
       rw [ show Real.pi * ( k + 1 : ℝ ) ⁻¹ * ( 1 / 2 ) * ( ( k + 1 : ℝ ) * 2 - x ) =
           Real.pi - Real.pi * x * ( k + 1 : ℝ ) ⁻¹ * ( 1 / 2 ) by
@@ -427,7 +427,7 @@ private lemma sum_inv_sin_pairing (q : ℕ) (hq : 1 ≤ q) :
           fun ⟨ a, ⟨ ha₁, ha₂ ⟩, ha₃ ⟩ => ⟨ by omega, by omega ⟩ ⟩
     rw [ h_pair, Finset.sum_union, Finset.sum_image, Finset.sum_image ] <;> norm_num
     · rw [ ← Finset.sum_add_distrib ]
-      refine' Finset.sum_congr rfl fun x hx => _
+      refine Finset.sum_congr rfl fun x hx => ?_
       rw [ Nat.cast_sub ( by linarith [ Finset.mem_Icc.mp hx ] ) ] ; push_cast ; ring
     · exact fun x hx y hy hxy => by
         rw [ tsub_right_inj ] at hxy <;> linarith [ hx.1, hx.2, hy.1, hy.2 ]
@@ -504,7 +504,7 @@ private lemma dft_one_dim_eq (q : ℕ) [NeZero q]
   have h_sum_eq :
       ∑ x : Fin 1 → ZMod q, f (x 0) * starRingEnd ℂ (character q 1 (fun _ => ξ) x)
       = ∑ a : ZMod q, f a * starRingEnd ℂ (additiveChar q ξ a) := by
-    refine' Finset.sum_bij ( fun x _ => x 0 ) _ _ _ _ <;> simp +decide
+    apply Finset.sum_bij ( fun x _ => x 0 ) _ _ _ _ <;> simp +decide
     · exact fun a₁ a₂ h => funext fun i => by fin_cases i; exact h
     · exact fun b => ⟨ fun _ => b, rfl ⟩
     · exact fun a => Or.inl ( by unfold character; simp +decide )
@@ -534,7 +534,7 @@ For `ξ ≠ 0`, `conj(additiveChar q ξ 1) ≠ 1`.
 private lemma star_additiveChar_one_ne_one (q : ℕ) [NeZero q]
     (ξ : ZMod q) (hξ : ξ ≠ 0) :
     starRingEnd ℂ (additiveChar q ξ 1) ≠ 1 := by
-  refine' fun h => hξ _
+  refine fun h => hξ ?_
   -- If $additiveChar q ξ 1 = 1$, then $2πi (ξ.val / q) = 2πin$ for some integer $n$,
   -- implying $ξ.val = nq$.
   have h_exp_eq : ∃ n : ℤ, ξ.val = n * q := by
@@ -645,7 +645,7 @@ private lemma dft_interval_norm_at_zero_tight (q : ℕ) [NeZero q] (L : ℕ) :
       ( fun x : ZMod q => ( 1 ≤ x.val ∧ x.val ≤ L ) ) Finset.univ ) : ℝ ) ≤ L from ?_ )
       ( inv_nonneg.mpr ( Nat.cast_nonneg q ) ) using 1 ; ring_nf
   · rw [ Finset.card_filter, Finset.card_filter ]
-    refine' congr_arg _ ( congr_arg _ ( Finset.sum_bij ( fun x _ => x 0 ) _ _ _ _ ) ) <;>
+    apply congr_arg _ ( congr_arg _ ( Finset.sum_bij ( fun x _ => x 0 ) _ _ _ _ ) ) <;>
       simp +decide
     · exact fun a₁ a₂ h => funext fun i => by fin_cases i; exact h
     · exact fun b => ⟨ fun _ => b, rfl ⟩
@@ -762,7 +762,7 @@ public lemma dft_interval_subgrid_bound (q d : ℕ) [NeZero q] [NeZero d] (hd : 
     · exact False.elim <| NeZero.ne 0 rfl
     · rw [show Finset.Icc 1 (d + 1) = Finset.Ico 1 (d + 1 + 1) from rfl,
         Finset.sum_Ico_eq_sub _ _] <;> norm_num
-      refine' Finset.sum_bij ( fun x _ => x.val ) _ _ _ _ <;> simp +decide
+      apply Finset.sum_bij ( fun x _ => x.val ) _ _ _ _ <;> simp +decide
       · exact fun a => Nat.le_of_lt_succ <| ZMod.val_lt a
       · exact fun a₁ a₂ h => by
           simpa [ ZMod.natCast_zmod_val ]
@@ -797,7 +797,7 @@ public lemma freqSupport_subset_primeFactors (q m : ℕ) [NeZero q] (ξ : Fin m 
 
 public lemma freqDivisor_dvd (q m : ℕ) [NeZero q] (ξ : Fin m → ZMod q) :
     freqDivisor q m ξ ∣ q := by
-  refine' Nat.dvd_trans _ ( Nat.prod_primeFactors_dvd q )
+  apply Nat.dvd_trans _ ( Nat.prod_primeFactors_dvd q )
   apply_rules [ Finset.prod_dvd_prod_of_subset, freqSupport_subset_primeFactors ]
 
 /--
@@ -916,7 +916,7 @@ lemma fiber_subset_subgrid_image (q d : ℕ) [NeZero q] [NeZero d] (hd : d ∣ q
       rw [ Nat.mul_div_cancel' hd ] ; exact ZMod.val_lt _
     exact ⟨ fun i => ( ( hξ i |> ZMod.val ) / ( q / d ) : ZMod d ), fun i => by
       simpa [ ZMod.val_natCast ] using Nat.mod_eq_of_lt ( h_div_lt i ) ⟩
-  refine' Finset.mem_image.mpr ⟨ a, Finset.mem_univ _, _ ⟩
+  apply Finset.mem_image.mpr ⟨ a, Finset.mem_univ _, _ ⟩
   ext i; simp +decide [ ha, Nat.div_mul_cancel ( h_div i ) ]
 
 end PoissonCRT

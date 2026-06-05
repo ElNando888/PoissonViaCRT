@@ -66,7 +66,7 @@ private lemma card_Icc_filter_dvd_le (S : ℤ) (hS : 0 ≤ S) (M : ℤ) (hM : 0 
     obtain ⟨ k, hk ⟩ := Finset.mem_filter.mp hx |>.2; simp_all +decide [ sub_eq_iff_eq_add' ]
     exact ⟨ k, ⟨ by rw [ Int.ediv_le_iff_le_mul ] <;>
       linarith, by rw [ Int.le_ediv_iff_mul_le ] <;> linarith ⟩, by ring ⟩
-  refine' le_trans ( Finset.card_le_card h_arith_prog ) _
+  apply le_trans ( Finset.card_le_card h_arith_prog ) _
   rw [ Finset.card_image_of_injective _ fun x y hxy => by nlinarith ] ; norm_num
   exact Classical.or_iff_not_imp_right.2 fun h => by
     nlinarith [ Int.mul_ediv_add_emod ( S - a ) M, Int.emod_nonneg ( S - a ) hM.ne',
@@ -204,9 +204,9 @@ private lemma collision_sum_le_sigma_sum (m : ℕ) (X : Box m) (s : ℝ) (hs : 1
             aesop
         convert h_indicator using 1
         rw [ Finset.prod_sum ]
-  refine' le_trans ( Finset.sum_le_sum h_bound ) _
+  apply le_trans ( Finset.sum_le_sum h_bound ) _
   rw [ Finset.sum_comm ]
-  refine' Finset.sum_le_sum fun σ _ => _
+  refine Finset.sum_le_sum fun σ _ => ?_
   refine' le_trans _ ( Nat.cast_le.mpr <| Finset.card_le_card <|
     show validHForSigma m X s U ( fun p hp => σ p hp ) ⊇ _ from _ )
   rotate_left
@@ -235,9 +235,9 @@ private lemma prod_int_div_add_one_le (m : ℕ) (S : ℤ) (hS : 1 ≤ S)
   -- $S/M_j \leq S$ (since $M_j \geq 1$). So the product $\leq S^{m-1}$.
   have h_subset_bound : ∑ I ∈ Finset.powerset (Finset.univ : Finset (Fin m)) \ {Finset.univ},
       (∏ j ∈ I, (S / M j : ℝ)) ≤ (2^m - 1) * S^(m-1) := by
-    refine' le_trans ( Finset.sum_le_sum fun I hI =>
-      show ∏ j ∈ I, ( S : ℝ ) / M j ≤ S ^ ( m - 1 ) from _ ) _
-    · refine' le_trans ( Finset.prod_le_prod _ fun i hi =>
+    refine le_trans ( Finset.sum_le_sum fun I hI =>
+      show ∏ j ∈ I, ( S : ℝ ) / M j ≤ S ^ ( m - 1 ) from ?_ ) ?_
+    · apply le_trans ( Finset.prod_le_prod _ fun i hi =>
         div_le_self ( by positivity ) ( mod_cast hM i ) ) _ <;> norm_num
       · exact fun _ _ => div_nonneg ( by positivity ) ( by norm_cast; linarith [ hM ‹_› ] )
       · exact pow_le_pow_right₀ ( mod_cast hS )
@@ -295,7 +295,7 @@ private lemma collision_sum_main_bound (m : ℕ) (hm : 1 ≤ m) (X : Box m) (s :
       norm_cast
       exact inferInstance
       intro k h_prefix
-      refine' le_trans ( Finset.card_le_card <| Finset.image_subset_iff.mpr _ ) _
+      apply le_trans ( Finset.card_le_card <| Finset.image_subset_iff.mpr _ ) _
       exact Finset.filter ( fun x => ∀ p ∈ U.filter ( fun p =>
         ∃ hp_mem : p ∈ U, ( σ p hp_mem ).2 = k.succ ),
           ( p : ℤ ) ∣ ( x - ( if hp : p ∈ U then extendH m h_prefix ( σ p hp ).1 else 0 ) ) )
@@ -321,7 +321,7 @@ private lemma collision_sum_main_bound (m : ℕ) (hm : 1 ≤ m) (X : Box m) (s :
     · norm_cast
     · simp +decide [ Finset.prod_filter ]
       rw [ Finset.prod_comm ]
-      refine' congr rfl ( Finset.prod_congr rfl fun p hp => _ )
+      refine' congr rfl ( Finset.prod_congr rfl fun p hp => ?_ )
       rw [ Finset.prod_eq_single ( ( σ p hp ).2.pred <| by
         have := Finset.mem_filter.mp ( Finset.mem_pi.mp hσ p hp ) ; aesop ) ] <;>
           simp +decide [ hp ]
@@ -329,7 +329,7 @@ private lemma collision_sum_main_bound (m : ℕ) (hm : 1 ≤ m) (X : Box m) (s :
     · exact fun j => le_trans ( by norm_num )
         ( Finset.prod_le_prod ( fun _ _ => by positivity ) fun _ _ =>
           Nat.cast_le.mpr ( Nat.Prime.pos ( hU _ ( by aesop ) ) ) )
-  refine' le_trans ( Finset.sum_le_sum h_card_bound ) _
+  apply le_trans ( Finset.sum_le_sum h_card_bound ) _
   -- Apply the bound on the cardinality of `pairsBelow`.
   have h_pairsBelow_card : (⌈s * ∑ i, X.sides i⌉ : ℝ) ^ m / (∏ p ∈ U, (p : ℝ))
       + 2 ^ m * (⌈s * ∑ i, X.sides i⌉ : ℝ) ^ (m - 1)
@@ -350,7 +350,7 @@ private lemma collision_sum_main_bound (m : ℕ) (hm : 1 ≤ m) (X : Box m) (s :
     refine le_trans ( add_le_add ( div_le_div_of_nonneg_right h_pairsBelow_card_simplified.1 <|
       Finset.prod_nonneg fun _ _ => Nat.cast_nonneg _ ) <|
         mul_le_mul_of_nonneg_left h_pairsBelow_card_simplified.2 <| by positivity ) ?_ ; ring_nf
-    refine' add_le_add _ _
+    apply add_le_add _ _
     · rw [ show s + s * ∑ i, X.sides i = s * ( 1 + ∑ i, X.sides i ) by ring, mul_pow ] ; ring_nf
       exact le_mul_of_one_le_right ( mul_nonneg
         ( mul_nonneg ( inv_nonneg.2 ( Finset.prod_nonneg fun _ _ => Nat.cast_nonneg _ ) )

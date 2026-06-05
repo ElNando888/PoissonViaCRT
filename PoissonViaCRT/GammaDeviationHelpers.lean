@@ -71,8 +71,8 @@ public lemma gammaProdOfBoxPoint_pos {n : ℕ}
     (q : ℕ) [NeZero q] (hT : T ⊆ q.primeFactors)
     (h : Fin n → ℤ) :
     0 < gammaProdOfBoxPoint T h := by
-  refine' Finset.prod_pos fun j _ => _
-  refine' Nat.pos_of_ne_zero _
+  refine Finset.prod_pos fun j _ => ?_
+  apply Nat.pos_of_ne_zero _
   simp_all +decide [ Finset.lcm_eq_zero_iff ]
   exact fun i hij h => absurd h <| Finset.prod_ne_zero_iff.mpr fun p hp =>
     Nat.ne_of_gt <| Nat.pos_of_mem_primeFactors <| hT hp
@@ -130,7 +130,7 @@ public lemma gammaProdOfBoxPoint_le {n : ℕ}
     (h_diff_pos : let h' : Fin (n + 1) → ℤ := Fin.cons (0 : ℤ) h
       ∀ i j : Fin (n + 1), i ≠ j → 0 < Int.natAbs (h' j - h' i)) :
     gammaProdOfBoxPoint T h ≤ H ^ ((n + 1) * (n + 1)) := by
-  refine' le_trans ( Finset.prod_le_prod' _ ) _
+  apply le_trans ( Finset.prod_le_prod' _ ) _
   use fun i => H ^ ( Finset.card ( Finset.Iio i ) )
   · intro i hi; apply lcm_le_pow_card; aesop
     exact fun j hj =>

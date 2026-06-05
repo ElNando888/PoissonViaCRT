@@ -90,7 +90,7 @@ public lemma inScaledBox_cons_le_ceil {m : ℕ} (X : Box m) (s : ℝ) (hs : 1 �
               Finset.univ ∪ { ⟨ j + 1, hj ⟩ } from ?_, Finset.sum_union ] <;> norm_num
           · linarith!
           · grind
-    refine' Int.le_of_lt_add_one _
+    apply Int.le_of_lt_add_one _
     exact_mod_cast ( by
       nlinarith [ h_ind ( Fin.succ i ), Int.le_ceil ( s * ∑ j : Fin m, X.sides j ),
         show ( ∑ k : Fin m with k.val < ( i.succ : ℕ ), X.sides k ) ≤
@@ -109,7 +109,7 @@ public lemma inScaledBox_cons_nonneg {m : ℕ} (X : Box m) (s : ℝ) (hs : 1 ≤
   -- We prove the statement using induction on the size of the block $\textit{m}$.
   induction' m with m ih
   · fin_cases i ; rfl
-  · refine' Fin.cases _ ( fun i => _ ) i <;> simp_all +decide [ Fin.forall_fin_succ, extendH ]
+  · refine Fin.cases ?_ ( fun i => ?_ ) i <;> simp_all +decide [ Fin.forall_fin_succ, extendH ]
     induction' i using Fin.inductionOn with i IH
     · have := hbox 0; simp_all +decide [ Fin.forall_fin_succ, inScaledBox ]
       linarith
@@ -164,10 +164,10 @@ public lemma collision_indicator_le_sum_pairs {m : ℕ} (p : ℕ) (hp : 1 ≤ p)
   rename_i h
   rcases h with ⟨ i, j, hij, h ⟩
   rcases lt_trichotomy i j with hij' | rfl | hij' <;> simp_all +decide [ Fin.cons, extendH ]
-  · refine' ⟨ ⟨ i, j ⟩, _ ⟩ ; simp_all +decide [ pairsBelow ]
+  · refine ⟨ ⟨ i, j ⟩, ?_ ⟩ ; simp_all +decide [ pairsBelow ]
     simp_all +decide [ Fin.cases, ← ZMod.intCast_zmod_eq_zero_iff_dvd ]
     induction i using Fin.inductionOn <;> induction j using Fin.inductionOn <;> aesop
-  · refine' ⟨ ⟨ j, i ⟩, _ ⟩ ; simp_all +decide [ pairsBelow ]
+  · refine ⟨ ⟨ j, i ⟩, ?_ ⟩ ; simp_all +decide [ pairsBelow ]
     simp_all +decide [ ← ZMod.intCast_zmod_eq_zero_iff_dvd ]
     cases i using Fin.inductionOn <;> cases j using Fin.inductionOn <;> aesop
 

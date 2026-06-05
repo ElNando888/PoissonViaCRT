@@ -56,7 +56,7 @@ public lemma prod_kp_half_le_const (ε : ℝ) (hε : 0 < ε) (k : ℕ) :
   · -- Let N₀ be the number � of� primes� less than k^{2/ε}.
     set N₀ := Finset.card
       (Finset.filter Nat.Prime (Finset.range (Nat.ceil ((k : ℝ) ^ (2 / ε)) + 1))) with hN₀_def
-    refine' ⟨ ( k : ℝ ) ^ N₀, by positivity, fun d hd => _ ⟩
+    refine ⟨ ( k : ℝ ) ^ N₀, by positivity, fun d hd => ?_ ⟩
     -- For each prime p in the prime factors of d, if p is less than k^{2/ε},
     -- then k * p^{-ε/2} ≤ k. Otherwise, k * p^{-ε/2} ≤ 1.
     have h_prime_factors : ∀ p ∈ d.primeFactors,
@@ -69,14 +69,14 @@ public lemma prod_kp_half_le_const (ε : ℝ) (hε : 0 < ε) (k : ℕ) :
           ring_nf
           norm_num [ hε.ne' ] )
           ( Real.rpow_le_rpow ( by positivity ) ‹ ( k : ℝ ) ^ ( 2 / ε ) ≤ p › ( by positivity ) )
-    refine' le_trans ( Finset.prod_le_prod ( fun _ _ => by positivity ) h_prime_factors ) _
+    apply le_trans ( Finset.prod_le_prod ( fun _ _ => by positivity ) h_prime_factors ) _
     simp +decide [ Finset.prod_ite ]
     exact pow_le_pow_right₀ ( mod_cast hk )
       ( Finset.card_le_card <| fun x hx =>
         Finset.mem_filter.mpr ⟨ Finset.mem_range.mpr <| Nat.lt_succ_of_lt <|
           Finset.mem_filter.mp hx |>.2.trans_le <| Nat.le_of_lt_succ <| Nat.lt_succ_self _,
       Nat.prime_of_mem_primeFactors <| Finset.mem_filter.mp hx |>.1 ⟩ )
-  · refine' ⟨ 1, zero_lt_one, fun d hd => _ ⟩
+  · refine ⟨ 1, zero_lt_one, fun d hd => ?_ ⟩
     by_cases hd1 : d = 1
     · simp [hd1]
     · have hk0 : k = 0 := by omega
@@ -189,14 +189,14 @@ public theorem small_divisor_series_bound (ε : ℝ) (hε : 0 < ε) (hε2 : ε <
         ( Nat.floor_le ( by positivity ) ) ( by linarith ) ) ( by linarith ) )
     exact le_trans ( Finset.sum_le_sum_of_subset_of_nonneg ( fun x hx => by aesop ) fun _ _ _ =>
       Real.rpow_nonneg ( Nat.cast_nonneg _ ) _ ) h_sum_bound
-  refine' ⟨ M / ( 1 - ε / 2 ), div_pos hM_pos ( by linarith ), fun q hq s hs => _ ⟩
-  refine' le_trans ( Finset.sum_le_sum fun x hx => hM x _ _ ) _
+  refine ⟨ M / ( 1 - ε / 2 ), div_pos hM_pos ( by linarith ), fun q hq s hs => ?_ ⟩
+  refine le_trans ( Finset.sum_le_sum fun x hx => hM x ?_ ?_ ) ?_
   · exact hq.squarefree_of_dvd <| Nat.dvd_of_mem_divisors <|
       Finset.mem_filter.mp ( Finset.mem_filter.mp hx |>.1 ) |>.1
   · aesop
   · rw [ ← Finset.mul_sum _ _ _ ]
     rw [ div_mul_eq_mul_div, mul_div_assoc ]
-    refine' mul_le_mul_of_nonneg_left ( le_trans ( Finset.sum_le_sum_of_subset_of_nonneg _ _ )
+    apply mul_le_mul_of_nonneg_left ( le_trans ( Finset.sum_le_sum_of_subset_of_nonneg _ _ )
       ( h_sum_bound s hs ) ) hM_pos.le
     · simp +contextual [ Finset.subset_iff ]
       exact fun x hx₁ hx₂ hx hx => Nat.le_floor hx

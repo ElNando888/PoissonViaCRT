@@ -64,8 +64,8 @@ lemma prod_one_sub_le_pow_div (k : ℕ) (hk : 2 ≤ k)
     rw [ ← Nat.cast_prod, freqDivisor, freqSupport_eq_primeFactors_freqDivisor q m hq ξ ]
     rw [ Nat.primeFactors_prod ] ; aesop
   · intro p hp
-    refine' sub_nonneg_of_le _
-    refine' div_le_one_of_le₀ _ ( Nat.cast_nonneg _ )
+    apply sub_nonneg_of_le _
+    apply div_le_one_of_le₀ _ ( Nat.cast_nonneg _ )
     haveI := Fact.mk ( show Nat.Prime p from by { unfold freqSupport at hp; aesop } )
     exact_mod_cast le_trans ( Finset.card_le_univ _ ) ( by norm_num )
   · exact Nat.prime_of_mem_primeFactors ( Finset.mem_filter.mp hp |>.1 )
@@ -89,11 +89,11 @@ lemma dft_g_norm_tight_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
       ∏ p ∈ q.primeFactors, localMean k Ω p := by
   by_cases hd : d = 0
   · contrapose! hξ; have := freqDivisor_dvd q ( k - 1 ) ξ; simp_all +decide
-  · refine' le_trans ( deviation_dft_q1_q2_bound k hk ε hε q hq_sq Ω _ ξ hξ ) _
+  · apply le_trans ( deviation_dft_q1_q2_bound k hk ε hε q hq_sq Ω _ ξ hξ ) _
     · grind
-    · refine' mul_le_mul_of_nonneg_right _ ( Finset.prod_nonneg fun p hp => localMean_nonneg _ _ _ )
-      refine' le_trans ( Finset.prod_le_prod _ fun p hp =>
-          mul_le_mul_of_nonneg_right ( hrp p _ ) ( Real.rpow_nonneg ( Nat.cast_nonneg _ ) _ ) ) _
+    · apply mul_le_mul_of_nonneg_right _ ( Finset.prod_nonneg fun p hp => localMean_nonneg _ _ _ )
+      refine le_trans ( Finset.prod_le_prod ?_ fun p hp =>
+          mul_le_mul_of_nonneg_right ( hrp p ?_ ) ( Real.rpow_nonneg ( Nat.cast_nonneg _ ) _ ) ) ?_
       · intro p hp
         exact mul_nonneg ( sub_nonneg.2 <| div_le_one_of_le₀ ( mod_cast by
           haveI := Fact.mk ( show Nat.Prime p from by

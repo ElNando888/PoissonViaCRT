@@ -103,8 +103,8 @@ lemma int_excess_count (α L : ℝ) (_hL : 0 < L)
     Set.ncard {d : ℤ | α < (d : ℝ) ∧
         (d : ℝ) ≤ α + L ∧
         ¬(0 < (d : ℝ) ∧ (d : ℝ) ≤ L)} ≤ 2 := by
-  refine' ⟨Set.Finite.subset
-    (Set.finite_Icc (⌊α⌋) ⌊α + L⌋) _, _⟩
+  refine ⟨Set.Finite.subset
+    (Set.finite_Icc (⌊α⌋) ⌊α + L⌋) ?_, ?_⟩
   · exact fun x hx =>
       ⟨Int.le_of_lt_add_one <| by
           rw [← @Int.cast_lt ℝ]; push_cast
@@ -199,7 +199,7 @@ lemma boundary_coord_card_le (m : ℕ) (N : ℤ)
           Function.update f j 0)
         (piBox m N)).card ≤
       N.toNat ^ (m - 1) := by
-    refine' le_trans
+    apply le_trans
       (Finset.card_le_card <|
         Finset.image_subset_iff.mpr _) _
     exact Finset.image
@@ -208,7 +208,7 @@ lemma boundary_coord_card_le (m : ℕ) (N : ℤ)
       (Fintype.piFinset
         fun _ : Fin m => Finset.Icc 1 N)
     · grind +splitImp
-    · refine' le_trans
+    · apply le_trans
         (Finset.card_le_card <|
           Finset.image_subset_iff.mpr _) _
       exact Finset.image
@@ -222,13 +222,13 @@ lemma boundary_coord_card_le (m : ℕ) (N : ℤ)
         exact fun f hf =>
           ⟨fun i => f i, fun i hi => hf i,
            fun i => by aesop⟩
-      · refine' Finset.card_image_le.trans _
+      · apply Finset.card_image_le.trans _
         simp +decide [Fintype.piFinset]
   refine le_trans ‹_› ?_
-  refine' le_trans (Finset.sum_le_sum fun x hx =>
+  refine le_trans (Finset.sum_le_sum fun x hx =>
     show #(filter P
       (image (Function.update x j) (Icc 1 N))) ≤ 2
-    from _) _
+    from ?_) ?_
   · obtain ⟨f, hf, rfl⟩ := Finset.mem_image.mp hx
     convert ‹∀ f : Fin m → ℤ,
       (∀ i, f i ∈ Icc 1 N) →
@@ -310,7 +310,7 @@ lemma sdiff_card_le_sum_boundary (m : ℕ)
                 linarith [hv 0, hv j,
                   hv ⟨j - 1, by omega⟩] })
           |>.2
-      refine' le_trans _ h_excess
+      apply le_trans _ h_excess
       rw [← Set.ncard_coe_finset]
       fapply Set.ncard_le_ncard_of_injOn
       use fun x =>
@@ -334,7 +334,7 @@ lemma sdiff_card_le_sum_boundary (m : ℕ)
               linarith [hx.1, Int.floor_le (if j = 0 then v 0 else v j - v ⟨j - 1, by omega⟩)],
              Int.le_floor.2 <|
               by linarith [hx.2.1]⟩
-    refine' le_trans
+    apply le_trans
       (Nat.cast_le.mpr <|
         Finset.card_le_card _) _
     exact Finset.biUnion Finset.univ
@@ -353,9 +353,7 @@ lemma sdiff_card_le_sum_boundary (m : ℕ)
             (gapMap m h j : ℝ) ≤ s * X.sides j))
         (piBox m ⌈s * ∑ i, X.sides i⌉)
     · intro h hh; simp_all +decide
-    · refine' le_trans
-        (Nat.cast_le.mpr <|
-          Finset.card_biUnion_le) _
+    · apply le_trans (Nat.cast_le.mpr <| Finset.card_biUnion_le) _
       exact_mod_cast le_trans
         (Finset.sum_le_sum fun _ _ =>
           h_card_le _)
@@ -418,7 +416,7 @@ lemma sdiff_card_le_sum_boundary_rev (m : ℕ)
     2 * m * (N.toNat : ℝ) ^ (m - 1) := by
   cases eq_or_ne m 0
   · subst_vars; unfold inScaledBox; aesop
-  · refine' le_trans
+  · apply le_trans
       (Nat.cast_le.mpr <|
         Finset.card_le_card fun x hx => _) _
     exact Finset.biUnion Finset.univ fun j =>
@@ -439,14 +437,14 @@ lemma sdiff_card_le_sum_boundary_rev (m : ℕ)
         (piBox m ⌈s * ∑ i, X.sides i⌉)
     · simp_all +decide [inScaledBox_iff_gap]
       grind
-    · refine' le_trans
+    · apply le_trans
         (Nat.cast_le.mpr <|
           Finset.card_biUnion_le) _
       rw [Nat.cast_sum]
-      refine' le_trans (Finset.sum_le_sum
+      refine le_trans (Finset.sum_le_sum
         fun i _ => Nat.cast_le.mpr <|
           boundary_coord_card_le
-            _ _ _ _ _ _ _) _
+            _ _ ?_ ?_ _ ?_ ?_) ?_
       exact Int.ceil_nonneg
         (mul_nonneg (by positivity)
           (Finset.sum_nonneg fun _ _ =>
@@ -463,7 +461,7 @@ lemma sdiff_card_le_sum_boundary_rev (m : ℕ)
           (s * X.sides i)
           (mul_pos (by positivity)
             (X.sides_pos i)) ?_
-        · refine' le_trans _ this.2
+        · apply le_trans _ this.2
           rw [← Set.ncard_coe_finset]
           fapply Set.ncard_le_ncard_of_injOn
           use fun x =>
@@ -500,19 +498,19 @@ public lemma inScaledBox_symmDiff_card_le (m : ℕ)
       ((S_0 \ S_v).card : ℝ) ≤
         D * s ^ ((m : ℤ) - 1) := by
   rcases m with (_ | m) <;> norm_num at *
-  · refine' ⟨1, by norm_num, fun s hs => _⟩
+  · refine ⟨1, by norm_num, fun s hs => ?_⟩
     norm_num [Finset.filter_singleton, inScaledBox]
     finiteness
   · use 4 * (m + 1) * (∑ i, X.sides i + 1) ^ m
-    refine' ⟨by
+    refine ⟨by
       exact mul_nonneg (by positivity)
         (pow_nonneg
           (add_nonneg
             (Finset.sum_nonneg fun _ _ =>
               le_of_lt (X.sides_pos _))
             zero_le_one) _),
-      fun v hv s hs => _⟩
-    refine' le_trans
+      fun v hv s hs => ?_⟩
+    apply le_trans
       (add_le_add
         (sdiff_card_le_sum_boundary _ _ _ _ _ _)
         (sdiff_card_le_sum_boundary_rev

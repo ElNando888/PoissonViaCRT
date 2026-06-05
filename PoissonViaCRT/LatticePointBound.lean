@@ -68,7 +68,7 @@ public lemma count_inScaledBox_eq_prod_floor (m : ℕ)
         (if i.val = 0 then 0
          else h (Fin.mk (i.val - 1) (by
           exact lt_of_le_of_lt (Nat.pred_le _) i.2)))
-      refine' ⟨_, _⟩
+      refine ⟨?_, ?_⟩
       all_goals generalize_proofs at *
       · intro i; specialize hh i
         split_ifs at hh ⊢ <;> norm_num at hh ⊢
@@ -177,8 +177,7 @@ public lemma count_inScaledBox_eq_prod_floor (m : ℕ)
             d j)
         (Finset.Icc (fun _ => 1)
           (fun i => ⌊s * X.sides i⌋₊))) := by
-    refine' congr_arg Finset.card
-      (Finset.ext fun x => _)
+    refine congr_arg Finset.card (Finset.ext fun x => ?_)
     simp_all [Set.ext_iff]
     constructor
     · exact fun h =>
@@ -186,21 +185,20 @@ public lemma count_inScaledBox_eq_prod_floor (m : ℕ)
              fun i => h.2.choose_spec.1 i |>.2⟩,
          h.2.choose_spec.2⟩
     · rintro ⟨a, ⟨ha₁, ha₂⟩, rfl⟩
-      refine' ⟨_, a, _, rfl⟩
-      · intro i; refine' ⟨_, _⟩ <;>
-          norm_num [Finset.sum_le_sum, ha₁, ha₂]
+      refine ⟨?_, a, ?_, rfl⟩
+      · intro i;
+        refine ⟨?_, ?_⟩ <;> norm_num [Finset.sum_le_sum, ha₁, ha₂]
         ring_nf
         (exact le_trans (ha₁ i)
           (Finset.single_le_sum
             (fun x _ => le_trans zero_le_one (ha₁ x))
             (Finset.mem_filter.mpr
               ⟨Finset.mem_univ _, le_rfl⟩)))
-        refine' le_trans
-          (Finset.sum_le_sum fun j hj => ha₂ j) _
+        apply le_trans (Finset.sum_le_sum fun j hj => ha₂ j) _
         norm_num [Finset.mul_sum, Finset.sum_mul]
         ring_nf
-        (refine' mod_cast Nat.le_of_lt_succ _
-         refine' Nat.lt_succ_of_le
+        (refine mod_cast Nat.le_of_lt_succ ?_
+         apply Nat.lt_succ_of_le
           (Nat.le_trans
             (Finset.sum_le_sum_of_subset
               (Finset.subset_univ _)) _)
@@ -251,9 +249,7 @@ public lemma prod_floor_approx (m : ℕ) (b : Fin m → ℝ)
            by linarith [Nat.lt_floor_add_one (s * b 0)]⟩⟩
     · obtain ⟨C₁, hC₁, hC₁'⟩ :=
         ih (fun i => b i.castSucc) fun i => hb _
-      refine' ⟨C₁ * b (Fin.last _) +
-        ∏ i : Fin (m + 1), b (Fin.castSucc i) + 1,
-        _, _⟩
+      refine ⟨C₁ * b (Fin.last _) + ∏ i : Fin (m + 1), b (Fin.castSucc i) + 1, ?_, ?_⟩
       · exact add_pos_of_nonneg_of_pos
           (add_nonneg
             (mul_nonneg hC₁.le
@@ -339,7 +335,7 @@ public lemma prod_floor_approx (m : ℕ) (b : Fin m → ℝ)
                   b (Fin.castSucc i)| *
               ⌊s * b (Fin.last _)⌋₊ ≤
             C₁ * s ^ m * s * b (Fin.last _) := by
-          refine' le_trans
+          apply le_trans
             (mul_le_mul_of_nonneg_right
               (mod_cast hC₁' s hs)
               (Nat.cast_nonneg _)) _

@@ -74,7 +74,7 @@ theorem tupleCount_crt_mul {q₁ q₂ : ℕ} [NeZero q₁] [NeZero q₂]
   · intro b hb
     obtain ⟨b₁, b₂⟩ := b
     generalize_proofs at *
-    refine' ⟨(ZMod.chineseRemainder hcop).symm (b₁, b₂), _, _⟩ <;>
+    refine ⟨(ZMod.chineseRemainder hcop).symm (b₁, b₂), ?_, ?_⟩ <;>
       simp_all +decide
     simp_all +decide [ZMod.chineseRemainder]
 
@@ -271,7 +271,7 @@ lemma euler_product_convergence
       ∀ (d : ℕ), d ∣ q → 1 < d →
         |∏ p ∈ d.primeFactors,
           ((1 : ℝ) - (Ω p).card / p) * (p : ℝ) ^ (-ε)| ≤ C := by
-  refine' ⟨ 1, zero_lt_one, fun q hq d hd hd' => _ ⟩
+  refine ⟨ 1, zero_lt_one, fun q hq d hd hd' => ?_ ⟩
   rw [ Finset.abs_prod ]
   refine Finset.prod_le_one ?_ ?_ <;> norm_num
   · exact fun _ _ _ _ => by positivity

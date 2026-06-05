@@ -105,7 +105,7 @@ private lemma seq_bound_aux {m : ℕ} {α : Type*} [DecidableEq α]
       intro a ha
       convert hd X h_bound ( k + 1 ) ( by omega ) ( Function.update h_prefix k' a ) ( by omega )
         using 1
-    refine' le_trans h_card_biUnion ( le_trans ( Finset.sum_le_sum h_card_piece ) _ )
+    apply le_trans h_card_biUnion ( le_trans ( Finset.sum_le_sum h_card_piece ) _ )
     simp +decide [ hk' ]
     rw [ show ( Finset.filter ( fun x : Fin m => k' ≤ x ) Finset.univ ) =
               Finset.filter ( fun x : Fin m => k' < x ) Finset.univ ∪ { k' }

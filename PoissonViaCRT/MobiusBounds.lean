@@ -66,7 +66,7 @@ theorem divisor_sum_convergent_k_ge_3 {k : ℕ} (hk : 3 ≤ k) {ε : ℝ} (hε :
     (q : ℕ) (_hq : 0 < q) :
     ∑ d ∈ q.divisors.filter Squarefree, ((d : ℝ) ^ ((k : ℝ) - 2 + ε))⁻¹ ≤
       ∑' n : ℕ, ((n : ℝ) ^ ((k : ℝ) - 2 + ε))⁻¹ := by
-  refine' le_trans _ ( Summable.sum_le_tsum _ _ _ )
+  refine le_trans ?_ ( Summable.sum_le_tsum ?_ ?_ ?_ )
   rotate_left
   exact q.divisors.filter fun d => Squarefree d
   · exact fun _ _ => by positivity

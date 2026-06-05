@@ -77,7 +77,7 @@ lemma tupleCount_eq_prod_localCount {k : ℕ} (q : ℕ) [NeZero q] (hq : Squaref
     (Ω : ∀ p : ℕ, Finset (ZMod p)) (h : Fin k → ZMod q) :
     (tupleCount (crtSubset q Ω) h : ℝ) = ∏ p ∈ q.primeFactors, localCount Ω q h p := by
   rw [ counting_function_multiplicative, Nat.cast_prod ]
-  · refine' Finset.prod_bij ( fun p hp => p.val ) _ _ _ _ <;> simp +decide [ localCount ]
+  · apply Finset.prod_bij ( fun p hp => p.val ) _ _ _ _ <;> simp +decide [ localCount ]
   · assumption
 
 -- `globalMean_eq_prod_localMean` is now in `SmallDivisorHelpers.lean`.
@@ -307,7 +307,7 @@ lemma deviation_expression_fixed_delta (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk :
     deviation_small_divisors ε hε k hk Ω hΩ hWD hsp hrp hε_lt X C_lp hC_lp_pos hC_lp
   obtain ⟨K₂, hK₂_pos, hK₂⟩ :=
     deviation_large_divisors ε hε k hk Ω hΩ hWD hsp hrp hε_lt X C_lp hC_lp_pos hC_lp
-  refine' ⟨ K₁ + K₂, add_pos hK₁_pos hK₂_pos, fun q _ hq ↦ _ ⟩
+  refine ⟨ K₁ + K₂, add_pos hK₁_pos hK₂_pos, fun q _ hq ↦ ?_ ⟩
   -- Apply the triangle inequality to the sum, using divisor sums directly.
   have h_triangle :
       |(1 / (crtSubset q Ω).card : ℝ) * ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
@@ -347,7 +347,7 @@ lemma deviation_expression_fixed_delta (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk :
                         (h i : ZMod q)) p - localMean k Ω p))
                         * ∏ p ∈ q.primeFactors \ d.primeFactors, localMean k Ω p) := by
         rw [ ← Finset.sum_comm ]
-        refine' Finset.sum_congr rfl fun x hx => _
+        refine Finset.sum_congr rfl fun x hx => ?_
         convert deviation_product_difference q hq Ω ( Fin.cons 0 fun i => ( x i : ZMod q ) ) using 1
         · grind
         · grind

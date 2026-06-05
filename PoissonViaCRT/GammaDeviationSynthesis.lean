@@ -107,10 +107,10 @@ lemma perGammaDeviationWeight_nonneg (ε : ℝ) (k : ℕ)
     (Ω : ∀ p : ℕ, Finset (ZMod p)) (q : ℕ) [NeZero q]
     (T : Finset ℕ) (hT : T ⊆ q.primeFactors) (γ : ℕ) :
     0 ≤ perGammaDeviationWeight ε k Ω T γ := by
-  refine' mul_nonneg ( Finset.prod_nonneg fun p hp => Nat.cast_nonneg _ )
-      ( Finset.prod_nonneg fun p hp => mul_nonneg ( mul_nonneg _ _ ) _ )
-  · refine' sub_nonneg_of_le _
-    refine' div_le_one_of_le₀ _ ( Nat.cast_nonneg _ )
+  refine mul_nonneg ( Finset.prod_nonneg fun p hp => Nat.cast_nonneg _ )
+      ( Finset.prod_nonneg fun p hp => mul_nonneg ( mul_nonneg ?_ ?_ ) ?_ )
+  · apply sub_nonneg_of_le _
+    apply div_le_one_of_le₀ _ ( Nat.cast_nonneg _ )
     haveI := Fact.mk ( Nat.prime_of_mem_primeFactors ( hT ( Finset.mem_filter.mp hp |>.1 ) ) )
     exact_mod_cast le_trans ( Finset.card_le_univ _ ) ( by norm_num )
   · positivity
@@ -138,20 +138,20 @@ lemma not_dvd_radical_gammaProd_imp_injective {n : ℕ} (hn : 1 ≤ n)
   intro h_eq
   generalize_proofs at *
   contrapose! hp_not; simp_all +decide [ radical ]
-  refine' dvd_trans _ ( Finset.dvd_prod_of_mem _ <|
+  apply dvd_trans _ ( Finset.dvd_prod_of_mem _ <|
     Nat.mem_primeFactors.mpr ⟨ hp_prime, _, _ ⟩ ) <;>
       norm_num [ gammaProdOfBoxPoint ]
-  · refine' dvd_trans _ ( Finset.dvd_prod_of_mem _ ( Finset.mem_univ ( Max.max j hij ) ) )
+  · apply dvd_trans _ ( Finset.dvd_prod_of_mem _ ( Finset.mem_univ ( Max.max j hij ) ) )
     cases max_choice j hij <;> simp_all +decide
-    · refine' dvd_trans _ ( Finset.dvd_lcm ( Finset.mem_Iio.mpr <| show hij < j from
+    · apply dvd_trans _ ( Finset.dvd_lcm ( Finset.mem_Iio.mpr <| show hij < j from
         lt_of_le_of_ne ‹_› <| Ne.symm hp_not ) ) ; simp_all +decide [ Fin.cons ]
-      refine' Nat.dvd_gcd ( Finset.dvd_prod_of_mem _ hp_T ) _
+      apply Nat.dvd_gcd ( Finset.dvd_prod_of_mem _ hp_T ) _
       rw [ ← Int.natCast_dvd ]
       haveI := Fact.mk hp_prime; simp_all +decide [← ZMod.intCast_zmod_eq_zero_iff_dvd]
       cases j using Fin.inductionOn <;> cases hij using Fin.inductionOn <;> aesop
-    · refine' dvd_trans _ ( Finset.dvd_lcm ( Finset.mem_Iio.mpr ( lt_of_le_of_ne ‹_› hp_not ) ) )
+    · apply dvd_trans _ ( Finset.dvd_lcm ( Finset.mem_Iio.mpr ( lt_of_le_of_ne ‹_› hp_not ) ) )
       simp_all +decide [ Fin.cons ]
-      refine' Nat.dvd_gcd ( Finset.dvd_prod_of_mem _ hp_T ) _
+      apply Nat.dvd_gcd ( Finset.dvd_prod_of_mem _ hp_T ) _
       rw [ ← Int.natCast_dvd ]
       simp_all +decide [ ← ZMod.intCast_zmod_eq_zero_iff_dvd, sub_eq_iff_eq_add ]
       convert h_eq.symm using 1
@@ -602,7 +602,7 @@ private lemma prefactor_le_inv_prod_localMean (k : ℕ) (hk : 2 ≤ k)
           exact le_trans ( Finset.card_le_univ _ ) ( by norm_num )
         exact le_trans ( by rw [ ← pow_succ, Nat.sub_add_cancel ( by linarith ) ] )
           ( Nat.mul_le_mul_right _ ( Nat.pow_le_pow_left h_card_le _ ) )
-      refine' le_trans ( Nat.mul_le_mul ( Finset.prod_le_prod' fun p hp =>
+      apply le_trans ( Nat.mul_le_mul ( Finset.prod_le_prod' fun p hp =>
           h_prod_le p <| Finset.mem_sdiff.mp hp |>.1 )
         ( Finset.prod_le_prod' fun p hp => h_prod_le p <| hT hp ) ) _
       simp +decide [ mul_assoc, mul_comm, mul_left_comm, Finset.prod_mul_distrib ]
@@ -678,7 +678,7 @@ private lemma per_T_contribution_le (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 
     _ = (H + 1 : ℝ) ^ (k - 1)
         * ∏ p ∈ T, ((localMean k Ω p)⁻¹ + (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) := by
         congr 1
-        refine' Finset.prod_congr rfl fun p hp => _
+        refine Finset.prod_congr rfl fun p hp => ?_
         have h_mu_pos : (0 : ℝ) < localMean k Ω p := by
           unfold localMean
           exact div_pos (pow_pos (Nat.cast_pos.mpr (Finset.card_pos.mpr (hΩ p
@@ -696,7 +696,7 @@ private lemma per_T_contribution_le (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 
     _ ≤ (H + 1 : ℝ) ^ (k - 1) * ∏ p ∈ T, ((p : ℝ) ^ (k - 1) / ((Ω p).card : ℝ) ^ k
         + k * (p : ℝ) ^ (-(1 + ε))) := by
         gcongr _ * ?_
-        refine' Finset.prod_le_prod (fun p hp => ?_) (fun p hp => ?_)
+        apply Finset.prod_le_prod (fun p hp => ?_) (fun p hp => ?_)
         · have h_p_pos : (0 : ℝ) < p := Nat.cast_pos.mpr (Nat.pos_of_mem_primeFactors (hT hp))
           have h_mu_pos : (0 : ℝ) < localMean k Ω p := by
             unfold localMean

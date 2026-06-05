@@ -96,7 +96,7 @@ theorem countTuplesWithGammaProd_le_sum (γ H : ℕ) (_hγ : 0 < γ) (_hH : 0 < 
     (countTuplesWithGammaProd k γ H : ℝ) ≤
       ∑ Γ ∈ S, (countTuplesWithGamma Γ H : ℝ) := by
   norm_cast
-  refine' le_trans _ ( Finset.card_biUnion_le )
+  refine le_trans ?_ ( Finset.card_biUnion_le )
   refine' le_trans _ ( Finset.card_mono _ )
   rotate_left
   exact Finset.filter ( fun h => h 0 = 0 ∧ ( ∀ i j, ¬i = j → h i ≠ h j )

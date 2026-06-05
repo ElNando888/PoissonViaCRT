@@ -284,7 +284,7 @@ public lemma sum_nonempty_powerset_eq_sum_nontrivial_divisors (q : ℕ) (hq : Sq
       ∑ d ∈ nontrivDivisors q, g d.primeFactors := by
   apply Finset.sum_bij (fun T hT => ∏ p ∈ T, p)
   · simp +zetaDelta at *
-    intro a ha₁ ha₂; refine' ⟨ ⟨ _, _ ⟩, _ ⟩
+    intro a ha₁ ha₂; refine ⟨ ⟨ ?_, ?_ ⟩, ?_ ⟩
     · have := prod_mem_divisors_of_subset q hq a ha₁; aesop
     · aesop
     · exact lt_of_lt_of_le ( Nat.Prime.one_lt ( Nat.prime_of_mem_primeFactors ( ha₁

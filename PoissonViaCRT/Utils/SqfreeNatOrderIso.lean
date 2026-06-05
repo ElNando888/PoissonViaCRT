@@ -108,7 +108,7 @@ public lemma prod_primes_squarefree (s : Finset Nat.Primes) :
   · norm_num
   · rw [ Finset.prod_insert h ]
     rw [ Nat.squarefree_mul_iff ]
-    refine' ⟨ Nat.Coprime.prod_right fun q hq => _, p.2.squarefree, ih ⟩
+    refine ⟨ Nat.Coprime.prod_right fun q hq => ?_, p.2.squarefree, ih ⟩
     have := Nat.coprime_primes p.2 q.2
     exact this.mpr fun con => h <| by convert hq; exact Subtype.ext con
 
@@ -147,7 +147,7 @@ public lemma right_inv (q : SquarefreeNat) :
   -- By definition of prime factors, the product of the prime factors of q is equal to q.
   have h_prod_factors : (q.val.primeFactors.subtype Nat.Prime).prod (fun p => (p : ℕ)) = q.val := by
     convert Nat.prod_primeFactors_of_squarefree q.prop
-    refine' Finset.prod_bij ( fun p hp => p ) _ _ _ _ <;> simp +decide
+    refine Finset.prod_bij ( fun p hp => p ) ?_ ?_ ?_ ?_ <;> simp +decide
     tauto
   exact Subtype.ext h_prod_factors
 
@@ -242,9 +242,9 @@ public lemma sum_powerset_eq_nontrivialDivisors [AddCommMonoid M]
     (q : SquarefreeNat) (g : Finset ℕ → M) :
     ∑ T ∈ q.val.primeFactors.powerset.filter (· ≠ ∅), g T =
       ∑ d ∈ q.nontrivialDivisors, g d.primeFactors := by
-  refine' Finset.sum_bij ( fun T hT => ∏ p ∈ T, p ) _ _ _ _ <;> simp +decide
+  apply Finset.sum_bij ( fun T hT => ∏ p ∈ T, p ) _ _ _ _ <;> simp +decide
   · intro T hT hne₂
-    refine' ⟨ ⟨ _, q.ne_zero ⟩, _ ⟩
+    refine ⟨ ⟨ ?_, q.ne_zero ⟩, ?_ ⟩
     · have h_prod_div : ∏ p ∈ T, p ∣ ∏ p ∈ q.val.primeFactors, p := by
         apply_rules [ prod_dvd_prod_of_subset ]
       convert h_prod_div using 1

@@ -280,7 +280,7 @@ private lemma rescaled_surj_mem_S {k : ℕ}
         Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
       (fun h => inScaledBox X s (fun _ => 0) h) := by
   simp +zetaDelta at *
-  refine' ⟨ _, surj_inscaledbox_transfer s X d r_1 hr1_bounds b hb_box ⟩
+  refine ⟨ ?_, surj_inscaledbox_transfer s X d r_1 hr1_bounds b hb_box ⟩
   intro i
   have h_le : d * (b i - 1) + r_1 i ≤ ⌈s * ∑ i, X.sides i⌉ := by
     have h_le : d * (b i - 1) + r_1 i ≤ ⌈s * ∑ i, X.sides i⌉ := by
@@ -360,10 +360,10 @@ private lemma residue_class_card_eq_rescaled_card {k : ℕ} (hk : 1 ≤ k)
   apply Finset.card_bij (fun (h : Fin (k - 1) → ℤ) _ (i : Fin (k - 1)) => (h i - 1) / (d : ℤ) + 1)
   · -- Forward direction: show the image lands in S_sub
     intro a ha
-    refine' Finset.mem_filter.mpr ⟨ _, _ ⟩ <;> simp_all +decide [ funext_iff ]
+    apply Finset.mem_filter.mpr ⟨ _, _ ⟩ <;> simp_all +decide [ funext_iff ]
     · intro i; specialize ha; have := ha.1.1 i
       rw [ Int.ediv_lt_iff_lt_mul ] <;> norm_num [ NeZero.pos ] ; ring_nf at *
-      refine' ⟨ Int.ediv_nonneg ( by linarith ) ( Nat.cast_nonneg _ ), _ ⟩
+      refine ⟨ Int.ediv_nonneg ( by linarith ) ( Nat.cast_nonneg _ ), ?_ ⟩
       field_simp
       exact Int.le_of_lt_add_one ( by
         rw [ ← @Int.cast_lt ℝ ] ; push_cast
@@ -493,7 +493,7 @@ public lemma globalMean_eq_prod_localMean (k : ℕ) (q : ℕ) [NeZero q] (hq : S
     have h_card : Fintype.card (crtSubset q Ω) = ∏ p ∈ q.primeFactors, Fintype.card (Ω p) := by
       have := @crt_domain_equiv q ‹_› hq Ω
       rw [ Fintype.card_congr this, Fintype.card_pi ]
-      refine' Finset.prod_bij ( fun p hp => p ) _ _ _ _ <;> aesop
+      refine Finset.prod_bij ( fun p hp => p ) ?_ ?_ ?_ ?_ <;> aesop
     convert h_card using 1
     · rw [ Fintype.card_of_subtype ] ; aesop
     · exact Finset.prod_congr rfl fun _ _ => by rw [ Fintype.card_of_subtype ] ; aesop
@@ -600,7 +600,7 @@ private lemma arith_l1_prod_match (k : ℕ) (ε : ℝ)
   · intro p hp
     convert arith_l1_per_prime k ε Ω hWD p.val
     exact ⟨ Nat.prime_of_mem_primeFactors p.2 ⟩
-  · refine' Finset.prod_bij ( fun p hp => ⟨ p, by aesop ⟩ ) _ _ _ _ <;> aesop
+  · apply Finset.prod_bij ( fun p hp => ⟨ p, by aesop ⟩ ) _ _ _ _ <;> aesop
 
 /--
 Arithmetic L¹ bound via CRT factorization: the sum of absolute products of local
@@ -663,7 +663,7 @@ private lemma box_deviation_factors_through_d (k : ℕ) (q : ℕ) [NeZero q]
         localMean k Ω p) := by
   intros v
   unfold localCount
-  refine' Finset.prod_congr rfl fun p hp => _
+  refine Finset.prod_congr rfl fun p hp => ?_
   simp_all +decide only [Nat.mem_primeFactors, ne_eq, ZMod.castHom_apply, prod_eq_zero_iff,
     ↓existsAndEq, and_true, sub_left_inj]
   split_ifs <;> simp_all +decide [ Nat.Prime.dvd_iff_not_coprime ]
@@ -717,7 +717,7 @@ private lemma box_deviation_final_step (k : ℕ) (hk : 1 ≤ k) (q : ℕ) [NeZer
     * p ^ ( -ε ) ) * ( s / d ) ^ ( ( k - 1 : ℤ ) - 1 ) * d ^ ( k - 1 ) ) h_mean_collapse using 1
   · rw [ abs_of_nonneg ]
     · grind
-    · refine' mul_nonneg ( by positivity ) ( Finset.prod_nonneg fun p hp => _ )
+    · refine mul_nonneg ( by positivity ) ( Finset.prod_nonneg fun p hp => ?_ )
       exact div_nonneg ( pow_nonneg ( Nat.cast_nonneg _ ) _ ) ( pow_nonneg ( Nat.cast_nonneg _ ) _ )
   · rcases k with ( _ | _ | k ) <;> norm_num at *
     · simp_all +decide [ mul_assoc, mul_comm, mul_left_comm, Finset.prod_mul_distrib ]
@@ -1088,7 +1088,7 @@ public lemma deviation_small_divisors (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 
       rw [← Nat.cast_prod]; exact congrArg _ (Nat.prod_primeFactors_of_squarefree hd_sq)
     have hd_le_s : ∏ p ∈ d.primeFactors, (p : ℝ) ≤ (q : ℝ) / (crtSubset q Ω).card := by
       rw [hd_prod_eq]; exact (Finset.mem_filter.mp hd).2
-    refine' le_trans ( _ : _ ≤ _ ) ( div_le_div_of_nonneg_right ( mul_le_mul_of_nonneg_left
+    apply le_trans ( _ : _ ≤ _ ) ( div_le_div_of_nonneg_right ( mul_le_mul_of_nonneg_left
       ( prod_local_factor_le d.primeFactors ε k q Ω ( fun p hp => hd_pf_sub hp ) hrp )
       hC_lp_pos.le ) ( by positivity ) )
     have := inner_bound_small_divisor ε hε k ( by linarith )

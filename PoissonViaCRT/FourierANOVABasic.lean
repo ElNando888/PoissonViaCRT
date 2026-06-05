@@ -167,7 +167,7 @@ lemma additiveChar_sum_eq_ite (q : ℕ) [NeZero q] (a : ZMod q) :
     -- where `r = exp(2πi a.val/q)`.
     have h_exp : ∑ x : ZMod q, additiveChar q a x = ∑ x ∈ Finset.range q,
         (Complex.exp (2 * Real.pi * Complex.I * (a.val : ℂ) / (q : ℂ))) ^ x := by
-      refine' Finset.sum_bij ( fun x _ => x.val ) _ _ _ _ <;>
+      apply Finset.sum_bij ( fun x _ => x.val ) _ _ _ _ <;>
         simp +decide [ additiveChar_eq_exp_pow ]
       · exact fun x => ZMod.val_lt x
       · exact fun x y h => by
@@ -203,7 +203,7 @@ lemma character_mul_conj (q : ℕ) [NeZero q] (m : ℕ)
       character q m (ξ - η) x := by
   unfold character
   rw [ map_prod, ← Finset.prod_mul_distrib ]
-  refine' Finset.prod_congr rfl fun j _ => _
+  refine Finset.prod_congr rfl fun j _ => ?_
   rw [ starRingEnd_additiveChar ]
   unfold additiveChar
   rw [ ← Complex.exp_add ]
@@ -228,7 +228,7 @@ public theorem character_orthogonality (q : ℕ) [NeZero q] (m : ℕ)
   have h_fubini : ∑ x : Fin m → ZMod q, character q m (ξ - η) x = ∏ j : Fin m,
       ∑ x : ZMod q, additiveChar q ((ξ - η) j) x := by
     rw [ Finset.prod_sum ]
-    refine' Finset.sum_bij ( fun x _ => fun i _ => x i ) _ _ _ _ <;> simp +decide [ character ]
+    apply Finset.sum_bij ( fun x _ => fun i _ => x i ) _ _ _ _ <;> simp +decide [ character ]
     · simp +decide [ funext_iff ]
     · exact fun b => ⟨ fun i => b i ( Finset.mem_univ i ), funext fun i => funext fun _ => rfl ⟩
   split_ifs with h <;> simp_all +decide [ character_mul_conj ]
@@ -506,7 +506,7 @@ public lemma dft_boxIndicator_eq_prod (q : ℕ) [NeZero q] (m : ℕ)
   nontriviality
   simp +decide [ boxIndicator_eq_prod, Finset.prod_mul_distrib, Finset.prod_const ]
   rw [ Finset.prod_sum ]
-  refine' Or.inl ( Finset.sum_bij ( fun x _ => fun i _ => fun _ => x i ) _ _ _ _ ) <;>
+  apply Or.inl ( Finset.sum_bij ( fun x _ => fun i _ => fun _ => x i ) _ _ _ _ ) <;>
     simp +decide [ character ]
   · simp +decide [ funext_iff ]
   · exact fun b => ⟨ fun i => b i ( Finset.mem_univ i ) 0,
@@ -903,7 +903,7 @@ public lemma inScaledBox_sum_eq_diff_sum (k : ℕ) (hk : 2 ≤ k)
     use fun j => ∑ i ∈ Finset.Iic j, b i
     constructor
     all_goals generalize_proofs at *
-    · refine' ⟨ _, _ ⟩
+    · refine ⟨ ?_, ?_ ⟩
       all_goals generalize_proofs at *
       · intro a
         have h_sum_le : ∑ i ∈ Finset.Iic a, b i ≤ ∑ i, ⌊s * X.sides i⌋ := by
@@ -1004,7 +1004,7 @@ private lemma diff_sum_eq_zmod_sum (k : ℕ) (hk : 2 ≤ k)
         (Fintype.piFinset fun j => Icc 1 ⌊s * X.sides j⌋), g (cumSum q (k - 1) x) := by
         rw [ ← Finset.sum_subset ]
         any_goals exact Finset.univ.filter fun x => boxIndicator q ( k - 1 ) X s x ≠ 0
-        · refine' Finset.sum_bij ( fun x hx => x ) _ _ _ _ <;> simp_all +decide [ Set.ext_iff ]
+        · apply Finset.sum_bij ( fun x hx => x ) _ _ _ _ <;> simp_all +decide [ Set.ext_iff ]
           · exact fun a x hx₁ hx₂ hx₃ => ⟨ x, fun i => ⟨ hx₁ i, hx₂ i ⟩, hx₃ ⟩
           · exact fun a ha => ⟨ a, ⟨ fun i => ha i |>.1, fun i => ha i |>.2 ⟩, rfl ⟩
           · grind +locals

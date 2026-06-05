@@ -122,7 +122,7 @@ public theorem crt_finset (U : Finset α) (M : α → ℕ)
     use ∑ i ∈ U, x i
     intro i hi; simp_all +decide only [Int.ModEq]
     rw [ Finset.sum_int_mod, Finset.sum_eq_single i ] <;> aesop
-  refine' ⟨ A, hA, fun B hB => _ ⟩
+  refine ⟨ A, hA, fun B hB => ?_ ⟩
   simp_all +decide [ Int.modEq_iff_dvd ]
   convert Finset.prod_dvd_of_coprime _ _ <;> simp_all +decide [ dvd_sub_comm ]
   · exact pairwise_coprime_intCast U M hcop
@@ -153,7 +153,7 @@ public theorem crt_partition {β : Type*} [DecidableEq β] (U : Finset α) (M : 
       ∀ j ∈ U.image c,
         ∃ Aj : ℤ, (∀ i ∈ U.filter (c · = j), Aj ≡ a i [ZMOD (M i)]) ∧
           x ≡ Aj [ZMOD (∏ i ∈ U.filter (c · = j), M i)] := by
-  refine' ⟨ _, _ ⟩ <;> intro h
+  refine ⟨ ?_, ?_ ⟩ <;> intro h
   · aesop
   · intro i hi
     specialize h ( c i ) ( Finset.mem_image_of_mem c hi )

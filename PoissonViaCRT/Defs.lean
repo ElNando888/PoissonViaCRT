@@ -253,7 +253,7 @@ public def GammaStructure.ofTuple (c : ℕ) (hc : Squarefree c) (h : Fin k → �
   compat := fun i j l hij hjl hil => by
     simp only [gammaOfTuple_of_ne c h hij, gammaOfTuple_of_ne c h hjl,
       gammaOfTuple_of_ne c h hil]
-    refine' Nat.dvd_gcd ( Nat.dvd_trans ( Nat.gcd_dvd_left _ _ ) ( Nat.gcd_dvd_left _ _ ) ) _
+    apply Nat.dvd_gcd ( Nat.dvd_trans ( Nat.gcd_dvd_left _ _ ) ( Nat.gcd_dvd_left _ _ ) ) _
     convert Int.dvd_natAbs.mpr ( Int.dvd_add ( Int.gcd_dvd_right _ _ |> Int.dvd_trans <|
       Int.natCast_dvd.mpr <| Nat.gcd_dvd_right _ _ ) ( Int.gcd_dvd_right _ _ |> Int.dvd_trans <|
         Int.natCast_dvd.mpr <| Nat.gcd_dvd_right _ _ ) ) using 1 ; ring_nf

@@ -90,7 +90,7 @@ is used to establish injectivity of the residue projection. -/
 lemma inScaledBox_strictMono {n : ℕ} (hn : 1 ≤ n) (X : Box n) (s : ℝ) (h : Fin n → ℤ)
     (hbox : inScaledBox X s (fun _ => 0) h) :
     StrictMono h ∧ (0 : ℤ) < h ⟨0, by omega⟩ := by
-  refine' ⟨ fun i j hij => _, _ ⟩
+  refine ⟨ fun i j hij => ?_, ?_ ⟩
   · induction' j with j hj generalizing i
     induction' j with j hj generalizing i
     · tauto

@@ -112,11 +112,11 @@ public lemma abs_localCount_sub_localMean_le_p {k : ℕ} (hk : 1 ≤ k) (q : ℕ
     (p : ℕ) (hp : p ∈ q.primeFactors) (Ω : ∀ p : ℕ, Finset (ZMod p))
     (h : Fin k → ZMod q) :
     |localCount Ω q h p - localMean k Ω p| ≤ (p : ℝ) := by
-  refine' abs_sub_le_iff.mpr _
+  apply abs_sub_le_iff.mpr _
   constructor
-  · refine' le_trans ( sub_le_self _ <| localMean_nonneg _ _ _ ) _
+  · apply le_trans ( sub_le_self _ <| localMean_nonneg _ _ _ ) _
     exact localCount_le _ hp _ _
-  · refine' le_trans ( sub_le_self _ ( localCount_nonneg ) ) _
+  · apply le_trans ( sub_le_self _ ( localCount_nonneg ) ) _
     exact localMean_le k hk Ω p ( Nat.prime_of_mem_primeFactors hp )
 
 lemma abs_localCount_sub_localMean_le {k : ℕ} (hk : 1 ≤ k) (q : ℕ) [NeZero q]
