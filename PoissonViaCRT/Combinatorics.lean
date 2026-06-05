@@ -586,7 +586,8 @@ public theorem mem_finsetGammaStructures {γ : ℕ} {Γ : GammaStructure k} :
 /-- Each off-diagonal entry of a `GammaStructure` divides `gammaProd`. -/
 lemma GammaStructure.gamma_dvd_gammaProd (Γ : GammaStructure k) (i j : Fin k)
     (hij : i ≠ j) : Γ.gamma i j ∣ Γ.gammaProd := by
-  unfold GammaStructure.gammaProd; cases le_total i j <;> simp_all +decide
+  unfold GammaStructure.gammaProd
+  cases le_total i j <;> simp_all +decide
   · -- Since Γ.gamma i j divides Γ.gammaRow j and Γ.gammaRow j divides Γ.gammaProd, we have
     -- Γ.gamma i j ∣ Γ.gammaProd.
     have h_div : Γ.gamma i j ∣ Γ.gammaRow j := by

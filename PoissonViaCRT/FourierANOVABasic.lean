@@ -27,6 +27,7 @@ import Mathlib.Data.Matrix.Mul
 import Mathlib.Data.Nat.Prime.Defs
 import Mathlib.Data.ZMod.Defs
 import Mathlib.Logic.Basic
+import Mathlib.Tactic.LinearCombination'
 
 set_option linter.unusedVariables false
 

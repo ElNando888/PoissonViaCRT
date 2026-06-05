@@ -664,18 +664,18 @@ For nonzero `a : ZMod d` with `d ∣ q`, the frequency `a.val * (q / d)` is nonz
 lemma subgrid_freq_ne_zero (q d : ℕ) [NeZero q] [NeZero d] (hd : d ∣ q)
     (a : ZMod d) (ha : a ≠ 0) :
     ((a.val * (q / d) : ℕ) : ZMod q) ≠ 0 := by
-      -- By definition of modular arithmetic, � multiplying� by a coprime number preserves
-      -- the non-zero property.
-      have h_mod : ¬(q ∣ a.val * (q / d)) := by
-        by_contra h_contra
-        -- Since $q = d * m$, we can rewrite the divisibility condition as $d * m \mid a.val * m$,
-        -- which simplifies to $d � \�mid a.val$.
-        obtain ⟨m, hm⟩ : ∃ m, q = d * m := hd
-        have h_div : d ∣ a.val := by
-          simp_all +decide [ Nat.mul_div_cancel_left _ ( Nat.pos_of_ne_zero <| NeZero.ne d ) ]
-          exact Nat.dvd_of_mul_dvd_mul_right ( Nat.pos_of_ne_zero ( by aesop_cat ) ) h_contra
-        exact ha ( by rw [ ← ZMod.natCast_eq_zero_iff ] at h_div; aesop )
-      contrapose! h_mod; erw [ ZMod.natCast_eq_zero_iff ] at *; aesop
+  -- By definition of modular arithmetic, � multiplying� by a coprime number preserves
+  -- the non-zero property.
+  have h_mod : ¬(q ∣ a.val * (q / d)) := by
+    by_contra h_contra
+    -- Since $q = d * m$, we can rewrite the divisibility condition as $d * m \mid a.val * m$,
+    -- which simplifies to $d � \�mid a.val$.
+    obtain ⟨m, hm⟩ : ∃ m, q = d * m := hd
+    have h_div : d ∣ a.val := by
+      simp_all +decide [ Nat.mul_div_cancel_left _ ( Nat.pos_of_ne_zero <| NeZero.ne d ) ]
+      exact Nat.dvd_of_mul_dvd_mul_right ( Nat.pos_of_ne_zero ( by aesop_cat ) ) h_contra
+    exact ha ( by rw [ ← ZMod.natCast_eq_zero_iff ] at h_div; aesop )
+  contrapose! h_mod; erw [ ZMod.natCast_eq_zero_iff ] at *; aesop
 
 /--
 For nonzero `a : ZMod d` with `d ∣ q`, the sine argument simplifies:
