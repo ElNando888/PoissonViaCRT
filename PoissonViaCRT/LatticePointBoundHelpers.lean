@@ -68,14 +68,14 @@ original coordinates. -/
 lemma gapMap_injective (m : ℕ) :
     Function.Injective (gapMap m) := by
   intro h h'
-  induction' m with m ih
-  · exact fun _ => Subsingleton.elim _ _
-  · intro h''; ext i
-    induction' i using Fin.inductionOn with i IH
-    · simp_all +decide [funext_iff,
-        Fin.forall_fin_succ]
-      unfold gapMap at h''; aesop
-    · have := congr_fun h'' (Fin.succ i)
+  induction m
+  case zero => exact fun _ => Subsingleton.elim _ _
+  case succ m ih =>
+    intro h''; ext i
+    induction i using Fin.inductionOn
+    case zero => simp_all +decide [funext_iff, Fin.forall_fin_succ] ; unfold gapMap at h''; aesop
+    case succ i IH =>
+      have := congr_fun h'' (Fin.succ i)
       simp_all +decide [gapMap]
       linarith!
 
@@ -118,7 +118,7 @@ lemma int_excess_count (α L : ℝ) (_hL : 0 < L)
           ¬(0 < d ∧ d ≤ L)} ⊆
         {⌊α⌋ + 1, ⌊α + L⌋} := by
       intro d hd
-      cases' hd with hd₁ hd₂
+      obtain ⟨hd₁, hd₂⟩ : α < (d : ℝ) ∧ _ := hd
       rcases eq_or_ne d ⌊α⌋ with rfl | hd₃ <;>
         simp_all +decide [Int.floor_eq_iff]
       · linarith [Int.floor_le α]
@@ -552,9 +552,10 @@ public lemma prefixSum_injective (m : ℕ) :
   intro d₁ d₂ h_eq
   have h_zero : ∀ i : Fin m, d₁ i = d₂ i := by
     intro ⟨i, hi⟩
-    induction' i with i ih <;>
+    induction i <;>
       simp_all +decide [Finset.sum_filter]
-    · replace h_eq := congr_fun h_eq ⟨0, hi⟩
+    case zero =>
+      replace h_eq := congr_fun h_eq ⟨0, hi⟩
       simp_all +decide [Finset.sum_ite]
       rw [show (Finset.filter
           (fun x => x ≤ ⟨0, hi⟩)
@@ -567,7 +568,8 @@ public lemma prefixSum_injective (m : ℕ) :
             (Finset.mem_filter.mp hx |>.2)
             (Nat.zero_le _)⟩] at h_eq
       aesop
-    · have := congr_fun h_eq ⟨i + 1, hi⟩
+    case succ i ih =>
+      have := congr_fun h_eq ⟨i + 1, hi⟩
       have := congr_fun h_eq ⟨i, by linarith⟩
       simp_all +decide [Finset.sum_ite]
       rw [show (Finset.filter

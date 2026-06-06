@@ -67,12 +67,15 @@ theorem stirlingSecond_le_choose_pow_aux :
     stirlingSecond (m + d) m ≤ ((m + d).choose 2) ^ d := by
   -- We proceed by induction on $d$.
   intro d m hd hm
-  induction' d with d ih generalizing m
-  · contradiction
-  · induction' hm with m hm ih <;> simp_all +decide [ Nat.pow_succ' ]
-    · refine Nat.recOn d ?_ ?_ <;> simp_all +decide [ Nat.stirlingSecond, Nat.choose ]
+  induction d generalizing m
+  case zero => contradiction
+  case succ d ih =>
+    induction hm <;> simp_all +decide [ Nat.pow_succ' ]
+    case refl =>
+      refine Nat.recOn d ?_ ?_ <;> simp_all +decide [ Nat.stirlingSecond, Nat.choose ]
       grind +suggestions
-    · by_cases hd : 1 ≤ d <;> simp_all +decide [ Nat.stirlingSecond_succ_succ, Nat.choose_two_succ ]
+    case step m hm ih =>
+      by_cases hd : 1 ≤ d <;> simp_all +decide [ Nat.stirlingSecond_succ_succ, Nat.choose_two_succ ]
       · have h_combined : (m + 2 + d).choose 2 ^ (d + 1)
           ≥ (m + 1) * (m + 1 + d).choose 2 ^ d + (m + 1 + d).choose 2 ^ (d + 1) := by
           have h_combined : (m + 2 + d).choose 2 ^ (d + 1)
@@ -747,8 +750,7 @@ lemma gammaRow_dvd_diff_of_valid
   convert Finset.lcm_dvd fun i hi =>
     h_div i (Finset.mem_Iio.mp hi) using 1
   generalize_proofs at *; (simp [GammaStructure.gammaRow])
-  induction' (Finset.Iio j : Finset (Fin (k + 1)))
-    using Finset.induction <;>
+  induction (Finset.Iio j : Finset (Fin (k + 1))) using Finset.induction <;>
     simp_all +decide [Finset.lcm_insert]
   simp +decide [← ‹_›, GCDMonoid.lcm])
 
@@ -764,9 +766,10 @@ lemma card_filtered_le_prod_of_fiber_dvd
       (∀ i : Fin n, i < j → h i = h' i) →
         (m j : ℤ) ∣ (h j - h' j)) :
     S.card ≤ ∏ j : Fin n, (H / m j + 1) := by
-  induction' n with n ih
-  · exact le_trans ( Finset.card_le_univ _ ) ( by norm_num )
-  · -- Let `proj` be the projection onto the first `n` coordinates.
+  induction n
+  case zero => exact le_trans ( Finset.card_le_univ _ ) ( by norm_num )
+  case succ n ih =>
+    -- Let `proj` be the projection onto the first `n` coordinates.
     set proj : (Fin (Nat.succ n) → ℤ) → (Fin n → ℤ) := fun h => fun i => h (Fin.castSucc i)
     nontriviality
     -- Let `I := S.image proj`.

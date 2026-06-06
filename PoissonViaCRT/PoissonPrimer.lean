@@ -79,9 +79,11 @@ theorem condExpectation_indicator (q k r : ℕ) (hk : k ≤ q) (hr : k ≤ r) (h
       ∏ i ∈ Finset.range k, ((r - i : ℚ) / (q - i)) := by
   by_cases hqr : r = q
   · simp_all +decide [Finset.prod_eq_zero_iff, sub_eq_zero]
-  · induction' k with k ih generalizing r q <;> simp_all +decide [ Finset.prod_range_succ ]
-    · exact ne_of_gt <| Nat.choose_pos hrq
-    · rw [ mul_div_mul_comm, ← ih ]
+  · induction k generalizing r q <;> simp_all +decide [ Finset.prod_range_succ ]
+    case neg.zero =>
+      exact ne_of_gt <| Nat.choose_pos hrq
+    case neg.succ k ih =>
+      rw [ mul_div_mul_comm, ← ih ]
       · rw [ div_mul_div_comm, div_eq_div_iff ] <;> norm_cast
         · rw [ Int.subNatNat_of_le hk.le, Int.subNatNat_of_le hr.le ]
           rw [ show q - k = ( q - ( k + 1 ) ) + 1 by omega,

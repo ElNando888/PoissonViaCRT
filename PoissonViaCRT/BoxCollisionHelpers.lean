@@ -48,9 +48,10 @@ public lemma inScaledBox_cons_strictMono {m : ℕ} (X : Box m) (s : ℝ) (hs : 1
     StrictMono (extendH m h) := by
   unfold extendH
   intro i j hij
-  induction' j using Fin.inductionOn with j ih
-  · tauto
-  · cases lt_or_eq_of_le ( show i ≤ Fin.castSucc j from Nat.le_of_lt_succ hij ) <;>
+  induction j using Fin.inductionOn
+  case zero => tauto
+  case succ j ih =>
+    cases lt_or_eq_of_le ( show i ≤ Fin.castSucc j from Nat.le_of_lt_succ hij ) <;>
       simp_all +decide [ Fin.cons ]
     · have := hbox j
       rcases j with ⟨ _ | j, hj ⟩ <;> norm_num at *
@@ -76,9 +77,10 @@ public lemma inScaledBox_cons_le_ceil {m : ℕ} (X : Box m) (s : ℝ) (hs : 1 �
     have h_ind : ∀ j : Fin (m + 1),
       extendH m h j ≤ s * ∑ k ∈ Finset.univ.filter (fun k => k.val < j.val), X.sides k := by
       intro j
-      induction' j using Fin.inductionOn with j ih
-      · norm_num [ extendH ]
-      · have := hbox j
+      induction j using Fin.inductionOn
+      case zero => norm_num [ extendH ]
+      case succ j ih =>
+        have := hbox j
         rcases j with ⟨ _ | j, hj ⟩ <;> norm_num [ Finset.sum_filter, Finset.sum_range_succ ] at *
         · rcases m with ( _ | _ | m ) <;> norm_num [ Fin.sum_univ_succ ] at *
           · contradiction
@@ -107,13 +109,16 @@ public lemma inScaledBox_cons_nonneg {m : ℕ} (X : Box m) (s : ℝ) (hs : 1 ≤
     (hbox : inScaledBox X s (fun _ => 0) h) (i : Fin (m + 1)) :
     (0 : ℤ) ≤ extendH m h i := by
   -- We prove the statement using induction on the size of the block $\textit{m}$.
-  induction' m with m ih
-  · fin_cases i ; rfl
-  · refine Fin.cases ?_ ( fun i => ?_ ) i <;> simp_all +decide [ Fin.forall_fin_succ, extendH ]
-    induction' i using Fin.inductionOn with i IH
-    · have := hbox 0; simp_all +decide [ Fin.forall_fin_succ, inScaledBox ]
+  induction m
+  case zero => fin_cases i ; rfl
+  case succ m ih =>
+    refine Fin.cases ?_ ( fun i => ?_ ) i <;> simp_all +decide [ Fin.forall_fin_succ, extendH ]
+    induction i using Fin.inductionOn
+    case zero =>
+      have := hbox 0; simp_all +decide [ Fin.forall_fin_succ, inScaledBox ]
       linarith
-    · exact le_trans IH ( le_of_lt ( by have := hbox i.succ; aesop ) )
+    case succ i IH =>
+      exact le_trans IH ( le_of_lt ( by have := hbox i.succ; aesop ) )
 
 /-
 For `p > ⌈s * ∑ X.sides⌉`, the extended map mod `p` is injective.

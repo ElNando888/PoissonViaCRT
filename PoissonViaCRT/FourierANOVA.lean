@@ -331,17 +331,18 @@ The harmonic sum `∑_{j=1}^{n} 1/j ≤ log(n) + 1` for `n ≥ 1`.
 -/
 private lemma harmonic_sum_le_log_add_one {n : ℕ} (hn : 1 ≤ n) :
     ∑ j ∈ Finset.Icc 1 n, (1 / (j : ℝ)) ≤ Real.log n + 1 := by
-  induction' hn with n hn ih <;>
+  induction hn <;>
     norm_num [ Finset.sum_Ioc_succ_top, (Nat.succ_eq_succ ▸ Finset.Icc_succ_left_eq_Ioc) ] at *
-  rw [ show ( n : ℝ ) + 1 = n * ( 1 + ( n : ℝ ) ⁻¹ ) by
-    nlinarith only [ mul_inv_cancel₀ ( by positivity : ( n : ℝ ) ≠ 0 ) ],
-      Real.log_mul ( by positivity ) ( by positivity ) ]
-  nlinarith [ inv_pos.mpr ( by positivity : 0 < ( n : ℝ ) * ( 1 + ( n : ℝ ) ⁻¹ ) ),
-    mul_inv_cancel₀ ( by positivity : ( n : ℝ ) * ( 1 + ( n : ℝ ) ⁻¹ ) ≠ 0 ),
-    Real.log_inv ( 1 + ( n : ℝ ) ⁻¹ ),
-    Real.log_le_sub_one_of_pos ( inv_pos.mpr ( by positivity : 0 < ( 1 + ( n : ℝ ) ⁻¹ ) ) ),
-    mul_inv_cancel₀ ( by positivity : ( n : ℝ ) ≠ 0 ),
-    mul_inv_cancel₀ ( by positivity : ( 1 + ( n : ℝ ) ⁻¹ ) ≠ 0 ) ]
+  case step n hn ih =>
+    rw [ show ( n : ℝ ) + 1 = n * ( 1 + ( n : ℝ ) ⁻¹ ) by
+      nlinarith only [ mul_inv_cancel₀ ( by positivity : ( n : ℝ ) ≠ 0 ) ],
+        Real.log_mul ( by positivity ) ( by positivity ) ]
+    nlinarith [ inv_pos.mpr ( by positivity : 0 < ( n : ℝ ) * ( 1 + ( n : ℝ ) ⁻¹ ) ),
+      mul_inv_cancel₀ ( by positivity : ( n : ℝ ) * ( 1 + ( n : ℝ ) ⁻¹ ) ≠ 0 ),
+      Real.log_inv ( 1 + ( n : ℝ ) ⁻¹ ),
+      Real.log_le_sub_one_of_pos ( inv_pos.mpr ( by positivity : 0 < ( 1 + ( n : ℝ ) ⁻¹ ) ) ),
+      mul_inv_cancel₀ ( by positivity : ( n : ℝ ) ≠ 0 ),
+      mul_inv_cancel₀ ( by positivity : ( 1 + ( n : ℝ ) ⁻¹ ) ≠ 0 ) ]
 
 /--
 The norm of `1 - exp(iθ)` equals `2 |sin(θ/2)|`.
@@ -549,10 +550,10 @@ private lemma star_additiveChar_one_ne_one (q : ℕ) [NeZero q]
       rw [ ← @Int.cast_inj ℝ ] ; push_cast;
       nlinarith [ Real.pi_pos, mul_div_cancel₀ ( 2 * Real.pi * ξ.val : ℝ ) ( show ( q : ℝ ) ≠ 0 by
         exact Nat.cast_ne_zero.mpr <| NeZero.ne q ), h_exp_eq.choose_spec ] ⟩
-  cases' h_exp_eq with n hn
+  obtain ⟨ n, hn ⟩ := h_exp_eq
   have := congr_arg ( fun x : ℤ => x : ℤ → ZMod q ) hn
   norm_num at this
-  aesop
+  tauto
 
 /--
 `‖1 - conj(additiveChar q ξ 1)‖ = 2 * |sin(π * ξ.val / q)|`.
@@ -884,14 +885,17 @@ private lemma qd_dvd_val_of_freqDivisor_eq {q d m : ℕ} [NeZero q] [NeZero d]
       have := val_dvd_of_castHom_zero ( Finset.mem_sdiff.mp hp |>.1 ) ( ξ i ) this; aesop
     have h_coprime : ∀ {S : Finset ℕ},
         (∀ p ∈ S, Nat.Prime p) → (∀ p ∈ S, p ∣ (ξ i).val) → (∏ p ∈ S, p) ∣ (ξ i).val := by
-      intros S hS_prime hS_div; induction' S using Finset.induction with p S hpS ih; aesop
-      rw [ Finset.prod_insert hpS ]
-      exact Nat.Coprime.mul_dvd_of_dvd_of_dvd ( Nat.Coprime.prod_right fun q hq => by
-        have := Nat.coprime_primes ( hS_prime p ( Finset.mem_insert_self _ _ ) )
-          ( hS_prime q ( Finset.mem_insert_of_mem hq ) ) ; aesop )
-        ( hS_div p ( Finset.mem_insert_self _ _ ) )
-        ( ih ( fun q hq => hS_prime q ( Finset.mem_insert_of_mem hq ) )
-          ( fun q hq => hS_div q ( Finset.mem_insert_of_mem hq ) ) )
+      intros S hS_prime hS_div
+      induction S using Finset.induction
+      case empty => aesop
+      case insert p S hpS ih =>
+        rw [ Finset.prod_insert hpS ]
+        exact Nat.Coprime.mul_dvd_of_dvd_of_dvd ( Nat.Coprime.prod_right fun q hq => by
+          have := Nat.coprime_primes ( hS_prime p ( Finset.mem_insert_self _ _ ) )
+            ( hS_prime q ( Finset.mem_insert_of_mem hq ) ) ; aesop )
+          ( hS_div p ( Finset.mem_insert_self _ _ ) )
+          ( ih ( fun q hq => hS_prime q ( Finset.mem_insert_of_mem hq ) )
+            ( fun q hq => hS_div q ( Finset.mem_insert_of_mem hq ) ) )
     grind
   · assumption
 

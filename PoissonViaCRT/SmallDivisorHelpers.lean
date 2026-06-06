@@ -199,13 +199,16 @@ private lemma surj_mod_eq (d : ℕ) [NeZero d] (r : Fin k → ZMod d)
     let r_int : Fin k → ℤ := fun i => (ZMod.val (r i) : ℤ)
     let r_1 : Fin k → ℤ := fun i => if r_int i = 0 then (d : ℤ) else r_int i
     ((↑d * (b i - 1) + r_1 i : ℤ) : ZMod d) = r i := by
-      cases' eq_or_ne ( ( r i |> ZMod.val : ZMod d ) ) 0 with h h <;> simp_all
-      -- Since the cast is injective, if the cast of r i is zero, then r i must be zero.
-      intro h_cast_zero
-      have h_r_zero : r i = 0 := by
-        cases d <;> simp_all +decide only [neZero_zero_iff_false]
-        injection h_cast_zero with h_cast_zero ; aesop
-      exact h_r_zero.symm
+  cases eq_or_ne ( ( r i |> ZMod.val : ZMod d ) ) 0 with
+  | inl h => simp_all
+  | inr h =>
+    simp_all
+    -- Since the cast is injective, if the cast of r i is zero, then r i must be zero.
+    intro h_cast_zero
+    have h_r_zero : r i = 0 := by
+      cases d <;> simp_all +decide only [neZero_zero_iff_false]
+      injection h_cast_zero with h_cast_zero ; aesop
+    exact h_r_zero.symm
 
 /--
 From inScaledBox with shift 0, each coordinate h i satisfies

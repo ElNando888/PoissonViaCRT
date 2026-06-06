@@ -241,13 +241,15 @@ public lemma prod_floor_approx (m : ℕ) (b : Fin m → ℝ)
   rcases m with (_ | m) <;> norm_num at *
   · exact ⟨1, by norm_num,
       fun s hs => by positivity⟩
-  · induction' m with m ih
-    · simp +zetaDelta at *
+  · induction m
+    case zero =>
+      simp +zetaDelta at *
       exact ⟨1, zero_lt_one, fun s hs =>
         abs_sub_le_iff.mpr
           ⟨by linarith [Nat.floor_le (show 0 ≤ s * b 0 by positivity)],
            by linarith [Nat.lt_floor_add_one (s * b 0)]⟩⟩
-    · obtain ⟨C₁, hC₁, hC₁'⟩ :=
+    case succ m ih =>
+      obtain ⟨C₁, hC₁, hC₁'⟩ :=
         ih (fun i => b i.castSucc) fun i => hb _
       refine ⟨C₁ * b (Fin.last _) + ∏ i : Fin (m + 1), b (Fin.castSucc i) + 1, ?_, ?_⟩
       · exact add_pos_of_nonneg_of_pos

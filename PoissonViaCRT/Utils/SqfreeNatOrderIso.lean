@@ -104,9 +104,10 @@ The product of a finite set of primes is squarefree.
 -/
 public lemma prod_primes_squarefree (s : Finset Nat.Primes) :
     Squarefree (s.prod (fun p => (p : ℕ))) := by
-  induction' s using Finset.induction with p s h ih
-  · norm_num
-  · rw [ Finset.prod_insert h ]
+  induction s using Finset.induction
+  case empty => norm_num
+  case insert p s h ih =>
+    rw [ Finset.prod_insert h ]
     rw [ Nat.squarefree_mul_iff ]
     refine ⟨ Nat.Coprime.prod_right fun q hq => ?_, p.2.squarefree, ih ⟩
     have := Nat.coprime_primes p.2 q.2

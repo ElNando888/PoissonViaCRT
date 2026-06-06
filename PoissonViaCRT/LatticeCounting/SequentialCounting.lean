@@ -73,15 +73,17 @@ private lemma seq_bound_aux {m : ℕ} {α : Type*} [DecidableEq α]
     (k : ℕ) (hk : k ≤ m) (h_prefix : Fin m → α) :
     (X.filter (fun h => AgreeOn k h h_prefix)).card ≤
       ∏ j ∈ Finset.univ.filter (fun j : Fin m => k ≤ (j : ℕ)), B j := by
-  induction' n : m - k with d hd generalizing k h_prefix X
-  · simp_all +decide [ Nat.sub_eq_zero_iff_le ]
+  induction n : m - k generalizing k h_prefix X
+  case zero =>
+    simp_all +decide [ Nat.sub_eq_zero_iff_le ]
     cases le_antisymm hk n
     rw [ Finset.prod_eq_one ]
     · exact Finset.card_le_one.mpr fun x hx y hy =>
         agreeOn_m_eq ( Finset.mem_filter.mp hx |>.2 ) ▸
         agreeOn_m_eq ( Finset.mem_filter.mp hy |>.2 ) ▸ rfl
     · grind
-  · -- Let `k' : Fin m := ⟨k, by omega⟩`.
+  case succ d hd =>
+    -- Let `k' : Fin m := ⟨k, by omega⟩`.
     obtain ⟨k', hk'⟩ : ∃ k' : Fin m, k = k'.val := by
       exact ⟨ ⟨ k, by omega ⟩, rfl ⟩
     -- By `card_le_card` and `card_biUnion_le`, card of filter ≤ sum over V of card of each piece.

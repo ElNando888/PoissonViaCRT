@@ -786,9 +786,10 @@ private lemma character_cumSum_eq (q : ℕ) [NeZero q] (m : ℕ)
   -- the products of the frequency differences and the cumulative sums.
   have h_abel : ∑ j : Fin m, (ξ j) * (x j) = ∑ j : Fin m,
       (freqDiff q m ξ j) * (cumSum q m x j) := by
-    induction' m with m ih
-    · rfl
-    · simp +decide [ Fin.sum_univ_castSucc, freqDiff, cumSum ] at *
+    induction m
+    case zero => rfl
+    case succ m ih =>
+      simp +decide [ Fin.sum_univ_castSucc, freqDiff, cumSum ] at *
       rw [ show ( Finset.Iic ( Fin.last m ) : Finset ( Fin ( m + 1 ) ) ) = Finset.univ from
           Finset.eq_univ_of_forall fun i => Finset.mem_Iic.mpr ( Fin.le_last _ ) ]
       simp +decide [Fin.sum_univ_castSucc] ; ring_nf
@@ -895,10 +896,13 @@ public lemma inScaledBox_sum_eq_diff_sum (k : ℕ) (hk : 2 ≤ k)
     · exact ⟨ by linarith, Int.le_of_lt_add_one <| by
         rw [ ← @Int.cast_lt ℝ ] ; push_cast
         linarith [ Int.lt_floor_add_one ( s * X.sides a_3 ) ] ⟩
-  · intro a₁ _ ha₂ a₂ _ ha₄ h; ext j; induction' j with j ih; simp_all +decide [ funext_iff ]
-    induction' j with j ih <;> simp_all +decide [ Fin.forall_iff ]
-    · simpa using h 0 ih
-    · grind
+  · intro a₁ _ ha₂ a₂ _ ha₄ h
+    ext j
+    induction' j with j ih
+    simp_all +decide [ funext_iff ]
+    induction j <;> simp_all +decide [ Fin.forall_iff ]
+    case h.mk.zero => simpa using h 0 ih
+    case h.mk.succ j ih => grind
   · intro b hb
     use fun j => ∑ i ∈ Finset.Iic j, b i
     constructor
