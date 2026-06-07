@@ -63,7 +63,7 @@ The construction composes two standard equivalences:
 2. **Argument transposition**: Swap the quantifier order via `Equiv.piComm`, giving
    `(Fin k → ∏_{p | d} ZMod p) ≃ ∏_{p | d} (Fin k → ZMod p)`. -/
 @[expose]
-public noncomputable def box_period_equiv (d : ℕ) [NeZero d] (hd : Squarefree d) :
+public noncomputable def boxPeriodEquiv (d : ℕ) [NeZero d] (hd : Squarefree d) :
     (Fin k → ZMod d) ≃ ((p : d.primeFactors) → Fin k → ZMod ↑p) :=
   (Equiv.piCongrRight fun _ => (crtRingEquiv d hd).toEquiv).trans
     (Equiv.piComm fun _ _ => _)
@@ -72,13 +72,13 @@ public noncomputable def box_period_equiv (d : ℕ) [NeZero d] (hd : Squarefree 
 evaluation at the given coordinate. -/
 public theorem box_period_equiv_apply (d : ℕ) [NeZero d] (hd : Squarefree d)
     (g : Fin k → ZMod d) (p : d.primeFactors) (i : Fin k) :
-    box_period_equiv d hd g p i = crtRingEquiv d hd (g i) p := rfl
+    boxPeriodEquiv d hd g p i = crtRingEquiv d hd (g i) p := rfl
 
 /-- `box_period_equiv` at each component agrees with `ZMod.castHom`, the canonical
 reduction modulo `p`. -/
 public theorem box_period_equiv_apply_eq_castHom (d : ℕ) [NeZero d] (hd : Squarefree d)
     (g : Fin k → ZMod d) (p : d.primeFactors) (i : Fin k) :
-    box_period_equiv d hd g p i =
+    boxPeriodEquiv d hd g p i =
       ZMod.castHom (Nat.dvd_of_mem_primeFactors p.2) (ZMod ↑p) (g i) := by
   rw [box_period_equiv_apply, crtRingEquiv_apply_eq_castHom]
 

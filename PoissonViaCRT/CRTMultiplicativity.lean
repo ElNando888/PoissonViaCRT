@@ -34,7 +34,7 @@ Theorem for `ℤ/qℤ`.
   `ZMod q ≃+* ∏_{p ∈ q.primeFactors} ZMod p` for squarefree `q`.
 * `PoissonCRT.crtRingEquiv_apply_eq_castHom`: Each component of the CRT equivalence
   agrees with the canonical `ZMod.castHom` projection.
-* `PoissonCRT.crt_domain_equiv`: An `Equiv` between `Ω_q` and `∏_{p|q} Ω_p`,
+* `PoissonCRT.crtDomainEquiv`: An `Equiv` between `Ω_q` and `∏_{p|q} Ω_p`,
   establishing the CRT factorization of the domain.
 * `PoissonCRT.counting_function_multiplicative`: The algebraic identity
   `N_k(h, Ω_q) = ∏_{p|q} N_k(h mod p, Ω_p)`.
@@ -106,7 +106,7 @@ public theorem mem_crtSubset_iff_crtEquiv (q : ℕ) [NeZero q] (hq : Squarefree 
 /-- The CRT domain equivalence: for squarefree `q`, the CRT subset `Ω_q ⊆ ZMod q`
 is in bijection with the Cartesian product `∏_{p | q} Ω_p`. -/
 @[expose]
-public noncomputable def crt_domain_equiv (q : ℕ) [NeZero q] (hq : Squarefree q)
+public noncomputable def crtDomainEquiv (q : ℕ) [NeZero q] (hq : Squarefree q)
     (Ω : ∀ p : ℕ, Finset (ZMod p)) :
     ↥(crtSubset q Ω) ≃ ((p : q.primeFactors) → ↥(Ω p.val)) := by
   refine Equiv.ofBijective

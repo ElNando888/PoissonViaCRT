@@ -112,7 +112,7 @@ lemma deviation_product_sum_zero (k : ℕ) (hk : 1 ≤ k) (q : ℕ) [NeZero q]
           haveI : NeZero p₀ := ⟨(Nat.prime_of_mem_primeFactors (hT hp₀)).ne_zero⟩
           exact localDeviation_sum_zero Ω (k - 1) p₀)
   -- Prove the transport step: for each g, the integrand matches F
-  apply Fintype.sum_equiv (box_period_equiv q hq)
+  apply Fintype.sum_equiv (boxPeriodEquiv q hq)
   intro g
   -- Extend product from T to q.primeFactors (with 1 outside T)
   rw [show ∏ p ∈ T, (localCount Ω q (Fin.cons 0 g) p - localMean k Ω p) =
@@ -494,7 +494,7 @@ public lemma globalMean_eq_prod_localMean (k : ℕ) (q : ℕ) [NeZero q] (hq : S
       ∏ p ∈ q.primeFactors, localMean k Ω p := by
   have h_card : (crtSubset q Ω).card = ∏ p ∈ q.primeFactors, (Ω p).card := by
     have h_card : Fintype.card (crtSubset q Ω) = ∏ p ∈ q.primeFactors, Fintype.card (Ω p) := by
-      have := @crt_domain_equiv q ‹_› hq Ω
+      have := @crtDomainEquiv q ‹_› hq Ω
       rw [ Fintype.card_congr this, Fintype.card_pi ]
       refine Finset.prod_bij ( fun p hp => p ) ?_ ?_ ?_ ?_ <;> aesop
     convert h_card using 1
@@ -564,7 +564,7 @@ private lemma arith_l1_crt_transport (k : ℕ)
       ∏ p : d.primeFactors, |localCount Ω p (Fin.cons 0 (fun i => r p i)) p - localMean k Ω p| := by
   have hT_eq : T = d.primeFactors := Finset.Subset.antisymm hT_sub_d hd_sub_T
   subst hT_eq; rw [ Finset.sum_congr rfl ] ; simp +decide
-  convert Finset.sum_bijective _ ( box_period_equiv d hd_sq |> Equiv.bijective ) _ _ using 1
+  convert Finset.sum_bijective _ ( boxPeriodEquiv d hd_sq |> Equiv.bijective ) _ _ using 1
   use fun i => ∏ p ∈ d.primeFactors, |localCount Ω d (Fin.cons 0 i) p - localMean k Ω p|
   · grind
   · intro i hi; rw [ ← Finset.prod_attach ] ; congr; ext p

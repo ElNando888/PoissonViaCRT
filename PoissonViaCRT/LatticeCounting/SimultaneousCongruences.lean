@@ -20,7 +20,6 @@ References:
 -/
 
 import PoissonViaCRT.CommonTactics
-import Mathlib.Algebra.BigOperators.Group.Finset.Defs
 import Mathlib.Algebra.Order.Ring.Star
 import Mathlib.Data.Int.ModEq
 import Mathlib.Data.Int.Star
@@ -74,7 +73,7 @@ private theorem prod_subtype_eq (U : Finset α) (M : α → ℕ) :
   convert Finset.prod_attach U M using 1
 
 /-- The `ZMod.prodEquivPi` isomorphism reindexed over a `Finset`. -/
-private noncomputable def crt_equiv (U : Finset α) (M : α → ℕ)
+private noncomputable def crtEquiv (U : Finset α) (M : α → ℕ)
     (hcop : (U : Set α).Pairwise (fun i j => Nat.Coprime (M i) (M j))) :
     ZMod (∏ i ∈ U, M i) ≃+* ((i : U) → ZMod (M i)) :=
   (ZMod.ringEquivCongr (prod_subtype_eq U M)).trans
@@ -84,7 +83,7 @@ omit [DecidableEq α] in
 private theorem crt_equiv_intCast (U : Finset α) (M : α → ℕ)
     (hcop : (U : Set α).Pairwise (fun i j => Nat.Coprime (M i) (M j)))
     (a : ℤ) (i : U) :
-    crt_equiv U M hcop (a : ZMod (∏ j ∈ U, M j)) i = (a : ZMod (M i)) := by
+    crtEquiv U M hcop (a : ZMod (∏ j ∈ U, M j)) i = (a : ZMod (M i)) := by
   simp +decide
 
 /-! ### Main CRT theorem -/
