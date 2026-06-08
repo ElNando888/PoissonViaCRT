@@ -66,7 +66,9 @@ theorem tupleCount_crt_mul {q₁ q₂ : ℕ} [NeZero q₁] [NeZero q₂]
   rw [← Finset.card_product]
   refine Finset.card_bij (fun a _ =>
     ((ZMod.chineseRemainder hcop a).1, (ZMod.chineseRemainder hcop a).2)) ?_ ?_ ?_
-  · simp +zetaDelta at *
+  · simp +zetaDelta only [RingEquiv.toEquiv_eq_coe, RingEquiv.coe_toEquiv_symm, mem_map_equiv,
+      Equiv.symm_symm, EquivLike.coe_coe, map_add, mem_product, Prod.fst_add, Prod.snd_add,
+      mem_filter, mem_univ, true_and, ZMod.castHom_apply, Prod.mk.eta] at *
     intro a ha
     have := ha
     simp_all +decide [ZMod.chineseRemainder]
@@ -185,7 +187,9 @@ private lemma crtSubset_card_pos (Ω : ∀ p : ℕ, Finset (ZMod p))
         use x_p
         simp_all +decide [ ← ZMod.natCast_eq_natCast_iff ]
       choose! x hx₁ hx₂ using h_crt
-      use ∑ p ∈ ps, x p; intro p hp; simp_all +decide [ ← ZMod.natCast_eq_natCast_iff ]
+      use ∑ p ∈ ps, x p; intro p hp
+      simp_all +decide only [nonpos_iff_eq_zero, card_eq_zero, implies_true, ne_eq,
+        ← ZMod.natCast_eq_natCast_iff, Nat.cast_zero, Nat.cast_sum]
       rw [ Finset.sum_eq_single p ] <;> aesop
     exact h_crt ( fun p hp => Nat.prime_of_mem_primeFactors hp )
       ( fun p hp => hΩ p ( Nat.prime_of_mem_primeFactors hp ) )
@@ -282,7 +286,8 @@ lemma euler_product_convergence
         ( mul_le_of_le_one_left ( by positivity ) ( sub_le_self _ ( by positivity ) ) )
         ( by simpa using Real.rpow_le_rpow_of_exponent_le
               ( mod_cast pp.one_lt.le ) ( neg_nonpos.mpr hε.le ) )
-    · rw [ div_le_iff₀ ] <;> norm_cast <;> haveI := Fact.mk pp <;> simp_all
+    · rw [ div_le_iff₀ ] <;> norm_cast <;> haveI := Fact.mk pp <;> simp_all only [one_mul,
+        ge_iff_le, gt_iff_lt]
       · haveI := Fact.mk pp; exact le_trans ( Finset.card_le_univ _ ) ( by norm_num )
       · exact pp.pos
 
@@ -392,8 +397,16 @@ lemma complete_period_cancellation_apply
       convert hK_bound q hq_sq using 1
       unfold kCorrelation; norm_num [ Finset.sum_sub_distrib, mul_sub ]
       rw [ abs_sub_comm ] ; ring_nf
-      cases k <;> simp +decide [ pow_succ, mul_assoc ] at *
-      by_cases h : ( # ( crtSubset q Ω ) : ℝ ) = 0 <;> simp +decide [ h ] at *
+      cases k <;> simp +decide only [Nat.cast_pos, card_pos, Nat.reduceLeDiff, Nat.cast_add,
+        Nat.cast_one, tsub_le_iff_right, Nat.add_one_sub_one, add_tsub_cancel_right, one_div,
+        pow_succ, sum_sub_distrib, sum_const, nsmul_eq_mul, abs_mul, abs_inv, Nat.abs_cast, inv_pow,
+        mul_assoc] at *
+      by_cases h : ( # ( crtSubset q Ω ) : ℝ ) = 0 <;> simp +decide only [h, inv_zero, zero_mul,
+      Int.ceil_zero, zero_lt_one, Icc_eq_empty_of_lt, Nat.ceil_zero, CharP.cast_eq_zero, add_zero,
+      abs_neg, abs_mul, abs_pow, abs_zero, abs_inv, Nat.abs_cast, mul_zero, neg_zero, mul_eq_zero,
+      pow_eq_zero_iff', ne_eq, true_and, inv_eq_zero, Nat.cast_eq_zero, card_eq_zero,
+      filter_eq_empty_iff, Fintype.mem_piFinset, notMem_empty, not_false_eq_true,
+      mul_inv_cancel_left₀] at *
       · exact Or.inl ( by linarith )
       · convert rfl
         exact Eq.symm <| Int.toNat_of_nonneg <| Int.ceil_nonneg <|
@@ -540,7 +553,8 @@ theorem coprime_tupleCount (p : ℕ) [hp : Fact p.Prime] (k : ℕ)
       Finset.univ \ Finset.image (fun i => -h i) Finset.univ := by
     grind
   unfold tupleCount at h_contra
-  simp_all +decide [Finset.card_sdiff]
+  simp_all +decide only [ne_eq, mem_filter, mem_univ, true_and, card_sdiff, card_univ, ZMod.card,
+    inter_univ]
   exact h_contra (by
     rw [Finset.card_image_of_injective _ fun i j hij => by simpa [hh.eq_iff] using hij]
     simp +decide)

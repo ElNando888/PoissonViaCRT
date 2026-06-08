@@ -79,7 +79,9 @@ theorem condExpectation_indicator (q k r : ℕ) (hk : k ≤ q) (hr : k ≤ r) (h
       ∏ i ∈ Finset.range k, ((r - i : ℚ) / (q - i)) := by
   by_cases hqr : r = q
   · simp_all +decide [Finset.prod_eq_zero_iff, sub_eq_zero]
-  · induction k generalizing r q <;> simp_all +decide [ Finset.prod_range_succ ]
+  · induction k generalizing r q <;> simp_all +decide only [zero_le, tsub_zero, range_zero,
+      prod_div_distrib, prod_empty, ne_eq, div_self, div_self_eq_one₀, Nat.cast_eq_zero,
+      Order.add_one_le_iff, prod_range_succ]
     case neg.zero =>
       exact ne_of_gt <| Nat.choose_pos hrq
     case neg.succ k ih =>
@@ -104,7 +106,7 @@ theorem condExpectation_indicator (q k r : ℕ) (hk : k ≤ q) (hr : k ≤ r) (h
 theorem card_le_q {q : ℕ} [NeZero q] (Ω : Finset (ZMod q)) :
     (Ω.card : ℚ) ≤ q := by
   have := Finset.card_le_univ Ω
-  simp [ZMod.card] at this
+  simp only [ZMod.card] at this
   exact_mod_cast this
 
 /-- The density satisfies `0 ≤ r_q`. -/

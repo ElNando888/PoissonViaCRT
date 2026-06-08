@@ -75,7 +75,7 @@ private lemma seq_bound_aux {m : ℕ} {α : Type*} [DecidableEq α]
       ∏ j ∈ Finset.univ.filter (fun j : Fin m => k ≤ (j : ℕ)), B j := by
   induction n : m - k generalizing k h_prefix X
   case zero =>
-    simp_all +decide [ Nat.sub_eq_zero_iff_le ]
+    simp_all +decide only [Nat.sub_eq_zero_iff_le]
     cases le_antisymm hk n
     rw [ Finset.prod_eq_one ]
     · exact Finset.card_le_one.mpr fun x hx y hy =>
@@ -108,7 +108,8 @@ private lemma seq_bound_aux {m : ℕ} {α : Type*} [DecidableEq α]
       convert hd X h_bound ( k + 1 ) ( by omega ) ( Function.update h_prefix k' a ) ( by omega )
         using 1
     apply le_trans h_card_biUnion ( le_trans ( Finset.sum_le_sum h_card_piece ) _ )
-    simp +decide [ hk' ]
+    simp +decide only [hk', Order.add_one_le_iff, Fin.val_fin_lt, sum_const, smul_eq_mul,
+      Fin.val_fin_le]
     rw [ show ( Finset.filter ( fun x : Fin m => k' ≤ x ) Finset.univ ) =
               Finset.filter ( fun x : Fin m => k' < x ) Finset.univ ∪ { k' }
               from ?_, Finset.prod_union ] <;> norm_num

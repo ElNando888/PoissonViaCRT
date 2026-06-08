@@ -122,8 +122,8 @@ public theorem crt_finset (U : Finset α) (M : α → ℕ)
     intro i hi; simp_all +decide only [Int.ModEq]
     rw [ Finset.sum_int_mod, Finset.sum_eq_single i ] <;> aesop
   refine ⟨ A, hA, fun B hB => ?_ ⟩
-  simp_all +decide [ Int.modEq_iff_dvd ]
-  convert Finset.prod_dvd_of_coprime _ _ <;> simp_all +decide [ dvd_sub_comm ]
+  simp_all +decide only [Int.modEq_iff_dvd]
+  convert Finset.prod_dvd_of_coprime _ _ <;> simp_all +decide only [dvd_sub_comm]
   · exact pairwise_coprime_intCast U M hcop
   · exact fun i hi => by simpa using dvd_sub ( hA i hi ) ( hB i hi )
 

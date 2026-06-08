@@ -95,7 +95,8 @@ private lemma tupleCount_lower_bound (p : ℕ) [NeZero p] (Ω : Finset (ZMod p))
           Finset.univ \ Finset.filter (fun t => ∀ i, t + h i ∈ Ω) Finset.univ
           ⊆ Finset.biUnion Finset.univ (fun i => Finset.univ \ Finset.image (fun t =>
             t - h i) Ω) := by
-        simp +contextual [ Finset.subset_iff ]
+        simp +contextual only [subset_iff, mem_sdiff, mem_univ, mem_filter, true_and, not_forall,
+          mem_biUnion, mem_image, not_exists, not_and, forall_exists_index]
         exact fun x i hi => ⟨ i, fun y hy => by
           contrapose! hi; simp_all +decide [ sub_eq_iff_eq_add ] ⟩
       exact le_trans ( Finset.card_le_card h_complement ) ( Finset.card_biUnion_le )
@@ -110,7 +111,7 @@ private lemma localMean_lower_bound (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p)) (p : ℕ) (hp : Nat.Prime p)
     (hrp : 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ)) :
     (p : ℝ) - (k : ℝ) * k ≤ localMean k Ω p := by
-  by_cases h : p ≤ k * k <;> simp_all +decide [localMean]
+  by_cases h : p ≤ k * k <;> simp_all +decide only [tsub_le_iff_right, not_le, localMean]
   · exact le_add_of_nonneg_of_le ( by positivity ) ( mod_cast h )
   · have h_bernoulli : (1 - (k : ℝ) / p) ^ k ≥ 1 - k ^ 2 / p := by
       have h_bernoulli : ∀ x : ℝ, 0 ≤ x ∧ x ≤ 1 → (1 - x) ^ k ≥ 1 - k * x := by
@@ -150,7 +151,9 @@ private lemma localCount_sub_localMean_le_of_injective (ε : ℝ) (k : ℕ) (hk 
     |localCount Ω q (Fin.cons 0 (fun i => (h i : ZMod q))) p - localMean k Ω p| ≤
       combinedEulerWeight ε k Ω p * localMean k Ω p := by
   have := @localCount_eq_tupleCount
-  rcases k with ( _ | _ | k ) <;> simp_all +decide [ Fin.cons_injective_iff ]
+  rcases k with ( _ | _ | k ) <;> simp_all +decide only [Nat.mem_primeFactors, ne_eq,
+    forall_and_index, le_add_iff_nonneg_left, zero_le, Nat.add_one_sub_one, Fin.cons_injective_iff,
+    Set.mem_range, not_exists, not_false_eq_true, ge_iff_le]
   convert hWD p |>.1 ( Fin.cons 0 fun i => ( h i : ZMod p ) ) _ using 1
   · exact ⟨ hp.1 ⟩
   · intro i j hij
@@ -207,8 +210,10 @@ private lemma swap_L1_sum {ι : Type*} (T : Finset ℕ) (A : ℕ → ℝ) (B : �
   ∑ h ∈ S, ∏ p ∈ T, (A p + B p h) =
   ∑ U ∈ T.powerset, (∏ p ∈ T \ U, A p) * ∑ h ∈ S, ∏ p ∈ U, B p h := by
   simp +decide only [prod_add]
-  convert Finset.sum_comm using 1 ; simp +decide [Finset.mul_sum _ _ _]
-  refine Finset.sum_bij ( fun U _ => T \ U ) ?_ ?_ ?_ ?_ <;> simp +decide
+  convert Finset.sum_comm using 1
+  simp +decide only [Finset.mul_sum _ _ _]
+  refine Finset.sum_bij ( fun U _ => T \ U ) ?_ ?_ ?_ ?_ <;> simp +decide only [mem_powerset,
+    sdiff_subset, implies_true, exists_prop, sdiff_sdiff_right_self, inf_eq_inter']
   · intro a₁ ha₁ a₂ ha₂ h
     rw [ ← Finset.sdiff_sdiff_eq_self ha₁, h, Finset.sdiff_sdiff_eq_self ha₂ ]
   · exact fun b hb => ⟨ T \ b, by aesop ⟩
@@ -223,10 +228,11 @@ private lemma L1_factorization (ε : ℝ) (k : ℕ) (Ω : ∀ p : ℕ, Finset (Z
     * ∏ p ∈ T, (combinedEulerWeight ε k Ω p * localMean k Ω p + (k : ℝ)^2 * (C_gamma / (p : ℝ))) +
     C_box * s ^ (k - 2 : ℕ)
     * ∏ p ∈ T, (combinedEulerWeight ε k Ω p * localMean k Ω p + (k : ℝ)^2 * C_gamma) := by
-  simp +decide [Finset.prod_add, Finset.prod_mul_distrib, div_eq_mul_inv, mul_assoc, mul_comm,
-    mul_left_comm, Finset.mul_sum _ _ _]
+  simp +decide only [prod_mul_distrib, prod_const, div_eq_mul_inv, mul_comm, mul_left_comm,
+    mul_assoc, prod_add, prod_inv_distrib, Finset.mul_sum _ _ _]
   rw [ ← Finset.sum_add_distrib ]
-  apply Finset.sum_bij ( fun U _ => T \ U ) _ _ _ _ <;> simp +decide
+  apply Finset.sum_bij ( fun U _ => T \ U ) _ _ _ _ <;> simp +decide only [mem_powerset,
+    sdiff_subset, implies_true, exists_prop, sdiff_sdiff_right_self, inf_eq_inter']
   · intro a₁ ha₁ a₂ ha₂ h
     rw [ ← Finset.sdiff_sdiff_eq_self ha₁, h, Finset.sdiff_sdiff_eq_self ha₂ ]
   · exact fun b hb => ⟨ T \ b, by aesop_cat, by aesop_cat ⟩
@@ -258,7 +264,8 @@ private lemma inv_mu_le_C_div_p (k : ℕ) (hk : 2 ≤ k)
         else h_bound_large p hp ( le_of_not_gt h ) |> le_trans <| by norm_cast; linarith ) _ ⟩
   obtain ⟨ C, hC₀, hC ⟩ := h_bound
   use C; refine ⟨ hC₀, fun p hp ↦ ?_ ⟩ ; specialize hC p hp
-  rw [ localMean ] ; simp_all +decide [div_pow]
+  rw [ localMean ]
+  simp_all +decide only [tsub_le_iff_right, gt_iff_lt, div_pow, one_div, inv_div]
   rw [ le_div_iff₀ ( Nat.cast_pos.mpr hp.pos ) ]
   rw [ show ( p : ℝ ) ^ k = p ^ ( k - 1 ) * p by
     rw [ ← pow_succ, Nat.sub_add_cancel ( by linarith ) ] ] at hC; convert hC using 1 ; ring
@@ -444,13 +451,15 @@ private lemma prefactor_main_collapse (k : ℕ) (hk : 2 ≤ k) (q : ℕ) [NeZero
       = (∏ p ∈ q.primeFactors \ T, localMean k Ω p) * (∏ p ∈ T, localMean k Ω p) := by
     rw [ Finset.prod_sdiff hT_sub ]
   by_cases h : ∏ p ∈ T, localMean k Ω p = 0 <;>
-    simp_all +decide [ division_def, mul_assoc, mul_comm, mul_left_comm ]
+    simp_all +decide only [card_pos, division_def, one_mul, mul_comm, zero_mul, mul_left_comm,
+      mul_assoc, mul_eq_mul_left_iff]
   · exact absurd h_simplify.symm ( pow_ne_zero _ ( mul_ne_zero
       ( inv_ne_zero ( Nat.cast_ne_zero.mpr ( NeZero.ne q ) ) )
       ( Nat.cast_ne_zero.mpr ( Finset.card_ne_zero_of_mem ( Classical.choose_spec hc ) ) ) ) )
   · field_simp at *
-    simp_all +decide [ mul_assoc, mul_comm, mul_left_comm, div_eq_mul_inv ]
-    simp +decide [← mul_pow, mul_assoc, mul_left_comm, NeZero.ne]
+    simp_all +decide only [mul_comm, div_eq_mul_inv, mul_left_comm, mul_assoc]
+    simp +decide only [← mul_pow, mul_left_comm, mul_assoc, ne_eq, NeZero.ne, not_false_eq_true,
+      mul_inv_cancel_left₀]
     rw [ mul_inv_cancel₀ ( Nat.cast_ne_zero.mpr hc.card_pos.ne' ), one_pow, mul_one ]
     norm_num
 
@@ -476,12 +485,20 @@ private lemma prefactor_error_collapse (k : ℕ) (hk : 2 ≤ k) (q : ℕ) [NeZer
     rw [ eq_div_iff ]
     · rw [ ← Finset.prod_sdiff hT_sub ] ; ring
     · apply Finset.prod_ne_zero_iff.mpr _
-      intro p hp; have := hT_sub hp; simp_all +decide [ localMean ]
-      constructor <;> intro h <;> have := hT_sub hp <;> simp_all +decide
-      contrapose! hc; simp_all +decide [ crtSubset ]
+      intro p hp; have := hT_sub hp
+      simp_all +decide only [card_pos, Nat.mem_primeFactors, ne_eq, localMean, div_eq_zero_iff,
+        pow_eq_zero_iff', Nat.cast_eq_zero, card_eq_zero, not_or, not_and, Decidable.not_not]
+      constructor <;> intro h <;> have := hT_sub hp <;> simp_all +decide only [Nat.mem_primeFactors,
+        ne_eq, not_false_eq_true, and_self, zero_dvd_iff, and_not_self]
+      contrapose! hc
+      simp_all +decide only [ne_eq, crtSubset, Nat.mem_primeFactors, not_false_eq_true, and_true,
+        ZMod.castHom_apply, and_imp, filter_eq_empty_iff, mem_univ, not_forall, forall_const]
       exact fun x => ⟨ p, this.1, this.2.1, by simp +decide [ h ] ⟩
-  · rcases k with ( _ | _ | k ) <;> simp_all +decide [pow_succ, mul_comm, mul_left_comm]
-    simp +decide [ ← mul_pow, mul_assoc, mul_comm, mul_left_comm, div_eq_mul_inv, NeZero.ne ]
+  · rcases k with ( _ | _ | k ) <;> simp_all +decide only [card_pos, le_add_iff_nonneg_left,
+     zero_le, add_tsub_cancel_right, pow_succ, mul_comm, Nat.reduceSubDiff, mul_left_comm]
+    simp +decide only [div_eq_mul_inv, mul_assoc, mul_inv_rev, inv_inv, mul_comm, ← mul_pow,
+      mul_left_comm, ne_eq, NeZero.ne, not_false_eq_true, mul_inv_cancel_left₀, mul_eq_mul_left_iff,
+      Nat.cast_eq_zero, card_eq_zero, or_false]
     exact Or.inl <| Or.inl <| by
       rw [ mul_inv_cancel₀ <| Nat.cast_ne_zero.mpr hc.card_pos.ne', one_pow, one_mul ]
 
@@ -497,7 +514,8 @@ private lemma per_factor_modifiedEulerWeight_bound (ε : ℝ) (k : ℕ)
     (combinedEulerWeight ε k Ω p * localMean k Ω p + (k : ℝ)^2 * (C_γ / (p : ℝ))) /
       localMean k Ω p ≤
     modifiedEulerWeight ε k (C_γ * C_μ) Ω p := by
-  by_cases h : localMean k Ω p = 0 <;> simp_all +decide [ div_eq_mul_inv ]
+  by_cases h : localMean k Ω p = 0 <;> simp_all +decide only [div_eq_mul_inv, inv_zero, mul_zero,
+    mul_nonneg_iff_of_pos_left, inv_nonneg, Nat.cast_nonneg, zero_add, one_mul]
   · apply add_nonneg _ _
     · exact combinedEulerWeight_nonneg ε k Ω p hp
     · positivity

@@ -31,7 +31,9 @@ equals the finset itself.
 -/
 lemma primeFactors_prod_primes {S : Finset ℕ} (hS : ∀ p ∈ S, Nat.Prime p) :
     (∏ p ∈ S, p).primeFactors = S := by
-  induction S using Finset.induction <;> simp_all +decide
+  induction S using Finset.induction <;> simp_all +decide only [prod_empty, Nat.primeFactors_one,
+    mem_insert, or_true, implies_true, forall_const, forall_eq_or_imp, not_false_eq_true,
+    prod_insert]
   rw [ Nat.primeFactors_mul, hS.1.primeFactors ] <;> aesop
 
 /--
@@ -60,7 +62,7 @@ lemma prod_one_sub_le_pow_div (k : ℕ) (hk : 2 ≤ k)
       (k : ℝ) ^ (freqDivisor q m ξ).primeFactors.card /
         (freqDivisor q m ξ : ℝ) := by
   convert Finset.prod_le_prod ?_ fun p hp => hrp p ?_ using 1
-  · simp +zetaDelta at *
+  · simp +zetaDelta only [tsub_le_iff_right, prod_div_distrib, prod_const] at *
     rw [ ← Nat.cast_prod, freqDivisor, freqSupport_eq_primeFactors_freqDivisor q m hq ξ ]
     rw [ Nat.primeFactors_prod ] ; aesop
   · intro p hp

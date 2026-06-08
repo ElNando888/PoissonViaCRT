@@ -17,7 +17,6 @@ import Mathlib.Analysis.SpecialFunctions.Pow.Deriv
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
 import Mathlib.Data.Real.StarOrdered
 
-
 /-!
 # Small-divisor series bound
 
@@ -61,7 +60,8 @@ public lemma prod_kp_half_le_const (ε : ℝ) (hε : 0 < ε) (k : ℕ) :
     -- then k * p^{-ε/2} ≤ k. Otherwise, k * p^{-ε/2} ≤ 1.
     have h_prime_factors : ∀ p ∈ d.primeFactors,
         (k : ℝ) * p ^ (-ε / 2) ≤ if p < Nat.ceil ((k : ℝ) ^ (2 / ε)) then (k : ℝ) else 1 := by
-      intro p hp; split_ifs <;> simp_all +decide [ neg_div, Real.rpow_neg ]
+      intro p hp; split_ifs <;> simp_all +decide only [Nat.mem_primeFactors, ne_eq, neg_div,
+        Nat.cast_nonneg, Real.rpow_neg, Nat.cast_pos, mul_le_iff_le_one_right, not_lt, Nat.ceil_le]
       · exact inv_le_one_of_one_le₀ ( Real.one_le_rpow ( mod_cast hp.1.pos ) ( by positivity ) )
       · rw [ ← div_eq_mul_inv, div_le_one ( Real.rpow_pos_of_pos ( Nat.cast_pos.mpr hp.1.pos ) _ ) ]
         exact le_trans ( by
@@ -70,7 +70,8 @@ public lemma prod_kp_half_le_const (ε : ℝ) (hε : 0 < ε) (k : ℕ) :
           norm_num [ hε.ne' ] )
           ( Real.rpow_le_rpow ( by positivity ) ‹ ( k : ℝ ) ^ ( 2 / ε ) ≤ p › ( by positivity ) )
     apply le_trans ( Finset.prod_le_prod ( fun _ _ => by positivity ) h_prime_factors ) _
-    simp +decide [ Finset.prod_ite ]
+    simp +decide only [ prod_ite, prod_const, not_lt ]
+    simp only [Nat.ceil_le, one_pow, mul_one]
     exact pow_le_pow_right₀ ( mod_cast hk )
       ( Finset.card_le_card <| fun x hx =>
         Finset.mem_filter.mpr ⟨ Finset.mem_range.mpr <| Nat.lt_succ_of_lt <|
@@ -81,7 +82,8 @@ public lemma prod_kp_half_le_const (ε : ℝ) (hε : 0 < ε) (k : ℕ) :
     · simp [hd1]
     · have hk0 : k = 0 := by omega
       have hne : d.primeFactors.Nonempty := by
-        rw [Finset.nonempty_iff_ne_empty]; simp [Nat.primeFactors_eq_empty]
+        rw [Finset.nonempty_iff_ne_empty]
+        simp only [ne_eq, Nat.primeFactors_eq_empty, not_or]
         exact ⟨hd.ne_zero, hd1⟩
       obtain ⟨p, hp⟩ := hne
       have h0 : (k : ℝ) * (p : ℝ) ^ (-ε / 2) = 0 := by rw [hk0]; simp
@@ -183,7 +185,8 @@ public theorem small_divisor_series_bound (ε : ℝ) (hε : 0 < ε) (hε2 : ε <
         (d : ℝ) ^ (-ε / 2) ≤ (s : ℝ) ^ (1 - ε / 2) / (1 - ε / 2) := by
       have := sum_rpow_le_rpow_div ( ε / 2 ) ( by linarith ) ( by linarith ) ( Nat.floor s )
         ( Nat.floor_pos.mpr hs )
-      simp_all +decide [ Finset.sum_range_succ' ]
+      simp_all +decide only [ne_eq, sum_range_succ', Nat.cast_add, Nat.cast_one, CharP.cast_eq_zero,
+        ge_iff_le]
       norm_num [ neg_div, hε.ne' ] at *
       exact le_trans this ( div_le_div_of_nonneg_right ( Real.rpow_le_rpow ( Nat.cast_nonneg _ )
         ( Nat.floor_le ( by positivity ) ) ( by linarith ) ) ( by linarith ) )
@@ -198,7 +201,8 @@ public theorem small_divisor_series_bound (ε : ℝ) (hε : 0 < ε) (hε2 : ε <
     rw [ div_mul_eq_mul_div, mul_div_assoc ]
     apply mul_le_mul_of_nonneg_left ( le_trans ( Finset.sum_le_sum_of_subset_of_nonneg _ _ )
       ( h_sum_bound s hs ) ) hM_pos.le
-    · simp +contextual [ Finset.subset_iff ]
+    · simp +contextual only [subset_iff, mem_filter, Nat.mem_divisors, ne_eq, mem_range,
+      Order.lt_add_one_iff, and_true, and_imp]
       exact fun x hx₁ hx₂ hx hx => Nat.le_floor hx
     · exact fun _ _ _ => Real.rpow_nonneg ( Nat.cast_nonneg _ ) _
 

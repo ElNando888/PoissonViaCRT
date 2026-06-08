@@ -147,7 +147,7 @@ lemma fin_cons_castHom_injective {n : ℕ} (hn : 1 ≤ n) (q : ℕ) [NeZero q]
     Function.Injective (fun i : Fin (n + 1) =>
       ZMod.castHom hp_dvd (ZMod p) (g i)) := by
   intro i j hij
-  simp at hij ⊢
+  simp only [ZMod.castHom_apply] at hij ⊢
   -- Since $p$ is prime and $p > \lceil s \sum_{i} X.sides i \rceil$, the values $h_i$
   -- are distinct modulo $p$.
   have h_distinct_mod_p : ∀ i j : Fin n, i ≠ j → ¬(h i : ZMod p) = (h j : ZMod p) := by
@@ -189,7 +189,8 @@ lemma fin_cons_castHom_injective {n : ℕ} (hn : 1 ≤ n) (q : ℕ) [NeZero q]
       haveI := Fact.mk hp
       simp_all +decide [ ZMod.intCast_zmod_eq_zero_iff_dvd ]
       linarith [ Int.le_of_dvd hx_pos hx_zero ]
-    simp +zetaDelta at *
+    simp +zetaDelta only [lt_add_iff_pos_left, Order.lt_add_one_iff, zero_le, ne_eq, Fin.cons_zero,
+      ZMod.cast_zero] at *
     rw [ Fin.cons ] ; aesop
   · have h_cast_ne_zero : ¬(h ⟨j, by linarith⟩ : ZMod p) = 0 := by
       have h_cast_ne_zero : 0 < h ⟨j, by linarith⟩ ∧ h ⟨j, by linarith⟩ < p := by
@@ -225,7 +226,8 @@ public lemma localCount_deviation_weil (ε : ℝ) {n : ℕ} (hn : 1 ≤ n)
     |localCount Ω q (Fin.cons (0 : ZMod q) (fun i => (h i : ZMod q))) p -
       localMean (n + 1) Ω p| ≤
     (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) * localMean (n + 1) Ω p := by
-  unfold localCount localMean; simp +decide [ *, Fin.cons ]
+  unfold localCount localMean
+  simp +decide only [↓reduceDIte, Fin.cons, ZMod.castHom_apply, add_tsub_cancel_right, hp_factor]
   convert hWD.1 _ _ using 1
   convert fin_cons_castHom_injective hn q X s hs p hp_prime
     ( Nat.dvd_of_mem_primeFactors hp_factor ) ( mod_cast hp_large ) h hbox using 1

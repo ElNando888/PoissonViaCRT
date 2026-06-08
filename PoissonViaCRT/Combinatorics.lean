@@ -70,13 +70,14 @@ theorem stirlingSecond_le_choose_pow_aux :
   induction d generalizing m
   case zero => contradiction
   case succ d ih =>
-    induction hm <;> simp_all +decide [ Nat.pow_succ' ]
+    induction hm <;> simp_all +decide only [le_add_iff_nonneg_left, _root_.zero_le, Nat.pow_succ']
     case refl =>
       refine Nat.recOn d ?_ ?_ <;> simp_all +decide [ Nat.stirlingSecond, Nat.choose ]
       grind +suggestions
     case step m hm ih =>
-      by_cases hd : 1 ≤ d <;> simp_all +decide [ Nat.stirlingSecond_succ_succ, Nat.choose_two_succ ]
-      · have h_combined : (m + 2 + d).choose 2 ^ (d + 1)
+      by_cases hd : 1 ≤ d
+      · simp_all +decide only [forall_const, le_eq, succ_eq_add_one]
+        have h_combined : (m + 2 + d).choose 2 ^ (d + 1)
           ≥ (m + 1) * (m + 1 + d).choose 2 ^ d + (m + 1 + d).choose 2 ^ (d + 1) := by
           have h_combined : (m + 2 + d).choose 2 ^ (d + 1)
             ≥ ((m + 1 + d).choose 2 + (m + 1)) * (m + 1 + d).choose 2 ^ d := by
@@ -95,7 +96,8 @@ theorem stirlingSecond_le_choose_pow_aux :
           · grind
         convert h_combined.trans ‹_› using 1
         ring_nf
-      · simp_all +decide [ Nat.stirlingSecond_eq_zero_of_lt ]
+      · simp_all +decide [ Nat.stirlingSecond_succ_succ, Nat.choose_two_succ ]
+        simp +decide [ Nat.stirlingSecond_eq_zero_of_lt ]
         simp_all +arith +decide [ Nat.stirlingSecond_self ]
 
 /-- Apply a permutation `σ` of `{0, …, k-1}` to a Gamma
@@ -177,13 +179,19 @@ lemma GammaStructure.gammaRow_squarefree
     have h_exp : (Nat.factorization (Finset.lcm S id)) x ≥ 2 := by
       obtain ⟨k, hk⟩ := hx_div
       rcases k with (_ | _ | k) <;>
-        simp_all +decide [Nat.Prime.ne_zero]
+        simp_all +decide only [mul_zero, factorization_zero, Finsupp.coe_zero, Pi.zero_apply,
+          _root_.zero_le, implies_true, Finset.lcm_eq_zero_iff, id_eq, exists_eq_right, ge_iff_le,
+          zero_add, mul_one, ne_eq, Nat.Prime.ne_zero, not_false_eq_true, factorization_mul,
+          Prime.factorization, Finsupp.coe_add, Pi.add_apply, Finsupp.single_eq_same, reduceAdd,
+          _root_.mul_eq_zero, or_self, Nat.add_eq_zero_iff, and_false, and_self,
+          le_add_iff_nonneg_right]
       exact absurd (hS 0 hk) (by norm_num)
     linarith [h_lcm_sqfree x hx_prime]
   convert h_lcm_sqfree _
   rw [Finset.lcm_image]
   congr! 1
-  simp +zetaDelta at *
+  simp +zetaDelta only [mem_image, mem_Iio, forall_exists_index, and_imp,
+    forall_apply_eq_imp_iff₂] at *
   exact fun i hi => Γ.sqfree i j (ne_of_lt hi)
 
 -- See docs/proof_sketches.md for full proof sketch.
@@ -206,11 +214,12 @@ lemma GammaStructure.factorization_gammaRow_eq
   split_ifs with h
   · have h_lcm_div : p ∣ Γ.gammaRow j := dvd_trans h.choose_spec.2 (Finset.dvd_lcm h.choose_spec.1)
     exact Nat.factorization_eq_one_of_squarefree (gammaRow_squarefree Γ j) hp h_lcm_div
-  · simp_all +decide [Nat.factorization_eq_zero_iff, GammaStructure.gammaRow]
+  · simp_all +decide only [mem_Iio, not_exists, not_and, gammaRow, factorization_eq_zero_iff,
+      not_true_eq_false, Finset.lcm_eq_zero_iff, false_or]
     apply Or.inl _
     intro H
     have := Nat.dvd_trans H (Finset.lcm_dvd fun i hi => Finset.dvd_prod_of_mem _ hi)
-    simp_all +decide [Nat.Prime.dvd_iff_not_coprime hp]
+    simp_all +decide only [Nat.Prime.dvd_iff_not_coprime hp, ne_eq, Decidable.not_not]
     exact this <| Nat.Coprime.prod_right fun i hi => h i <| Finset.mem_Iio.mp hi
 
 -- See docs/proof_sketches.md for full proof sketch.
@@ -250,17 +259,18 @@ lemma card_filter_exists_lt_equiv {n : ℕ}
         (Finset.univ : Finset (Fin n)) := by
     all_goals generalize_proofs at *
     ext j
-    simp [Finset.mem_image, Finset.mem_sdiff]
+    simp only [mem_filter, mem_univ, true_and, mem_sdiff, mem_image, not_exists]
     constructor <;> intro h
     · intro x hx
       have := Finset.min'_mem (Finset.filter (fun i => R i x) Finset.univ)
-      simp_all +decide [Finset.min']
+      simp_all +decide only [min', id_eq, mem_filter, mem_univ, true_and, forall_const]
       contrapose! hx; simp_all only [ne_eq]
       obtain ⟨i, hi, hi'⟩ := h
       exact ne_of_lt (lt_of_le_of_lt (Finset.inf'_le _ <| by aesop) hi)
     · contrapose! h
-      use j; simp [Finset.min']
-      apply le_antisymm _ _ <;> simp_all
+      use j; simp only [min', id_eq]
+      apply le_antisymm _ _ <;> simp_all only [inf'_le_iff, le_inf'_iff, mem_filter, mem_univ,
+        true_and]
       · exact ⟨j, hrefl j, le_rfl⟩
       · exact fun i hi => le_of_not_gt fun hi' => h i hi' hi
   rw [h_complementary, Finset.card_sdiff]
@@ -329,7 +339,8 @@ lemma card_image_classMin_eq_of_perm {n : ℕ}
           Finset.filter (fun i => R₁ i j₂) Finset.univ := by grind +ring
       simp_all +decide [Finset.ext_iff]
     exact h_eq_classes''
-  · simp +zetaDelta at *
+  · simp +zetaDelta only [mem_image, mem_univ, true_and, exists_prop, exists_exists_eq_and,
+      forall_exists_index, forall_apply_eq_imp_iff] at *
     intro a
     use σ⁻¹ a
     congr! 3
@@ -436,7 +447,8 @@ theorem GammaStructure.gammaProd_perm_invariant
   · exact Nat.ne_of_gt (GammaStructure.gammaProd_pos Γ)
   · ext p
     by_cases hp : Nat.Prime p <;>
-      simp_all +decide [GammaStructure.factorization_gammaProd_eq]
+      simp_all +decide only [factorization_gammaProd_eq, mem_Iio, not_false_eq_true,
+        factorization_eq_zero_of_not_prime]
     convert GammaStructure.perm_count_eq Γ σ p hp using 1
     · simp +decide [GammaStructure.permute]; try rfl
     · simp +decide [Finset.mem_Iio]; try rfl
@@ -451,9 +463,11 @@ lemma GammaStructure.gamma_le_gammaProd
   · -- Since $i \neq j$, we have $Γ.gamma i j \mid Γ.gammaRow (max i j)$
     -- by definition of `gammaRow`.
     have h_div : Γ.gamma i j ∣ Γ.gammaRow (max i j) := by
-      cases le_total i j <;> simp_all +decide [ GammaStructure.gammaRow ]
-      · exact Finset.dvd_lcm ( Finset.mem_Iio.mpr ( lt_of_le_of_ne ‹_› hij ) )
-      · exact Finset.dvd_lcm ( Finset.mem_Iio.mpr ( lt_of_le_of_ne ‹_› ( Ne.symm hij ) ) ) |>
+      cases le_total i j
+      · simp_all +decide only [gammaRow, sup_of_le_right]
+        exact Finset.dvd_lcm ( Finset.mem_Iio.mpr ( lt_of_le_of_ne ‹_› hij ) )
+      · simp_all +decide only [gammaRow, sup_of_le_left]
+        exact Finset.dvd_lcm ( Finset.mem_Iio.mpr ( lt_of_le_of_ne ‹_› ( Ne.symm hij ) ) ) |>
           dvd_trans ( by simp +decide [ Γ.symm ] )
     exact Nat.le_of_dvd ( Γ.gammaProd_pos )
       ( dvd_trans h_div ( Finset.dvd_prod_of_mem _ ( Finset.mem_univ _ ) ) )
@@ -502,10 +516,13 @@ public theorem mem_finsetGammaStructures {γ : ℕ} {Γ : GammaStructure k} :
     Γ ∈ finsetGammaStructures γ ↔ Γ.gammaProd = γ := by
   constructor
   · unfold finsetGammaStructures
-    simp +zetaDelta at *
+    simp +zetaDelta only [ne_eq, mem_image, mem_attach, true_and, Subtype.exists, mem_filter,
+      Fintype.mem_piFinset, mem_range, Order.lt_add_one_iff, forall_exists_index,
+      forall_and_index] at *
     rintro x hx₁ hx₂ hx₃ hx₄ hx₅ hx₆ hx₇ rfl; exact hx₇
   · intro h
-    simp +decide [ ← h, finsetGammaStructures ]
+    simp +decide only [finsetGammaStructures, ne_eq, mem_image, mem_attach, true_and,
+      Subtype.exists, ← h, mem_filter, Fintype.mem_piFinset, mem_range, Order.lt_add_one_iff]
     exact ⟨ Γ.gamma, ⟨ fun i j =>
       Γ.gamma_le_gammaProd i j, Γ.diag, Γ.symm, Γ.pos, Γ.sqfree, Γ.compat, rfl ⟩, rfl ⟩
 
@@ -516,7 +533,7 @@ public theorem mem_finsetGammaStructures {γ : ℕ} {Γ : GammaStructure k} :
 lemma GammaStructure.gamma_dvd_gammaProd (Γ : GammaStructure k) (i j : Fin k)
     (hij : i ≠ j) : Γ.gamma i j ∣ Γ.gammaProd := by
   unfold GammaStructure.gammaProd
-  cases le_total i j <;> simp_all +decide
+  cases le_total i j <;> simp_all +decide only [ne_eq]
   · -- Since Γ.gamma i j divides Γ.gammaRow j and Γ.gammaRow j divides Γ.gammaProd, we have
     -- Γ.gamma i j ∣ Γ.gammaProd.
     have h_div : Γ.gamma i j ∣ Γ.gammaRow j := by
@@ -551,7 +568,7 @@ lemma card_upper_triangular_pairs (k : ℕ) :
   rw [show (Finset.univ : Finset (Fin k × Fin k)) = Finset.univ ×ˢ Finset.univ from rfl,
     Finset.sum_product]
   rw [ ← Finset.sum_range_id ]
-  simp +decide [ Finset.filter_lt_eq_Ioi ]
+  simp +decide only [sum_boole, filter_lt_eq_Ioi, Fin.card_Ioi, cast_tsub, cast_id, cast_one]
   rw [ ← Finset.sum_range_reflect, Finset.sum_range ]
 
 /-- The number of Gamma structures with a fixed product `γ(Γ) = γ` is bounded by
@@ -589,7 +606,7 @@ public theorem countGammaStructures_le (γ : ℕ) (hγ : 0 < γ) :
     apply le_trans ( Finset.card_le_card <| Finset.image_subset_iff.mpr _ ) _
     exact Finset.image ( fun p : { p : Fin k × Fin k // p.1 < p.2 } →
         { x : ℕ // x ∈ γ.divisors.filter Squarefree } => fun p' => p p' |>.1 ) ( Finset.univ )
-    · simp +zetaDelta at *
+    · simp +zetaDelta only [mem_finsetGammaStructures, mem_image, mem_univ, true_and] at *
       exact fun Γ hΓ => ⟨ fun p => ⟨ Γ.gamma p.val.1 p.val.2,
         GammaStructure.gamma_mem_squarefree_divisors hΓ p.val.1 p.val.2 ( ne_of_lt p.prop ) ⟩, rfl ⟩
     · apply le_trans ( Finset.card_image_le ) _
@@ -624,7 +641,7 @@ lemma card_set_pairwise_dvd_le {m : ℕ} (hm : 0 < m)
         Finset.mem_Icc.mpr ⟨Int.ediv_nonneg (sub_nonneg.mpr (hx₀.2 x hx)) (Nat.cast_nonneg _),
           Int.ediv_le_ediv (by positivity) (by linarith [hS x hx, hS x₀ hx₀.1])⟩
     have := Finset.card_le_card h_map
-    simp_all
+    simp_all only [Int.card_Icc, sub_zero, ge_iff_le]
     rw [Finset.card_image_of_injOn] at this
     · nlinarith [
         Int.toNat_of_nonneg (by positivity : 0 ≤ (H : ℤ) / m + 1),
@@ -749,7 +766,7 @@ lemma card_filtered_le_prod_of_fiber_dvd
         have hlt : i.val < n := by
           have := Fin.val_lt_last (show Fin.castSucc j ≠ Fin.last n by simp [Fin.ext_iff]; omega)
           simp [Fin.lt_def] at hi; omega
-        have := hab ⟨i.val, hlt⟩ (by simp [Fin.lt_def] at hi ⊢; exact hi)
+        have := hab ⟨i.val, hlt⟩ (by simp only [Fin.lt_def, Fin.val_castSucc] at hi ⊢; exact hi)
         simp only [proj] at this
         have hcast : Fin.castSucc ⟨i.val, hlt⟩ = i := by ext; simp
         rw [hcast] at this; exact this
@@ -789,7 +806,10 @@ theorem countTuples_bound_prop
     rw [Finset.card_image_of_injOn] at h_card_S
     · exact_mod_cast h_card_S
     · intro h₁ hh₁ h₂ hh₂ h_eq
-      simp_all +decide [funext_iff, Fin.forall_fin_succ]
+      simp_all +decide only [ne_eq, Fin.forall_fin_succ, not_true_eq_false, implies_true, true_and,
+        Fin.succ_ne_zero, not_false_eq_true, forall_const, Fin.succ_inj, sub_self, Int.natAbs_zero,
+        Nat.gcd_zero_right, IsEmpty.forall_iff, coe_filter, Fintype.mem_piFinset, mem_Icc,
+        Set.mem_setOf_eq, funext_iff]
       exact h_eq
   refine le_trans h_card ?_
   norm_num [Finset.prod_add]
@@ -828,8 +848,8 @@ public theorem countTuples_bound_small_gamma
     norm_num [mul_pow, Fin.prod_univ_succ]
     · unfold GammaStructure.gammaProd GammaStructure.gammaRow
       norm_cast
-      simp +decide [Fin.prod_univ_succ]
-      simp +decide [Finset.lcm]
+      simp +decide only [Fin.prod_univ_succ]
+      simp +decide only [Finset.lcm]
       exact Or.inl (by change 1 * _ = _; rw [one_mul])
     · rw [mul_pow]
   · exact Nat.cast_pos.mpr (GammaStructure.gammaProd_pos Γ)

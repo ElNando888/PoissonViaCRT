@@ -137,27 +137,31 @@ lemma not_dvd_radical_gammaProd_imp_injective {n : ℕ} (hn : 1 ≤ n)
   generalize_proofs at *
   intro h_eq
   generalize_proofs at *
-  contrapose! hp_not; simp_all +decide [ radical ]
+  contrapose! hp_not
+  simp_all +decide only [ZMod.castHom_apply, ne_eq, radical]
   apply dvd_trans _ ( Finset.dvd_prod_of_mem _ <|
     Nat.mem_primeFactors.mpr ⟨ hp_prime, _, _ ⟩ ) <;>
       norm_num [ gammaProdOfBoxPoint ]
   · apply dvd_trans _ ( Finset.dvd_prod_of_mem _ ( Finset.mem_univ ( Max.max j hij ) ) )
-    cases max_choice j hij <;> simp_all +decide
+    cases max_choice j hij <;> simp_all +decide only [sup_eq_left, sup_of_le_left, sup_eq_right,
+      sup_of_le_right]
     · apply dvd_trans _ ( Finset.dvd_lcm ( Finset.mem_Iio.mpr <| show hij < j from
-        lt_of_le_of_ne ‹_› <| Ne.symm hp_not ) ) ; simp_all +decide [ Fin.cons ]
+        lt_of_le_of_ne ‹_› <| Ne.symm hp_not ) ) ; simp_all +decide only [Fin.cons]
       apply Nat.dvd_gcd ( Finset.dvd_prod_of_mem _ hp_T ) _
       rw [ ← Int.natCast_dvd ]
       haveI := Fact.mk hp_prime; simp_all +decide [← ZMod.intCast_zmod_eq_zero_iff_dvd]
       cases j using Fin.inductionOn <;> cases hij using Fin.inductionOn <;> aesop
     · apply dvd_trans _ ( Finset.dvd_lcm ( Finset.mem_Iio.mpr ( lt_of_le_of_ne ‹_› hp_not ) ) )
-      simp_all +decide [ Fin.cons ]
+      simp_all +decide only [Fin.cons]
       apply Nat.dvd_gcd ( Finset.dvd_prod_of_mem _ hp_T ) _
       rw [ ← Int.natCast_dvd ]
-      simp_all +decide [ ← ZMod.intCast_zmod_eq_zero_iff_dvd, sub_eq_iff_eq_add ]
+      simp_all +decide only [← ZMod.intCast_zmod_eq_zero_iff_dvd, Int.cast_sub, sub_eq_iff_eq_add,
+        zero_add]
       convert h_eq.symm using 1
       · cases hij using Fin.inductionOn <;> aesop
       · cases j using Fin.inductionOn <;> aesop
-  · simp +decide [ Finset.prod_eq_zero_iff, Nat.gcd_eq_zero_iff ]
+  · simp +decide only [prod_eq_zero_iff, mem_univ, Finset.lcm_eq_zero_iff, mem_Iio,
+    Nat.gcd_eq_zero_iff, ↓existsAndEq, and_true, Int.natAbs_eq_zero, true_and, not_exists, not_and]
     intro i j hij h0; have := hT h0; simp_all +decide
 
 /--
@@ -178,7 +182,8 @@ lemma localCount_deviation_of_injective {ε : ℝ} {n : ℕ} (hn : 1 ≤ n)
     |localCount Ω q (Fin.cons (0 : ZMod q) (fun i => ((h i : ℤ) : ZMod q))) p -
       localMean (n + 1) Ω p| ≤
     (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) * localMean (n + 1) Ω p := by
-  unfold localCount localMean; simp +decide [ *, Fin.cons ]
+  unfold localCount localMean
+  simp +decide only [↓reduceDIte, Fin.cons, ZMod.castHom_apply, add_tsub_cancel_right, hp_factor]
   convert hWD.1 _ _ using 1
   convert h_inj using 1
 
@@ -276,7 +281,7 @@ lemma fiber_card_le_countTuplesWithGammaProd (k : ℕ) (hk : 2 ≤ k)
       (Fin.cons (0 : ℤ) a : Fin (k - 1 + 1) → ℤ) = Fin.cons (0 : ℤ) b → a = b := by
     intro a _ b _ hab
     funext i; have := congr_fun hab (Fin.succ i)
-    simp [Fin.cons] at this; exact this
+    simp only [Fin.cons, Fin.cases_succ] at this; exact this
   set F : (Fin (k - 1) → ℤ) → (Fin (k - 1 + 1) → ℤ) := fun h => Fin.cons (0 : ℤ) h
   have h_card : S.card = (S.image F).card :=
     (Finset.card_image_of_injOn (fun a ha b hb => h_inj a ha b hb)).symm
@@ -485,8 +490,10 @@ lemma primeFactors_sdiff_mem_powerset (T : Finset ℕ) (hT : ∀ p ∈ T, Nat.Pr
     (N γ : ℕ) (hγ_sq : Squarefree γ) (hγ_range : γ ∈ Finset.Icc 1 N) :
     γ.primeFactors \ T ∈
       ((Finset.Icc 2 N).filter (fun p => Nat.Prime p ∧ p ∉ T)).powerset := by
-  simp +zetaDelta at *
-  intro p hp; simp_all +decide
+  simp +zetaDelta only [mem_Icc, mem_powerset] at *
+  intro p hp
+  simp_all +decide only [mem_sdiff, Nat.mem_primeFactors, ne_eq, mem_filter, mem_Icc,
+    not_false_eq_true, and_self, and_true]
   exact ⟨ hp.1.1.two_le, Nat.le_trans ( Nat.le_of_dvd hγ_range.1 hp.1.2.1 ) hγ_range.2 ⟩
 
 /--
@@ -498,7 +505,9 @@ factors, and `T ⊆ γ.primeFactors` (so the sdiff determines all of
 lemma primeFactors_sdiff_injOn (T : Finset ℕ) (hT : ∀ p ∈ T, Nat.Prime p) (N : ℕ) :
     Set.InjOn (fun γ : ℕ => γ.primeFactors \ T)
       ((Finset.Icc 1 N).filter (fun γ => Squarefree γ ∧ (∏ p ∈ T, p) ∣ γ) : Finset ℕ) := by
-  intros γ₁ hγ₁ γ₂ hγ₂ h_eq; simp_all +decide [Finset.ext_iff]
+  intros γ₁ hγ₁ γ₂ hγ₂ h_eq
+  simp_all +decide only [coe_filter, mem_Icc, Set.mem_setOf_eq, Finset.ext_iff, mem_sdiff,
+    Nat.mem_primeFactors, ne_eq, and_congr_left_iff, and_congr_right_iff]
   -- Since γ₁ and γ₂ are squarefree and divisible by d, their prime factors are exactly T and
   -- the prime factors of γ₁ and γ₂ that are not in T.
   have h_prime_factors :
@@ -536,12 +545,14 @@ noncomputable def tailEulerWeight (ε : ℝ) (k : ℕ) (Ω : ∀ p : ℕ, Finset
 If `p` is prime and divides `radical γ`, then `p ≤ γ`.
 -/
 lemma prime_dvd_radical_le_self (p γ : ℕ) (hp : p.Prime) (h : p ∣ radical γ) : p ≤ γ := by
-  by_cases hg : γ = 0 <;> simp_all +decide [ radical ]
-  simp_all +decide [ Nat.Prime.dvd_iff_not_coprime hp, Nat.coprime_prod_right_iff ]
+  by_cases hg : γ = 0 <;> simp_all +decide only [radical, Nat.primeFactors_zero, prod_empty,
+    Nat.dvd_one, nonpos_iff_eq_zero]
+  simp_all +decide only [Nat.Prime.dvd_iff_not_coprime hp, Nat.coprime_prod_right_iff,
+    Nat.mem_primeFactors, ne_eq, not_false_eq_true, and_true, and_imp, not_forall]
   obtain ⟨ q, hq₁, hq₂, hq₃ ⟩ := h
   have := Nat.gcd_dvd_left p q
   have := Nat.gcd_dvd_right p q
-  simp_all +decide [ Nat.dvd_prime ]
+  simp_all +decide only [Nat.dvd_prime, false_or, ge_iff_le, Nat.gcd_self]
   exact Nat.le_of_dvd ( Nat.pos_of_ne_zero hg ) hq₂
 
 /--
@@ -561,7 +572,8 @@ lemma weil_weight_le_prime (ε : ℝ) (hε : 0 ≤ ε) (k : ℕ) (hk : 1 ≤ k)
         haveI := Fact.mk hp
         exact le_trans ( Finset.card_le_univ _ ) ( by norm_num )
       generalize_proofs at *; (
-      rcases k with ( _ | k ) <;> simp_all +decide [ pow_succ ]
+      rcases k with ( _ | k ) <;> simp_all +decide only [le_add_iff_nonneg_left, zero_le, pow_succ,
+        add_tsub_cancel_right, ge_iff_le]
       exact div_le_of_le_mul₀ ( by positivity ) ( by positivity ) ( by
         norm_cast
         nlinarith [ pow_pos ( Nat.pos_of_ne_zero hp.ne_zero ) k,

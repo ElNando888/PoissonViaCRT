@@ -178,7 +178,7 @@ private lemma surj_image_eq (d : ℕ) [NeZero d] (r : Fin k → ZMod d)
     let r_int : Fin k → ℤ := fun i => (ZMod.val (r i) : ℤ)
     let r_1 : Fin k → ℤ := fun i => if r_int i = 0 then (d : ℤ) else r_int i
     ((↑d * (b i - 1) + r_1 i - 1) / (d : ℤ) + 1) = b i := by
-      cases eq_or_ne ( r i |> ZMod.val : ℤ ) 0 <;> simp +decide [ * ]
+      cases eq_or_ne ( r i |> ZMod.val : ℤ ) 0 <;> simp +decide only [↓reduceIte, *]
       · nlinarith [ Int.mul_ediv_add_emod ( ↑d * ( b i - 1 ) + ↑d - 1 ) ↑d,
                     Int.emod_nonneg ( ↑d * ( b i - 1 ) + ↑d - 1 ) ( NeZero.ne ( d : ℤ ) ),
                     Int.emod_lt_of_pos ( ↑d * ( b i - 1 ) + ↑d - 1 )
@@ -202,7 +202,9 @@ private lemma surj_mod_eq (d : ℕ) [NeZero d] (r : Fin k → ZMod d)
   cases eq_or_ne ( ( r i |> ZMod.val : ZMod d ) ) 0 with
   | inl h => simp_all
   | inr h =>
-    simp_all
+    simp_all only [ZMod.natCast_val, ZMod.cast_id', id_eq, ne_eq, Int.cast_add, Int.cast_mul,
+      Int.cast_natCast, CharP.cast_eq_zero, Int.cast_sub, Int.cast_one, zero_mul, Int.cast_ite,
+      ZMod.intCast_cast, zero_add, ite_eq_right_iff]
     -- Since the cast is injective, if the cast of r i is zero, then r i must be zero.
     intro h_cast_zero
     have h_r_zero : r i = 0 := by
@@ -285,7 +287,7 @@ private lemma rescaled_surj_mem_S {k : ℕ}
       (Fintype.piFinset fun _ : Fin k =>
         Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
       (fun h => inScaledBox X s (fun _ => 0) h) := by
-  simp +zetaDelta at *
+  simp +zetaDelta only [mem_Icc, mem_filter, Fintype.mem_piFinset] at *
   refine ⟨ ?_, surj_inscaledbox_transfer s X d r_1 hr1_bounds b hb_box ⟩
   intro i
   have h_le : d * (b i - 1) + r_1 i ≤ ⌈s * ∑ i, X.sides i⌉ := by
@@ -366,7 +368,8 @@ private lemma residue_class_card_eq_rescaled_card {k : ℕ} (hk : 1 ≤ k)
   apply Finset.card_bij (fun (h : Fin (k - 1) → ℤ) _ (i : Fin (k - 1)) => (h i - 1) / (d : ℤ) + 1)
   · -- Forward direction: show the image lands in S_sub
     intro a ha
-    apply Finset.mem_filter.mpr ⟨ _, _ ⟩ <;> simp_all +decide [ funext_iff ]
+    apply Finset.mem_filter.mpr ⟨ _, _ ⟩ <;> simp_all +decide only [funext_iff, mem_filter,
+      Fintype.mem_piFinset, mem_Icc, le_add_iff_nonneg_left, Order.add_one_le_iff]
     · intro i; specialize ha; have := ha.1.1 i
       rw [ Int.ediv_lt_iff_lt_mul ] <;> norm_num [ NeZero.pos ] ; ring_nf at *
       refine ⟨ Int.ediv_nonneg ( by linarith ) ( Nat.cast_nonneg _ ), ?_ ⟩
@@ -382,8 +385,9 @@ private lemma residue_class_card_eq_rescaled_card {k : ℕ} (hk : 1 ≤ k)
       have h_mod : ∀ i, (a i : ℝ) = (d : ℝ) * ((a i - 1) / d : ℤ) + (r_1 i : ℝ) := by
         intro i
         have h_mod : (a i : ℤ) ≡ r_1 i [ZMOD d] := by
-          simp_all +decide [ ← ZMod.intCast_eq_intCast_iff ]
-          simp +zetaDelta at *
+          simp_all +decide only [← ZMod.intCast_eq_intCast_iff]
+          simp +zetaDelta only [ZMod.natCast_val, Int.cast_ite, Int.cast_natCast,
+            CharP.cast_eq_zero, ZMod.intCast_cast, ZMod.cast_id', id_eq, right_eq_ite_iff] at *
           exact fun h => by
             simpa [ ZMod.natCast_eq_zero_iff ] using congr_arg ( fun x : ℤ => x : ℤ → ZMod d ) h
         obtain ⟨ k, hk ⟩ := h_mod.symm.dvd
@@ -503,7 +507,8 @@ public lemma globalMean_eq_prod_localMean (k : ℕ) (q : ℕ) [NeZero q] (hq : S
     convert h_card using 1
     · rw [ Fintype.card_of_subtype ] ; aesop
     · exact Finset.prod_congr rfl fun _ _ => by rw [ Fintype.card_of_subtype ] ; aesop
-  unfold localMean; simp +decide [ *, Finset.prod_pow ]
+  unfold localMean
+  simp +decide only [Nat.cast_prod, prod_div_distrib, prod_pow, h_card]
   rw_mod_cast [ ← Finset.prod_natCast, Nat.prod_primeFactors_of_squarefree hq ]
 
 /-- The mean collapse identity: `(1/card) * ∏_q localMean = s^{-(k-1)}`. -/
@@ -536,14 +541,21 @@ private lemma arith_l1_per_prime (k : ℕ) (ε : ℝ)
     ∑ r : Fin (k - 1) → ZMod p, |localCount Ω p (Fin.cons 0 r) p - localMean k Ω p| ≤
     p ^ (k - 1 : ℕ) * (1 - (Ω p).card / p : ℝ) * (p : ℝ) ^ (-ε) *
     ((Ω p).card : ℝ) ^ k / p ^ (k - 1 : ℕ) := by
-  by_cases h_card : ( Ω p ).card = 0 <;> simp_all +decide
-  · rcases k with ( _ | k ) <;> simp_all +decide [ localCount, localMean ]
+  by_cases h_card : ( Ω p ).card = 0 <;> simp_all +decide only [card_eq_zero, card_empty,
+    CharP.cast_eq_zero, zero_div, sub_zero, mul_one]
+  · rcases k with ( _ | k ) <;> simp_all +decide only [Nat.zero_sub_one, univ_unique, localCount,
+      Nat.mem_primeFactors, dvd_refl, ne_eq, true_and, Nat.reduceAdd, ZMod.castHom_self,
+      RingHom.id_apply, localMean, card_empty, CharP.cast_eq_zero, pow_zero, zero_tsub,
+      one_ne_zero, not_false_eq_true, div_self, sum_singleton, one_mul, mul_one, div_one,
+      Nat.add_one_sub_one, Nat.add_eq_zero_iff, and_false, zero_pow, add_tsub_cancel_right,
+      zero_div, sub_zero, mul_zero]
     · split_ifs <;> norm_num [ tupleCount ]
       · specialize hWD p ; simp_all +decide [ WellDistributed ]
         simp_all +decide [ tupleCount ]
       · exact Real.rpow_nonneg ( Nat.cast_nonneg _ ) _
-    · simp +decide [ tupleCount ]
-      simp +decide [ Nat.Prime.ne_zero Fact.out ]
+    · simp +decide only [tupleCount, notMem_empty, forall_const, filter_false, card_empty,
+        CharP.cast_eq_zero, dite_eq_ite, sum_const, card_univ, nsmul_eq_mul]
+      simp +decide only [Nat.Prime.ne_zero Fact.out, not_false_eq_true, and_true]
       rw [ if_pos ( Fact.out : Nat.Prime p ), abs_zero, MulZeroClass.mul_zero ]
   · convert hWD p |>.2 using 1
     · unfold localCount localMean
@@ -566,14 +578,18 @@ private lemma arith_l1_crt_transport (k : ℕ)
     ∑ r : (p : d.primeFactors) → Fin (k - 1) → ZMod p,
       ∏ p : d.primeFactors, |localCount Ω p (Fin.cons 0 (fun i => r p i)) p - localMean k Ω p| := by
   have hT_eq : T = d.primeFactors := Finset.Subset.antisymm hT_sub_d hd_sub_T
-  subst hT_eq; rw [ Finset.sum_congr rfl ] ; simp +decide
+  subst hT_eq
+  rw [ Finset.sum_congr rfl ]
+  simp +decide only [univ_eq_attach]
   convert Finset.sum_bijective _ ( boxPeriodEquiv d hd_sq |> Equiv.bijective ) _ _ using 1
   use fun i => ∏ p ∈ d.primeFactors, |localCount Ω d (Fin.cons 0 i) p - localMean k Ω p|
   · grind
   · intro i hi; rw [ ← Finset.prod_attach ] ; congr; ext p
     simp +decide only [box_period_equiv_apply_eq_castHom, ZMod.castHom_apply]
-    unfold localCount localMean; simp +decide [ Fin.cons ]
-    split_ifs <;> simp_all +decide
+    unfold localCount localMean
+    simp +decide only [SetLike.coe_mem, ↓reduceDIte, Fin.cons, ZMod.castHom_apply,
+      Nat.mem_primeFactors, dvd_refl, ne_eq, true_and, ZMod.castHom_self, RingHom.id_apply]
+    split_ifs <;> simp_all +decide only [subset_refl, mem_univ, not_and, Decidable.not_not]
     · congr! 3
       congr! 2
       rename_i x; induction x using Fin.inductionOn <;> aesop
@@ -672,11 +688,13 @@ private lemma box_deviation_factors_through_d (k : ℕ) (q : ℕ) [NeZero q]
   refine Finset.prod_congr rfl fun p hp => ?_
   simp_all +decide only [Nat.mem_primeFactors, ne_eq, ZMod.castHom_apply, prod_eq_zero_iff,
     ↓existsAndEq, and_true, sub_left_inj]
-  split_ifs <;> simp_all +decide [ Nat.Prime.dvd_iff_not_coprime ]
+  split_ifs <;> simp_all +decide only [Nat.cast_inj, Nat.Prime.dvd_iff_not_coprime, ne_eq, true_and,
+    not_and, Decidable.not_not, Nat.cast_eq_one]
   · congr! 2
     rename_i i; induction i using Fin.inductionOn <;> aesop
-  · simp_all +decide [ Nat.coprime_prod_right_iff ]
-    rename_i h₁ h₂; specialize h₂ p hp; simp_all +decide
+  · simp_all +decide only [Nat.coprime_prod_right_iff, not_forall, ne_eq, forall_exists_index]
+    rename_i h₁ h₂; specialize h₂ p hp
+    simp_all +decide only [Nat.gcd_self]
     exact absurd ( hT ( h₂ h₁.1.ne_one ) ) ( by aesop )
   · exact absurd ( ‹¬Nat.gcd p q = 1 → q = 0›
       ( by have := Nat.dvd_of_mem_primeFactors ( hT hp ) ; exact fun h =>
@@ -796,7 +814,10 @@ lemma box_deviation_inner_bound (k : ℕ) (hk : 1 ≤ k) (q : ℕ) [NeZero q]
   have hd_sq : Squarefree d := by
     have h_prod_sqfree : ∀ {T : Finset ℕ}, (∀ p ∈ T, Nat.Prime p) → Squarefree (∏ p ∈ T, p) := by
       intros T hT_prime
-      induction T using Finset.induction <;> simp_all +decide [ Nat.squarefree_mul_iff ]
+      induction T using Finset.induction <;> simp_all +decide only [ne_eq, Nat.cast_sub,
+        Nat.cast_one, one_div, CanonicallyOrderedAdd.prod_pos, prod_empty, isUnit_iff_eq_one,
+        IsUnit.squarefree, mem_insert, or_true, implies_true, forall_const, forall_eq_or_imp,
+        not_false_eq_true, prod_insert, Nat.squarefree_mul_iff, and_true]
       exact ⟨ Nat.Coprime.prod_right fun p hp => hT_prime.1.coprime_iff_not_dvd.mpr fun h =>
         ‹¬_› <| by have := Nat.prime_dvd_prime_iff_eq hT_prime.1 ( hT_prime.2 p hp ) ; aesop,
         hT_prime.1.squarefree ⟩
@@ -841,7 +862,8 @@ lemma box_deviation_inner_bound (k : ℕ) (hk : 1 ≤ k) (q : ℕ) [NeZero q]
         ((Ω p).card : ℝ) ^ k / (p : ℝ) ^ (k - 1)) =
       (∏ p ∈ T, localMean k Ω p) * (d : ℝ) ^ (k - 1) *
         ∏ p ∈ T, ((1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) := by
-    unfold localMean; simp +decide [ mul_assoc, mul_comm, mul_left_comm, Finset.prod_mul_distrib ]
+    unfold localMean
+    simp +decide only [mul_comm, prod_div_distrib, prod_mul_distrib, mul_left_comm, mul_assoc]
     rw [ show ( d : ℝ ) = ∏ p ∈ T, p from mod_cast rfl ] ; ring_nf
     norm_num [ mul_assoc, mul_comm, mul_left_comm, Finset.prod_pow ]
   -- Mean recombination: ∏_{S\T} mean * ∏_T mean = ∏_q mean.
@@ -979,7 +1001,8 @@ public lemma crtSubset_card_pos_aux (Ω : ∀ p : ℕ, Finset (ZMod p))
   by_contra h_empty
   -- If.crtSubset q Ω is empty, then for any x : ZMod q, there exists a prime p dividing q
   -- such that x is not in Ω p.
-  simp +decide [crtSubset] at h_empty
+  simp +decide only [crtSubset, Nat.mem_primeFactors, ne_eq, ZMod.castHom_apply, and_imp, card_pos,
+    not_nonempty_iff_eq_empty, filter_eq_empty_iff, mem_univ, not_forall, forall_const] at h_empty
   obtain ⟨ p, hp₁, hp₂, hp₃, hp₄ ⟩ := @h_empty 0
   contrapose! h_empty
   -- By the Chinese Remainder Theorem, there exists an integer $x$ such that
@@ -1009,7 +1032,9 @@ public lemma crtSubset_card_pos_aux (Ω : ∀ p : ℕ, Finset (ZMod p))
       simp_all +decide [ ← ZMod.natCast_eq_natCast_iff ]
     choose! x hx₁ hx₂ using h_crt
     use ∑ p ∈ q.primeFactors, x p
-    intro p hp; simp_all +decide [ ← ZMod.natCast_eq_natCast_iff ]
+    intro p hp
+    simp_all +decide only [ZMod.cast_zero, Nat.mem_primeFactors, ne_eq, not_false_eq_true, and_true,
+      and_imp, ← ZMod.natCast_eq_natCast_iff, Nat.cast_zero, Nat.cast_sum]
     rw [ Finset.sum_eq_single p ] <;> aesop
   use x
   intro p hp hpq hq; specialize hx p; simp_all +decide [ Nat.mem_primeFactors ]

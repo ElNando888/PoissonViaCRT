@@ -52,7 +52,8 @@ public lemma inScaledBox_cons_strictMono {m : ℕ} (X : Box m) (s : ℝ) (hs : 1
   case zero => tauto
   case succ j ih =>
     cases lt_or_eq_of_le ( show i ≤ Fin.castSucc j from Nat.le_of_lt_succ hij ) <;>
-      simp_all +decide [ Fin.cons ]
+      simp_all +decide only [lt_self_iff_false, Fin.cons, implies_true, Fin.castSucc_lt_succ_iff,
+        Std.le_refl, Fin.cases_succ]
     · have := hbox j
       rcases j with ⟨ _ | j, hj ⟩ <;> norm_num at *
       linarith
@@ -86,7 +87,7 @@ public lemma inScaledBox_cons_le_ceil {m : ℕ} (X : Box m) (s : ℝ) (hs : 1 �
           · contradiction
           · exact this.2
           · exact this.2
-        · simp_all +decide [Finset.sum_ite]
+        · simp_all +decide only [sum_ite, not_le, sum_const_zero, add_zero]
           rw [ show ( Finset.filter ( fun x : Fin m => ( x : ℕ ) ≤ j + 1 )
             Finset.univ : Finset ( Fin m ) ) = Finset.filter ( fun x : Fin m => ( x : ℕ ) ≤ j )
               Finset.univ ∪ { ⟨ j + 1, hj ⟩ } from ?_, Finset.sum_union ] <;> norm_num
@@ -112,7 +113,8 @@ public lemma inScaledBox_cons_nonneg {m : ℕ} (X : Box m) (s : ℝ) (hs : 1 ≤
   induction m
   case zero => fin_cases i ; rfl
   case succ m ih =>
-    refine Fin.cases ?_ ( fun i => ?_ ) i <;> simp_all +decide [ Fin.forall_fin_succ, extendH ]
+    refine Fin.cases ?_ ( fun i => ?_ ) i <;> simp_all +decide only [extendH, Fin.forall_fin_succ,
+      Fin.cons_zero, Std.le_refl, Fin.cons_succ, true_and]
     induction i using Fin.inductionOn
     case zero =>
       have := hbox 0; simp_all +decide [ Fin.forall_fin_succ, inScaledBox ]
@@ -141,7 +143,7 @@ public lemma injective_fin_cons_of_large {m : ℕ} (X : Box m) (s : ℝ) (hs : 1
           lt_of_le_of_lt ( inScaledBox_cons_le_ceil X s hs h hbox i ) hp,
                            inScaledBox_cons_nonneg X s hs h hbox j,
           lt_of_le_of_lt ( inScaledBox_cons_le_ceil X s hs h hbox j ) hp ⟩
-      simp_all +decide [ ZMod.intCast_eq_intCast_iff' ]
+      simp_all +decide only [ZMod.intCast_eq_intCast_iff']
       exact Int.modEq_iff_dvd.mp hij.symm |> fun ⟨ k, hk ⟩ => by
         nlinarith [ show k = 0 by nlinarith [ h_eq i j ] ]
     exact h_injured h_eq
@@ -165,10 +167,11 @@ public lemma collision_indicator_le_sum_pairs {m : ℕ} (p : ℕ) (hp : 1 ≤ p)
      then (0 : ℝ) else 1) ≤
     ∑ ij ∈ pairsBelow m,
       if (p : ℤ) ∣ (extendH m h ij.2 - extendH m h ij.1) then 1 else 0 := by
-  split_ifs <;> simp_all +decide [ Function.Injective ]
+  split_ifs <;> simp_all +decide only [Function.Injective, not_forall, sum_boole,
+    Nat.cast_nonneg, Nat.one_le_cast, one_le_card]
   rename_i h
   rcases h with ⟨ i, j, hij, h ⟩
-  rcases lt_trichotomy i j with hij' | rfl | hij' <;> simp_all +decide [ Fin.cons, extendH ]
+  rcases lt_trichotomy i j with hij' | rfl | hij' <;> simp_all +decide only [Fin.cons, extendH]
   · refine ⟨ ⟨ i, j ⟩, ?_ ⟩ ; simp_all +decide [ pairsBelow ]
     simp_all +decide [ Fin.cases, ← ZMod.intCast_zmod_eq_zero_iff_dvd ]
     induction i using Fin.inductionOn <;> induction j using Fin.inductionOn <;> aesop

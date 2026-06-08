@@ -63,7 +63,9 @@ private lemma card_Icc_filter_dvd_le (S : ℤ) (hS : 0 ≤ S) (M : ℤ) (hM : 0 
   have h_arith_prog : Finset.filter (fun x => M ∣ x - a) (Finset.Icc 1 S) ⊆
     Finset.image (fun k => M * k + a) (Finset.Icc ((1 - a + M - 1) / M) ((S - a) / M)) := by
     intro x hx
-    obtain ⟨ k, hk ⟩ := Finset.mem_filter.mp hx |>.2; simp_all +decide [ sub_eq_iff_eq_add' ]
+    obtain ⟨ k, hk ⟩ := Finset.mem_filter.mp hx |>.2
+    simp_all +decide only [mem_filter, mem_Icc, dvd_mul_right, and_true, sub_eq_iff_eq_add',
+      mem_image]
     exact ⟨ k, ⟨ by rw [ Int.ediv_le_iff_le_mul ] <;>
       linarith, by rw [ Int.le_ediv_iff_mul_le ] <;> linarith ⟩, by ring ⟩
   apply le_trans ( Finset.card_le_card h_arith_prog ) _
@@ -112,14 +114,14 @@ lemma card_filter_coprime_dvd_le (S : ℤ) (hS : 0 ≤ S)
   obtain ⟨A, hA⟩ : ∃ A : ℤ, (∀ p ∈ U, (p : ℤ) ∣ (A - c p)) ∧
     ∀ x : ℤ, (∀ p ∈ U, (p : ℤ) ∣ (x - c p)) → (∏ p ∈ U, (p : ℤ)) ∣ (x - A) := by
     have := LatticeCounting.crt_finset U ( fun p => p ) ?_ c
-    · simp_all +decide [ Int.modEq_iff_dvd ]
+    · simp_all +decide only [Int.modEq_iff_dvd]
       obtain ⟨ A, hA₁, hA₂ ⟩ := this; use A; simp_all +decide [ dvd_sub_comm ]
     · exact fun i hi j hj hij => by
         have := Nat.coprime_primes ( hprime i hi ) ( hprime j hj ) ; tauto
   nontriviality
   convert card_Icc_filter_dvd_le S hS ( ∏ p ∈ U, ( p : ℤ ) ) ( Finset.prod_pos fun p hp =>
     Nat.cast_pos.mpr ( Nat.Prime.pos ( hprime p hp ) ) ) A using 2
-  ext x; simp
+  ext x; simp only [mem_filter, mem_Icc, and_congr_right_iff, and_imp]
   exact fun _ _ => ⟨ fun hx => hA.2 x hx, fun hx => fun p hp => by
     simpa using dvd_trans ( Finset.dvd_prod_of_mem _ hp ) hx |>
       fun h => by simpa using dvd_add h ( hA.1 p hp ) ⟩
@@ -164,7 +166,8 @@ lemma validHForSigma_divisibility_at_coord (m : ℕ) (X : Box m) (s : ℝ)
     (hc : c = fun p => if hp : p ∈ U then extendH m h_prefix (σ p hp).1 else 0) :
     ∀ p ∈ U.filter (fun p => ∃ hp_mem : p ∈ U, (σ p hp_mem).2 = k.succ),
       (p : ℤ) ∣ (h k - c p) := by
-  simp_all +decide [ validHForSigma ]
+  simp_all +decide only [validHForSigma, forall_true_left, mem_filter, Fintype.mem_piFinset,
+    mem_Icc, and_exists_self, forall_exists_index, ↓reduceDIte]
   intro p hp_mem hp_eq
   have h_div : (p : ℤ) ∣ (extendH m h (σ p hp_mem).2 - extendH m h (σ p hp_mem).1) := by
     grind +suggestions
@@ -214,8 +217,9 @@ private lemma collision_sum_le_sigma_sum (m : ℕ) (X : Box m) (s : ℝ) (hs : 1
     ( p : ℤ ) ∣ ( extendH m h ( σ p hp |>.2 ) - extendH m h ( σ p hp |>.1 ) ) )
     ( Fintype.piFinset fun _ => Finset.Icc 1 ⌈s * ∑ i, X.sides i⌉ )
   · intro h hh; unfold validHForSigma; aesop
-  · simp +decide [ Finset.prod_ite ]
-    simp +decide [ zero_pow_eq ]
+  · simp +decide only [prod_ite, prod_const_one, prod_const, one_mul]
+    simp +decide only [zero_pow_eq, card_eq_zero, filter_eq_empty_iff, mem_attach,
+      Decidable.not_not, forall_const, Subtype.forall, sum_boole, Nat.cast_le]
     exact Finset.card_mono fun x hx => by aesop
 
 /--
@@ -321,7 +325,8 @@ private lemma collision_sum_main_bound (m : ℕ) (hm : 1 ≤ m) (X : Box m) (s :
         ∃ hp_mem : p ∈ U, ( σ p hp_mem ).2 = k.succ ),
           ( p : ℤ ) ∣ ( x - ( if hp : p ∈ U then extendH m h_prefix ( σ p hp ).1 else 0 ) ) )
         ( Finset.Icc 1 ⌈s * ∑ i, X.sides i⌉ )
-      · simp +zetaDelta at *
+      · simp +zetaDelta only [mem_pi, mem_filter, and_exists_self, forall_exists_index, mem_Icc,
+          and_imp] at *
         intro x hx hx'
         exact ⟨ validHForSigma_coord_mem_Icc m X s U ( fun p hp => σ p hp ) x hx k, fun p hp hp' =>
           validHForSigma_divisibility_at_coord m X s U hU ( fun p hp => σ p hp ) hσ k h_prefix x hx
@@ -340,7 +345,8 @@ private lemma collision_sum_main_bound (m : ℕ) (hm : 1 ≤ m) (X : Box m) (s :
           ( fun j => ∏ p ∈ U.filter fun p => ∃ hp_mem : p ∈ U, ( σ p hp_mem ).2 = j.succ,
             ( p : ℤ ) ) _ using 1
     · norm_cast
-    · simp +decide [ Finset.prod_filter ]
+    · simp +decide only [prod_filter, Int.cast_prod, Int.cast_ite, Int.cast_natCast, Int.cast_one,
+        add_left_inj]
       rw [ Finset.prod_comm ]
       refine congr rfl ( Finset.prod_congr rfl fun p hp => ?_ )
       rw [ Finset.prod_eq_single ( ( σ p hp ).2.pred <| by

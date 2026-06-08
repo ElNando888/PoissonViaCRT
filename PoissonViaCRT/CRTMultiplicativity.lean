@@ -152,7 +152,9 @@ public theorem counting_function_multiplicative {k : ℕ} (q : ℕ) [NeZero q] (
   · exact fun a₁ ha₁ a₂ ha₂ h => by
       simpa using crtRingEquiv q hq |>.injective <| funext fun p => congr_fun h p
   · intro b hb
-    refine ⟨ ( crtRingEquiv q hq ).symm b, ?_, ?_ ⟩ <;> simp_all +decide [ Fintype.mem_piFinset ]
+    refine ⟨ ( crtRingEquiv q hq ).symm b, ?_, ?_ ⟩ <;> simp_all +decide only [ZMod.castHom_apply,
+      Fintype.mem_piFinset, mem_filter, mem_univ, true_and, Subtype.forall, Nat.mem_primeFactors,
+      ne_eq, forall_and_index, mem_crtSubset_iff, ZMod.cast_add, RingEquiv.apply_symm_apply]
     intro i p hp hpq hq; specialize hb p hp hpq hq i; convert hb using 1
     have := crtRingEquiv_apply_eq_castHom q ‹_› ( ( crtRingEquiv q ‹_› ).symm b ) ⟨ p, by aesop ⟩
     simp_all only [RingEquiv.apply_symm_apply, ZMod.castHom_apply]

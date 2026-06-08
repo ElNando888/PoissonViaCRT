@@ -168,7 +168,8 @@ lemma additiveChar_sum_eq_ite (q : ℕ) [NeZero q] (a : ZMod q) :
     have h_exp : ∑ x : ZMod q, additiveChar q a x = ∑ x ∈ Finset.range q,
         (Complex.exp (2 * Real.pi * Complex.I * (a.val : ℂ) / (q : ℂ))) ^ x := by
       apply Finset.sum_bij ( fun x _ => x.val ) _ _ _ _ <;>
-        simp +decide [ additiveChar_eq_exp_pow ]
+        simp +decide only [mem_univ, mem_range, forall_const, exists_const, additiveChar_eq_exp_pow,
+          ZMod.natCast_val]
       · exact fun x => ZMod.val_lt x
       · exact fun x y h => by
           simpa [ ZMod.natCast_zmod_val ] using congr_arg ( fun x : ℕ => x : ℕ → ZMod q ) h
@@ -191,7 +192,10 @@ public lemma starRingEnd_additiveChar (q : ℕ) [NeZero q] (a x : ZMod q) :
     norm_num [ sub_div, mul_sub, NeZero.ne ]
     rw [ ZMod.cast_eq_val ] ; norm_cast ; aesop
   unfold additiveChar
-  cases eq_or_ne ( a * x ) 0 <;> simp_all +decide [ ZMod.neg_val ]
+  cases eq_or_ne ( a * x ) 0 <;> simp_all +decide only [ZMod.val_zero, CharP.cast_eq_zero, mul_zero,
+    zero_div, exp_zero, map_one, sub_zero, Int.cast_natCast, mul_div_cancel_of_invertible,
+    exp_two_pi_mul_I, neg_mul, neg_zero, ZMod.natCast_val, Int.cast_sub, ZMod.intCast_cast, ne_eq,
+    ZMod.neg_val, ↓reduceIte]
   rw [ Nat.cast_sub ]
   · cases q <;> aesop
   · exact Nat.le_of_lt ( ZMod.val_lt _ )
@@ -228,10 +232,14 @@ public theorem character_orthogonality (q : ℕ) [NeZero q] (m : ℕ)
   have h_fubini : ∑ x : Fin m → ZMod q, character q m (ξ - η) x = ∏ j : Fin m,
       ∑ x : ZMod q, additiveChar q ((ξ - η) j) x := by
     rw [ Finset.prod_sum ]
-    apply Finset.sum_bij ( fun x _ => fun i _ => x i ) _ _ _ _ <;> simp +decide [ character ]
+    apply Finset.sum_bij ( fun x _ => fun i _ => x i ) _ _ _ _ <;> simp +decide only [mem_univ,
+      univ_pi_univ, imp_self, implies_true, forall_const, exists_const, character, Pi.sub_apply,
+      prod_attach_univ]
     · simp +decide [ funext_iff ]
     · exact fun b => ⟨ fun i => b i ( Finset.mem_univ i ), funext fun i => funext fun _ => rfl ⟩
-  split_ifs with h <;> simp_all +decide [ character_mul_conj ]
+  split_ifs with h <;> simp_all +decide only [sub_self, Pi.sub_apply, additiveChar_zero, sum_const,
+    card_univ, ZMod.card, nsmul_eq_mul, mul_one, prod_const, Fintype.card_fin, character_mul_conj,
+    Pi.sub_apply, character_mul_conj]
   exact Finset.prod_eq_zero ( Finset.mem_univ ( Classical.choose ( Function.ne_iff.mp h ) ) ) ( by
     rw [ additiveChar_sum_eq_ite ]
     simp +decide [ sub_eq_zero, Classical.choose_spec ( Function.ne_iff.mp h ) ] )
@@ -243,7 +251,7 @@ $f(x) = \sum_{\xi \in G} \widehat{f}(\xi) \cdot \chi_\xi(x)$.
 public theorem dft_inversion (q : ℕ) [NeZero q] (m : ℕ)
     (f : (Fin m → ZMod q) → ℂ) (x : Fin m → ZMod q) :
     f x = ∑ ξ : Fin m → ZMod q, dft q m f ξ * character q m ξ x := by
-  simp +decide [ dft, Finset.mul_sum _ _ _, mul_comm, mul_left_comm ]
+  simp +decide only [dft, one_div, Finset.mul_sum _ _ _, mul_left_comm, mul_comm]
   -- By the orthogonality of the characters, the inner sum over ξ is q^m if x = y and 0 otherwise.
   have h_orthogonality : ∀ y : Fin m → ZMod q, ∑ ξ : Fin m → ZMod q,
       (character q m ξ x) * (starRingEnd ℂ (character q m ξ y))
@@ -266,14 +274,16 @@ theorem plancherel_identity (q : ℕ) [NeZero q] (m : ℕ)
     (f g : (Fin m → ZMod q) → ℂ) :
     (1 / (q : ℂ) ^ m) * ∑ x : Fin m → ZMod q, f x * starRingEnd ℂ (g x) =
       ∑ ξ : Fin m → ZMod q, dft q m f ξ * starRingEnd ℂ (dft q m g ξ) := by
-  unfold dft; simp +decide [ mul_assoc, Finset.mul_sum _ _ _, Finset.sum_mul ]
+  unfold dft
+  simp +decide only [one_div, Finset.mul_sum _ _ _, map_sum, map_mul, map_inv₀, map_pow,
+    map_natCast, RingHomCompTriple.comp_apply, RingHom.id_apply, sum_mul, mul_assoc]
   -- By the orthogonality of the characters, the inner sum over ξ is zero unless x = y.
   have h_inner : ∀ x y : Fin m → ZMod q, ∑ ξ : Fin m → ZMod q,
       character q m ξ x * starRingEnd ℂ (character q m ξ y) = if x = y then (q : ℂ) ^ m else 0 := by
     intro x y
     have := character_orthogonality q m
     convert this x y using 1
-    unfold character; simp +decide
+    unfold character; simp +decide only [map_prod]
     unfold additiveChar; simp +decide [ mul_comm ]
   simp +decide only [mul_left_comm]
   rw [ Finset.sum_comm, Finset.sum_congr rfl ] ; intros
@@ -313,7 +323,8 @@ theorem sum_tupleCount_eq_card_pow_nat (k : ℕ) (hk : 1 ≤ k) (p : ℕ) [NeZer
     (∑ h : Fin (k - 1) → ZMod p, tupleCount (Ω p) (Fin.cons 0 h)) =
       (Ω p).card ^ k := by
   unfold tupleCount
-  rcases k with ( _ | k ) <;> simp_all +decide [ Fin.forall_fin_succ ]
+  rcases k with ( _ | k ) <;> simp_all +decide only [le_add_iff_nonneg_left, zero_le,
+    Nat.add_one_sub_one, Fin.forall_fin_succ, Fin.cons_zero, add_zero, Fin.cons_succ]
   -- Goal: ∑ x, #{t | t ∈ Ω p ∧ ∀ i, t + x i ∈ Ω p} = (Ω p).card ^ (k + 1)
   have h_count : ∀ t ∈ Ω p, (Finset.univ.filter fun h : Fin k → ZMod p => ∀ i, t + h i ∈ Ω p).card =
       (Ω p).card ^ k := by
@@ -323,7 +334,7 @@ theorem sum_tupleCount_eq_card_pow_nat (k : ℕ) (hk : 1 ≤ k) (p : ℕ) [NeZer
     · rw [Finset.card_image_of_injective]
       · simp [Finset.card_univ, Fintype.card_coe]
       · exact fun y z h => funext fun i => Subtype.ext <| by simpa using congr_fun h i
-    · ext y; simp [Finset.mem_image]
+    · ext y; simp only [mem_filter, mem_univ, true_and, mem_image]
       exact ⟨fun hy => ⟨fun i => ⟨t + y i, hy i⟩, by ext i; simp⟩,
              by rintro ⟨a, rfl⟩ i; simp⟩
   -- Fubini: swap sum and filter, then use h_count
@@ -363,7 +374,8 @@ theorem fourierLocalDeviation_sum_zero (k : ℕ) (hk : 1 ≤ k) (p : ℕ) [NeZer
     (Ω : ∀ p : ℕ, Finset (ZMod p)) :
     ∑ h : Fin (k - 1) → ZMod p, fourierLocalDeviation k Ω p h = 0 := by
   unfold fourierLocalDeviation
-  simp +decide [Finset.sum_sub_distrib]
+  simp +decide only [ofReal_div, ofReal_pow, ofReal_natCast, sum_sub_distrib, sum_const, card_univ,
+    Fintype.card_pi, ZMod.card, prod_const, Fintype.card_fin, nsmul_eq_mul, Nat.cast_pow]
   rw [mul_div_cancel₀]
   · exact sub_eq_zero_of_eq <| mod_cast sum_tupleCount_eq_card_pow k hk p Ω
   · exact pow_ne_zero _ (Nat.cast_ne_zero.mpr <| NeZero.ne p)
@@ -374,8 +386,10 @@ and the definition of `dft`. -/
 theorem fourierLocalDeviation_dft_zero (k : ℕ) (hk : 1 ≤ k) (p : ℕ) [NeZero p]
     (Ω : ∀ p : ℕ, Finset (ZMod p)) :
     dft p (k - 1) (fourierLocalDeviation k Ω p) 0 = 0 := by
-  unfold dft; simp +decide
-  unfold character; simp +decide [additiveChar_zero]
+  unfold dft
+  simp +decide only [one_div, mul_eq_zero, inv_eq_zero, pow_eq_zero_iff', Nat.cast_eq_zero, ne_eq]
+  unfold character
+  simp +decide only [Pi.zero_apply, additiveChar_zero, prod_const_one, map_one, mul_one]
   exact Or.inr (fourierLocalDeviation_sum_zero k hk p Ω)
 
 /-! ### Box indicator function -/
@@ -459,7 +473,7 @@ lemma WellDistributed_implies_WellDistributedFourier
           * starRingEnd ℂ (character p (k - 1) ξξ r)‖
         ≤ |(tupleCount Ω (Fin.cons 0 r) : ℝ) - ((Ω.card : ℝ) ^ k / (p : ℝ) ^ (k - 1))| := by
       intro r
-      simp [norm_character]
+      simp only [Complex.norm_mul, RCLike.norm_conj, norm_character, mul_one]
       convert Complex.norm_real _ |> le_of_eq using 1
       norm_num [ Complex.normSq, Complex.norm_def ]
     rw [ norm_mul, norm_div ]
@@ -504,10 +518,14 @@ public lemma dft_boxIndicator_eq_prod (q : ℕ) [NeZero q] (m : ℕ)
         (fun _ => ξ j) := by
   unfold dft
   nontriviality
-  simp +decide [ boxIndicator_eq_prod, Finset.prod_mul_distrib, Finset.prod_const ]
+  simp +decide only [one_div, boxIndicator_eq_prod, mem_Icc, pow_one, Fin.isValue, ite_mul, one_mul,
+    zero_mul, prod_mul_distrib, prod_inv_distrib, prod_const, card_univ, Fintype.card_fin,
+    mul_eq_mul_left_iff, inv_eq_zero, pow_eq_zero_iff', Nat.cast_eq_zero, ne_eq]
   rw [ Finset.prod_sum ]
   apply Or.inl ( Finset.sum_bij ( fun x _ => fun i _ => fun _ => x i ) _ _ _ _ ) <;>
-    simp +decide [ character ]
+    simp +decide only [mem_univ, univ_pi_univ, imp_self, implies_true, forall_const, exists_const,
+      character, map_prod, univ_unique, Fin.default_eq_zero, Fin.isValue, prod_const,
+      card_singleton, pow_one, prod_attach_univ]
   · simp +decide [ funext_iff ]
   · exact fun b => ⟨ fun i => b i ( Finset.mem_univ i ) 0,
       funext fun i => funext fun _ => funext fun _ => by simp +decide [ Fin.eq_zero ] ⟩
@@ -578,7 +596,8 @@ public lemma additiveChar_crt_split (q : ℕ) [NeZero q] (hq : Squarefree q)
           (crtFrequencyEquiv q hq ξ p)
           (crtRingEquiv q hq x p)
       ) := by
-  unfold additiveChar; simp +decide [ mul_comm ]
+  unfold additiveChar
+  simp +decide only [mul_comm, ZMod.natCast_val]
   rw [ ← Complex.exp_sum ]
   -- By the properties of the exponential function and the definition of `crtFrequencyEquiv`,
   -- we can rewrite the right-hand side of the equation.
@@ -594,7 +613,8 @@ public lemma additiveChar_crt_split (q : ℕ) [NeZero q] (hq : Squarefree q)
             * (q / p : ℕ) * ((q / p : ℕ)⁻¹ : ZMod p).val [MOD p] := by
           have h_crt : (q / p : ℕ) * ((q / p : ℕ)⁻¹ : ZMod p).val ≡ 1 [MOD p] := by
             haveI := Fact.mk ( Nat.prime_of_mem_primeFactors p.2 )
-            simp +decide [ ← ZMod.natCast_eq_natCast_iff ]
+            simp +decide only [← ZMod.natCast_eq_natCast_iff, Nat.cast_mul, ZMod.natCast_val,
+              ZMod.cast_id', id_eq, Nat.cast_one]
             rw [ ZMod.mul_inv_of_unit ]
             rw [ isUnit_iff_ne_zero ]
             rw [ Ne.eq_def, ZMod.natCast_eq_zero_iff ]
@@ -602,7 +622,8 @@ public lemma additiveChar_crt_split (q : ℕ) [NeZero q] (hq : Squarefree q)
             · exact fun h => absurd ( hq.squarefree_of_dvd h ) ( by
                 rw [ Nat.squarefree_mul_iff ] ; aesop )
             · exact Nat.dvd_of_mem_primeFactors p.2
-          simp_all +decide [ ← ZMod.natCast_eq_natCast_iff, mul_assoc ]
+          simp_all +decide only [mem_attach, ← ZMod.natCast_eq_natCast_iff, Nat.cast_mul,
+            Nat.cast_one, map_mul, Pi.mul_apply, mul_assoc, ZMod.natCast_val, mul_one]
           have h_crt : (ξ * x).cast = ((crtRingEquiv q hq (ξ * x) p).val : ZMod p) := by
             convert rfl
             convert ZMod.natCast_zmod_val _
@@ -610,8 +631,9 @@ public lemma additiveChar_crt_split (q : ℕ) [NeZero q] (hq : Squarefree q)
               convert crtRingEquiv_apply_eq_castHom q hq ( ξ * x ) p using 1
             · exact ⟨ Nat.ne_of_gt ( Nat.pos_of_mem_primeFactors p.2 ) ⟩
           aesop
-        simp_all +decide [ ← ZMod.natCast_eq_natCast_iff, mul_assoc ]
-        simp +decide [ mul_assoc, mul_comm, mul_left_comm, crtFrequencyEquiv ]
+        simp_all +decide only [mem_attach, map_mul, Pi.mul_apply, mul_assoc,
+          ← ZMod.natCast_eq_natCast_iff, ZMod.natCast_val, Nat.cast_mul]
+        simp +decide only [mul_comm, mul_assoc, crtFrequencyEquiv, Equiv.coe_fn_mk, mul_left_comm]
         haveI := Fact.mk ( Nat.prime_of_mem_primeFactors p.2 ) ; simp +decide [ ← mul_assoc ]
       have h_crt : ∀ p ∈ q.primeFactors.attach, (ξ * x).val
           ≡ ∑ p ∈ q.primeFactors.attach, ((crtFrequencyEquiv q hq ξ p)
@@ -734,15 +756,16 @@ public noncomputable def diffMap (q : ℕ) [NeZero q] (m : ℕ) (y : Fin m → Z
 /-- `diffMap` is a left inverse of `cumSum`. -/
 public lemma diffMap_cumSum (q : ℕ) [NeZero q] (m : ℕ) (x : Fin m → ZMod q) :
     diffMap q m (cumSum q m x) = x := by
-  unfold cumSum diffMap; ext ⟨j, hj⟩; simp +decide [*]
+  unfold cumSum diffMap; ext ⟨j, hj⟩
+  simp +decide only [dite_eq_ite]
   induction j with
   | zero =>
-    simp_all +decide
+    simp_all +decide only [↓reduceIte, sub_zero]
     rw [ show ( Iic ⟨ 0, by assumption ⟩ : Finset ( Fin m ) )
         = { ⟨ 0, by assumption ⟩ } by ext ⟨ i, hi ⟩ ; aesop ]
     norm_num
   | succ n ih =>
-    simp_all +decide
+    simp_all +decide only [Nat.add_eq_zero_iff, and_false, ↓reduceIte, add_tsub_cancel_right]
     rw [ show ( Iic ⟨ n + 1, by linarith ⟩ : Finset ( Fin m ) )
         = Iic ⟨ n, by linarith ⟩ ∪ { ⟨ n + 1, by linarith ⟩ }
       from ?_, Finset.sum_union ] <;>
@@ -756,7 +779,8 @@ public lemma cumSum_diffMap (q : ℕ) [NeZero q] (m : ℕ) (y : Fin m → ZMod q
   funext ⟨j, hj⟩
   induction j with
   | zero =>
-    unfold cumSum diffMap; simp +decide
+    unfold cumSum diffMap
+    simp +decide only [dite_eq_ite, sum_sub_distrib]
     rw [ show ( Iic ⟨ 0, hj ⟩ : Finset ( Fin m ) )
         = { ⟨ 0, hj ⟩ } by ext ⟨ i, hi ⟩ ; aesop ]
     aesop
@@ -797,30 +821,38 @@ private lemma character_cumSum_eq (q : ℕ) [NeZero q] (m : ℕ)
     induction m
     case zero => rfl
     case succ m ih =>
-      simp +decide [ Fin.sum_univ_castSucc, freqDiff, cumSum ] at *
+      simp +decide only [freqDiff, cumSum, Fin.sum_univ_castSucc, Order.lt_add_one_iff,
+        Order.add_one_le_iff, Fin.val_castSucc, Fin.is_lt, ↓reduceDIte, Fin.val_last,
+        lt_self_iff_false, sub_zero] at *
       rw [ show ( Finset.Iic ( Fin.last m ) : Finset ( Fin ( m + 1 ) ) ) = Finset.univ from
           Finset.eq_univ_of_forall fun i => Finset.mem_Iic.mpr ( Fin.le_last _ ) ]
       simp +decide [Fin.sum_univ_castSucc] ; ring_nf
       rw [ add_comm, Finset.sum_sub_distrib ]
-      simp +decide [add_assoc, Finset.mul_sum _ _ _, ih]
+      simp +decide only [ih, Fin.castSucc_mk, Finset.mul_sum _ _ _, dite_eq_ite, add_assoc,
+        add_right_inj]
       rw [ ← Finset.sum_sub_distrib ] ; rw [ ← Finset.sum_add_distrib ] ; congr ; ext i
-      split_ifs <;> simp_all +decide [add_comm] ; ring_nf
+      split_ifs <;> simp_all +decide only [sub_self, zero_mul, sum_const_zero, not_lt, sub_zero,
+        add_comm, zero_add] ; ring_nf
       · rw [ ← Finset.sum_sub_distrib ]
         refine Finset.sum_bij (fun a _ => a.castSucc) ?_ ?_ ?_ ?_
-        · intro a ha; simp [Finset.mem_Iic] at ha ⊢; exact Fin.castSucc_le_castSucc_iff.mpr ha
+        · intro a ha
+          simp only [mem_Iic, Fin.castSucc_le_castSucc_iff] at ha ⊢
+          exact Fin.castSucc_le_castSucc_iff.mpr ha
         · intro a₁ _ a₂ _ h; exact Fin.castSucc_injective _ h
         · intro b hb
-          simp [Finset.mem_Iic] at hb
+          simp only [mem_Iic] at hb
           have hb_lt : (b : ℕ) < m := Fin.lt_def.mp (lt_of_le_of_lt hb (Fin.castSucc_lt_last i))
           exact ⟨⟨(b : ℕ), hb_lt⟩, Finset.mem_Iic.mpr (by
-            simp [Fin.le_iff_val_le_val] at hb ⊢; exact hb), by simp⟩
+            simp only [Fin.le_iff_val_le_val, Fin.val_castSucc] at hb ⊢; exact hb), by simp⟩
         · intro a _; rfl
-      · cases ‹m ≤ i + 1›.eq_or_lt <;> simp_all +decide [Fin.last]
+      · cases ‹m ≤ i + 1›.eq_or_lt <;> simp_all +decide only [Order.lt_add_one_iff,
+          Order.add_one_le_iff, Fin.val_fin_lt, Std.le_refl, Fin.last]
         · repeat rw [ show ( Iic i.castSucc : Finset ( Fin ( m + 1 ) ) ) = Finset.image
             ( Fin.castSucc ) ( Iic i ) from ?_, Finset.sum_image ] <;> norm_num [ Fin.ext_iff ]
         · linarith [ Fin.is_lt i ]
   unfold character
-  unfold additiveChar; simp_all +decide
+  unfold additiveChar
+  simp_all +decide only [ZMod.natCast_val]
   convert Complex.exp_eq_exp_iff_exists_int.mpr _ using 1
   rw [ ← Complex.exp_sum ]
   rw [ ← Complex.exp_sum ]
@@ -870,7 +902,8 @@ private lemma inScaledBox_iff_boxIndicator_diffs (q : ℕ) [NeZero q] (k : ℕ) 
     ∀ j : Fin (k - 1),
       let d_j : ℤ := h j - if (j : ℕ) = 0 then 0 else h ⟨j - 1, by omega⟩
       1 ≤ d_j ∧ d_j ≤ ⌊s * X.sides j⌋ := by
-  constructor <;> intro H <;> simp_all +decide [ inScaledBox ]
+  constructor <;> intro H <;> simp_all +decide only [Fintype.mem_piFinset, mem_Icc, inScaledBox,
+    sub_zero, sub_pos, tsub_le_iff_right]
   · intro j; specialize H j; split_ifs at H ⊢ <;> norm_cast at *
     · exact ⟨ by linarith, Int.le_of_lt_add_one <| by
         rw [ ← @Int.cast_lt ℝ ] ; push_cast; linarith [ Int.lt_floor_add_one ( s * X.sides j ) ] ⟩
@@ -898,8 +931,10 @@ public lemma inScaledBox_sum_eq_diff_sum (k : ℕ) (hk : 2 ≤ k)
     ∑ d ∈ Fintype.piFinset (fun j : Fin (k - 1) => Finset.Icc 1 ⌊s * X.sides j⌋),
       f (fun j => ∑ i ∈ Finset.Iic j, d i) := by
   apply Finset.sum_bij (fun h _ => fun j =>
-      h j - if j.val = 0 then 0 else h ⟨j.val - 1, by omega⟩) _ _ _ _ <;> simp [Finset.mem_filter]
-  · intro a _ hX a_3; specialize hX a_3; split_ifs at * <;> simp_all +decide
+      h j - if j.val = 0 then 0 else h ⟨j.val - 1, by omega⟩) _ _ _ _ <;> simp only [mem_filter,
+        Fintype.mem_piFinset, mem_Icc, tsub_le_iff_right, and_imp, exists_prop, sum_sub_distrib]
+  · intro a _ hX a_3; specialize hX a_3; split_ifs at * <;> simp_all +decide only [sub_zero,
+      Int.cast_pos, add_zero, true_and, sub_pos, Int.cast_lt, tsub_le_iff_right]
     · exact Int.le_floor.2 hX.2
     · exact ⟨ by linarith, Int.le_of_lt_add_one <| by
         rw [ ← @Int.cast_lt ℝ ] ; push_cast
@@ -907,8 +942,8 @@ public lemma inScaledBox_sum_eq_diff_sum (k : ℕ) (hk : 2 ≤ k)
   · intro a₁ _ ha₂ a₂ _ ha₄ h
     ext j
     obtain ⟨j, hj⟩ := j
-    simp_all +decide [ funext_iff ]
-    induction j <;> simp_all +decide [ Fin.forall_iff ]
+    simp_all +decide only [funext_iff]
+    induction j <;> simp_all +decide only [Fin.forall_iff]
     case zero => simpa using h 0 hj
     case succ j ih => grind
   · intro b hb
@@ -932,7 +967,9 @@ public lemma inScaledBox_sum_eq_diff_sum (k : ℕ) (hk : 2 ≤ k)
                      ≤ s * ∑ i : Fin ( k - 1 ), X.sides i from by
                 rw [ Finset.mul_sum _ _ _ ]
                 exact Finset.sum_le_sum fun i _ => Int.floor_le _ ] ) ⟩
-      · intro j; specialize hb j; rcases j with ⟨ _ | j, hj ⟩ <;> simp_all +decide
+      · intro j; specialize hb j; rcases j with ⟨ _ | j, hj ⟩ <;> simp_all +decide only [Int.cast_sum,
+          sub_zero, Nat.add_eq_zero_iff, and_false, ↓reduceIte, add_tsub_cancel_right, sub_pos,
+          tsub_le_iff_right]
         · rw [ show ( Iic ⟨ 0, hj ⟩ : Finset ( Fin ( k - 1 ) ) ) = { ⟨ 0, hj ⟩ } by
             ext ⟨ i, hi ⟩ ; aesop ]
           norm_num
@@ -945,7 +982,8 @@ public lemma inScaledBox_sum_eq_diff_sum (k : ℕ) (hk : 2 ≤ k)
               linarith [ show ( b ⟨ j + 1, hj ⟩ : ℝ ) ≤ s * X.sides ⟨ j + 1, hj ⟩ from
                 le_trans ( mod_cast hb.2 ) ( Int.floor_le _ ) ] ⟩
           · grind
-    · ext j; rcases j with ⟨ _ | j, hj ⟩ <;> simp +decide ; ring_nf
+    · ext j; rcases j with ⟨ _ | j, hj ⟩ <;> simp +decide only [Nat.add_eq_zero_iff, and_false,
+        ↓reduceIte, sub_zero, add_tsub_cancel_right] ; ring_nf
       · rw [ show ( Iic ⟨ 0, hj ⟩ : Finset ( Fin ( k - 1 ) ) ) = { ⟨ 0, hj ⟩ } by
           ext ⟨ i, hi ⟩ ; aesop ] ; norm_num
       · rw [ show ( Iic ⟨ j + 1, hj ⟩ : Finset ( Fin ( k - 1 ) ) )
@@ -959,11 +997,11 @@ public lemma inScaledBox_sum_eq_diff_sum (k : ℕ) (hk : 2 ≤ k)
     obtain ⟨j, hj⟩ := j
     induction j with
     | zero =>
-      simp_all +decide [Finset.sum_ite]
+      simp_all +decide only [sum_ite, sum_const_zero, zero_add]
       rw [ show ( Iic ⟨ 0, hj ⟩ : Finset ( Fin ( k - 1 ) ) )
           = { ⟨ 0, hj ⟩ } by ext ⟨ x, hx ⟩ ; aesop ] ; aesop
     | succ j ih =>
-      simp_all +decide [Finset.sum_ite]
+      simp_all +decide only [sum_ite, sum_const_zero, zero_add]
       rw [ show ( Iic ⟨ j + 1, by linarith ⟩ : Finset ( Fin ( k - 1 ) ) )
           = Finset.Iic ⟨ j, by linarith ⟩
             ∪ { ⟨ j + 1, by linarith ⟩ } from ?_,
@@ -996,10 +1034,13 @@ private lemma diff_sum_eq_zmod_sum (k : ℕ) (hk : 2 ≤ k)
   have h_image : {x : Fin (k - 1) → ZMod q | boxIndicator q (k - 1) X s x ≠ 0} =
     Set.image (fun d : Fin (k - 1) → ℤ => fun j => (d j : ZMod q))
       (Fintype.piFinset fun j => Icc 1 ⌊s * X.sides j⌋) := by
-      ext x; simp [boxIndicator]
+      ext x; simp only [boxIndicator, mem_Icc, ne_eq, ite_eq_right_iff, one_ne_zero, imp_false,
+        not_forall, not_and, not_le, not_exists, not_lt, Set.mem_setOf_eq, Fintype.coe_piFinset,
+        coe_Icc, Set.pi_univ_Icc, Set.mem_image, Set.mem_Icc]
       constructor <;> intro h
       · use fun j => (x j).val
-        simp_all +decide [Pi.le_def]
+        simp_all +decide only [exists_prop, ZMod.natCast_val, Pi.le_def, ZMod.intCast_cast,
+          ZMod.cast_id', id_eq, and_true]
         constructor <;> intro i <;> specialize h i
         · rcases q with ( _ | _ | q ) <;> norm_cast
           · grind
@@ -1009,9 +1050,12 @@ private lemma diff_sum_eq_zmod_sum (k : ℕ) (hk : 2 ≤ k)
           · cases q <;> aesop
           · exact Eq.symm <| Int.toNat_of_nonneg <| Int.floor_nonneg.2 <| mul_nonneg hs <|
               le_of_lt <| X.sides_pos i
-      · rcases h with ⟨ d, ⟨ hd₁, hd₂ ⟩, rfl ⟩ ; simp_all +decide [ Pi.le_def ]
+      · rcases h with ⟨ d, ⟨ hd₁, hd₂ ⟩, rfl ⟩
+        simp_all +decide only [Pi.le_def, exists_prop]
         intro i; specialize hd₁ i; specialize hd₂ i
-        rcases d_i : d i with ( _ | _ | d_i ) <;> simp_all +decide
+        rcases d_i : d i with ( _ | _ | d_i ) <;> simp_all +decide only [Int.ofNat_eq_natCast,
+          Nat.one_le_cast, Int.cast_natCast, ZMod.val_natCast, Int.reduceNegSucc, le_neg_self_iff,
+          Int.cast_negSucc, Nat.cast_add, Nat.cast_one, neg_add_rev]
         · rw [ Int.le_floor ] at hd₂ ; norm_cast at *
           rw [ Nat.mod_eq_of_lt ]
           · exact ⟨ hd₁, Nat.le_floor <| mod_cast hd₂ ⟩
@@ -1024,7 +1068,11 @@ private lemma diff_sum_eq_zmod_sum (k : ℕ) (hk : 2 ≤ k)
         (Fintype.piFinset fun j => Icc 1 ⌊s * X.sides j⌋), g (cumSum q (k - 1) x) := by
         rw [ ← Finset.sum_subset ]
         any_goals exact Finset.univ.filter fun x => boxIndicator q ( k - 1 ) X s x ≠ 0
-        · apply Finset.sum_bij ( fun x hx => x ) _ _ _ _ <;> simp_all +decide [ Set.ext_iff ]
+        · apply Finset.sum_bij ( fun x hx => x ) _ _ _ _ <;> simp_all +decide only [ne_eq,
+            Fintype.coe_piFinset, coe_Icc, Set.pi_univ_Icc, Set.ext_iff, Set.mem_setOf_eq,
+            Set.mem_image, Set.mem_Icc, mem_filter, mem_univ, true_and, mem_image,
+            Fintype.mem_piFinset, mem_Icc, forall_exists_index, and_imp, implies_true,
+            exists_prop, exists_eq_right, forall_apply_eq_imp_iff₂]
           · exact fun a x hx₁ hx₂ hx₃ => ⟨ x, fun i => ⟨ hx₁ i, hx₂ i ⟩, hx₃ ⟩
           · exact fun a ha => ⟨ a, ⟨ fun i => ha i |>.1, fun i => ha i |>.2 ⟩, rfl ⟩
           · grind +locals
@@ -1034,7 +1082,8 @@ private lemma diff_sum_eq_zmod_sum (k : ℕ) (hk : 2 ≤ k)
   · unfold cumSum; aesop
   · intros d hd d' hd' h_eq
     ext j; specialize h_eq; replace h_eq := congr_fun h_eq j
-    simp_all +decide [ ZMod.intCast_eq_intCast_iff ]
+    simp_all +decide only [ne_eq, Fintype.coe_piFinset, coe_Icc, Set.pi_univ_Icc, Set.mem_Icc,
+      ZMod.intCast_eq_intCast_iff]
     rw [ Int.ModEq ] at h_eq
     rw [ Int.emod_eq_of_lt, Int.emod_eq_of_lt ] at h_eq
     · exact h_eq
@@ -1059,7 +1108,7 @@ public lemma inScaledBox_sum_eq_zmod_sum (k : ℕ) (hk : 2 ≤ k)
     (fun h => g (fun i => (h i : ZMod q)))]
   convert diff_sum_eq_zmod_sum k hk q X s hs hbox g using 1
   congr 1; ext d; congr 1; ext i
-  simp only [Int.cast_sum]
+  simp [Int.cast_sum]
 
 
 end PoissonCRT

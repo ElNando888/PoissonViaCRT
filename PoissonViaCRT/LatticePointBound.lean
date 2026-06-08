@@ -61,7 +61,7 @@ public lemma count_inScaledBox_eq_prod_floor (m : ℕ)
         {d : Fin m → ℤ |
           ∀ i, 1 ≤ d i ∧ d i ≤ ⌊s * X.sides i⌋₊} := by
     ext h
-    simp [inScaledBox]
+    simp only [inScaledBox, sub_zero, sub_pos, tsub_le_iff_right, Set.mem_setOf_eq, Set.mem_image]
     constructor
     · intro hh
       use fun i => h i -
@@ -84,10 +84,11 @@ public lemma count_inScaledBox_eq_prod_floor (m : ℕ)
                  rw [← @Int.cast_lt ℝ]; push_cast
                  linarith [Nat.lt_floor_add_one
                    (s * X.sides i)]⟩
-      · ext ⟨i, hi⟩; simp [Finset.sum_filter]
+      · ext ⟨i, hi⟩
+        simp only [sum_sub_distrib, sum_filter]
         induction i with
         | zero =>
-          simp [Finset.sum_ite] at *
+          simp only [sum_ite, not_le, sum_const_zero, add_zero, zero_add] at *
           rw [show (Finset.filter
               (fun x : Fin m => x ≤ ⟨0, hi⟩)
               Finset.univ : Finset (Fin m)) =
@@ -100,7 +101,7 @@ public lemma count_inScaledBox_eq_prod_floor (m : ℕ)
                 (Nat.zero_le _)⟩]
           aesop
         | succ i ih =>
-          simp [Finset.sum_ite] at *
+          simp only [sum_ite, not_le, sum_const_zero, add_zero, zero_add] at *
           rw [show (Finset.filter
               (fun x : Fin m =>
                 x ≤ ⟨i + 1, by linarith⟩)
@@ -117,8 +118,9 @@ public lemma count_inScaledBox_eq_prod_floor (m : ℕ)
             linarith [ih (Nat.lt_of_succ_lt ‹_›)]
           · grind
     · rintro ⟨x, hx, rfl⟩ i
-      rcases i with ⟨_ | i, hi⟩ <;>
-        simp_all [Finset.sum_filter]
+      rcases i with ⟨_ | i, hi⟩ <;> simp_all only [↓reduceIte, sum_filter, Int.cast_sum,
+        Int.cast_ite, Int.cast_zero, add_zero, Nat.add_eq_zero_iff, one_ne_zero, and_false,
+        add_tsub_cancel_right]
       · rcases m with (_ | _ | m) <;>
           norm_num [Fin.sum_univ_succ] at *
         · contradiction
@@ -180,7 +182,8 @@ public lemma count_inScaledBox_eq_prod_floor (m : ℕ)
         (Finset.Icc (fun _ => 1)
           (fun i => ⌊s * X.sides i⌋₊))) := by
     refine congr_arg Finset.card (Finset.ext fun x => ?_)
-    simp_all [Set.ext_iff]
+    simp_all only [Set.ext_iff, Set.mem_setOf_eq, Set.mem_image, mem_filter, Fintype.mem_piFinset,
+      mem_Icc, mem_image]
     constructor
     · exact fun h =>
         ⟨_, ⟨fun i => h.2.choose_spec.1 i |>.1,
@@ -245,7 +248,8 @@ public lemma prod_floor_approx (m : ℕ) (b : Fin m → ℝ)
       fun s hs => by positivity⟩
   · induction m
     case zero =>
-      simp +zetaDelta at *
+      simp +zetaDelta only [Nat.reduceAdd, Fin.forall_fin_one, Fin.isValue, univ_unique,
+        Fin.default_eq_zero, prod_singleton, zero_add, pow_one, pow_zero, mul_one] at *
       exact ⟨1, zero_lt_one, fun s hs =>
         abs_sub_le_iff.mpr
           ⟨by linarith [Nat.floor_le (show 0 ≤ s * b 0 by positivity)],

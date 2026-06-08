@@ -119,7 +119,9 @@ lemma deviation_zero_of_card_eq_q {k : ℕ} (hk : 2 ≤ k) (q : ℕ) [NeZero q]
         (fun h => inScaledBox X s (fun _ => 0) h)),
       ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
         (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| * s = 0 := by
-  simp_all
+  simp_all only [one_div, div_self_of_invertible, one_mul, sum_sub_distrib, sum_const, nsmul_eq_mul,
+    abs_mul, abs_inv, Nat.abs_cast, mul_one, mul_eq_zero, inv_eq_zero, Nat.cast_eq_zero,
+    abs_eq_zero]
   rw [ Finset.sum_congr rfl fun x hx =>
     by rw [ show tupleCount ( crtSubset q Ω ) ( Fin.cons 0 fun i => ( x i : ZMod q ) ) = q from by
       convert tupleCount_univ ( Fin.cons 0 fun i => ( x i : ZMod q ) )
@@ -154,7 +156,9 @@ lemma all_full_of_eps_eq_lambda (ε : ℝ) (k : ℕ) (hk : 2 ≤ k)
       (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
     (heq : ε = lambdaExponent k) :
     ∀ (p : ℕ), p.Prime → (Ω p).card = p := by
-  intro p pp; specialize hsp p pp; simp_all +decide [ div_le_iff₀ ]
+  intro p pp; specialize hsp p pp
+  simp_all +decide only [sub_self, Real.rpow_zero, Nat.cast_pos, card_pos, div_le_iff₀, one_mul,
+    Nat.cast_le]
   haveI := Fact.mk pp; exact le_antisymm ( le_trans ( Finset.card_le_univ _ ) ( by norm_num ) ) hsp
 
 /--
@@ -169,9 +173,11 @@ lemma crtSubset_full_of_all_full (q : ℕ) [NeZero q]
   convert Finset.card_univ
   all_goals try infer_instance
   · ext x
-    simp +decide [ crtSubset ]
+    simp +decide only [crtSubset, Nat.mem_primeFactors, ne_eq, ZMod.castHom_apply, and_imp,
+      mem_filter, mem_univ, true_and, iff_true]
     intro p pp dp _; specialize hall p pp; haveI := Fact.mk pp
-    rw [ Finset.eq_of_subset_of_card_le ( Finset.subset_univ ( Ω p ) ) ] ; simp_all only [mem_univ]
+    rw [ Finset.eq_of_subset_of_card_le ( Finset.subset_univ ( Ω p ) ) ]
+    simp_all only [mem_univ]
     simp +decide [ hall, ZMod.card ]
   · cases q <;> aesop
 

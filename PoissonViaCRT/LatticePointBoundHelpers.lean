@@ -76,7 +76,8 @@ lemma gapMap_injective (m : ℕ) :
     case zero => simp_all +decide [funext_iff, Fin.forall_fin_succ] ; unfold gapMap at h''; aesop
     case succ i IH =>
       have := congr_fun h'' (Fin.succ i)
-      simp_all +decide [gapMap]
+      simp_all +decide only [gapMap, Fin.val_succ, Nat.add_eq_zero_iff, and_false, ↓reduceIte,
+        add_tsub_cancel_right]
       linarith!
 
 /-- The `inScaledBox` predicate is equivalent to per-coordinate gap conditions: each gap `dᵢ` lies
@@ -119,8 +120,8 @@ lemma int_excess_count (α L : ℝ) (_hL : 0 < L)
         {⌊α⌋ + 1, ⌊α + L⌋} := by
       intro d hd
       obtain ⟨hd₁, hd₂⟩ : α < (d : ℝ) ∧ _ := hd
-      rcases eq_or_ne d ⌊α⌋ with rfl | hd₃ <;>
-        simp_all +decide [Int.floor_eq_iff]
+      rcases eq_or_ne d ⌊α⌋ with rfl | hd₃ <;> simp_all +decide only [not_and, not_le, ne_eq,
+        Set.mem_insert_iff, left_eq_add, Set.mem_singleton_iff, Int.floor_eq_iff, false_or]
       · linarith [Int.floor_le α]
       · by_cases hd₄ : d ≤ 0
         · exact Or.inl (by
@@ -164,7 +165,8 @@ lemma boundary_coord_card_le (m : ℕ) (N : ℤ)
             (Function.update f j))).card ≤ 2 := by
     intro f hf
     specialize hP_few f hf
-    simp_all +decide [Finset.filter_image]
+    simp_all +decide only [ne_eq, eq_iff_iff, mem_Icc, not_false_eq_true, Function.update_of_ne,
+      filter_image]
     exact Finset.card_image_le.trans hP_few
   have h_fibers :
       (Finset.filter P (piBox m N)).card ≤
@@ -188,7 +190,10 @@ lemma boundary_coord_card_le (m : ℕ) (N : ℤ)
             Finset.filter P
               (Finset.Icc 1 N |>.image
                 (Function.update f j))) := by
-      intro f hf; simp_all +decide
+      intro f hf
+      simp_all +decide only [ne_eq, eq_iff_iff, mem_Icc, not_false_eq_true, Function.update_of_ne,
+        mem_filter, Fintype.mem_piFinset, mem_biUnion, mem_image, and_true,
+        exists_exists_and_eq_and, Function.update_idem]
       exact ⟨f, hf.1, f j, hf.1 j,
         by simp +decide⟩
     exact le_trans (Finset.card_le_card h_fibers)
@@ -218,7 +223,8 @@ lemma boundary_coord_card_le (m : ℕ) (N : ℤ)
         (Fintype.piFinset
           fun _ : Finset.univ.erase j =>
             Finset.Icc 1 N)
-      · simp +decide [funext_iff]
+      · simp +decide only [Fintype.mem_piFinset, mem_Icc, mem_image, Subtype.forall, mem_erase,
+        ne_eq, mem_univ, and_true, funext_iff]
         exact fun f hf =>
           ⟨fun i => f i, fun i hi => hf i,
            fun i => by aesop⟩
@@ -256,8 +262,9 @@ lemma sdiff_card_le_sum_boundary (m : ℕ)
           inScaledBox X s (fun _ => 0) h)).card
         : ℝ) ≤
     2 * m * (N.toNat : ℝ) ^ (m - 1) := by
-  cases eq_zero_or_neZero m <;>
-    simp_all +decide [inScaledBox_iff_gap]
+  cases eq_zero_or_neZero m <;> simp_all +decide only [inScaledBox_iff_gap, sub_self, ite_self,
+    Int.cast_pos, zero_add, CharP.cast_eq_zero, mul_zero, zero_tsub, pow_zero, mul_one,
+    Nat.cast_nonpos, card_eq_zero, sdiff_eq_empty_iff_subset]
   · aesop
   · have h_card_le : ∀ j : Fin m,
         (Finset.filter (fun h : Fin m → ℤ =>
@@ -378,9 +385,11 @@ lemma int_excess_count_rev (α L : ℝ)
     by_cases hα_neg : α < 0
     · use Int.floor (α + L) + 1,
         Int.floor (α + L) + 2
-      intro d hd; simp_all +decide
+      intro d hd
+      simp_all +decide only [Int.cast_pos, not_and, not_le, Set.mem_setOf_eq, Set.mem_insert_iff,
+        Set.mem_singleton_iff]
       by_cases h : α < d <;>
-        simp_all +decide [abs_le]
+        simp_all +decide only [abs_le, forall_const, IsEmpty.forall_iff, and_true, not_lt]
       · exact Or.inl
           (eq_add_of_sub_eq (eq_comm.mp <|
             Int.floor_eq_iff.mpr
@@ -389,7 +398,8 @@ lemma int_excess_count_rev (α L : ℝ)
       · linarith [show (d : ℝ) ≥ 1 by
           exact_mod_cast hd.1]
     · use 1, 0; intro d hd
-      simp_all +decide
+      simp_all +decide only [not_lt, Int.cast_pos, not_and, not_le, Set.mem_setOf_eq,
+        Set.mem_insert_iff, Set.mem_singleton_iff]
       rcases d with ⟨_ | _ | d⟩ <;> norm_num at *
       linarith [hd.2.2 (by
         linarith [abs_le.mp hα]), abs_le.mp hα]
@@ -552,8 +562,7 @@ public lemma prefixSum_injective (m : ℕ) :
   intro d₁ d₂ h_eq
   have h_zero : ∀ i : Fin m, d₁ i = d₂ i := by
     intro ⟨i, hi⟩
-    induction i <;>
-      simp_all +decide [Finset.sum_filter]
+    induction i <;> simp_all +decide only [sum_filter]
     case zero =>
       replace h_eq := congr_fun h_eq ⟨0, hi⟩
       simp_all +decide [Finset.sum_ite]
@@ -571,7 +580,7 @@ public lemma prefixSum_injective (m : ℕ) :
     case succ i ih =>
       have := congr_fun h_eq ⟨i + 1, hi⟩
       have := congr_fun h_eq ⟨i, by linarith⟩
-      simp_all +decide [Finset.sum_ite]
+      simp_all +decide only [sum_ite, not_le, sum_const_zero, add_zero]
       rw [show (Finset.filter
           (fun x : Fin m => x ≤ ⟨i + 1, hi⟩)
           Finset.univ : Finset (Fin m)) =

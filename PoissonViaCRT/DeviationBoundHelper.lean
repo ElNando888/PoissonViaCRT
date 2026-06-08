@@ -79,7 +79,7 @@ public lemma localCount_le {q : ℕ} [NeZero q]
     (h : Fin k → ZMod q) :
     localCount Ω q h p ≤ (p : ℝ) := by
   unfold localCount
-  simp +zetaDelta at *
+  simp +zetaDelta only [Nat.mem_primeFactors, ne_eq, ZMod.castHom_apply] at *
   split_ifs
   haveI := Fact.mk hp.1; exact_mod_cast le_trans ( Finset.card_filter_le _ _ ) ( by norm_num )
 

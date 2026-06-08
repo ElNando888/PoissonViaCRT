@@ -58,7 +58,9 @@ public lemma prod_primes_squarefree (T : Finset ℕ) (q : ℕ) [NeZero q]
   have h_distinct_primes : ∀ p ∈ T, Nat.Prime p :=
     fun p hp => Nat.prime_of_mem_primeFactors <| hT hp
   have h_prod_squarefree : ∀ {S : Finset ℕ}, (∀ p ∈ S, Nat.Prime p) → Squarefree (∏ p ∈ S, p) := by
-    intros S hS; induction S using Finset.induction <;> simp_all +decide [ Nat.squarefree_mul_iff ]
+    intros S hS; induction S using Finset.induction <;> simp_all +decide only [prod_empty,
+      isUnit_iff_eq_one, IsUnit.squarefree, mem_insert, or_true, implies_true, forall_const,
+      forall_eq_or_imp, not_false_eq_true, prod_insert, Nat.squarefree_mul_iff, and_true]
     exact ⟨ Nat.Coprime.prod_right fun p hp => hS.1.coprime_iff_not_dvd.mpr fun h => ‹¬_› <| by
       have := Nat.prime_dvd_prime_iff_eq hS.1 ( hS.2 p hp ) ; aesop, hS.1.squarefree ⟩
   exact h_prod_squarefree h_distinct_primes
@@ -73,7 +75,8 @@ public lemma gammaProdOfBoxPoint_pos {n : ℕ}
     0 < gammaProdOfBoxPoint T h := by
   refine Finset.prod_pos fun j _ => ?_
   apply Nat.pos_of_ne_zero _
-  simp_all +decide [ Finset.lcm_eq_zero_iff ]
+  simp_all +decide only [mem_univ, ne_eq, Finset.lcm_eq_zero_iff, mem_Iio, Nat.gcd_eq_zero_iff,
+    Int.natAbs_eq_zero, not_exists, not_and]
   exact fun i hij h => absurd h <| Finset.prod_ne_zero_iff.mpr fun p hp =>
     Nat.ne_of_gt <| Nat.pos_of_mem_primeFactors <| hT hp
 
@@ -90,7 +93,8 @@ public lemma fin_cons_zero_range {n : ℕ} (H : ℕ)
     (hh : h ∈ Fintype.piFinset (fun _ : Fin n => Finset.Icc (1 : ℤ) (H : ℤ))) :
     let h' : Fin (n + 1) → ℤ := Fin.cons (0 : ℤ) h
     ∀ i : Fin (n + 1), (0 : ℤ) ≤ h' i ∧ h' i ≤ (H : ℤ) := by
-  simp_all +decide [ Fin.forall_fin_succ, Fintype.mem_piFinset ]
+  simp_all +decide only [Fintype.mem_piFinset, mem_Icc, Fin.forall_fin_succ, Fin.cons_zero,
+    Std.le_refl, Nat.cast_nonneg, and_self, Fin.cons_succ, and_true, true_and]
   exact fun i => by linarith [ hh i ]
 
 /-- The natAbs of differences of `Fin.cons 0 h` entries is ≤ H. -/
@@ -111,7 +115,7 @@ lemma lcm_le_pow_card {ι : Type*} [DecidableEq ι]
     (hf : ∀ i ∈ S, f i ≤ H) :
     S.lcm f ≤ H ^ S.card := by
   by_cases h : ∏ i ∈ S, f i = 0
-  · simp_all +decide [ Finset.prod_eq_zero_iff ]
+  · simp_all +decide only [prod_eq_zero_iff]
     obtain ⟨ a, ha, ha' ⟩ := h
     exact le_trans ( Finset.lcm_eq_zero_iff.mpr ⟨ a, ha, ha' ⟩ |> le_of_eq ) ( Nat.zero_le _ )
   · exact le_trans ( Nat.le_of_dvd ( Nat.pos_of_ne_zero h ) ( lcm_dvd_prod _ _ ) )
@@ -149,7 +153,8 @@ public lemma fin_cons_zero_injective {n : ℕ} (hn : 1 ≤ n)
     (hbox : inScaledBox X s (fun _ => 0) h) :
     let h' : Fin (n + 1) → ℤ := Fin.cons (0 : ℤ) h
     ∀ i j : Fin (n + 1), i ≠ j → h' i ≠ h' j := by
-  simp +decide [ Fin.forall_fin_succ ]
+  simp +decide only [ne_eq, Fin.forall_fin_succ, Fin.cons_zero, Fin.cons_succ, not_true_eq_false,
+    imp_self, true_and, Fin.succ_ne_zero, not_false_eq_true, forall_const, Fin.succ_inj]
   have h_mono : StrictMono h := by
     have h_diff_pos : ∀ i : Fin n, 0 < h i - (if i.val = 0 then 0 else h (Fin.mk (i.val - 1) (by
     exact lt_of_le_of_lt ( Nat.pred_le _ ) i.2))) := by
@@ -165,7 +170,7 @@ public lemma fin_cons_zero_injective {n : ℕ} (hn : 1 ≤ n)
   have h_pos : ∀ i : Fin n, 0 < h i := by
     intro i
     have := hbox ⟨0, by omega⟩
-    simp at this
+    simp only [sub_zero, ↓reduceIte, Int.cast_pos] at this
     exact lt_of_lt_of_le this.1 ( h_mono.monotone ( Nat.zero_le _ ) )
   exact ⟨ fun i hi => ne_of_lt ( h_pos i ),
     fun i => ⟨ ne_of_gt ( h_pos i ), fun j hij => h_mono.injective.ne hij ⟩ ⟩
@@ -216,7 +221,8 @@ lemma ofTuple_gamma_dvd_sqfreepart {k : ℕ}
     have h_gamma_div_gammaRow :
         (GammaStructure.ofTuple c hc h' h_dist).gamma i j ∣
           (GammaStructure.ofTuple c hc h' h_dist).gammaRow (max i j) := by
-      cases le_total i j <;> simp_all +decide [ GammaStructure.gammaRow ]
+      cases le_total i j <;> simp_all +decide only [ne_eq, GammaStructure.gammaRow,
+        sup_of_le_right, sup_of_le_left]
       · exact Finset.dvd_lcm ( Finset.mem_Iio.mpr ( lt_of_le_of_ne ‹_› hij ) )
       · convert Finset.dvd_lcm ( Finset.mem_Iio.mpr ( show j < i from
           lt_of_le_of_ne ‹_› ( Ne.symm hij ) ) ) using 1
@@ -232,7 +238,7 @@ lemma ofTuple_gamma_dvd_sqfreepart {k : ℕ}
     have h_prime_factors :
         ∀ p ∈ d.primeFactors,
           p ∈ (GammaStructure.ofTuple c hc h' h_dist).gammaProd.primeFactors := by
-      simp +zetaDelta at *
+      simp +zetaDelta only [ne_eq, Nat.mem_primeFactors, and_imp] at *
       exact fun p pp dp _ =>
           ⟨ pp, dvd_trans dp hd_div_gammaProd, Nat.ne_of_gt <| Nat.pos_of_ne_zero <| by
         exact Nat.ne_of_gt <| GammaStructure.gammaProd_pos _ ⟩

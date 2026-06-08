@@ -216,7 +216,9 @@ public lemma prod_injective_on_primeFactors (q : SquarefreeNat)
     (h : ∏ p ∈ T₁, p = ∏ p ∈ T₂, p) : T₁ = T₂ := by
   apply_fun fun x => x.primeFactors at h
   have h_pf : ∀ (T : Finset ℕ), (∀ p ∈ T, Nat.Prime p) → (∏ p ∈ T, p).primeFactors = T := by
-    intros T hT_prime; induction T using Finset.induction <;> simp_all +decide
+    intros T hT_prime; induction T using Finset.induction <;> simp_all +decide only [prod_empty,
+      primeFactors_one, mem_insert, or_true, implies_true, forall_const, forall_eq_or_imp,
+      not_false_eq_true, prod_insert]
     rw [primeFactors_mul, ‹(∏ p ∈ _, p |> Nat.primeFactors) = _›] <;> aesop
   rw [h_pf T₁ (fun p hp => prime_of_mem_primeFactors (hT₁ hp)),
       h_pf T₂ (fun p hp => prime_of_mem_primeFactors (hT₂ hp))] at h
@@ -243,7 +245,8 @@ public lemma sum_powerset_eq_nontrivialDivisors [AddCommMonoid M]
     (q : SquarefreeNat) (g : Finset ℕ → M) :
     ∑ T ∈ q.val.primeFactors.powerset.filter (· ≠ ∅), g T =
       ∑ d ∈ q.nontrivialDivisors, g d.primeFactors := by
-  apply Finset.sum_bij ( fun T hT => ∏ p ∈ T, p ) _ _ _ _ <;> simp +decide
+  apply Finset.sum_bij ( fun T hT => ∏ p ∈ T, p ) _ _ _ _ <;> simp +decide only [ne_eq, mem_filter,
+    mem_powerset, SquarefreeNat.nontrivialDivisors_val, mem_divisors, and_imp, exists_prop]
   · intro T hT hne₂
     refine ⟨ ⟨ ?_, q.ne_zero ⟩, ?_ ⟩
     · have h_prod_div : ∏ p ∈ T, p ∣ ∏ p ∈ q.val.primeFactors, p := by
@@ -255,7 +258,9 @@ public lemma sum_powerset_eq_nontrivialDivisors [AddCommMonoid M]
         ( le_of_dvd ( prod_pos fun p hp => Nat.pos_of_mem_primeFactors ( hT hp ) )
                     ( dvd_prod_of_mem _ ( choose_spec ( nonempty_of_ne_empty hne₂ ) ) ) )
   · grind +suggestions
-  · intro b hb hq hb'; use Nat.primeFactors b; simp_all +decide [ subset_iff ]
+  · intro b hb hq hb'; use Nat.primeFactors b
+    simp_all +decide only [subset_iff, mem_primeFactors, ne_eq, not_false_eq_true, and_true,
+      true_and, and_imp, primeFactors_eq_empty, not_or]
     exact ⟨ ⟨ fun x hx hx' hx'' => dvd_trans hx' hb, by linarith, by linarith ⟩,
             prod_primeFactors_of_squarefree ( q.2.squarefree_of_dvd hb ) ⟩
   · grind +suggestions

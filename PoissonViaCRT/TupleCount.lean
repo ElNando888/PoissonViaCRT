@@ -66,16 +66,18 @@ public theorem tupleCount_sum_eq (Ω : Finset (ZMod q)) :
         ∏ i : Fin k, ∑ h_i : ZMod q, (if t + h_i ∈ Ω then 1 else 0) := by
       rw [Finset.prod_sum]
       refine Finset.sum_bij (fun h _ => fun i _ => h i) ?_ ?_ ?_ ?_ <;>
-        simp +decide [Finset.prod_ite]
+        simp +decide only [mem_univ, univ_pi_univ, imp_self, implies_true, forall_const,
+          exists_const, prod_ite, prod_const_one, prod_const, one_mul]
       · simp +decide [funext_iff]
       · exact fun b => ⟨fun i => b i (Finset.mem_univ i), funext fun i => rfl⟩
       · intro a; split_ifs <;> simp_all +decide [Finset.ext_iff]
-    simp_all +decide
+    simp_all +decide only [sum_boole, Nat.cast_id, prod_const, card_univ, Fintype.card_fin,
+      Nat.cast_pow]
     rw [show Finset.filter (fun x => t + x ∈ Ω) Finset.univ =
         Finset.image (fun x => x - t) Ω from ?_,
       Finset.card_image_of_injective _ fun x y hxy => by simpa using hxy]
     aesop
-  simp_all +decide [Finset.card_univ]
+  simp_all +decide only [sum_const, card_univ, ZMod.card, smul_eq_mul, sum_boole, Nat.cast_id]
   convert h_fubini using 1
 
 /-- **Sum formula with `h₀ = 0` fixed** (Lemma 3.5 identity):
@@ -91,17 +93,20 @@ public theorem tupleCount_sum_cons_eq (Ω : Finset (ZMod q)) :
     have : (∑ g : Fin k → ZMod q, if ∀ j : Fin k, t + g j ∈ Ω then 1 else 0) =
         (∏ j : Fin k, (∑ g : ZMod q, if t + g ∈ Ω then 1 else 0)) := by
       rw [Finset.prod_sum]
-      refine Finset.sum_bij (fun g _ => fun j _ => g j) ?_ ?_ ?_ ?_ <;> simp +decide
+      refine Finset.sum_bij (fun g _ => fun j _ => g j) ?_ ?_ ?_ ?_ <;> simp +decide only [mem_univ,
+        univ_pi_univ, imp_self, implies_true, forall_const, exists_const, prod_attach_univ]
       · simp +decide [funext_iff]
       · exact fun b => ⟨fun j => b j (Finset.mem_univ j), funext fun j => rfl⟩
       · intro a; split_ifs <;> simp_all +decide [Finset.prod_ite]
-    simp_all +decide
+    simp_all +decide only [sum_boole, Nat.cast_id, prod_const, card_univ, Fintype.card_fin,
+      Nat.cast_pow]
     rw [show Finset.filter (fun x => t + x ∈ Ω) Finset.univ =
         Finset.image (fun x => x - t) Ω from ?_,
       Finset.card_image_of_injective _ sub_left_injective]
     grind
   convert Finset.sum_congr rfl h_inner using 1
-  · simp +decide [Fin.forall_fin_succ]
+  · simp +decide only [Fin.forall_fin_succ, Fin.cons_zero, add_zero, Fin.cons_succ, sum_boole,
+      Nat.cast_id]
     rw [← Finset.sum_subset (Finset.subset_univ Ω)]
     simp_all only [sum_boole, Nat.cast_id, true_and, sum_const, smul_eq_mul]
     simp +contextual
