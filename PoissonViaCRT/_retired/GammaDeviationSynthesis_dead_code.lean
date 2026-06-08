@@ -252,15 +252,7 @@ lemma perGammaDeviationWeight_split_bound (ε : ℝ) (hε : 0 ≤ ε) (k : ℕ) 
       simp +zetaDelta at *;
       exact fun hp hp' => le_trans ( prime_dvd_radical_le_self p γ ( hT_prime p hp ) hp' ) hγ
 
-/-! ## Helper lemmas for gamma_weighted_series_bound (Steps 1–3)
-
-These helpers implement the 3-step strategy from the PROVIDED SOLUTION:
-1. Tuple count bound + prefactor absorption
-2. γ-sum Euler product bound
-3. Rankin-trick tail bound
--/
-
-
+/-- ## Helper lemmas for gamma_weighted_series_bound -/
 
 /-
 **Tuple count universal bound.** `M_γ(H) ≤ (H+1)^k` since the
@@ -275,8 +267,6 @@ lemma countTuplesWithGammaProd_le_pow (k γ H : ℕ) :
     exact ⟨ ⟨ fun i => hh.2.2.1 _ |>.1, fun i => hh.2.2.1 _ |>.2 ⟩, by ext i; induction i using Fin.inductionOn <;> aesop ⟩;
   · rw [ Set.ncard_image_of_injective, Set.ncard_eq_toFinset_card' ] <;> norm_num [ Function.Injective ];
     erw [ Finset.card_map, Finset.card_pi ] ; norm_num
-
-
 
 /-
 **Pointwise bound on `perGammaDeviationWeight`.**
@@ -304,4 +294,3 @@ lemma perGammaDeviationWeight_le_prod_add (ε : ℝ) (k : ℕ)
     · exact div_nonneg ( pow_nonneg ( Nat.cast_nonneg _ ) _ ) ( pow_nonneg ( Nat.cast_nonneg _ ) _ );
   · refine' Finset.prod_nonneg fun p hp => add_nonneg ( Nat.cast_nonneg _ ) _;
     exact mul_nonneg ( mul_nonneg ( sub_nonneg.2 <| div_le_one_of_le₀ ( mod_cast hΩle p <| hT_prime p <| Finset.filter_subset _ _ hp ) <| Nat.cast_nonneg _ ) <| Real.rpow_nonneg ( Nat.cast_nonneg _ ) _ ) <| div_nonneg ( pow_nonneg ( Nat.cast_nonneg _ ) _ ) <| pow_nonneg ( Nat.cast_nonneg _ ) _
-

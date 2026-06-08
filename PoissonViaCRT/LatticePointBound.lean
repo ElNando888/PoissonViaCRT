@@ -84,14 +84,14 @@ public lemma count_inScaledBox_eq_prod_floor (m : ℕ)
                  rw [← @Int.cast_lt ℝ]; push_cast
                  linarith [Nat.lt_floor_add_one
                    (s * X.sides i)]⟩
-      · ext i; induction' i with i ih
-        simp [Finset.sum_filter]
-        induction' i with i ih <;>
+      · ext ⟨i, hi⟩; simp [Finset.sum_filter]
+        induction i with
+        | zero =>
           simp [Finset.sum_ite] at *
-        · rw [show (Finset.filter
-              (fun x : Fin m => x ≤ ⟨0, ih⟩)
+          rw [show (Finset.filter
+              (fun x : Fin m => x ≤ ⟨0, hi⟩)
               Finset.univ : Finset (Fin m)) =
-            {⟨0, ih⟩} from
+            {⟨0, hi⟩} from
             Finset.eq_singleton_iff_unique_mem.mpr
               ⟨Finset.mem_filter.mpr
                 ⟨Finset.mem_univ _, le_rfl⟩,
@@ -99,7 +99,9 @@ public lemma count_inScaledBox_eq_prod_floor (m : ℕ)
                 (Finset.mem_filter.mp hx |>.2)
                 (Nat.zero_le _)⟩]
           aesop
-        · rw [show (Finset.filter
+        | succ i ih =>
+          simp [Finset.sum_ite] at *
+          rw [show (Finset.filter
               (fun x : Fin m =>
                 x ≤ ⟨i + 1, by linarith⟩)
               Finset.univ : Finset (Fin m)) =

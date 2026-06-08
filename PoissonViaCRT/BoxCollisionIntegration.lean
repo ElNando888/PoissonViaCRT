@@ -207,8 +207,8 @@ private lemma collision_sum_le_sigma_sum (m : ℕ) (X : Box m) (s : ℝ) (hs : 1
   apply le_trans ( Finset.sum_le_sum h_bound ) _
   rw [ Finset.sum_comm ]
   refine Finset.sum_le_sum fun σ _ => ?_
-  refine' le_trans _ ( Nat.cast_le.mpr <| Finset.card_le_card <|
-    show validHForSigma m X s U ( fun p hp => σ p hp ) ⊇ _ from _ )
+  refine le_trans ?_ ( Nat.cast_le.mpr <| Finset.card_le_card <|
+    show validHForSigma m X s U ( fun p hp => σ p hp ) ⊇ ?_ from ?_ )
   rotate_left
   exact Finset.filter ( fun h => inScaledBox X s ( fun _ => 0 ) h ∧ ∀ p ∈ U, ∀ hp : p ∈ U,
     ( p : ℤ ) ∣ ( extendH m h ( σ p hp |>.2 ) - extendH m h ( σ p hp |>.1 ) ) )
@@ -246,24 +246,45 @@ private lemma prod_int_div_add_one_le (m : ℕ) (S : ℤ) (hS : 1 ≤ S)
               ⟨ Finset.subset_univ _, by aesop ⟩ ) )
             ( by simp ) ) )
     · norm_num [ Finset.card_sdiff, Finset.card_singleton, Finset.card_univ ]
-  refine' le_trans _ ( le_trans ( add_le_add_left h_subset_bound _ ) _ )
-  convert h_multinomial.le.trans' _ using 1
-  rw [ Finset.sum_eq_sum_diff_singleton_add ( Finset.mem_powerset.mpr ( Finset.subset_univ
-    ( Finset.univ : Finset ( Fin m ) ) ) ) ]
-  · gcongr
+  have h_toNat_le : ∀ j, (( S / M j + 1 ).toNat : ℝ) ≤ ↑S / ↑(M j) + 1 := by
+    intro j
     rw [ div_add_one, le_div_iff₀ ] <;> norm_cast
-    · nlinarith [ Int.mul_ediv_add_emod S ( M ‹_› ),
-        Int.emod_nonneg S ( by linarith [ hM ‹_› ] : ( M ‹_› ) ≠ 0 ),
-        Int.emod_lt_of_pos S ( by linarith [ hM ‹_› ] : ( M ‹_› ) > 0 ),
+    · nlinarith [ Int.mul_ediv_add_emod S ( M j ),
+        Int.emod_nonneg S
+          ( by linarith [ hM j ] : ( M j ) ≠ 0 ),
+        Int.emod_lt_of_pos S
+          ( by linarith [ hM j ] : ( M j ) > 0 ),
         Int.toNat_of_nonneg ( by
-          nlinarith [ hM ‹_›, Int.mul_ediv_add_emod S ( M ‹_› ),
-            Int.emod_nonneg S ( by linarith [ hM ‹_› ] : ( M ‹_› ) ≠ 0 ),
-            Int.emod_lt_of_pos S ( by linarith [ hM ‹_› ] : ( M ‹_› ) > 0 ) ] :
-          0 ≤ S / M ‹_› + 1 ) ]
+          nlinarith [
+            hM j, Int.mul_ediv_add_emod S ( M j ),
+            Int.emod_nonneg S
+              ( by linarith [ hM j ] : ( M j ) ≠ 0 ),
+            Int.emod_lt_of_pos S
+              ( by linarith [ hM j ] :
+                ( M j ) > 0 ) ] :
+          0 ≤ S / M j + 1 ) ]
     · grind +extAll
-    · linarith [ hM ‹_› ]
-  · norm_num [ Finset.prod_div_distrib ] ; ring_nf ; norm_num
-    positivity
+    · linarith [ hM j ]
+  calc ∏ j, (( S / M j + 1 ).toNat : ℝ)
+      ≤ ∏ j, ( ↑S / ↑(M j) + 1 ) :=
+        Finset.prod_le_prod ( fun j _ => by positivity )
+          ( fun j _ => h_toNat_le j )
+    _ = ∑ I ∈ Finset.powerset Finset.univ, ∏ j ∈ I,
+          ( ↑S / ↑(M j) ) := h_multinomial
+    _ = ∏ j, ( ↑S / ↑(M j) ) +
+        ∑ I ∈ Finset.powerset Finset.univ \ {Finset.univ},
+          ∏ j ∈ I, ( ↑S / ↑(M j) ) := by
+        rw [ Finset.sum_eq_sum_diff_singleton_add
+          ( Finset.mem_powerset.mpr
+            ( Finset.subset_univ Finset.univ ) ) ]
+        ring
+    _ ≤ ∏ j, ( ↑S / ↑(M j) ) +
+        (2 ^ m - 1) * (↑S) ^ (m - 1) :=
+        add_le_add_right h_subset_bound _
+    _ ≤ (↑S) ^ m / ∏ j, ↑(M j) +
+        2 ^ m * (↑S) ^ (m - 1) := by
+        norm_num [ Finset.prod_div_distrib ]
+        ring_nf ; norm_num ; positivity
 
 /--
 The collision sum for a fixed set of primes `U` is bounded by the sum over
@@ -321,7 +342,7 @@ private lemma collision_sum_main_bound (m : ℕ) (hm : 1 ≤ m) (X : Box m) (s :
     · norm_cast
     · simp +decide [ Finset.prod_filter ]
       rw [ Finset.prod_comm ]
-      refine' congr rfl ( Finset.prod_congr rfl fun p hp => ?_ )
+      refine congr rfl ( Finset.prod_congr rfl fun p hp => ?_ )
       rw [ Finset.prod_eq_single ( ( σ p hp ).2.pred <| by
         have := Finset.mem_filter.mp ( Finset.mem_pi.mp hσ p hp ) ; aesop ) ] <;>
           simp +decide [ hp ]

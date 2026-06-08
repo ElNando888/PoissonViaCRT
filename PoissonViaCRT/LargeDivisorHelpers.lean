@@ -91,10 +91,11 @@ lemma inScaledBox_strictMono {n : ℕ} (hn : 1 ≤ n) (X : Box n) (s : ℝ) (h :
     (hbox : inScaledBox X s (fun _ => 0) h) :
     StrictMono h ∧ (0 : ℤ) < h ⟨0, by omega⟩ := by
   refine ⟨ fun i j hij => ?_, ?_ ⟩
-  · induction' j with j hj generalizing i
-    induction' j with j hj generalizing i
-    · tauto
-    · have := hbox ⟨ j + 1, by linarith ⟩ ; norm_num at *
+  · obtain ⟨j, hj⟩ := j
+    induction j generalizing i with
+    | zero => tauto
+    | succ j _ =>
+      have := hbox ⟨ j + 1, by linarith ⟩ ; norm_num at *
       grind
   · have := hbox ⟨ 0, hn ⟩ ; aesop
 
@@ -107,20 +108,20 @@ lemma inScaledBox_le_sum_sides {n : ℕ} (hn : 1 ≤ n) (X : Box n) (s : ℝ) (h
     (h : Fin n → ℤ) (hbox : inScaledBox X s (fun _ => 0) h) (i : Fin n) :
     (h i : ℝ) ≤ s * ∑ j, X.sides j := by
   have h_le_sum : ∀ i : Fin n, (h i : ℝ) ≤ s * ∑ j ∈ Finset.Iic i, X.sides j := by
-    intro i
-    induction' i with i ih
-    induction' i with i ih
-    · have := hbox ⟨ 0, ih ⟩
+    intro ⟨i, hi⟩
+    induction i with
+    | zero =>
+      have := hbox ⟨ 0, hi ⟩
       simp_all +decide only [sub_zero, ↓reduceIte, Int.cast_pos, ge_iff_le]
-      exact le_trans this.2 ( mul_le_mul_of_nonneg_left ( Finset.single_le_sum ( fun a _ =>
-        le_of_lt ( X.sides_pos a ) ) ( by simp ) ) hs.le )
-    · have := hbox ⟨ i + 1, ih ⟩
+      exact le_trans this.2 ( mul_le_mul_of_nonneg_left ( Finset.single_le_sum
+        ( fun a _ => le_of_lt ( X.sides_pos a ) ) ( by simp ) ) hs.le )
+    | succ i ih =>
+      have := hbox ⟨ i + 1, hi ⟩
       rw [ show
-          ( Finset.Iic ⟨ i + 1, ih ⟩ : Finset ( Fin n ) )
-          = Finset.Iic ⟨ i, by linarith ⟩ ∪ { ⟨ i + 1, ih ⟩ } from ?_, Finset.sum_union ] <;>
-            norm_num at *
-      · linarith [ ‹∀ ( ih : i < n ), ( h ⟨ i, ih ⟩ : ℝ ) ≤ s * ∑ j ∈ Iic ⟨ i, ih ⟩, X.sides j›
-          ( Nat.lt_of_succ_lt ih ) ]
+          ( Finset.Iic ⟨ i + 1, hi ⟩ : Finset ( Fin n ) )
+          = Finset.Iic ⟨ i, by linarith ⟩ ∪ { ⟨ i + 1, hi ⟩ } from ?_,
+        Finset.sum_union ] <;> norm_num at *
+      · linarith [ ih ( Nat.lt_of_succ_lt hi ) ]
       · grind
   exact le_trans ( h_le_sum i )
     ( mul_le_mul_of_nonneg_left ( Finset.sum_le_sum_of_subset_of_nonneg

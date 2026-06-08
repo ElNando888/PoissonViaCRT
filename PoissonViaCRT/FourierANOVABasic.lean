@@ -734,33 +734,41 @@ public noncomputable def diffMap (q : ℕ) [NeZero q] (m : ℕ) (y : Fin m → Z
 /-- `diffMap` is a left inverse of `cumSum`. -/
 public lemma diffMap_cumSum (q : ℕ) [NeZero q] (m : ℕ) (x : Fin m → ZMod q) :
     diffMap q m (cumSum q m x) = x := by
-  unfold cumSum diffMap; ext j; induction j ; simp +decide [*]
-  induction' ‹ℕ› with n ih <;> simp_all +decide
-  · rw [ show ( Iic ⟨ 0, by assumption ⟩ : Finset ( Fin m ) ) = { ⟨ 0, by assumption ⟩ } by
-      ext ⟨ i, hi ⟩ ; aesop ]
+  unfold cumSum diffMap; ext ⟨j, hj⟩; simp +decide [*]
+  induction j with
+  | zero =>
+    simp_all +decide
+    rw [ show ( Iic ⟨ 0, by assumption ⟩ : Finset ( Fin m ) )
+        = { ⟨ 0, by assumption ⟩ } by ext ⟨ i, hi ⟩ ; aesop ]
     norm_num
-  · rw [ show ( Iic ⟨ n + 1, by linarith ⟩ : Finset ( Fin m ) )
-        = Iic ⟨ n, by linarith ⟩ ∪ { ⟨ n + 1, by linarith ⟩ } from ?_, Finset.sum_union ] <;>
-      norm_num [ Finset.sum_singleton, Finset.sum_union, Finset.disjoint_singleton_right ]
+  | succ n ih =>
+    simp_all +decide
+    rw [ show ( Iic ⟨ n + 1, by linarith ⟩ : Finset ( Fin m ) )
+        = Iic ⟨ n, by linarith ⟩ ∪ { ⟨ n + 1, by linarith ⟩ }
+      from ?_, Finset.sum_union ] <;>
+      norm_num [ Finset.sum_singleton, Finset.sum_union,
+        Finset.disjoint_singleton_right ]
     grind +locals
 
 /-- `cumSum` is a left inverse of `diffMap`. -/
 public lemma cumSum_diffMap (q : ℕ) [NeZero q] (m : ℕ) (y : Fin m → ZMod q) :
     cumSum q m (diffMap q m y) = y := by
-  funext j
-  induction' j with j ih
-  induction' j with j ih
-  · unfold cumSum diffMap; simp +decide
-    rw [ show ( Iic ⟨ 0, ih ⟩ : Finset ( Fin m ) ) = { ⟨ 0, ih ⟩ } by ext ⟨ i, hi ⟩ ; aesop ]
+  funext ⟨j, hj⟩
+  induction j with
+  | zero =>
+    unfold cumSum diffMap; simp +decide
+    rw [ show ( Iic ⟨ 0, hj ⟩ : Finset ( Fin m ) )
+        = { ⟨ 0, hj ⟩ } by ext ⟨ i, hi ⟩ ; aesop ]
     aesop
-  · unfold cumSum diffMap at *
-    rw [ show ( Iic ⟨ j + 1, ih ⟩ : Finset ( Fin m ) )
-        = Finset.Iic ⟨ j, by linarith ⟩ ∪ { ⟨ j + 1, ih ⟩ } from ?_, Finset.sum_union ] <;>
-      norm_num
-    · rename_i h; specialize h ( Nat.lt_of_succ_lt ih )
+  | succ j ih =>
+    unfold cumSum diffMap at *
+    rw [ show ( Iic ⟨ j + 1, hj ⟩ : Finset ( Fin m ) )
+        = Finset.Iic ⟨ j, by linarith ⟩
+          ∪ { ⟨ j + 1, hj ⟩ } from ?_,
+      Finset.sum_union ] <;> norm_num
+    · specialize ih ( Nat.lt_of_succ_lt hj )
       simp_all +decide [ Finset.sum_sub_distrib ]
     · grind
-
 /-- The cumulative sum map is an equivalence. -/
 @[expose]
 public noncomputable def cumSumEquiv (q : ℕ) [NeZero q] (m : ℕ) :
@@ -898,11 +906,11 @@ public lemma inScaledBox_sum_eq_diff_sum (k : ℕ) (hk : 2 ≤ k)
         linarith [ Int.lt_floor_add_one ( s * X.sides a_3 ) ] ⟩
   · intro a₁ _ ha₂ a₂ _ ha₄ h
     ext j
-    induction' j with j ih
+    obtain ⟨j, hj⟩ := j
     simp_all +decide [ funext_iff ]
     induction j <;> simp_all +decide [ Fin.forall_iff ]
-    case h.mk.zero => simpa using h 0 ih
-    case h.mk.succ j ih => grind
+    case zero => simpa using h 0 hj
+    case succ j ih => grind
   · intro b hb
     use fun j => ∑ i ∈ Finset.Iic j, b i
     constructor
@@ -948,18 +956,26 @@ public lemma inScaledBox_sum_eq_diff_sum (k : ℕ) (hk : 2 ≤ k)
   · intro a _ _; congr; ext j
     rw [ show ( ∑ x ∈ Iic j, a x ) = ∑ x ∈ Iic j, ( if x.val = 0 then 0
       else a ⟨ x.val - 1, by omega ⟩ ) + a j from ?_ ] ; ring
-    induction' j with j ih
-    induction' j with j ih <;> simp_all +decide [Finset.sum_ite]
-    · rw [ show ( Iic ⟨ 0, ih ⟩ : Finset ( Fin ( k - 1 ) ) ) = { ⟨ 0, ih ⟩ } by
-        ext ⟨ x, hx ⟩ ; aesop ] ; aesop
-    · rw [ show ( Iic ⟨ j + 1, by linarith ⟩ : Finset ( Fin ( k - 1 ) ) )
-                  = Finset.Iic ⟨ j, by linarith ⟩ ∪ { ⟨ j + 1, by linarith ⟩ } from ?_,
-          Finset.sum_union ] <;>
-        norm_num [ Finset.sum_singleton, Finset.sum_union, Finset.sum_Ioc_succ_top,
+    obtain ⟨j, hj⟩ := j
+    induction j with
+    | zero =>
+      simp_all +decide [Finset.sum_ite]
+      rw [ show ( Iic ⟨ 0, hj ⟩ : Finset ( Fin ( k - 1 ) ) )
+          = { ⟨ 0, hj ⟩ } by ext ⟨ x, hx ⟩ ; aesop ] ; aesop
+    | succ j ih =>
+      simp_all +decide [Finset.sum_ite]
+      rw [ show ( Iic ⟨ j + 1, by linarith ⟩ : Finset ( Fin ( k - 1 ) ) )
+          = Finset.Iic ⟨ j, by linarith ⟩
+            ∪ { ⟨ j + 1, by linarith ⟩ } from ?_,
+        Finset.sum_union ] <;>
+        norm_num [ Finset.sum_singleton, Finset.sum_union,
+          Finset.sum_Ioc_succ_top,
           (Nat.succ_eq_succ ▸ Finset.Icc_succ_left_eq_Ioc) ]
-      · rw [ Finset.sum_filter, Finset.sum_insert ] <;> norm_num [ ih ( by linarith ) ]
+      · rw [ Finset.sum_filter, Finset.sum_insert ] <;>
+          norm_num [ ih ( by linarith ) ]
         rw [ add_comm, Finset.sum_ite ] ; aesop
-      · ext ⟨ x, hx ⟩ ; simp +decide [ Fin.le_iff_val_le_val ] ; omega
+      · ext ⟨ x, hx ⟩ ; simp +decide [ Fin.le_iff_val_le_val ]
+        omega
 
 /--
 Step 2: Map integer differences to ZMod q. Under `hbox` (⌊s*b_j⌋₊ < q),

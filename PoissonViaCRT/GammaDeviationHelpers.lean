@@ -156,8 +156,8 @@ public lemma fin_cons_zero_injective {n : ℕ} (hn : 1 ≤ n)
       intro i; specialize hbox i; aesop
     generalize_proofs at *
     intro i j hij
-    induction' j with j hj ih
-    induction' i with i hi ih'
+    obtain ⟨j, hj⟩ := j
+    obtain ⟨i, hi⟩ := i
     simp_all +decide [ Nat.add_one_le_iff ]
     induction hij <;> simp_all +decide
     · specialize h_diff_pos ⟨ i + 1, hj ⟩ ; aesop

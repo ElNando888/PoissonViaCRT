@@ -266,13 +266,16 @@ public lemma deviation_dft_q1_q2_bound (k : ℕ) (hk : 2 ≤ k) (ε : ℝ) (hε 
   grind
   · linarith
   · rw [ norm_prod, ← Finset.prod_attach ]
-    refine' le_trans ( Finset.prod_le_prod _ fun x hx => _ ) _
-    use fun x => if x.val.val ∈ freqSupport q ( k - 1 ) ξ
-      then (1 - (Ω x.val.val).card / (x.val.val : ℝ)) * ( x.val.val : ℝ ) ^ ( -ε )
-           * localMean k Ω x.val.val
+    set bound := fun x : { x // x ∈ q.primeFactors.attach } =>
+      if x.val.val ∈ freqSupport q ( k - 1 ) ξ
+      then (1 - (Ω x.val.val).card / (x.val.val : ℝ))
+        * ( x.val.val : ℝ ) ^ ( -ε )
+        * localMean k Ω x.val.val
       else localMean k Ω x.val.val
+    refine le_trans (Finset.prod_le_prod (g := bound)
+      ?_ fun x hx => ?_) ?_
     · exact fun _ _ => norm_nonneg _
-    · split_ifs with h
+    · simp only [bound]; split_ifs with h
       · convert dft_tupleCount_norm_le_decay k hk ε hε x.val.val _ _ _ _ using 1
         exact ⟨ Nat.prime_of_mem_primeFactors x.1.2 ⟩
         · exact hwd _ ( by aesop )
@@ -405,7 +408,7 @@ private lemma sum_inv_sin_pairing (q : ℕ) (hq : 1 ≤ q) :
   · norm_num [ div_eq_mul_inv, mul_assoc, mul_comm, mul_left_comm, Finset.mul_sum _ _ _ ] at *
     norm_num [ ← mul_assoc, ← Finset.sum_add_distrib ] at *
     apply add_le_add _ _
-    · refine' Finset.sum_le_sum fun x hx => _
+    · refine Finset.sum_le_sum fun x hx => ?_
       rw [ show Real.pi * ( k + 1 : ℝ ) ⁻¹ * ( 1 / 2 ) * ( ( k + 1 : ℝ ) * 2 - x ) =
           Real.pi - Real.pi * x * ( k + 1 : ℝ ) ⁻¹ * ( 1 / 2 ) by
             nlinarith [ Real.pi_pos, mul_inv_cancel_left₀ ( by

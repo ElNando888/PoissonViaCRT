@@ -222,21 +222,24 @@ private lemma inscaledbox_implies_icc_upper {k : ℕ}
         -- By induction on $i$, we can show that the cumulative sum of the differences up to $i$
         -- is less than or equal to $s$ times the sum of the sides.
         have h_cumulative : ∀ i : Fin k, (h i : ℝ) ≤ s * ∑ j ∈ Finset.Iic i, X.sides j := by
-          intro i
-          induction' i with i ih
-          induction' i with i ih
-          · have := hbox ⟨ 0, ih ⟩
-            rw [ show ( Iic ⟨ 0, ih ⟩ : Finset ( Fin k ) ) = { ⟨ 0, ih ⟩ } by
-              ext ⟨ i, hi ⟩ ; aesop ]
+          intro ⟨i, hi⟩
+          induction i with
+          | zero =>
+            have := hbox ⟨ 0, hi ⟩
+            rw [ show ( Iic ⟨ 0, hi ⟩ : Finset ( Fin k ) )
+                = { ⟨ 0, hi ⟩ } by ext ⟨ i, hi ⟩ ; aesop ]
             aesop
-          · have := hbox ⟨ i + 1, ih ⟩
-            simp_all +decide only [sub_zero, Nat.add_eq_zero_iff, and_false, ↓reduceIte,
-              add_tsub_cancel_right, sub_pos, Int.cast_lt, tsub_le_iff_right, ge_iff_le]
-            rw [ show ( Iic ⟨ i + 1, ih ⟩ : Finset ( Fin k ) ) =
-              Iic ⟨ i, by linarith ⟩ ∪ { ⟨ i + 1, ih ⟩ } from ?_, Finset.sum_union ] <;> norm_num
-            · linarith [ ‹∀ ( ih : i < k ),
-                         ( h ⟨ i, ih ⟩ : ℝ ) ≤ s * ∑ j ∈ Iic ⟨ i, ih ⟩, X.sides j›
-                ( Nat.lt_of_succ_lt ih ) ]
+          | succ i ih =>
+            have := hbox ⟨ i + 1, hi ⟩
+            simp_all +decide only [
+              sub_zero, Nat.add_eq_zero_iff, and_false,
+              ↓reduceIte, add_tsub_cancel_right, sub_pos,
+              Int.cast_lt, tsub_le_iff_right, ge_iff_le]
+            rw [ show ( Iic ⟨ i + 1, hi ⟩ : Finset ( Fin k ) ) =
+                Iic ⟨ i, by linarith ⟩
+                  ∪ { ⟨ i + 1, hi ⟩ } from ?_,
+              Finset.sum_union ] <;> norm_num
+            · linarith [ ih ( Nat.lt_of_succ_lt hi ) ]
             · grind
         refine le_trans ( h_cumulative i ) ?_
         gcongr
@@ -1074,10 +1077,11 @@ public lemma deviation_small_divisors (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 
   -- Work directly with divisor sums: for each d, apply inner_bound_small_divisor
   -- with T = d.primeFactors.
   dsimp only []
-  refine' le_trans ( Finset.sum_le_sum fun d hd => _ ) _
-  use fun d =>
-    C_lp * ( ∏ p ∈ d.primeFactors, ( k : ℝ ) * ( p : ℝ ) ^ ( -ε ) )
-    / ( q / ( crtSubset q Ω |> Finset.card ) )
+  refine le_trans (Finset.sum_le_sum (g := fun d =>
+      C_lp * d.primeFactors.prod
+        (fun p => ( k : ℝ ) * ( ↑p : ℝ ) ^ ( -ε ))
+      / ( (q : ℝ) / ( crtSubset q Ω |> Finset.card ) ))
+    fun d hd => ?_) ?_
   · -- Per-d bound via inner_bound_small_divisor with T = d.primeFactors
     have hd_mem := Finset.mem_filter.mp (Finset.mem_filter.mp hd |>.1)
     have hd_gt1 : 1 < d := hd_mem.2
