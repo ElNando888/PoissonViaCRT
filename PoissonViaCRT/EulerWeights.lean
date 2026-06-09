@@ -156,7 +156,7 @@ lemma rankin_powerset_bound (S : Finset ℕ) (w : ℕ → ℝ)
     rw [Finset.prod_mul_distrib, Real.rpow_neg hs.le]
     rw [← div_eq_inv_mul, le_div_iff₀ (by positivity)]
     exact mul_le_mul_of_nonneg_left
-      (by rwa [Real.finset_prod_rpow _ _ fun x _ => Nat.cast_nonneg x])
+      (by rwa [Real.finsetProd_rpow _ _ fun x _ => Nat.cast_nonneg x])
       (Finset.prod_nonneg fun x hx => hw x (Finset.mem_powerset.mp hT hx))
   refine le_trans (Finset.sum_le_sum fun T hT =>
     h_term T (Finset.mem_filter.mp hT |>.1) (Finset.mem_filter.mp hT |>.2)) ?_

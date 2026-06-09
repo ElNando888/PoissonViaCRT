@@ -96,7 +96,7 @@ For squarefree `d > 0`, the product `∏_{p ∣ d} p^α` equals
 public lemma prod_rpow_eq_rpow_of_squarefree (d : ℕ) (hd : Squarefree d) (hd0 : d ≠ 0)
     (α : ℝ) :
     ∏ p ∈ d.primeFactors, ((p : ℝ) ^ α) = (d : ℝ) ^ α := by
-  rw [ Real.finset_prod_rpow ]
+  rw [ Real.finsetProd_rpow ]
   · rw [ ← Nat.cast_prod, Nat.prod_primeFactors_of_squarefree hd ]
   · aesop
 

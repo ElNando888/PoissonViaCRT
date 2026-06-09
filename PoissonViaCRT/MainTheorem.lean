@@ -401,18 +401,12 @@ lemma complete_period_cancellation_apply
         Nat.cast_one, tsub_le_iff_right, Nat.add_one_sub_one, add_tsub_cancel_right, one_div,
         pow_succ, sum_sub_distrib, sum_const, nsmul_eq_mul, abs_mul, abs_inv, Nat.abs_cast, inv_pow,
         mul_assoc] at *
-      by_cases h : ( # ( crtSubset q Ω ) : ℝ ) = 0 <;> simp +decide only [h, inv_zero, zero_mul,
-      Int.ceil_zero, zero_lt_one, Icc_eq_empty_of_lt, Nat.ceil_zero, CharP.cast_eq_zero, add_zero,
-      abs_neg, abs_mul, abs_pow, abs_zero, abs_inv, Nat.abs_cast, mul_zero, neg_zero, mul_eq_zero,
-      pow_eq_zero_iff', ne_eq, true_and, inv_eq_zero, Nat.cast_eq_zero, card_eq_zero,
-      filter_eq_empty_iff, Fintype.mem_piFinset, notMem_empty, not_false_eq_true,
-      mul_inv_cancel_left₀] at *
+      by_cases h : ( # ( crtSubset q Ω ) : ℝ ) = 0 <;> simp +decide [h] at *
       · exact Or.inl ( by linarith )
       · convert rfl
         exact Eq.symm <| Int.toNat_of_nonneg <| Int.ceil_nonneg <|
-          mul_nonneg ( inv_nonneg.2 <| Nat.cast_nonneg _ ) <|
-          mul_nonneg ( Nat.cast_nonneg _ ) <| Finset.sum_nonneg fun _ _ =>
-            le_of_lt <| X.sides_pos _
+          mul_nonneg ( div_nonneg (Nat.cast_nonneg _) (Nat.cast_nonneg _) ) <|
+          Finset.sum_nonneg fun _ _ => le_of_lt <| X.sides_pos _
 
     have h_triangle :
         |kCorrelation Ω_q X - X.volume|

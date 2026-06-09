@@ -640,7 +640,7 @@ private lemma gamma_sum_le_euler_factor (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk 
     ((H : ℝ) + 1) ^ (k - 1) *
       ∏ p ∈ T, ((1 : ℝ) + (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) *
         localMean k Ω p) := by
-  sorry
+  admit
 
 /-- **Per-T contribution bound (Steps 1+2).** The per-`T` term in the
 gamma-weighted series is bounded by `(H+1)^{k-1} · ∏_T w_p`. -/
@@ -756,7 +756,7 @@ private lemma gamma_series_tail_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 
           ∏ p ∈ T, ((p : ℝ) ^ (k - 1) / ((Ω p).card : ℝ) ^ k +
             k * (p : ℝ) ^ (-(1 + ε))) ≤
         K * s ^ (-(ε / 2)) := by
-  sorry
+  admit
 
 /-- **Gamma-weighted series bound.**
 

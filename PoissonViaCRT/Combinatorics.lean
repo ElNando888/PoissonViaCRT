@@ -233,7 +233,7 @@ lemma GammaStructure.factorization_gammaProd_eq
   convert Finset.sum_congr rfl (fun j _ => Γ.factorization_gammaRow_eq j p hp) using 1
   any_goals exact Finset.univ
   · rw [show Γ.gammaProd = ∏ j : Fin k, Γ.gammaRow j from rfl, Nat.factorization_prod]
-    simp_all only [Finsupp.coe_finset_sum, sum_apply]
+    simp_all only [Finsupp.coe_finsetSum, sum_apply]
     intro j _; have := Γ.gammaRow_squarefree j; aesop
   · rw [Finset.card_filter]
 
@@ -276,9 +276,12 @@ lemma card_filter_exists_lt_equiv {n : ℕ}
   rw [h_complementary, Finset.card_sdiff]
   norm_num [Finset.card_univ]
 
--- See docs/proof_sketches.md for full proof sketch.
-/-- Applying a permutation to an equivalence relation preserves the number of distinct
-equivalence classes. -/
+/-
+See docs/proof_sketches.md for full proof sketch.
+
+Applying a permutation to an equivalence relation preserves the number of distinct
+equivalence classes.
+-/
 lemma card_image_classMin_eq_of_perm {n : ℕ}
     (R₁ R₂ : Fin n → Fin n → Prop)
     [DecidableRel R₁] [DecidableRel R₂]
@@ -339,14 +342,23 @@ lemma card_image_classMin_eq_of_perm {n : ℕ}
           Finset.filter (fun i => R₁ i j₂) Finset.univ := by grind +ring
       simp_all +decide [Finset.ext_iff]
     exact h_eq_classes''
-  · simp +zetaDelta only [mem_image, mem_univ, true_and, exists_prop, exists_exists_eq_and,
+  · simp +zetaDelta at *
+    intro a
+    use σ.symm a
+    congr! 1
+    ext i; simp +decide
+    have := Finset.min'_mem ( Finset.univ.filter fun i => R₁ i ( σ.symm a ) ) ⟨ σ.symm a, by aesop ⟩
+    aesop
+
+/-
+    simp +zetaDelta [mem_image, mem_univ, true_and, exists_prop, exists_exists_eq_and,
       forall_exists_index, forall_apply_eq_imp_iff] at *
     intro a
     use σ⁻¹ a
     congr! 3
     have := Finset.min'_mem (Finset.univ.filter fun i => R₁ i (σ⁻¹ a))
       ⟨σ⁻¹ a, Finset.mem_filter.mpr ⟨Finset.mem_univ _, hrefl₁ _⟩⟩
-    aesop
+    aesop -/
 
 /-- Two equivalence relations on `Fin n` that have the same
 equivalence classes (up to bijection) yield the same count of

@@ -268,10 +268,10 @@ lemma ofTuple_sqfreepart_dvd {k : ℕ}
   rw [Nat.mem_primeFactors] at hp ⊢
   refine ⟨hp.1, ?_, hc.ne_zero⟩
   have hp_prime : Prime p := irreducible_iff_prime.mp hp.1
-  obtain ⟨j, _, hj⟩ := (hp_prime.dvd_finset_prod_iff _).mp hp.2.1
+  obtain ⟨j, _, hj⟩ := (hp_prime.dvd_finsetProd_iff _).mp hp.2.1
   have h1 : p ∣ ∏ i ∈ Iio j, (GammaStructure.ofTuple c hc h' h_dist).gamma i j :=
     dvd_trans hj (lcm_dvd_prod _ _)
-  obtain ⟨i, hi, h2⟩ := (hp_prime.dvd_finset_prod_iff _).mp h1
+  obtain ⟨i, hi, h2⟩ := (hp_prime.dvd_finsetProd_iff _).mp h1
   have hij : i ≠ j := ne_of_lt (Finset.mem_Iio.mp hi)
   have hg : (GammaStructure.ofTuple c hc h' h_dist).gamma i j =
       Nat.gcd c (Int.natAbs (h' j - h' i)) := by

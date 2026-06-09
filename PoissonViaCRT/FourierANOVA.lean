@@ -300,20 +300,27 @@ public lemma deviation_dft_q1_q2_bound (k : ℕ) (hk : 2 ≤ k) (ε : ℝ) (hε 
         exact ⟨ Nat.prime_of_mem_primeFactors x.1.2 ⟩
         · exact hwd _ ( by aesop )
         · intro H
-          simp_all +decide only [Nat.mem_primeFactors, ne_eq, forall_and_index, funext_iff,
-            Pi.zero_apply, not_forall, ofReal_prod, mem_attach, freqSupport, ZMod.castHom_apply,
-            dite_eq_ite, if_false_right, mem_filter, SetLike.coe_mem, true_and, not_false_eq_true,
-            forall_true_left, implies_true]
-          obtain ⟨ i, hi ⟩ := h.2; specialize H i
-          simp_all +decide only [crtFrequencyEquiv, Equiv.coe_fn_mk]
-          haveI := Fact.mk h.1.1
-          simp_all +decide only [mul_eq_zero, inv_eq_zero, ZMod.natCast_eq_zero_iff,
-            Nat.dvd_div_iff_mul_dvd]
-          exact absurd ( H.resolve_left ( by
-            rw [ crtRingEquiv_apply_eq_castHom ] ; exact hi ) ) ( by
-              intro h
-              exact absurd ( hq.squarefree_of_dvd h ) ( by
-                rw [ Nat.squarefree_mul_iff ] ; aesop ) )
+          -- H says crtFrequencyEquiv maps all components to 0, but h says
+          -- some castHom component is nonzero (via freqSupport membership).
+          -- crtFrequencyEquiv = castHom * inv, and inv is nonzero in ZMod p (a field),
+          -- so castHom must be zero — contradicting freqSupport membership.
+          have hfun : ∀ j, (crtFrequencyEquiv q hq (ξ j) (↑x)) = 0 :=
+            congr_fun H
+          unfold freqSupport at h
+          simp only [Finset.mem_filter, x.val.prop, true_and, dite_true, ne_eq] at h
+          apply h; ext j; simp only [Pi.zero_apply]
+          have hj := hfun j
+          simp only [crtFrequencyEquiv, Equiv.coe_fn_mk] at hj
+          have hp_prime : (x.val.val).Prime := Nat.prime_of_mem_primeFactors x.val.prop
+          haveI : Fact (x.val.val).Prime := ⟨hp_prime⟩
+          haveI : NeZero (x.val.val) := ⟨hp_prime.ne_zero⟩
+          have h_or := mul_eq_zero.mp hj
+          cases h_or with
+          | inl h_cast =>
+            rw [crtRingEquiv_apply_eq_castHom] at h_cast; exact h_cast
+          | inr h_inv =>
+            exfalso
+            exact inv_ne_zero (natCast_div_prime_ne_zero q hq x.val) h_inv
       · convert dft_tupleCount_norm_le_localMean k hk ε hε x.val.val _ _ _ using 1
         grind
         exact hwd _ ( by simp )
@@ -854,10 +861,8 @@ lemma component_zero_of_not_in_freqSupport {q m : ℕ} [NeZero q]
     (hp_not : p ∉ freqSupport q m ξ) (i : Fin m) :
     ZMod.castHom (Nat.dvd_of_mem_primeFactors hp_pf) (ZMod p) (ξ i) = 0 := by
   unfold freqSupport at hp_not
-  simp_all +decide only [Nat.mem_primeFactors, ne_eq, ZMod.castHom_apply, dite_eq_ite,
-    if_false_right, mem_filter, true_and, not_and, Decidable.not_not, and_imp]
-  exact congr_fun ( hp_not ( Nat.prime_of_mem_primeFactors hp_pf )
-    ( Nat.dvd_of_mem_primeFactors hp_pf ) ( NeZero.ne q ) ) i
+  simp only [Finset.mem_filter, hp_pf, true_and, dite_true, not_not] at hp_not
+  exact congr_fun hp_not i
 
 /--
 The subgrid injection map `a ↦ (a_i.val * (q/d))` is injective as a map

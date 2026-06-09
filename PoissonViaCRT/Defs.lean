@@ -15,6 +15,8 @@ Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
 import PoissonViaCRT.CommonTactics
+import Mathlib.Analysis.SpecialFunctions.Pow.Real
+
 
 /-!
 # Poisson Statistics via the Chinese Remainder Theorem — Definitions

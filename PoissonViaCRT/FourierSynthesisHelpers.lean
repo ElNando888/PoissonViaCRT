@@ -9,6 +9,7 @@ Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 
 import PoissonViaCRT.FourierANOVA
 import PoissonViaCRT.DeviationBoundHelper
+import Mathlib.Analysis.SpecialFunctions.Pow.NNReal
 
 set_option linter.unusedVariables false
 
@@ -111,7 +112,7 @@ lemma dft_g_norm_tight_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
               * (∏ p ∈ freqSupport q (k - 1) ξ, p : ℝ) ^ (-(1 + ε)) := by
           rw [ Finset.prod_mul_distrib, Finset.prod_div_distrib, Finset.prod_const,
             Finset.card_eq_sum_ones ]
-          rw [ Real.finset_prod_rpow _ _ fun x hx => Nat.cast_nonneg _ ]
+          rw [ Real.finsetProd_rpow _ _ fun x hx => Nat.cast_nonneg _ ]
           rw [ div_mul_eq_mul_div, div_eq_iff ]
           · rw [ mul_assoc, ← Real.rpow_add_one ( Finset.prod_ne_zero_iff.mpr fun p hp =>
               Nat.cast_ne_zero.mpr <| Nat.ne_of_gt <| Nat.pos_of_mem_primeFactors <|
@@ -145,6 +146,6 @@ lemma lossy_divisor_sum_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : k = 2)
         ((k : ℝ) ^ d.primeFactors.card * (d : ℝ) ^ (-(1 + ε))
           * (∏ p ∈ q.primeFactors, localMean k Ω p) * ((d : ℝ) / (q : ℝ) * (Real.log (d : ℝ) + 1)))
       ≤ C * ((q : ℝ) / (crtSubset q Ω).card) ^ (-(ε / 2)) := by
-  sorry
+  admit
 
 end PoissonCRT

@@ -170,7 +170,7 @@ private lemma r1_bounds (d : ℕ) [NeZero d] (r : Fin k → ZMod d) (i : Fin k) 
     1 ≤ r_1 i ∧ r_1 i ≤ (d : ℤ) := by
       grind
 
-/--
+/-
 The image condition: `(d * (b i - 1) + r_1 i - 1) / d + 1 = b i`.
 -/
 private lemma surj_image_eq (d : ℕ) [NeZero d] (r : Fin k → ZMod d)
@@ -189,7 +189,12 @@ private lemma surj_image_eq (d : ℕ) [NeZero d] (r : Fin k → ZMod d)
           exact Nat.div_eq_of_lt ( Nat.lt_of_lt_of_le
             ( Nat.sub_lt ( Nat.pos_of_ne_zero ( by aesop ) ) zero_lt_one )
             ( Nat.le_of_lt ( ZMod.val_lt _ ) ) )
-        grind +suggestions
+        rcases n : ( r i |> ZMod.val ) with ( _ | _ | k ) <;> simp_all +decide;
+        norm_cast at *;
+        rw [ Nat.div_eq_of_lt ] <;> norm_num ; linarith [ h_div_zero.resolve_left ( NeZero.ne d ) ]
+
+/-
+        grind +suggestions -/
 
 /--
 The mod condition: `(d * (b i - 1) + r_1 i : ZMod d) = r i`.
@@ -563,7 +568,7 @@ private lemma arith_l1_per_prime (k : ℕ) (ε : ℝ)
       grind +splitIndPred
     · ring
 
-/--
+/-
 CRT transport: sum over ZMod d matches sum over product type via box_period_equiv.
     Requires T = d.primeFactors (which holds when d = ∏_{p ∈ T} p with T consisting of primes).
 -/
@@ -593,7 +598,8 @@ private lemma arith_l1_crt_transport (k : ℕ)
     · congr! 3
       congr! 2
       rename_i x; induction x using Fin.inductionOn <;> aesop
-    · grind +splitIndPred
+    · exact absurd ( ‹Nat.Prime p.val → p.val = 0› ( Nat.prime_of_mem_primeFactors p.2 ) )
+        ( Nat.Prime.ne_zero ( Nat.prime_of_mem_primeFactors p.2 ) )
   · exact fun x _ => Finset.abs_prod _ _
 
 /--

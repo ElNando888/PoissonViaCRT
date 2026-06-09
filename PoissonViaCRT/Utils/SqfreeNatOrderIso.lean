@@ -15,6 +15,7 @@ Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
 import PoissonViaCRT.CommonTactics
+import Mathlib.Algebra.BigOperators.Associated
 import Mathlib.Algebra.Squarefree.Basic
 import Mathlib.Data.Finset.NatDivisors
 import Mathlib.Data.Nat.PrimeFin
@@ -128,7 +129,7 @@ public lemma left_inv (s : Finset Nat.Primes) :
   simp only [Finset.mem_subtype, Nat.mem_primeFactors]
   constructor
   · intro ⟨_, hdvd, _⟩
-    rw [Prime.dvd_finset_prod_iff hp.prime] at hdvd
+    rw [Prime.dvd_finsetProd_iff hp.prime] at hdvd
     obtain ⟨q, hq, hpq⟩ := hdvd
     have heq : p = q.val := by
       have := q.2.eq_one_or_self_of_dvd p hpq
