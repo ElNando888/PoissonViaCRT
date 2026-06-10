@@ -26,11 +26,7 @@ by Andrew Granville and Pär Kurlberg (arXiv:math/0412135v2).
 
 ## Main Definitions
 
-* `PoissonCRT.tupleCount`: The counting function `N_k(h, Ω)` for `k`-tuples.
-* `PoissonCRT.crtSubset`: The CRT subset `Ω_q` constructed from local subsets `Ω_p`.
 * `PoissonCRT.density`, `PoissonCRT.avgSpacing`: The density `r_q` and average spacing `s_q`.
-* `PoissonCRT.Box`: Boxes in `ℝ^{k-1}` used to define `k`-level correlations.
-* `PoissonCRT.kCorrelation`: The `k`-level correlation `R_k(X, Ω_q)`.
 * `PoissonCRT.GammaStructure`: The combinatorial data `Γ = {γᵢⱼ}` from §3.1.
 
 ## References
@@ -82,8 +78,7 @@ def IsPoissonDistributed
 
 /-- The radical of a natural number: the product of its distinct prime factors. -/
 @[expose]
-public def radical (n : ℕ) : ℕ :=
-  ∏ p ∈ n.primeFactors, p
+public def radical (n : ℕ) : ℕ :=  ∏ p ∈ n.primeFactors, p
 
 /-- A `GammaStructure` encodes the combinatorial data `Γ = {γᵢⱼ}` from §3.1.
 Given `k` indices `{0, …, k-1}`, a Gamma structure assigns to each unordered pair

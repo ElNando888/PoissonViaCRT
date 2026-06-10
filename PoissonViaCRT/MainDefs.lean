@@ -31,6 +31,8 @@ by Andrew Granville and Pär Kurlberg (arXiv:math/0412135v2).
 * `PoissonCRT.crtSubset`: The CRT subset `Ω_q` constructed from local subsets `Ω_p`.
 * `PoissonCRT.Box`: Boxes in `ℝ^{k-1}` used to define `k`-level correlations.
 * `PoissonCRT.kCorrelation`: The `k`-level correlation `R_k(X, Ω_q)`.
+* `PoissonCRT.WellDistributed`: The well-distributed hypothesis used Theorem 1.1.
+* `PoissonCRT.lambdaExponent`: The critical exponent `λ_k` defined in §3.2.
 
 ## References
 
