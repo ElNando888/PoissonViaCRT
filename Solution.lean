@@ -1,9 +1,18 @@
 import PoissonViaCRT.MainDefs
 import PoissonViaCRT.MainTheorem
 
+open Classical
 open PoissonCRT
 
-public theorem GK08_thm_12
+lemma GK08_prop_11_lpbb (m : ℕ) (X : Box m) :
+    ∃ C : ℝ, 0 < C ∧ ∀ (v : Fin m → ℝ), (∀ i, 0 ≤ v i ∧ v i ≤ 1) → ∀ (s : ℝ), 1 ≤ s →
+      |(((Fintype.piFinset fun _ : Fin m =>
+          Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+        (fun h => inScaledBox X s v h)).card : ℝ) - s ^ m * X.volume| ≤
+        C * s ^ ((m : ℤ) - 1) := by
+  exact lattice_point_box_bound m X
+
+theorem GK08_thm_12
     (ε : ℝ) (hε : 0 < ε) (K : ℕ) (hK : 2 ≤ K)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
