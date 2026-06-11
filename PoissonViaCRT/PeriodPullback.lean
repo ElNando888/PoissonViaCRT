@@ -94,8 +94,9 @@ public noncomputable def localDeviation (Ω : ∀ p : ℕ, Finset (ZMod p)) (k :
     (p : ℕ) [NeZero p] (g : Fin k → ZMod p) : ℝ :=
   (tupleCount (Ω p) (Fin.cons 0 g) : ℝ) - (Ω p).card ^ (k + 1) / (p : ℝ) ^ k
 
-/-- The local deviation sums to zero over all `g : (ZMod p)^k`. This is a direct
-consequence of `tupleCount_cons_deviation_sum_zero`. -/
+/-- **Lemma 10 (Local Deviation)**: The local deviation sums to zero over all `g : (ZMod p)^k`.
+This is a direct consequence of `tupleCount_cons_deviation_sum_zero` and serves as the
+base case for the CRT deviation sum. -/
 public theorem localDeviation_sum_zero (Ω : ∀ p : ℕ, Finset (ZMod p)) (k : ℕ)
     (p : ℕ) [NeZero p] :
     ∑ g : Fin k → ZMod p, localDeviation Ω k p g = 0 :=

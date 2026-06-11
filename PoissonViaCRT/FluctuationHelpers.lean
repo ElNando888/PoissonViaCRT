@@ -27,8 +27,9 @@ namespace PoissonCRT
 
 variable {q : ℕ} [NeZero q]
 
-/-- The deviation sum vanishes: `∑_g (tupleCount(Ω, 0::g) - μ) = 0`
-where `μ = |Ω|^{m+1} / q^m`. -/
+/-- **Lemma 10**: The deviation sum vanishes: `∑_g (tupleCount(Ω, 0::g) - μ) = 0`
+where `μ = |Ω|^{m+1} / q^m`. This is the foundational arithmetic identity that
+powers the complete period cancellation in the Möbius synthesis. -/
 public theorem tupleCount_cons_deviation_sum_zero (Ω : Finset (ZMod q)) (m : ℕ) :
     (∑ g : Fin m → ZMod q,
       ((tupleCount Ω (Fin.cons (0 : ZMod q) g) : ℝ) -

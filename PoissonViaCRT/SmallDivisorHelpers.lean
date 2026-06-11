@@ -83,9 +83,10 @@ private lemma localCount_cons_sub_localMean_eq {k : ℕ} (q : ℕ) [NeZero q]
     · simp +decide [Fin.cons, map_zero]
     · simp +decide [Fin.cons]
 
-/-- The sum over all residue classes of a product of local deviations is zero,
-provided the product ranges over a nonempty subset `T` of the prime factors of
-squarefree `q`. This combines the CRT equivalence with `sum_prod_pi_eq_zero`. -/
+/-- **Lemma 10 (CRT Transport)**: The sum over all residue classes of a product of local
+deviations is zero, provided the product ranges over a nonempty subset `T` of the prime
+factors of squarefree `q`. This combines the CRT equivalence with `sum_prod_pi_eq_zero`
+and fulfills the structural role of Lemma 10 in the main synthesis proof. -/
 lemma deviation_product_sum_zero (k : ℕ) (hk : 1 ≤ k) (q : ℕ) [NeZero q]
     (hq : Squarefree q)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
