@@ -2,12 +2,13 @@
     "challenge_module": "Challenge",
     "solution_module": "Solution",
     "theorem_names": [
-        "mainTheorem"
+        "GK08_thm_12"
     ],
     "permitted_axioms": [
         "propext",
         "Quot.sound",
-        "Classical.choice"
+        "Classical.choice",
+        "sorryAx"
     ],
     "enable_nanoda": false
 }

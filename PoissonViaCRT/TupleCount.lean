@@ -26,7 +26,7 @@ This file contains key properties of the tuple counting function `N_k(h, Ω)` fr
 
 * `PoissonCRT.tupleCount_sum_eq`: `∑_h N_k(h, Ω) = q · |Ω|^k`.
 * `PoissonCRT.tupleCount_sum_cons_eq`: The paper's version with `h₀ = 0` fixed:
-  `∑_{g} N_k(0 :: g, Ω) = |Ω|^{k+1}` (Lemma 3.5).
+  `∑_{g} N_k(0 :: g, Ω) = |Ω|^{k+1}` (Lemma 10).
 * `PoissonCRT.tupleCount_le_card`: `N_{k+1}(h, Ω) ≤ |Ω|`.
 
 ## References
@@ -80,7 +80,7 @@ public theorem tupleCount_sum_eq (Ω : Finset (ZMod q)) :
   simp_all +decide only [sum_const, card_univ, ZMod.card, smul_eq_mul, sum_boole, Nat.cast_id]
   convert h_fubini using 1
 
-/-- **Sum formula with `h₀ = 0` fixed** (Lemma 3.5 identity):
+/-- **Sum formula with `h₀ = 0` fixed** (Lemma 10 identity):
 `∑_g N_{k+1}(Fin.cons 0 g, Ω) = |Ω|^{k+1}`. -/
 public theorem tupleCount_sum_cons_eq (Ω : Finset (ZMod q)) :
     ∑ g : Fin k → ZMod q, tupleCount Ω (Fin.cons 0 g) = Ω.card ^ (k + 1) := by

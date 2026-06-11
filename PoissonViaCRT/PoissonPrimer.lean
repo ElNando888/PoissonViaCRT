@@ -27,9 +27,9 @@ by Granville–Kurlberg, which provides the probabilistic framework for the pape
 
 * `PoissonCRT.density_nonneg`, `PoissonCRT.density_le_one`: Basic density properties.
 * `PoissonCRT.density_eq_inv_avgSpacing`: The reciprocal relation `r_q = 1 / s_q`.
-* `PoissonCRT.condExpectation_indicator`: Combinatorial core of Lemma 2.1.
+* `PoissonCRT.condExpectation_indicator`: Combinatorial core of Lemma 4.
 
-The full Lemma 2.1 (expected correlation for random subsets) requires probability-theoretic
+The full Lemma 4 (expected correlation for random subsets) requires probability-theoretic
 infrastructure not formalized here; the statement is recorded for reference.
 
 ## References
@@ -58,7 +58,7 @@ Let `X₁, X₂, …, X_q` be independent Bernoulli random variables with parame
 Given an outcome, define `Ω_q ⊆ ℤ/qℤ` by `i ∈ Ω_q` iff `Xᵢ = 1`.
 The expected average gap is `σ`.
 
-**Lemma 2.1**: Expected correlation for random subsets:
+**Lemma 4**: Expected correlation for random subsets:
 $$\mathbb{E}(R_k(X, q)) = \operatorname{vol}(X) + O_k(1/\sigma + \sigma/q)$$
 and the variance satisfies:
 $$\mathbb{E}\left((R_k(X, q) - \operatorname{vol}(X))^2\right) \ll_k 1/\sigma + \sigma/q.$$

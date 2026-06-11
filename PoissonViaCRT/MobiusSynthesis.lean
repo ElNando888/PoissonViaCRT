@@ -32,7 +32,7 @@ set_option linter.unusedVariables false
 /-!
 # Möbius Synthesis
 
-This file assembles the final deviation bound (Proposition 3.6)
+This file assembles the final deviation bound (Proposition 11)
 using the spatial synthesis / inclusion-exclusion strategy.
 The proof combines:
 - CRT multiplicativity of the counting function

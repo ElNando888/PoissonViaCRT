@@ -35,7 +35,7 @@ set_option linter.unusedVariables false
 # Fourier ANOVA for the Deviation Bound
 
 This file scaffolds the **Fourier ANOVA** (Analysis of Variance) machinery for proving
-the uniform deviation bound in Proposition 3.6 of Granville–Kurlberg
+the uniform deviation bound in Proposition 11 of Granville–Kurlberg
 (arXiv:math/0412135v2, §3.2).
 
 Instead of the combinatorial Gamma-structure decomposition, we expand the deviation

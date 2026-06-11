@@ -32,11 +32,11 @@ Granville–Kurlberg.
   (unnumbered lemma in §3.1).
 * `PoissonCRT.countGammaStructures_le`:
   Bound on the number of Gamma structures with given
-  `γ(Γ) = γ` (Lemma 3.1).
+  `γ(Γ) = γ` (Lemma 5).
 * `PoissonCRT.countTuples_bound_prop`:
-  Upper bound on `M_Γ(H)` (Proposition 3.2).
+  Upper bound on `M_Γ(H)` (Proposition 7).
 * `PoissonCRT.countTuples_bound_cor`:
-  Corollary 3.3: Refined bound on `M_Γ(H)`.
+  Corollary 8: Refined bound on `M_Γ(H)`.
 
 ## References
 
@@ -539,7 +539,7 @@ public theorem mem_finsetGammaStructures {γ : ℕ} {Γ : GammaStructure k} :
       Γ.gamma_le_gammaProd i j, Γ.diag, Γ.symm, Γ.pos, Γ.sqfree, Γ.compat, rfl ⟩, rfl ⟩
 
 /-! ### Bound on number of Gamma structures
-(Lemma 3.1) -/
+(Lemma 5) -/
 
 /-- Each off-diagonal entry of a `GammaStructure` divides `gammaProd`. -/
 lemma GammaStructure.gamma_dvd_gammaProd (Γ : GammaStructure k) (i j : Fin k)
@@ -584,7 +584,7 @@ lemma card_upper_triangular_pairs (k : ℕ) :
   rw [ ← Finset.sum_range_reflect, Finset.sum_range ]
 
 /-- The number of Gamma structures with a fixed product `γ(Γ) = γ` is bounded by
-`(2 ^ k.choose 2) ^ γ.primeFactors.card` (Lemma 3.1). -/
+`(2 ^ k.choose 2) ^ γ.primeFactors.card` (Lemma 5). -/
 public theorem countGammaStructures_le (γ : ℕ) (hγ : 0 < γ) :
     (finsetGammaStructures γ : Finset (GammaStructure k)).card ≤
       (2 ^ k.choose 2) ^ γ.primeFactors.card := by
@@ -630,7 +630,7 @@ public theorem countGammaStructures_le (γ : ℕ) (hγ : 0 < γ) :
     rw [ ← pow_mul, mul_comm, pow_mul ]
   · intro Γ₁ hΓ₁ Γ₂ hΓ₂ h_eq; specialize h_upper_triangular Γ₁ Γ₂; aesop
 
-/-! ### Helper lemmas for Proposition 3.2 -/
+/-! ### Helper lemmas for Proposition 7 -/
 
 -- See docs/proof_sketches.md for full proof sketch.
 /-- The number of elements in an interval `[0, H]` that are pairwise congruent modulo `m`
@@ -788,9 +788,9 @@ lemma card_filtered_le_prod_of_fiber_dvd
     exact le_trans ( Finset.sum_le_sum h_fiber_card )
       ( by simpa [ mul_comm ] using Nat.mul_le_mul_right ( H / m ( Fin.last n ) + 1 ) h_ind )
 
-/-! ### Upper bound on `M_Γ(H)` (Proposition 3.2) -/
+/-! ### Upper bound on `M_Γ(H)` (Proposition 7) -/
 
-/-- Proposition 3.2: The number of tuples consistent with a Gamma structure `Γ` bounded by `H`
+/-- Proposition 7: The number of tuples consistent with a Gamma structure `Γ` bounded by `H`
 is at most `∏ (H / γ_j + 1)`. -/
 theorem countTuples_bound_prop
     (Γ : GammaStructure (k + 1)) (H : ℕ) :
@@ -831,7 +831,7 @@ theorem countTuples_bound_prop
     rw [le_div_iff₀ (Γ.gammaRow_cast_pos i.succ)]
     exact_mod_cast Nat.div_mul_le_self H (Γ.gammaRow i.succ)
 
-/-- Corollary 3.3: If all row products `γ_j` are bounded by `H`, then the tuple count is
+/-- Corollary 8: If all row products `γ_j` are bounded by `H`, then the tuple count is
 bounded by `2^k * H^k / γ(Γ)`. -/
 public theorem countTuples_bound_small_gamma
     (Γ : GammaStructure (k + 1)) (H : ℕ)

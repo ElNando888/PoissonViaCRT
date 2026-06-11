@@ -30,9 +30,9 @@ remainder theorem" by Granville–Kurlberg, together with the key lemmas from th
 ## Main Results
 
 * `PoissonCRT.tupleCount_crt_mul`: Multiplicativity of `N_k` under CRT.
-* `PoissonCRT.epsilonAvgZero`: **Lemma 3.5**: `∑_h ε_k(h, d) = 0` for `d > 1`.
-* `PoissonCRT.epsilon_sum_vanishes`: The sum `∑_h ε_k(h, p) = 0` (Lemma 3.5 identity).
-* `PoissonCRT.mainTheorem_precise`: **Theorem 3.7** (precise version of Theorem 1.1).
+* `PoissonCRT.epsilonAvgZero`: **Lemma 10**: `∑_h ε_k(h, d) = 0` for `d > 1`.
+* `PoissonCRT.epsilon_sum_vanishes`: The sum `∑_h ε_k(h, p) = 0` (Lemma 10 identity).
+* `PoissonCRT.mainTheorem_precise`: **Theorem 12** (precise version of Theorem 1).
 * `PoissonCRT.coprime_tupleCount`: Hooley's theorem base case.
 * `PoissonCRT.lattice_point_box_bound`: Lattice point count in scaled boxes.
 * `PoissonCRT.euler_product_convergence`: Euler product bound under WD.
@@ -80,7 +80,7 @@ theorem tupleCount_crt_mul {q₁ q₂ : ℕ} [NeZero q₁] [NeZero q₂]
       simp_all +decide
     simp_all +decide [ZMod.chineseRemainder]
 
-/-! ### Lemma 3.5: Average of ε_k is zero
+/-! ### Lemma 10: Average of ε_k is zero
 
 For any prime `p` and set `Ω_p ⊆ ℤ/pℤ`,
 $$\sum_{\mathbf{h} \in (\mathbb{Z}/p\mathbb{Z})^{k-1}} \varepsilon_k(\mathbf{h}, p) = 0.$$
@@ -88,7 +88,7 @@ $$\sum_{\mathbf{h} \in (\mathbb{Z}/p\mathbb{Z})^{k-1}} \varepsilon_k(\mathbf{h},
 This follows from `∑_h N_k(h, Ω) = |Ω|^k`, and is stated in its fundamental form.
 -/
 
-/-- **Lemma 3.5 (reformulation)**: With `h₀ = 0` fixed, the sum of `N_{k+1}(0 :: g, Ω)`
+/-- **Lemma 10 (reformulation)**: With `h₀ = 0` fixed, the sum of `N_{k+1}(0 :: g, Ω)`
 over all `g : (ℤ/qℤ)^k` equals `|Ω|^{k+1}`. -/
 theorem epsilonAvgZero {q : ℕ} [NeZero q] (Ω : Finset (ZMod q)) :
     ∑ g : Fin k → ZMod q, tupleCount Ω (Fin.cons 0 g) = Ω.card ^ (k + 1) :=
@@ -133,7 +133,7 @@ theorem epsilon_sum_vanishes {p : ℕ} [NeZero p] (Ω : Finset (ZMod p)) (hΩ : 
   field_simp
   ring
 
-/-! ### Proposition 3.6 (Messy error bound)
+/-! ### Proposition 11 (Messy error bound)
 
 Suppose we are given `R ∈ [0,1]`, and parameters `α₀, α₁, β₁, α(τ), β(τ) > 0`.
 Assume `|Ω_p| > p^{1 - α(τ)}` for all `τ` and all primes `p` (so `s_p ≤ p^{α(τ)}`). Then
@@ -141,11 +141,11 @@ the Error term is bounded by a sum of terms, each being a power of `s_q` times a
 Euler product `∏_{p|q} (1 + O_k(…))`.
 
 The proof splits the divisor sum into "small d" (`d ≤ s_q^R`) and "large d" (`d > s_q^R`).
-For small `d`, Lemma 3.5 cancels interior contributions; only `O((s_q/d)^{k-2})` boundary
+For small `d`, Lemma 10 cancels interior contributions; only `O((s_q/d)^{k-2})` boundary
 terms remain. For large `d`, the Gamma machinery bounds the contribution via `M_Γ(H)`.
 -/
 
-/-! ### Helper lemmas for Proposition 3.6 -/
+/-! ### Helper lemmas for Proposition 11 -/
 
 /--
 The CRT subset is nonempty when each local subset `Ω p` is nonempty for primes `p`.
@@ -210,7 +210,7 @@ private lemma spacing_ge_one (Ω : ∀ p : ℕ, Finset (ZMod p))
   · exact crtSubset_card_pos Ω hΩ q
 
 
-/-! ### Intermediate lemmas for Proposition 3.6 -/
+/-! ### Intermediate lemmas for Proposition 11 -/
 
 /--
 **Lattice point box bound**: Count of lattice points in a scaled box `sX` deviates from
@@ -437,18 +437,16 @@ lemma complete_period_cancellation_apply
     exact le_trans (le_trans h_triangle (add_le_add h_main_term h_deviation_term)) h_final
   ⟩
 
-/-- **Fluctuation bound** (core of Proposition 3.6): Under the well-distribution hypothesis,
-the error `|R_k(X) - vol(X)|` is bounded by `C · s_q^{-δ}` for some `δ > 0`.
+/-- **Proposition 11** (simplified form): Under the well-distribution hypothesis (1) with
+parameter `ε`, the error in the `k`-level correlation is bounded by `C · s_q^{-δ}` for
+some `δ > 0` depending on `ε`, and some constant `C > 0` depending on the box `X`.
 
-This is the core mathematical content of Proposition 3.6 from Granville–Kurlberg
-(arXiv:math/0412135v2, §3.2). The proof combines:
-1. **Lattice point box bound** (`lattice_point_box_bound`): approximation of lattice
-   point counts in scaled boxes.
-2. **Euler product convergence** (`euler_product_convergence`): boundedness of the
-   multiplicative error product under WD.
-3. **Complete period cancellation** (`complete_period_cancellation_apply`): cancellation
-   from `tupleCount_cons_deviation_sum_zero` applied to box sums. -/
-private lemma fluctuation_bound
+Note:
+* `kCorrelation` filters by `inScaledBox` (matching the paper's definition)
+* The bound includes a box-dependent constant `C`
+* Non-emptiness of `Ω p` for primes `p` is explicitly required
+-/
+theorem error_bound_simplified
     (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
@@ -467,32 +465,10 @@ private lemma fluctuation_bound
   obtain ⟨δ, hδ_pos, h_cpc⟩ := complete_period_cancellation_apply ε hε k hk Ω hΩ hWD hsp hrp h_lp
   exact ⟨δ, hδ_pos, h_cpc⟩
 
-/-- **Proposition 3.6** (simplified form): Under the well-distribution hypothesis (1) with
-parameter `ε`, the error in the `k`-level correlation is bounded by `C · s_q^{-δ}` for
-some `δ > 0` depending on `ε`, and some constant `C > 0` depending on the box `X`.
-
-Note: The original formalization had issues that have been corrected:
-1. `kCorrelation` now filters by `inScaledBox` (matching the paper's definition)
-2. The bound includes a box-dependent constant `C`
-3. Non-emptiness of `Ω p` for primes `p` is explicitly required -/
-theorem error_bound_simplified
-    (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
-    (Ω : ∀ p : ℕ, Finset (ZMod p))
-    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
-    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
-    (hsp : ∀ (p : ℕ), p.Prime →
-      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
-    (hrp : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ)) :
-    ∃ δ : ℝ, 0 < δ ∧ ∀ (X : Box (k - 1)), ∃ C : ℝ, 0 < C ∧
-      ∀ (q : ℕ) [NeZero q] (_hq_sq : Squarefree q),
-        |kCorrelation (crtSubset q Ω) X - X.volume| ≤
-          C * ((q : ℝ) / (crtSubset q Ω).card) ^ (-δ) := by
-  exact fluctuation_bound ε hε k hk Ω hΩ hWD hsp hrp
-
-/-! ### Theorem 3.7 (= Theorem 1.1, precise version) -/
+/-! ### Theorem 12 (= Theorem 1, precise version) -/
 
 /--
-**Theorem 3.7** (Theorem 1.1, precise version): Fix `ε > 0` and integer `K`.
+**Theorem 12** (Theorem 1, precise version): Fix `ε > 0` and integer `K`.
 Suppose subsets `Ω_p ⊆ ℤ/pℤ` satisfy `s_p ≤ p^{λ_K - ε}` for all primes `p`, and
 Hypothesis (1) holds for all `k ≤ K` with distinct `h` mod `p`.
 
@@ -536,7 +512,7 @@ public theorem mainTheorem_precise
   have := error_bound_simplified ε hε k hk2 Ω hΩ (fun p _ => hWD p k hk_le) hsp_k hrp_k
   exact ⟨this.choose, this.choose_spec.1, this.choose_spec.2 X⟩
 
-/-- **Hooley's theorem** (recovered from Theorem 1.1): For `Ω_p = {x ∈ ℤ/pℤ : x ≠ 0}`
+/-- **Hooley's theorem** (recovered from Theorem 1): For `Ω_p = {x ∈ ℤ/pℤ : x ≠ 0}`
 (integers coprime to `p`), the tuple counting function satisfies
 `N_k(h, Ω_p) = p - k` for injective `h`. -/
 theorem coprime_tupleCount (p : ℕ) [hp : Fact p.Prime] (k : ℕ)

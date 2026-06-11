@@ -2,7 +2,7 @@ import PoissonViaCRT.MainDefs
 
 open PoissonCRT
 
-public theorem mainTheorem
+public theorem GK08_thm_12
     (ε : ℝ) (hε : 0 < ε) (K : ℕ) (hK : 2 ≤ K)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)

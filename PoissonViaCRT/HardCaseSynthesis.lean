@@ -24,7 +24,7 @@ import PoissonViaCRT.FluctuationHelpers
 # Hard Case Synthesis
 
 This file completes the final synthesis for the hard case of the deviation bound
-(Proposition 3.6 of Granville–Kurlberg), assembling the geometric-to-algebraic
+(Proposition 11 of Granville–Kurlberg), assembling the geometric-to-algebraic
 translation and cancellation infrastructure into a uniform bound.
 
 ## Main Results

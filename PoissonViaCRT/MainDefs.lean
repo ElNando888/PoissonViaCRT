@@ -31,7 +31,7 @@ by Andrew Granville and Pär Kurlberg (arXiv:math/0412135v2).
 * `PoissonCRT.crtSubset`: The CRT subset `Ω_q` constructed from local subsets `Ω_p`.
 * `PoissonCRT.Box`: Boxes in `ℝ^{k-1}` used to define `k`-level correlations.
 * `PoissonCRT.kCorrelation`: The `k`-level correlation `R_k(X, Ω_q)`.
-* `PoissonCRT.WellDistributed`: The well-distributed hypothesis used Theorem 1.1.
+* `PoissonCRT.WellDistributed`: The well-distributed hypothesis used Theorem 1.
 * `PoissonCRT.lambdaExponent`: The critical exponent `λ_k` defined in §3.2.
 
 ## References
@@ -119,9 +119,9 @@ public noncomputable def kCorrelation {q : ℕ} [NeZero q]
       (fun h => inScaledBox X s (fun _ => 0) h),
       (tupleCount Ω (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ)
 
-/-! ### Hypothesis (1) from Theorem 1.1 -/
+/-! ### Hypothesis (1) from Theorem 1 -/
 
-/-- **Hypothesis (1)** from Theorem 1.1: For each integer `k`, the `k`-tuple counting function
+/-- **Hypothesis (1)** from Theorem 1: For each integer `k`, the `k`-tuple counting function
 satisfies `N_k(h, Ω_p) = r_p^k · p · (1 + O_k((1-r_p) · p^{-ε}))` provided that
 `0, h₁, …, h_{k-1}` are distinct mod `p`.
 

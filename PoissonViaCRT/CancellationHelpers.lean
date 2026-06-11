@@ -19,7 +19,7 @@ import PoissonViaCRT.CancellationInfra
 import PoissonViaCRT.MobiusSynthesis
 
 /-!
-# Cancellation Helpers for Proposition 3.6
+# Cancellation Helpers for Proposition 11
 This file contains the key deviation bound used in `complete_period_cancellation_apply`.
 The bound states that the deviation sum (sum of `N_k(0::h) - μ` over the box) is
 controlled by the boundary terms after complete period cancellation.
@@ -41,7 +41,7 @@ open Finset BigOperators Classical
 namespace PoissonCRT
 
 /-- **Möbius deviation bound**: The product `|deviation_expression| · s` is uniformly
-bounded over all `q`. This is the core mathematical content of Proposition 3.6,
+bounded over all `q`. This is the core mathematical content of Proposition 11,
 established via the Möbius inversion decomposition (§3.2 of Granville–Kurlberg).
 
 The bound uses:

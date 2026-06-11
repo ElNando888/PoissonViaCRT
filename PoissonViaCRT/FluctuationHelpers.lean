@@ -18,7 +18,7 @@ import PoissonViaCRT.Defs
 import PoissonViaCRT.TupleCount
 
 /-!
-# Helper lemmas for the fluctuation bound (Proposition 3.6)
+# Helper lemmas for the fluctuation bound (Proposition 11)
 -/
 
 open Finset BigOperators
