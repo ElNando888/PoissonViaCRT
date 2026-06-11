@@ -2,7 +2,11 @@
     "challenge_module": "Challenge",
     "solution_module": "Solution",
     "theorem_names": [
-        "GK08_prop_11_lpbb"
+        "GK08_prop_11_lpbb",
+        "GK08_prop_11_sfell",
+        "GK08_prop_11_afoeel",
+        "GK08_prop_11_cfoaf",
+        "GK08_prop_11_dzoceq"
     ],
     "permitted_axioms": [
         "propext",

@@ -12,6 +12,42 @@ lemma GK08_prop_11_lpbb (m : ℕ) (X : Box m) :
         C * s ^ ((m : ℤ) - 1) := by
   exact lattice_point_box_bound m X
 
+lemma GK08_prop_11_sfell (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (hsp : ∀ (p : ℕ), p.Prime →
+      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε)) :
+    ε ≤ lambdaExponent k := by
+  exact spacing_forces_eps_le_lambda ε hε k hk Ω hΩ hsp
+
+lemma GK08_prop_11_afoeel (ε : ℝ) (k : ℕ) (hk : 2 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (hsp : ∀ (p : ℕ), p.Prime →
+      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
+    (heq : ε = lambdaExponent k) :
+    ∀ (p : ℕ), p.Prime → (Ω p).card = p := by
+  exact all_full_of_eps_eq_lambda ε k hk Ω hΩ hsp heq
+
+lemma GK08_prop_11_cfoaf (q : ℕ) [NeZero q]
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hall : ∀ (p : ℕ), p.Prime → (Ω p).card = p) :
+    (crtSubset q Ω).card = q := by
+  exact crtSubset_full_of_all_full q Ω hall
+
+lemma GK08_prop_11_dzoceq {k : ℕ} (hk : 2 ≤ k) (q : ℕ) [NeZero q]
+    (Ω : ∀ p : ℕ, Finset (ZMod p)) (X : Box (k - 1))
+    (hfull : (crtSubset q Ω).card = q) :
+    let Ω_q := crtSubset q Ω
+    let s := (q : ℝ) / Ω_q.card
+    |(1 / (Ω_q.card : ℝ)) *
+      ∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+          Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+        (fun h => inScaledBox X s (fun _ => 0) h)),
+      ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
+        (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| * s = 0 := by
+  exact deviation_zero_of_card_eq_q hk q Ω X hfull
+
 theorem GK08_thm_12
     (ε : ℝ) (hε : 0 < ε) (K : ℕ) (hK : 2 ≤ K)
     (Ω : ∀ p : ℕ, Finset (ZMod p))

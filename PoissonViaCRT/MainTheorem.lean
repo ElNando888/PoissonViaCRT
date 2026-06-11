@@ -17,7 +17,7 @@ Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 import PoissonViaCRT.Defs
 import PoissonViaCRT.TupleCount
 import PoissonViaCRT.LatticePointBound
-import PoissonViaCRT.CancellationHelpers
+import PoissonViaCRT.MobiusSynthesis
 
 set_option linter.unusedVariables false
 
@@ -79,59 +79,6 @@ theorem tupleCount_crt_mul {q₁ q₂ : ℕ} [NeZero q₁] [NeZero q₂]
     refine ⟨(ZMod.chineseRemainder hcop).symm (b₁, b₂), ?_, ?_⟩ <;>
       simp_all +decide
     simp_all +decide [ZMod.chineseRemainder]
-
-/-! ### Lemma 10: Average of ε_k is zero
-
-For any prime `p` and set `Ω_p ⊆ ℤ/pℤ`,
-$$\sum_{\mathbf{h} \in (\mathbb{Z}/p\mathbb{Z})^{k-1}} \varepsilon_k(\mathbf{h}, p) = 0.$$
-
-This follows from `∑_h N_k(h, Ω) = |Ω|^k`, and is stated in its fundamental form.
--/
-
-/-- **Lemma 10 (reformulation)**: With `h₀ = 0` fixed, the sum of `N_{k+1}(0 :: g, Ω)`
-over all `g : (ℤ/qℤ)^k` equals `|Ω|^{k+1}`. -/
-theorem epsilonAvgZero {q : ℕ} [NeZero q] (Ω : Finset (ZMod q)) :
-    ∑ g : Fin k → ZMod q, tupleCount Ω (Fin.cons 0 g) = Ω.card ^ (k + 1) :=
-  tupleCount_sum_cons_eq Ω
-
-/-! ### The error decomposition (§3.2)
-
-The key identity: for squarefree `q`,
-$$N_k(\mathbf{h}, q) = r_q^{k-1} \cdot |\Omega_q| \cdot \sum_{d \mid q} e_k(\mathbf{h}, d)$$
-where `e_k(h, 1) = 1` and `e_k(h, d) = ∏_{p|d} ε_k(h, p)` for `d > 1`.
-
-The `k`-level correlation decomposes as:
-$$R_k(X, \Omega_q) = \operatorname{vol}(X) + O(1/s_q) + \text{Error}$$
-where
-$$\text{Error} = r_q^{k-1} \sum_{\substack{d \mid q \\ d > 1}}
-  \sum_{\mathbf{h} \in s_q X \cap \mathbb{Z}^{k-1}} e_k(\mathbf{h}, d).$$
--/
-
-/-- **Equation (3.6)**: The sum of `ε_k(h, p)` over all `h ∈ (ℤ/pℤ)^k` vanishes for `k ≥ 1`.
-This follows from `∑_h N_k(h, Ω) = p · |Ω|^k`. -/
-theorem epsilon_sum_vanishes {p : ℕ} [NeZero p] (Ω : Finset (ZMod p)) (hΩ : Ω.card ≠ 0)
-    (hk : 1 ≤ k) :
-    ∑ h : Fin k → ZMod p, epsilonError Ω h = 0 := by
-  simp only [epsilonError, hΩ, ite_false]
-  have hc : (Ω.card : ℝ) ≠ 0 := Nat.cast_ne_zero.mpr hΩ
-  have hp : (p : ℝ) ≠ 0 := Nat.cast_ne_zero.mpr (NeZero.ne p)
-  have hdenom : (Ω.card : ℝ) ^ k / (p : ℝ) ^ (k - 1) ≠ 0 :=
-    div_ne_zero (pow_ne_zero _ hc) (pow_ne_zero _ hp)
-  simp_rw [div_sub_one hdenom]
-  rw [← Finset.sum_div, div_eq_zero_iff]
-  left
-  rw [Finset.sum_sub_distrib]
-  have h1 : (∑ x : Fin k → ZMod p, (tupleCount Ω x : ℝ)) = (p : ℝ) * (Ω.card : ℝ) ^ k :=
-    mod_cast tupleCount_sum_eq (k := k) Ω
-  have h2 : (∑ _ : Fin k → ZMod p, ((Ω.card : ℝ) ^ k / (p : ℝ) ^ (k - 1))) =
-      (p : ℝ) ^ k * ((Ω.card : ℝ) ^ k / (p : ℝ) ^ (k - 1)) := by
-    rw [Finset.sum_const, Finset.card_univ]
-    simp [ZMod.card, nsmul_eq_mul]
-  rw [h1, h2]
-  obtain ⟨n, rfl⟩ : ∃ n, k = n + 1 := ⟨k - 1, by omega⟩
-  simp only [Nat.add_sub_cancel]
-  field_simp
-  ring
 
 /-! ### Proposition 11 (Messy error bound)
 
@@ -259,39 +206,6 @@ lemma lattice_point_box_bound (m : ℕ) (X : Box m) :
         nlinarith
 
 /--
-**Euler product convergence**: Under the WD hypothesis with parameter `ε`,
-for any divisor `d > 1` of `q`, the product of local WD error factors is bounded
-by a universal constant. Since `0 ≤ 1 - |Ω_p|/p ≤ 1` and `p^{-ε} ≤ 1`, the product
-is trivially bounded by `C = 1`.
--/
-lemma euler_product_convergence
-    (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
-    (Ω : ∀ p : ℕ, Finset (ZMod p))
-    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
-    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
-    (hsp : ∀ (p : ℕ), p.Prime →
-      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε)) :
-    ∃ C : ℝ, 0 < C ∧ ∀ (q : ℕ) [NeZero q],
-      ∀ (d : ℕ), d ∣ q → 1 < d →
-        |∏ p ∈ d.primeFactors,
-          ((1 : ℝ) - (Ω p).card / p) * (p : ℝ) ^ (-ε)| ≤ C := by
-  refine ⟨ 1, zero_lt_one, fun q hq d hd hd' => ?_ ⟩
-  rw [ Finset.abs_prod ]
-  refine Finset.prod_le_one ?_ ?_ <;> norm_num
-  · exact fun _ _ _ _ => by positivity
-  · intro p pp dp _
-    rw [ abs_of_nonneg ( Real.rpow_nonneg ( Nat.cast_nonneg _ ) _ ) ]
-    rw [ abs_of_nonneg ] <;> norm_num
-    · exact le_trans
-        ( mul_le_of_le_one_left ( by positivity ) ( sub_le_self _ ( by positivity ) ) )
-        ( by simpa using Real.rpow_le_rpow_of_exponent_le
-              ( mod_cast pp.one_lt.le ) ( neg_nonpos.mpr hε.le ) )
-    · rw [ div_le_iff₀ ] <;> norm_cast <;> haveI := Fact.mk pp <;> simp_all only [one_mul,
-        ge_iff_le, gt_iff_lt]
-      · haveI := Fact.mk pp; exact le_trans ( Finset.card_le_univ _ ) ( by norm_num )
-      · exact pp.pos
-
-/--
 **Complete period cancellation application**: For a divisor `d > 1` of `q`,
 the sum of the error product over lattice points `h` in the scaled box `sX` is
 bounded using complete period cancellation.
@@ -317,7 +231,7 @@ lemma complete_period_cancellation_apply
       ∀ (q : ℕ) [NeZero q] (_hq_sq : Squarefree q),
         |kCorrelation (crtSubset q Ω) X - X.volume| ≤
           C * ((q : ℝ) / (crtSubset q Ω).card) ^ (-δ) := by
-  obtain ⟨δ₀, hδ₀_pos, h_dev_unif⟩ := deviation_sum_bound_uniform ε hε k hk Ω hΩ hWD hsp hrp
+  obtain ⟨δ₀, hδ₀_pos, h_dev_unif⟩ := deviation_uniform_exponent ε hε k hk Ω hΩ hWD hsp hrp
   refine ⟨min δ₀ 1, lt_min hδ₀_pos one_pos, fun X => ?_⟩
   obtain ⟨C_lp, hC_lp_pos, hC_lp_bound⟩ := h_lp X
   obtain ⟨K, hK_pos, hK_bound⟩ := h_dev_unif X C_lp hC_lp_pos hC_lp_bound
@@ -511,6 +425,8 @@ public theorem mainTheorem_precise
   have hrp_k : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ) := hrp k hk2 hk_le
   have := error_bound_simplified ε hε k hk2 Ω hΩ (fun p _ => hWD p k hk_le) hsp_k hrp_k
   exact ⟨this.choose, this.choose_spec.1, this.choose_spec.2 X⟩
+
+/-! ### Special case: Hooley's theorem (integers coprime to q) -/
 
 /-- **Hooley's theorem** (recovered from Theorem 1): For `Ω_p = {x ∈ ℤ/pℤ : x ≠ 0}`
 (integers coprime to `p`), the tuple counting function satisfies
