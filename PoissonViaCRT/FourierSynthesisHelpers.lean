@@ -9,6 +9,7 @@ Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 
 import PoissonViaCRT.FourierANOVA
 import PoissonViaCRT.DeviationBoundHelper
+import PoissonViaCRT.LossyDivisorBound
 import Mathlib.Analysis.SpecialFunctions.Pow.NNReal
 
 set_option linter.unusedVariables false
@@ -125,27 +126,29 @@ lemma dft_g_norm_tight_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
         exact hq_sq.squarefree_of_dvd ( freqDivisor_dvd q ( k - 1 ) ξ )
 
 
+/-- **Analytic Lossy Divisor Sum Bound.**
+This lemma bounds the lossy divisor sum by `C · s^{-ε/2}`, where `s = q / |Ω_q|`.
 
-/-- **Analytic Lossy Divisor Sum Bound**
-This lemma bounds the lossy divisor sum by `C s^{-ε/2}`.
-Since `k^{ω(d)} d^{-ε} \log d \le d(q)^2 \log q \le q^{o(1)}`, and `hsp` forces
-`s \ge q^{\lambda - ε}`, the sum decays as `s^{-1} q^{o(1)} \le s^{-1} s^{o(1)} \le s^{-ε/2}`
-(for `ε < 1`). Formalizing this analytic decay requires the classical sub-polynomial growth bound
-for the divisor function `d(n) \le C_δ n^δ` for all `δ > 0`.
-While elementary, this precise upper bound for the divisor function is currently absent
-from both Mathlib and `PrimeNumberTheoremAnd` (which only possess the crude `d(n) \le n` bound).
-Thus, it is left as a documented sorry.
--/
+Note on the hypothesis `hsp`:  the original statement of this lemma carried the hypothesis
+in the form `(p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε)`, an *upper* bound on the
+local spacing.  That statement is in fact **false**: taking `Ω p = univ` (so `|Ω_p| = p`)
+satisfies it for every prime, yet then `|Ω_q| = q`, `s = 1`, and the left-hand side equals
+`∑_{d ∣ q, d ≠ 1} 2^{ω(d)} d^{-ε} (log d + 1)`, which is unbounded as `q` ranges over products of
+distinct primes, while the right-hand side stays `≤ C`.  Both the previous doc-string of this
+lemma and the supplied proof blueprint instead require that `hsp` forces `s ≥ q ^ (λ - ε)`, i.e.
+a *lower* bound on the spacing.  We therefore correct `hsp` to the lower bound
+`(p : ℝ) ^ (lambdaExponent k - ε) ≤ (p : ℝ) / (Ω p).card`, which is exactly what makes
+`s ≥ q ^ (λ - ε)` hold and the lemma true. -/
 lemma lossy_divisor_sum_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : k = 2)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
-    (hsp : ∀ (p : ℕ), p.Prime → (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
+    (hsp : ∀ (p : ℕ), p.Prime → (p : ℝ) ^ (lambdaExponent k - ε) ≤ (p : ℝ) / (Ω p).card)
     (hlt : ε < lambdaExponent k) :
     ∃ C : ℝ, 0 < C ∧ ∀ (q : ℕ) [NeZero q], Squarefree q →
     ((1 : ℝ) / ((crtSubset q Ω).card : ℝ)) * (q : ℝ) ^ (k - 1)
       * ∑ d ∈ q.divisors.erase 1,
         ((k : ℝ) ^ d.primeFactors.card * (d : ℝ) ^ (-(1 + ε))
           * (∏ p ∈ q.primeFactors, localMean k Ω p) * ((d : ℝ) / (q : ℝ) * (Real.log (d : ℝ) + 1)))
-      ≤ C * ((q : ℝ) / (crtSubset q Ω).card) ^ (-(ε / 2)) := by
-  admit
+      ≤ C * ((q : ℝ) / (crtSubset q Ω).card) ^ (-(ε / 2)) :=
+  lossy_divisor_sum_bound_core ε hε k hk Ω hsp hlt
 
 end PoissonCRT
