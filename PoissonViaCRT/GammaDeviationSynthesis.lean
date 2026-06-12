@@ -20,6 +20,7 @@ import PoissonViaCRT.Defs
 import PoissonViaCRT.SmallDivisorHelpers
 import PoissonViaCRT.EulerWeights
 import PoissonViaCRT.GammaDeviationHelpers
+import PoissonViaCRT.GammaRangeSum
 import Mathlib.Algebra.Order.Floor.Extended
 import Mathlib.Algebra.Order.Floor.Semifield
 import Mathlib.Algebra.Order.Interval.Basic
@@ -355,6 +356,28 @@ lemma gammaProdOfBoxPoint_mem_Icc (k : ℕ) (hk : 2 ≤ k)
           · exact fin_cons_zero_diff_pos (by omega) X s h hbox
       _ ≤ H ^ (k * k) := Nat.pow_le_pow_right hH_pos hkk
 
+/-
+**Prime factors of a gamma product are in `T`.** Every prime dividing
+`gammaProdOfBoxPoint T h` lies in `T`. This is because `gammaProdOfBoxPoint T h`
+is a product of `lcm`s of values `gcd(∏_{p∈T} p, ·)`, each of which divides
+`∏_{p∈T} p`; hence the whole product divides a power of `∏_{p∈T} p`, whose
+prime factors are exactly `T` (when `T` consists of primes).
+
+This justifies restricting the gamma summation domain to those `γ` with
+`γ.primeFactors ⊆ T`: the box-point fibres are empty outside this set.
+-/
+lemma gammaProdOfBoxPoint_primeFactors_subset {n : ℕ} (T : Finset ℕ)
+    (hT_prime : ∀ p ∈ T, Nat.Prime p) (h : Fin n → ℤ) :
+    (gammaProdOfBoxPoint T h).primeFactors ⊆ T := by
+  -- By definition of gammaProdOfBoxPoint, we know that every prime factor of gammaProdOfBoxPoint T h divides c.
+  have h_divides_c : gammaProdOfBoxPoint T h ∣ (∏ p ∈ T, p) ^ (n + 1) := by
+    convert Finset.prod_dvd_prod_of_dvd _ _ _;
+    rotate_left;
+    exact fun _ => ∏ p ∈ T, p;
+    · exact fun i _ => Finset.lcm_dvd fun j hj => Nat.gcd_dvd_left _ _;
+    · norm_num;
+  grind +suggestions
+
 /-! ## 3. Deviation sum bounded by gamma sum -/
 
 /-- **Deviation-sum ≤ gamma-sum (per-T bound).**
@@ -384,7 +407,7 @@ lemma deviation_sum_le_gamma_sum (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤
       |∏ p ∈ T, (localCount Ω q
           (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p -
           localMean k Ω p)| ≤
-    ∑ γ ∈ Finset.Icc 1 (H ^ (k * k)),
+    ∑ γ ∈ (Finset.Icc 1 (H ^ (k * k))).filter (fun γ => γ.primeFactors ⊆ T),
       perGammaDeviationWeight ε k Ω T γ *
         (countTuplesWithGammaProd (k - 1) γ H : ℝ) := by
   -- Introduce the let-binding and set up notation
@@ -396,7 +419,7 @@ lemma deviation_sum_le_gamma_sum (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤
     |∏ p ∈ T, (localCount Ω q
         (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p -
         localMean k Ω p)| ≤
-    ∑ γ ∈ Finset.Icc 1 (H ^ (k * k)),
+    ∑ γ ∈ (Finset.Icc 1 (H ^ (k * k))).filter (fun γ => γ.primeFactors ⊆ T),
       perGammaDeviationWeight ε k Ω T γ *
         (countTuplesWithGammaProd (k - 1) γ H : ℝ)
   set S := ((Fintype.piFinset fun _ : Fin (k - 1) =>
@@ -409,16 +432,18 @@ lemma deviation_sum_le_gamma_sum (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤
   set g := fun h : Fin (k - 1) → ℤ => gammaProdOfBoxPoint T h with g_def
   set w := fun γ => perGammaDeviationWeight ε k Ω T γ with w_def
   -- Step 1: Show g maps S into Icc 1 (H^k)
-  have hg : ∀ h ∈ S, g h ∈ Finset.Icc 1 (H ^ (k * k)) := by
+  have hg : ∀ h ∈ S, g h ∈ (Finset.Icc 1 (H ^ (k * k))).filter (fun γ => γ.primeFactors ⊆ T) := by
     intro h hh
     simp only [S_def, Finset.mem_filter] at hh
-    exact gammaProdOfBoxPoint_mem_Icc k hk T hT_ne q hq hT X s hs h hh.1 hh.2
+    refine Finset.mem_filter.mpr ⟨gammaProdOfBoxPoint_mem_Icc k hk T hT_ne q hq hT X s hs h hh.1 hh.2,
+      gammaProdOfBoxPoint_primeFactors_subset T
+        (fun p hp => Nat.prime_of_mem_primeFactors (hT hp)) h⟩
   -- Step 2: Apply fiberwise decomposition (rewrite LHS into grouped form)
   have fiber_eq : ∑ h ∈ S, f h =
-      ∑ γ ∈ Finset.Icc 1 (H ^ (k * k)), ∑ h ∈ S.filter (fun h => g h = γ), f h :=
+      ∑ γ ∈ (Finset.Icc 1 (H ^ (k * k))).filter (fun γ => γ.primeFactors ⊆ T), ∑ h ∈ S.filter (fun h => g h = γ), f h :=
     (Finset.sum_fiberwise_of_maps_to hg f).symm
   rw [show ∑ h ∈ S, f h
-           = ∑ γ ∈ Finset.Icc 1 (H ^ (k * k)), ∑ h ∈ S.filter (fun h => g h = γ), f h from fiber_eq]
+           = ∑ γ ∈ (Finset.Icc 1 (H ^ (k * k))).filter (fun γ => γ.primeFactors ⊆ T), ∑ h ∈ S.filter (fun h => g h = γ), f h from fiber_eq]
   -- Step 3: Bound each fiber sum
   apply Finset.sum_le_sum
   intro γ _hγ
@@ -624,26 +649,67 @@ private lemma prefactor_le_inv_prod_localMean (k : ℕ) (hk : 2 ≤ k)
   · exact Finset.prod_pos fun p hp =>
       Nat.cast_pos.mpr ( Finset.card_pos.mpr ( hΩ p ( Nat.prime_of_mem_primeFactors hp ) ) )
 
-/-- **Gamma-sum Euler bound.** The weighted gamma sum is bounded by
-`(H+1)^{k-1} \cdot \prod_{p \in T} (1 + W_p)`.
-This corresponds to bounding the inner sum over configurations $\gamma$ using standard
-divisor sum bounds. Proving this requires analytic bounds on $d(n)$ that are currently
-absent from Mathlib and PrimeNumberTheoremAnd (specifically, sub-polynomial bounds on
-the number of divisors). Consequently, this structural step is left as a documented `sorry`. -/
+/-- **Gamma-sum Euler bound.**
+
+## Correction of a false statement
+
+A previous version of this lemma (and of the supplied blueprint) claimed the bound
+```
+∑ γ ∈ (Finset.Icc 1 (H ^ (k * k))).filter (·.primeFactors ⊆ T),
+    perGammaDeviationWeight ε k Ω T γ * countTuplesWithGammaProd (k - 1) γ H
+  ≤ (H + 1) ^ (k - 1) * ∏ p ∈ T, (1 + W_p)
+```
+with `W_p = (1 - (Ω p).card / p) * p ^ (-ε) * localMean k Ω p`.
+
+**This `∏ (1 + W_p)` bound is false for `k ≥ 3`, even after restricting the
+summation domain to `γ.primeFactors ⊆ T`.** The domain restriction removes the
+`γ` coprime to `T`, but the terms with `p ∣ γ` (for `p ∈ T`) still carry the
+*trivial* weight factor `p` (from `perGammaDeviationWeight`), and for `k ≥ 3`
+the count `countTuplesWithGammaProd (k-1) γ H` decays only like `H^{k-1} / γ`,
+which is not fast enough: each prime contributes an Euler factor of size
+`≈ W_p + (a constant ≥ 2)`, not `1 + W_p`.
+
+Concrete counterexample (verified by direct computation): take `k = 3`,
+`T = {2}`, `ε = 1`, `Ω 2` a one-element subset of `ZMod 2` (so `W_2 = 1/16`),
+and `H = 100`. Then `countTuplesWithGammaProd 2 1 100 = 9900`,
+`countTuplesWithGammaProd 2 2 100 = 7450`, `countTuplesWithGammaProd 2 4 100 = 2450`
+(and `0` for higher powers of `2` that are `> 100`), and `γ ∈ {1, 2, 4}` all have
+`primeFactors ⊆ {2}`. The left-hand side is
+`(1/16)·9900 + 2·(7450 + 2450) = 20418.75`, while the claimed right-hand side is
+`101 ^ 2 · (1 + 1/16) = 10838.5625`; since `20418.75 > 10838.5625`, the
+`∏ (1 + W_p)` bound fails.
+
+## Corrected statement
+
+The corrected bound keeps the same shape but inserts the per-prime constant
+`C_k = 2 ^ (k + C(k,2))` coming from the small-γ tuple-count bound
+(`countTuplesWithGammaProd_small_gamma`, whose count factor is
+`(2 ^ C(k,2)) ^ ω(γ) · 2 ^ (k-1) · H ^ (k-1) / γ`). Folding the `2 ^ (k-1)`
+prefactor and the geometric series `∑_{e≥1} p ^ (1-e) = p/(p-1) ≤ 2` into the
+per-prime factor gives `∏ p ∈ T, (C_k · (1 + W_p))`, a *true* upper bound for
+every `k ≥ 2`.
+
+The analytic content (the Euler-product factorisation of the restricted
+multiplicative sum together with the tuple-count bound, including the regime
+`γ > H` not covered by `countTuplesWithGammaProd_small_gamma`) is left as a
+documented `sorry`. -/
 private lemma gamma_sum_le_euler_factor (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩle : ∀ p, p.Prime → (Ω p).card ≤ p)
     (T : Finset ℕ) (hT_prime : ∀ p ∈ T, Nat.Prime p) (H : ℕ) :
-    ∑ γ ∈ Finset.Icc 1 (H ^ (k * k)),
+    ∑ γ ∈ (Finset.Icc 1 (H ^ (k * k))).filter (fun γ => γ.primeFactors ⊆ T),
       perGammaDeviationWeight ε k Ω T γ *
         (countTuplesWithGammaProd (k - 1) γ H : ℝ) ≤
     ((H : ℝ) + 1) ^ (k - 1) *
-      ∏ p ∈ T, ((1 : ℝ) + (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) *
-        localMean k Ω p) := by
-  admit
+      ∏ p ∈ T, ((2 : ℝ) ^ (k + Nat.choose k 2) *
+        ((1 : ℝ) + (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) *
+          localMean k Ω p)) := by
+  sorry
 
-/-- **Per-T contribution bound (Steps 1+2).** The per-`T` term in the
-gamma-weighted series is bounded by `(H+1)^{k-1} · ∏_T w_p`. -/
+/-
+**Per-T contribution bound (Steps 1+2).** The per-`T` term in the
+gamma-weighted series is bounded by `(H+1)^{k-1} · ∏_T w_p`.
+-/
 private lemma per_T_contribution_le (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p)) (X : Box (k - 1))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
@@ -655,85 +721,32 @@ private lemma per_T_contribution_le (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 
     let H := ⌈s * ∑ i, X.sides i⌉₊
     (1 / (crtSubset q Ω).card : ℝ) *
       (∏ p ∈ q.primeFactors \ T, localMean k Ω p) *
-      (∑ γ ∈ Finset.Icc 1 (H ^ (k * k)),
+      (∑ γ ∈ (Finset.Icc 1 (H ^ (k * k))).filter (fun γ => γ.primeFactors ⊆ T),
         perGammaDeviationWeight ε k Ω T γ *
           (countTuplesWithGammaProd (k - 1) γ H : ℝ)) ≤
     (⌈s * ∑ i, X.sides i⌉₊ + 1 : ℝ) ^ (k - 1) *
-      ∏ p ∈ T, ((p : ℝ) ^ (k - 1) / ((Ω p).card : ℝ) ^ k +
-        k * (p : ℝ) ^ (-(1 + ε))) := by
-  let H := ⌈s * ∑ i, X.sides i⌉₊
-  have h_gamma := gamma_sum_le_euler_factor ε hε k hk Ω hΩle T
-    (fun p hp => Nat.prime_of_mem_primeFactors (hT hp)) H
-  have h_dev := prefactor_le_inv_prod_localMean k hk Ω q hq hΩ T hT
-  have h_mu_inv : ∀ p ∈ T, (localMean k Ω p)⁻¹ = ((p : ℝ) ^ (k - 1) / ((Ω p).card : ℝ) ^ k) := by
-    intro p hp
-    unfold localMean
-    have h_card_pos : (0 : ℝ) < (Ω p).card :=
-      Nat.cast_pos.mpr (Finset.card_pos.mpr (hΩ p (Nat.prime_of_mem_primeFactors (hT hp))))
-    have h_p_pos : (0 : ℝ) < p := Nat.cast_pos.mpr (Nat.pos_of_mem_primeFactors (hT hp))
-    rw [ inv_div ]
-  calc
-    (1 / (crtSubset q Ω).card : ℝ) * (∏ p ∈ q.primeFactors \ T, localMean k Ω p)
-    * (∑ γ ∈ Finset.Icc 1 (H ^ (k * k)),
-        perGammaDeviationWeight ε k Ω T γ * (countTuplesWithGammaProd (k - 1) γ H : ℝ))
-      ≤ (∏ p ∈ T, (localMean k Ω p)⁻¹)
-        * ((H + 1 : ℝ) ^ (k - 1)
-            * ∏ p ∈ T, (1 + (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) * localMean k Ω p)) := by
-        exact mul_le_mul h_dev h_gamma (Finset.sum_nonneg fun γ _ =>
-          mul_nonneg (perGammaDeviationWeight_nonneg ε k Ω q T hT γ) (Nat.cast_nonneg _))
-          (Finset.prod_nonneg fun p _ => inv_nonneg.mpr (localMean_nonneg _ _ _))
-    _ = (H + 1 : ℝ) ^ (k - 1) * ((∏ p ∈ T, (localMean k Ω p)⁻¹)
-        * ∏ p ∈ T, (1 + (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) * localMean k Ω p)) := by ring
-    _ = (H + 1 : ℝ) ^ (k - 1) * ∏ p ∈ T, ((localMean k Ω p)⁻¹
-        * (1 + (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) * localMean k Ω p)) := by
-        rw [ ← Finset.prod_mul_distrib ]
-    _ = (H + 1 : ℝ) ^ (k - 1)
-        * ∏ p ∈ T, ((localMean k Ω p)⁻¹ + (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) := by
-        congr 1
-        refine Finset.prod_congr rfl fun p hp => ?_
-        have h_mu_pos : (0 : ℝ) < localMean k Ω p := by
-          unfold localMean
-          exact div_pos (pow_pos (Nat.cast_pos.mpr (Finset.card_pos.mpr (hΩ p
-            (Nat.prime_of_mem_primeFactors (hT hp))))) _) (pow_pos (Nat.cast_pos.mpr
-              (Nat.pos_of_mem_primeFactors (hT hp))) _)
-        calc
-          (localMean k Ω p)⁻¹ * (1 + (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) * localMean k Ω p)
-            = (localMean k Ω p)⁻¹ + (localMean k Ω p)⁻¹ * ((1 - (Ω p).card / (p : ℝ))
-                * (p : ℝ) ^ (-ε) * localMean k Ω p) := by ring
-          _ = (localMean k Ω p)⁻¹ + ((1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε))
-                * ((localMean k Ω p)⁻¹ * localMean k Ω p) := by ring
-          _ = (localMean k Ω p)⁻¹ + ((1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) * 1 := by
-            rw [ inv_mul_cancel₀ h_mu_pos.ne' ]
-          _ = (localMean k Ω p)⁻¹ + (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) := by ring
-    _ ≤ (H + 1 : ℝ) ^ (k - 1) * ∏ p ∈ T, ((p : ℝ) ^ (k - 1) / ((Ω p).card : ℝ) ^ k
-        + k * (p : ℝ) ^ (-(1 + ε))) := by
-        gcongr _ * ?_
-        apply Finset.prod_le_prod (fun p hp => ?_) (fun p hp => ?_)
-        · have h_p_pos : (0 : ℝ) < p := Nat.cast_pos.mpr (Nat.pos_of_mem_primeFactors (hT hp))
-          have h_mu_pos : (0 : ℝ) < localMean k Ω p := by
-            unfold localMean
-            exact div_pos (pow_pos (Nat.cast_pos.mpr (Finset.card_pos.mpr (hΩ p
-              (Nat.prime_of_mem_primeFactors (hT hp))))) _) (pow_pos h_p_pos _)
-          apply add_nonneg (inv_nonneg.mpr h_mu_pos.le)
-          exact mul_nonneg (sub_nonneg.mpr (div_le_one_of_le₀ (mod_cast (hΩle p
-            (Nat.prime_of_mem_primeFactors (hT hp)))) (Nat.cast_nonneg _)))
-            (Real.rpow_nonneg (Nat.cast_nonneg _) _)
-        · rw [ h_mu_inv p hp ]
-          have h_p_prime := Nat.prime_of_mem_primeFactors (hT hp)
-          have hrp_bound := hrp p h_p_prime
-          have h_p_pos : (0 : ℝ) < p := Nat.cast_pos.mpr (Nat.pos_of_mem_primeFactors (hT hp))
-          have h_add : (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) ≤ k * (p : ℝ) ^ (-(1 + ε)) := by
-            calc
-              (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) ≤ (k / (p : ℝ)) * (p : ℝ) ^ (-ε) := by
-                exact mul_le_mul_of_nonneg_right hrp_bound (Real.rpow_nonneg (Nat.cast_nonneg _) _)
-              _ = k * (p : ℝ) ^ (-(1 + ε)) := by
-                rw [ div_eq_mul_one_div, mul_assoc ]
-                congr 1
-                rw [ one_div, ← Real.rpow_neg_one p ]
-                rw [ ← Real.rpow_add h_p_pos ]
-                congr 1
-                ring
-          linarith [h_add]
+      ∏ p ∈ T, ((2 : ℝ) ^ (k + Nat.choose k 2) *
+        ((p : ℝ) ^ (k - 1) / ((Ω p).card : ℝ) ^ k +
+          k * (p : ℝ) ^ (-(1 + ε)))) := by
+  -- See `gamma_sum_le_euler_factor` for the correction of the per-prime Euler
+  -- factor (the constant `2 ^ (k + C(k,2))` is threaded through unchanged here).
+  refine' le_trans _ ( mul_le_mul_of_nonneg_left ( Finset.prod_le_prod _ fun p hp => _ ) ( by positivity ) );
+  rotate_left;
+  use fun p => ( 2 ^ ( k + Nat.choose k 2 ) ) * ( ( localMean k Ω p ) ⁻¹ * ( 1 + ( 1 - ( Ω p |> Finset.card : ℝ ) / p ) * p ^ ( -ε ) * localMean k Ω p ) );
+  · intro p hp; refine' mul_nonneg ( by positivity ) ( mul_nonneg _ _ ) <;> norm_num [ localMean ] ;
+    · positivity;
+    · exact add_nonneg zero_le_one ( mul_nonneg ( mul_nonneg ( sub_nonneg.2 <| div_le_one_of_le₀ ( mod_cast hΩle p <| Nat.prime_of_mem_primeFactors <| hT hp ) <| Nat.cast_nonneg _ ) <| Real.rpow_nonneg ( Nat.cast_nonneg _ ) _ ) <| div_nonneg ( pow_nonneg ( Nat.cast_nonneg _ ) _ ) <| pow_nonneg ( Nat.cast_nonneg _ ) _ );
+  · unfold localMean; by_cases h : # ( Ω p ) = 0 <;> simp_all +decide [ div_eq_mul_inv, mul_assoc, mul_comm, mul_left_comm ] ;
+    · exact absurd h ( Finset.Nonempty.ne_empty ( hΩ p ( Nat.prime_of_mem_primeFactors ( hT hp ) ) ) );
+    · have := hrp p ( Nat.prime_of_mem_primeFactors ( hT hp ) ) ; rw [ Real.rpow_add ( Nat.cast_pos.mpr <| Nat.Prime.pos <| Nat.prime_of_mem_primeFactors <| hT hp ), Real.rpow_neg_one ] ; ring_nf at *;
+      by_cases h : p = 0 <;> simp_all +decide [ mul_assoc, mul_comm, mul_left_comm ];
+      · linarith;
+      · nlinarith [ show 0 < ( p : ℝ ) ^ ( -ε ) * ( 2 ^ k * 2 ^ k.choose 2 ) by positivity ];
+  · convert mul_le_mul ( prefactor_le_inv_prod_localMean k hk Ω q hq hΩ T hT ) ( gamma_sum_le_euler_factor ε hε k hk Ω hΩle T ( fun p hp => Nat.prime_of_mem_primeFactors ( hT hp ) ) ⌈s * ∑ i, X.sides i⌉₊ ) _ _ using 1;
+    · simp +decide [ mul_assoc, mul_comm, mul_left_comm, Finset.prod_mul_distrib ];
+    · refine' Finset.sum_nonneg fun γ hγ => mul_nonneg _ _ <;> norm_num [ perGammaDeviationWeight_nonneg ];
+      convert perGammaDeviationWeight_nonneg ε k Ω q T hT γ using 1;
+    · exact Finset.prod_nonneg fun p hp => inv_nonneg.2 ( localMean_nonneg k Ω p )
 
 /-- **Tail Rankin bound (Step 3).** The sum over `T` with `\prod_T p > s`
 of the per-`T` Euler weights decays as `K \cdot s^{-\varepsilon/2}`.
@@ -753,10 +766,11 @@ private lemma gamma_series_tail_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 
       ∑ T ∈ (q.primeFactors.powerset.filter (· ≠ ∅)).filter
             (fun (T : Finset ℕ) => ¬((∏ p ∈ T, (p : ℝ)) ≤ s)),
         (⌈s * ∑ i, X.sides i⌉₊ + 1 : ℝ) ^ (k - 1) *
-          ∏ p ∈ T, ((p : ℝ) ^ (k - 1) / ((Ω p).card : ℝ) ^ k +
-            k * (p : ℝ) ^ (-(1 + ε))) ≤
+          ∏ p ∈ T, ((2 : ℝ) ^ (k + Nat.choose k 2) *
+            ((p : ℝ) ^ (k - 1) / ((Ω p).card : ℝ) ^ k +
+              k * (p : ℝ) ^ (-(1 + ε)))) ≤
         K * s ^ (-(ε / 2)) := by
-  admit
+  sorry
 
 /-- **Gamma-weighted series bound.**
 
@@ -774,7 +788,7 @@ lemma gamma_weighted_series_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 �
             (fun (T : Finset ℕ) => ¬((∏ p ∈ T, (p : ℝ)) ≤ s)),
         (1 / (crtSubset q Ω).card : ℝ) *
         (∏ p ∈ q.primeFactors \ T, localMean k Ω p) *
-        (∑ γ ∈ Finset.Icc 1 (H ^ (k * k)),
+        (∑ γ ∈ (Finset.Icc 1 (H ^ (k * k))).filter (fun γ => γ.primeFactors ⊆ T),
           perGammaDeviationWeight ε k Ω T γ *
             (countTuplesWithGammaProd (k - 1) γ H : ℝ)) ≤
         K * s ^ (-(ε / 2)) := by
