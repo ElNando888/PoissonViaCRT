@@ -23,4 +23,4 @@ name = "PoissonViaCRT"
 name = "Challenge"
 
 [[lean_lib]]
-name = "Solution"
+name = "Conformance"
