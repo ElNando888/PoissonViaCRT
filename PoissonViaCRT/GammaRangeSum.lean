@@ -132,7 +132,21 @@ theorem countTuplesWithGammaProd_small_gamma (γ H : ℕ)
       gcongr
       exact_mod_cast countGammaStructures_le γ hγ
 
-/-! ### Large-γ bounds on M_γ(H) (GK Corollary 5) -/
+/-! ### Large-γ bounds on M_γ(H) (GK Corollary 5)
+
+This section formalizes the large-divisor counting bounds of Granville–Kurlberg, Corollary 5.
+The overall structure follows the three-step plan of §4.2:
+
+* **Step 1** (`countTuplesWithGamma_le_div_prod_min`): the `D(Γ)` tuple bound
+  `M_Γ(H) ≤ 2ⁿ Hⁿ / ∏ᵢ min(γᵢ, H)`, a direct consequence of `countTuples_bound_prop`.
+* **Step 2** (`gk_prodMin_lower_med`, `gk_prodMin_lower_large`): the pure real-analysis
+  optimization, bounding `∏ᵢ min(γᵢ, H)` from below for a sequence satisfying the greedy
+  recurrence `γ_{r+1} ≤ H·γ_r`.  This is the discrete-calculus heart of GK §4.2 and is the
+  only part left as a documented `sorry`.
+* **Step 3** (`countTuplesWithGammaProd_med_gamma`, `countTuplesWithGammaProd_large_gamma`):
+  combining the per-structure bound with the structure count `countGammaStructures_le` and the
+  decomposition `countTuplesWithGammaProd_le_sum`.
+-/
 
 /-- The threshold `w(τ)` for the piecewise bounds on `M_γ(H)` in the large-γ regime.
 Following GK Corollary 5, for `n` (which corresponds to $k-1$ in GK when counting $k$ tuples),
@@ -145,26 +159,292 @@ noncomputable def tupleBoundWeight (n : ℕ) (τ : ℕ) : ℝ :=
 noncomputable def tauOne (n : ℕ) : ℕ :=
   ⌊Real.sqrt (2 * (n : ℝ) + 2 + 1/4) - 1/2⌋₊
 
-/-- **Intermediate-γ bound**: `M_γ(H) ≤ C^ω(γ) · H^{n+1.5-\sqrt{2n+2.25}}` when `H^{w(0)} < γ ≤ H^{w(τ_1)}`.
-This is left as an honest `sorry`, reflecting the lattice-counting bounds from GK Corollary 5. -/
+/-! #### Step 1: the `D(Γ)` tuple bound -/
+
+/-
+Elementary real inequality: `H / g + 1 ≤ 2·H / min g H` for `g ≥ 1` and `H > 0`.
+For `g ≤ H` this reads `H/g + 1 ≤ 2H/g`, i.e. `1 ≤ H/g`; for `g > H` it reads
+`H/g + 1 ≤ 2`, i.e. `H/g ≤ 1`.
+-/
+private lemma real_div_add_one_le_two_mul_div_min {g H : ℝ} (hg : 1 ≤ g) (hH : 0 < H) :
+    H / g + 1 ≤ 2 * H / min g H := by
+  rw [ min_def ] ; split_ifs <;> ring_nf <;> nlinarith [ inv_mul_cancel₀ ( ne_of_gt hH ), inv_mul_cancel₀ ( ne_of_gt ( by linarith : 0 < g ) ), mul_inv_cancel₀ ( ne_of_gt ( by linarith : 0 < g ) ), mul_inv_cancel₀ ( ne_of_gt hH ), mul_pos hH ( by linarith : 0 < g ) ] ;
+
+/-
+**Step 1 — the `D(Γ)` tuple bound.** For a `GammaStructure` on `n+1` indices,
+`M_Γ(H) ≤ 2ⁿ · Hⁿ / ∏ᵢ min(γᵢ, H)`, where `γᵢ = gammaRow i.succ` are the row LCMs.
+This sharpens `countTuples_bound_prop` (`M_Γ(H) ≤ ∏ᵢ (H/γᵢ + 1)`) using the elementary
+inequality `H/γᵢ + 1 ≤ 2H / min(γᵢ, H)`.
+-/
+theorem countTuplesWithGamma_le_div_prod_min {n : ℕ} (Γ : GammaStructure (n + 1)) (H : ℕ)
+    (hH : 0 < H) :
+    (countTuplesWithGamma Γ H : ℝ) ≤
+      2 ^ n * (H : ℝ) ^ n / ∏ i : Fin n, min (Γ.gammaRow i.succ : ℝ) (H : ℝ) := by
+  refine le_trans ( countTuples_bound_prop Γ H ) ?_;
+  refine' le_trans ( Finset.prod_le_prod _ fun i _ => real_div_add_one_le_two_mul_div_min _ _ ) _;
+  · exact fun _ _ => add_nonneg ( div_nonneg ( Nat.cast_nonneg _ ) ( Nat.cast_nonneg _ ) ) zero_le_one;
+  · exact_mod_cast GammaStructure.gammaRow_cast_ge_one Γ i.succ;
+  · positivity;
+  · norm_num [ Finset.prod_mul_distrib, Finset.prod_div_distrib ];
+    rw [ mul_pow ]
+
+/-! #### Reduction helpers: permutation invariance, entry bound, row product -/
+
+/-
+The squarefree part `c(Γ) = rad γ(Γ)` is invariant under a permutation fixing `0`,
+since `γ(Γ)` is (`GammaStructure.gammaProd_perm_invariant`).
+-/
+lemma GammaStructure.sqfreepart_permute {n : ℕ} (Γ : GammaStructure (n + 1))
+    (σ : Equiv.Perm (Fin (n + 1))) (hσ : σ 0 = 0) :
+    (Γ.permute σ).sqfreepart = Γ.sqfreepart := by
+  unfold GammaStructure.sqfreepart; have := GammaStructure.gammaProd_perm_invariant ( Nat.succ_pos n ) Γ σ hσ; aesop;
+
+/-
+The tuple count `M_Γ(H)` is invariant under relabelling the indices by a permutation
+fixing `0`: the bijection `h ↦ h ∘ σ` on tuples preserves the box `[0,H]`, the anchor
+`h 0 = 0`, distinctness, and the gcd structure (since `c(Γ)` is permutation invariant).
+-/
+theorem countTuplesWithGamma_permute_eq {n : ℕ} (Γ : GammaStructure (n + 1))
+    (σ : Equiv.Perm (Fin (n + 1))) (hσ : σ 0 = 0) (H : ℕ) :
+    countTuplesWithGamma (Γ.permute σ) H = countTuplesWithGamma Γ H := by
+  apply Eq.symm; apply Finset.card_bij';
+  case i => exact fun a ha => fun i => a ( σ i );
+  case j => exact fun a ha => fun i => a ( σ.symm i );
+  · aesop;
+  · aesop;
+  · simp +decide [ hσ, GammaStructure.sqfreepart_permute Γ σ hσ ];
+    intro a ha₁ ha₂ ha₃ ha₄; refine' ⟨ _, ha₂, _, _ ⟩ <;> simp_all +decide [ GammaStructure.permute ] ;
+  · simp +contextual [ hσ, GammaStructure.sqfreepart_permute Γ σ hσ ];
+    intro a ha₁ ha₂ ha₃ ha₄; simp_all +decide [ GammaStructure.permute ] ;
+    rw [ ← hσ, Equiv.symm_apply_apply, ha₂ ]
+
+/-
+If `M_Γ(H) > 0` then every entry of `Γ` is at most `H`: a witnessing tuple `h` has all
+`h i ∈ [0,H]`, so for `i ≠ j`, `γᵢⱼ = gcd(c, |hⱼ - hᵢ|)` divides the positive number
+`|hⱼ - hᵢ| ≤ H`.
+-/
+lemma GammaStructure.gamma_le_of_countTuples_pos {n : ℕ} (Γ : GammaStructure (n + 1)) (H : ℕ)
+    (hpos : 0 < countTuplesWithGamma Γ H) (i j : Fin (n + 1)) : Γ.gamma i j ≤ H := by
+  revert i j;
+  obtain ⟨h, hh⟩ : ∃ h : Fin (n + 1) → ℤ, h 0 = 0 ∧ (∀ i j, i ≠ j → h i ≠ h j) ∧ ∀ i j, i ≠ j → Nat.gcd Γ.sqfreepart (Int.natAbs (h j - h i)) = Γ.gamma i j ∧ 0 ≤ h i ∧ h i ≤ H := by
+    contrapose! hpos; simp_all +decide [ countTuplesWithGamma ] ;
+    exact fun h hh₁ hh₂ hh₃ => by obtain ⟨ i, j, hij, h ⟩ := hpos h hh₂ hh₃; exact ⟨ i, j, hij, fun h' => by have := h h' ( hh₁ i |>.1 ) ; linarith [ hh₁ i |>.2 ] ⟩ ;
+  intro i j; by_cases hij : i = j <;> simp_all +decide [ GammaStructure.diag ] ;
+  exact Nat.le_trans ( Nat.le_of_dvd ( Int.natAbs_pos.mpr ( sub_ne_zero.mpr ( hh.2.1 _ _ hij |> Ne.symm ) ) ) ( hh.2.2 _ _ hij |>.1 ▸ Nat.gcd_dvd_right _ _ ) ) ( by cases abs_cases ( h j - h i ) <;> linarith [ hh.2.2 i j hij, hh.2.2 j i ( Ne.symm hij ) ] )
+
+/-
+`γ(Γ)` is the product of the rows `γ₁, …, γₙ`; the `0`-th row is the empty LCM `1`.
+-/
+lemma GammaStructure.gammaProd_eq_prod_succ {n : ℕ} (Γ : GammaStructure (n + 1)) :
+    Γ.gammaProd = ∏ i : Fin n, Γ.gammaRow i.succ := by
+  unfold GammaStructure.gammaProd GammaStructure.gammaRow;
+  rw [ Fin.prod_univ_succ ];
+  convert one_mul _
+
+/-
+The first row `γ₁ = gammaRow 1` is a single entry `γ₀₁`, hence `≤ H` when all entries are.
+Here `i : Fin n` with `i.val = 0`, so `i.succ` is the index `1`, whose only predecessor is `0`.
+-/
+lemma GammaStructure.gammaRow_succ_zero_le {n : ℕ} (Γ : GammaStructure (n + 1)) (H : ℕ)
+    (hent : ∀ i j, Γ.gamma i j ≤ H) (i : Fin n) (hi : i.val = 0) :
+    Γ.gammaRow i.succ ≤ H := by
+  simp_all +decide [ GammaStructure.gammaRow ];
+  refine' Nat.le_trans _ ( hent _ _ );
+  rotate_left;
+  exact 0;
+  exact i.succ;
+  rw [ show ( Iio i.succ : Finset ( Fin ( n + 1 ) ) ) = { 0 } from ?_ ] ; aesop;
+  ext x; simp [Fin.lt_def, hi]
+
+/-- **Existence of a good ordering fixing `0`** (GK §4.2).  There is a permutation of the
+indices fixing the anchor `0` which is a good ordering for `Γ` (so that the re-ordered rows
+obey the greedy recurrence `γ_{r+1} ≤ H·γ_r` whenever all entries are `≤ H`).
+
+The `0`-th rank is unconstrained (its partial-row LCM is the empty LCM `1`), so the greedy
+construction of `goodPerm` can be carried out keeping `0` fixed.  Establishing the greedy
+correctness over `Fin (n+1)` is the intricate combinatorial core of GK §4.2 and is left here
+as a documented `sorry`, mirroring `GammaStructure.goodPerm_isGoodOrdering`. -/
+theorem GammaStructure.exists_isGoodOrdering_fixing_zero {n : ℕ} (Γ : GammaStructure (n + 1)) :
+    ∃ σ : Equiv.Perm (Fin (n + 1)), σ 0 = 0 ∧ Γ.IsGoodOrdering σ := by
+  sorry
+
+/-! #### Step 2: the algebraic optimization core (GK §4.2, eq. 4.6 – Cor. 4.5)
+
+Given the re-ordered row sequence `g : Fin n → ℝ` satisfying `g r ≥ 1`, the first-row bound
+`g 0 ≤ H`, and the greedy recurrence `g_{r+1} ≤ H · g_r`, with product `∏ g = γ`, one
+optimizes the lower bound on `∏ min(g_r, H)` over the number `ρ = |{r : g_r ≤ H}|` of
+"small" rows.  This discrete calculus produces the regime-dependent exponents of GK
+Corollary 5.  We isolate it as documented `sorry`s, stated exactly in the form consumed by
+Step 1's `D(Γ)` bound. -/
+
+/-- **Step 2 (intermediate regime).** Optimized lower bound on `∏ min(g_r, H)` in the
+regime `H^{w(0)} < γ ≤ H^{w(τ₁)}`, stated as the resulting upper bound on
+`2ⁿ Hⁿ / ∏ min(g_r, H)`. -/
+theorem gk_prodMin_lower_med {n : ℕ} (H : ℝ) (g : Fin n → ℝ)
+    (hH : 1 ≤ H) (hg : ∀ i, 1 ≤ g i)
+    (hg_first : ∀ i : Fin n, i.val = 0 → g i ≤ H)
+    (hrec : ∀ i j : Fin n, j.val = i.val + 1 → g j ≤ H * g i)
+    (h_gt : H ^ tupleBoundWeight n 0 < ∏ i, g i)
+    (h_le : ∏ i, g i ≤ H ^ tupleBoundWeight n (tauOne n)) :
+    2 ^ n * H ^ n / ∏ i, min (g i) H ≤
+      2 ^ n * H ^ ((n : ℝ) + 1.5 - Real.sqrt (2 * (n : ℝ) + 2.25)) := by
+  sorry
+
+/-- **Step 2 (large regime).** Optimized lower bound on `∏ min(g_r, H)` in the regime
+`H^{w(τ-1)} < γ ≤ H^{w(τ)}`, stated as the resulting upper bound on `2ⁿ Hⁿ / ∏ min(g_r, H)`. -/
+theorem gk_prodMin_lower_large {n : ℕ} (H : ℝ) (g : Fin n → ℝ) (τ : ℕ)
+    (hH : 1 ≤ H) (hg : ∀ i, 1 ≤ g i)
+    (hg_first : ∀ i : Fin n, i.val = 0 → g i ≤ H)
+    (hrec : ∀ i j : Fin n, j.val = i.val + 1 → g j ≤ H * g i)
+    (hτ_lower : tauOne n + 1 ≤ τ) (hτ_upper : τ ≤ n)
+    (h_gt : H ^ tupleBoundWeight n (τ - 1) < ∏ i, g i)
+    (h_le : ∏ i, g i ≤ H ^ tupleBoundWeight n τ) :
+    2 ^ n * H ^ n / ∏ i, min (g i) H ≤ 2 ^ n * H ^ (n + 1 - τ) := by
+  sorry
+
+/-! #### Per-structure bounds (Steps 1 + 2 combined) -/
+
+/-
+Per-structure intermediate-regime bound: `M_Γ(H) ≤ H^{n+1.5-√(2n+2.25)}` when
+`H^{w(0)} < γ(Γ) ≤ H^{w(τ₁)}`.  Combines the `D(Γ)` bound (Step 1) on a good re-ordering
+fixing `0` with the optimization core (Step 2).
+-/
+theorem countTuplesWithGamma_med_bound {n γ H : ℕ} (Γ : GammaStructure (n + 1))
+    (hΓ : Γ.gammaProd = γ) (hH : 0 < H)
+    (h_gt : (H : ℝ) ^ tupleBoundWeight n 0 < (γ : ℝ))
+    (h_le : (γ : ℝ) ≤ (H : ℝ) ^ tupleBoundWeight n (tauOne n)) :
+    (countTuplesWithGamma Γ H : ℝ) ≤
+      2 ^ n * (H : ℝ) ^ ((n : ℝ) + 1.5 - Real.sqrt (2 * (n : ℝ) + 2.25)) := by
+  by_cases hpos : 0 < countTuplesWithGamma Γ H;
+  · obtain ⟨σ, hσ0, hσgood⟩ := Γ.exists_isGoodOrdering_fixing_zero
+    have hentΓ' : ∀ i j, (Γ.permute σ).gamma i j ≤ H := fun i j => Γ.gamma_le_of_countTuples_pos H hpos (σ i) (σ j);
+    have hprod : (∏ i : Fin n, ((Γ.permute σ).gammaRow i.succ : ℝ)) = (γ : ℝ) := by
+      rw_mod_cast [ ← hΓ, ← (Γ.permute σ).gammaProd_eq_prod_succ, GammaStructure.gammaProd_perm_invariant (Nat.succ_pos n) Γ σ hσ0 ];
+    rw [ ← countTuplesWithGamma_permute_eq Γ σ hσ0 H ];
+    refine le_trans ( countTuplesWithGamma_le_div_prod_min ( Γ.permute σ ) H hH ) ?_;
+    convert gk_prodMin_lower_med ( H : ℝ ) ( fun i => ( Γ.permute σ |> GammaStructure.gammaRow ) i.succ ) _ _ _ _ _ _ using 1 <;> norm_num [ hprod ];
+    any_goals assumption;
+    · exact fun i => Nat.one_le_iff_ne_zero.mpr ( GammaStructure.gammaRow_ne_zero _ _ );
+    · exact fun i hi => GammaStructure.gammaRow_succ_zero_le _ _ hentΓ' i hi;
+    · exact fun i j hij => mod_cast GammaStructure.gammaRow_succ_le_of_isGoodOrdering Γ σ hσgood H hentΓ' i.succ j.succ ( by simpa [ Fin.ext_iff ] using hij );
+  · norm_num +zetaDelta at *;
+    rw [ hpos ] ; norm_num ; positivity
+
+/-
+Per-structure large-regime bound: `M_Γ(H) ≤ H^{n+1-τ}` when `H^{w(τ-1)} < γ(Γ) ≤ H^{w(τ)}`.
+Combines the `D(Γ)` bound (Step 1) on a good re-ordering fixing `0` with the optimization
+core (Step 2).
+-/
+theorem countTuplesWithGamma_large_bound {n γ H τ : ℕ} (Γ : GammaStructure (n + 1))
+    (hΓ : Γ.gammaProd = γ) (hH : 0 < H) (hτ_lower : tauOne n + 1 ≤ τ) (hτ_upper : τ ≤ n)
+    (h_gt : (H : ℝ) ^ tupleBoundWeight n (τ - 1) < (γ : ℝ))
+    (h_le : (γ : ℝ) ≤ (H : ℝ) ^ tupleBoundWeight n τ) :
+    (countTuplesWithGamma Γ H : ℝ) ≤ 2 ^ n * (H : ℝ) ^ (n + 1 - τ) := by
+  by_cases hpos : 0 < countTuplesWithGamma Γ H;
+  · obtain ⟨σ, hσ0, hσgood⟩ := Γ.exists_isGoodOrdering_fixing_zero
+    have hentΓ' : ∀ i j, (Γ.permute σ).gamma i j ≤ H := fun i j => Γ.gamma_le_of_countTuples_pos H hpos (σ i) (σ j);
+    -- Apply the gk_prodMin_lower_large lemma with the given parameters.
+    have h_apply_gk : (2 ^ n * (H : ℝ) ^ n / ∏ i : Fin n, min ((Γ.permute σ).gammaRow i.succ : ℝ) (H : ℝ)) ≤ 2 ^ n * (H : ℝ) ^ (n + 1 - τ) := by
+      apply gk_prodMin_lower_large;
+      any_goals assumption_mod_cast;
+      · exact fun i => mod_cast GammaStructure.gammaRow_cast_ge_one _ _;
+      · exact fun i hi => mod_cast ( Γ.permute σ ).gammaRow_succ_zero_le H hentΓ' i hi;
+      · intros i j hj;
+        exact_mod_cast GammaStructure.gammaRow_succ_le_of_isGoodOrdering Γ σ hσgood H hentΓ' i.succ j.succ ( by simpa [ Fin.ext_iff ] using hj );
+      · have hprod : (∏ i : Fin n, ((Γ.permute σ).gammaRow i.succ : ℝ)) = (γ : ℝ) := by
+          rw_mod_cast [ ← hΓ, ← (Γ.permute σ).gammaProd_eq_prod_succ, GammaStructure.gammaProd_perm_invariant (Nat.succ_pos n) Γ σ hσ0 ];
+        linarith;
+      · have hprod : (∏ i : Fin n, ((Γ.permute σ).gammaRow i.succ : ℝ)) = (γ : ℝ) := by
+          rw_mod_cast [ ← hΓ, ← (Γ.permute σ).gammaProd_eq_prod_succ, GammaStructure.gammaProd_perm_invariant (Nat.succ_pos n) Γ σ hσ0 ];
+        exact hprod.symm ▸ h_le;
+    refine le_trans ?_ h_apply_gk;
+    convert countTuplesWithGamma_le_div_prod_min ( Γ.permute σ ) H hH using 1;
+    rw [ countTuplesWithGamma_permute_eq Γ σ hσ0 H ];
+  · aesop
+
+/-! #### Step 3: the main piecewise bounds
+
+**Correction of the original statements.** The two theorems below were originally stated
+(in the task skeleton) without the constant factor `2 ^ n`:
+```
+(countTuplesWithGammaProd n γ H : ℝ) ≤ ((2 ^ (n+1).choose 2) : ℝ) ^ ω(γ) * H ^ (…)
+```
+That form is **not** what the Granville–Kurlberg §4.2 argument (the plan we follow) yields,
+and is in fact too strong: the per-structure `D(Γ)` bound
+`M_Γ(H) ≤ ∏ᵢ (H/γᵢ + 1)` unavoidably carries a factor `2 ^ n` (e.g. when every `γᵢ = H`
+the product is `2 ^ n`, while `Hⁿ / ∏ min(γᵢ,H) = 1`).  Concretely, for `n = 4`, `H = 10`
+and the row sequence `(10,100,1000,10000)` (which satisfies the greedy recurrence and lands
+in the `τ = n` regime), the `D(Γ)` bound gives `2⁴·10⁴/10⁴ = 16 > 10 = H^{n+1-τ}`.
+The `2 ^ n` is genuinely present and matches the existing `countTuplesWithGammaProd_small_gamma`
+in this file, whose conclusion is `(2^C)^ω(γ) * 2 ^ k * H^k / γ`.
+
+We therefore preserve the original statements verbatim (commented out, below) and prove the
+faithful corrected versions, which include the `* 2 ^ n` factor in exactly the position used
+by `countTuplesWithGammaProd_small_gamma`.
+
+Original (incorrect — missing the `2 ^ n` factor):
+```
 theorem countTuplesWithGammaProd_med_gamma (n γ H : ℕ)
     (hγ : 0 < γ) (hH : 0 < H)
     (h_gt : (H : ℝ) ^ tupleBoundWeight n 0 < (γ : ℝ))
     (h_le : (γ : ℝ) ≤ (H : ℝ) ^ tupleBoundWeight n (tauOne n)) :
     (countTuplesWithGammaProd n γ H : ℝ) ≤
       ((2 ^ (n + 1).choose 2) : ℝ) ^ γ.primeFactors.card *
-        (H : ℝ) ^ ((n : ℝ) + 1.5 - Real.sqrt (2 * (n : ℝ) + 2.25)) := by
-  sorry
+        (H : ℝ) ^ ((n : ℝ) + 1.5 - Real.sqrt (2 * (n : ℝ) + 2.25))
 
-/-- **Large-γ piecewise bound**: `M_γ(H) ≤ C^ω(γ) · H^{n+1-τ}` when `H^{w(τ-1)} < γ ≤ H^{w(τ)}`.
-This is left as an honest `sorry`, reflecting the lattice-counting bounds from GK Corollary 5. -/
 theorem countTuplesWithGammaProd_large_gamma (n γ H τ : ℕ)
     (hγ : 0 < γ) (hH : 0 < H) (hτ_lower : tauOne n + 1 ≤ τ) (hτ_upper : τ ≤ n)
     (h_gt : (H : ℝ) ^ tupleBoundWeight n (τ - 1) < (γ : ℝ))
     (h_le : (γ : ℝ) ≤ (H : ℝ) ^ tupleBoundWeight n τ) :
     (countTuplesWithGammaProd n γ H : ℝ) ≤
       ((2 ^ (n + 1).choose 2) : ℝ) ^ γ.primeFactors.card *
+        (H : ℝ) ^ (n + 1 - τ)
+```
+-/
+
+/-- **Intermediate-γ bound** (corrected): `M_γ(H) ≤ C^ω(γ) · 2ⁿ · H^{n+1.5-\sqrt{2n+2.25}}`
+when `H^{w(0)} < γ ≤ H^{w(τ_1)}`.  The `2 ^ n` factor (absent from the original task statement)
+is required by the per-structure `D(Γ)` bound; see the section note above.
+Combines the decomposition `countTuplesWithGammaProd_le_sum`, the per-structure bound
+`countTuplesWithGamma_med_bound`, and the structure count `countGammaStructures_le`. -/
+theorem countTuplesWithGammaProd_med_gamma (n γ H : ℕ)
+    (hγ : 0 < γ) (hH : 0 < H)
+    (h_gt : (H : ℝ) ^ tupleBoundWeight n 0 < (γ : ℝ))
+    (h_le : (γ : ℝ) ≤ (H : ℝ) ^ tupleBoundWeight n (tauOne n)) :
+    (countTuplesWithGammaProd n γ H : ℝ) ≤
+      ((2 ^ (n + 1).choose 2) : ℝ) ^ γ.primeFactors.card * 2 ^ n *
+        (H : ℝ) ^ ((n : ℝ) + 1.5 - Real.sqrt (2 * (n : ℝ) + 2.25)) := by
+  refine le_trans (countTuplesWithGammaProd_le_sum γ H hγ hH (finsetGammaStructures γ)
+    (fun Γ hΓ => by simpa using hΓ)
+    (fun h _ _ _ hh₄ =>
+      ⟨hh₄.choose, mem_finsetGammaStructures.mpr hh₄.choose_spec.1, hh₄.choose_spec.2⟩)) ?_
+  refine le_trans (Finset.sum_le_sum fun Γ hΓ =>
+    countTuplesWithGamma_med_bound Γ (mem_finsetGammaStructures.mp hΓ) hH h_gt h_le) ?_
+  rw [Finset.sum_const, nsmul_eq_mul, mul_assoc]
+  exact mul_le_mul_of_nonneg_right (by exact_mod_cast countGammaStructures_le γ hγ)
+    (by positivity)
+
+/-- **Large-γ piecewise bound** (corrected): `M_γ(H) ≤ C^ω(γ) · 2ⁿ · H^{n+1-τ}` when
+`H^{w(τ-1)} < γ ≤ H^{w(τ)}`.  The `2 ^ n` factor (absent from the original task statement) is
+required by the per-structure `D(Γ)` bound; see the section note above.
+Combines the decomposition `countTuplesWithGammaProd_le_sum`, the per-structure bound
+`countTuplesWithGamma_large_bound`, and the structure count `countGammaStructures_le`. -/
+theorem countTuplesWithGammaProd_large_gamma (n γ H τ : ℕ)
+    (hγ : 0 < γ) (hH : 0 < H) (hτ_lower : tauOne n + 1 ≤ τ) (hτ_upper : τ ≤ n)
+    (h_gt : (H : ℝ) ^ tupleBoundWeight n (τ - 1) < (γ : ℝ))
+    (h_le : (γ : ℝ) ≤ (H : ℝ) ^ tupleBoundWeight n τ) :
+    (countTuplesWithGammaProd n γ H : ℝ) ≤
+      ((2 ^ (n + 1).choose 2) : ℝ) ^ γ.primeFactors.card * 2 ^ n *
         (H : ℝ) ^ (n + 1 - τ) := by
-  sorry
+  refine le_trans (countTuplesWithGammaProd_le_sum γ H hγ hH (finsetGammaStructures γ)
+    (fun Γ hΓ => by simpa using hΓ)
+    (fun h _ _ _ hh₄ =>
+      ⟨hh₄.choose, mem_finsetGammaStructures.mpr hh₄.choose_spec.1, hh₄.choose_spec.2⟩)) ?_
+  refine le_trans (Finset.sum_le_sum fun Γ hΓ =>
+    countTuplesWithGamma_large_bound Γ (mem_finsetGammaStructures.mp hΓ) hH hτ_lower hτ_upper
+      h_gt h_le) ?_
+  rw [Finset.sum_const, nsmul_eq_mul, mul_assoc]
+  exact mul_le_mul_of_nonneg_right (by exact_mod_cast countGammaStructures_le γ hγ)
+    (by positivity)
 
 end PoissonCRT
