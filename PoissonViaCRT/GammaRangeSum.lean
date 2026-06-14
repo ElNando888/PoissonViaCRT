@@ -132,4 +132,39 @@ theorem countTuplesWithGammaProd_small_gamma (γ H : ℕ)
       gcongr
       exact_mod_cast countGammaStructures_le γ hγ
 
+/-! ### Large-γ bounds on M_γ(H) (GK Corollary 5) -/
+
+/-- The threshold `w(τ)` for the piecewise bounds on `M_γ(H)` in the large-γ regime.
+Following GK Corollary 5, for `n` (which corresponds to $k-1$ in GK when counting $k$ tuples),
+the threshold is $w(τ) = n + 1 - 9/8 + (τ - 1/2)^2 / 2$.
+We leave this uncomputable/abstracted since we will only use it via its stated properties. -/
+noncomputable def tupleBoundWeight (n : ℕ) (τ : ℕ) : ℝ :=
+  (n : ℝ) + 1 - 9/8 + ((τ : ℝ) - 1/2)^2 / 2
+
+/-- The value $\tau_1 = \lfloor \sqrt{2(n+1) + 1/4} - 1/2 \rfloor$ defining the intermediate regime. -/
+noncomputable def tauOne (n : ℕ) : ℕ :=
+  ⌊Real.sqrt (2 * (n : ℝ) + 2 + 1/4) - 1/2⌋₊
+
+/-- **Intermediate-γ bound**: `M_γ(H) ≤ C^ω(γ) · H^{n+1.5-\sqrt{2n+2.25}}` when `H^{w(0)} < γ ≤ H^{w(τ_1)}`.
+This is left as an honest `sorry`, reflecting the lattice-counting bounds from GK Corollary 5. -/
+theorem countTuplesWithGammaProd_med_gamma (n γ H : ℕ)
+    (hγ : 0 < γ) (hH : 0 < H)
+    (h_gt : (H : ℝ) ^ tupleBoundWeight n 0 < (γ : ℝ))
+    (h_le : (γ : ℝ) ≤ (H : ℝ) ^ tupleBoundWeight n (tauOne n)) :
+    (countTuplesWithGammaProd n γ H : ℝ) ≤
+      ((2 ^ (n + 1).choose 2) : ℝ) ^ γ.primeFactors.card *
+        (H : ℝ) ^ ((n : ℝ) + 1.5 - Real.sqrt (2 * (n : ℝ) + 2.25)) := by
+  sorry
+
+/-- **Large-γ piecewise bound**: `M_γ(H) ≤ C^ω(γ) · H^{n+1-τ}` when `H^{w(τ-1)} < γ ≤ H^{w(τ)}`.
+This is left as an honest `sorry`, reflecting the lattice-counting bounds from GK Corollary 5. -/
+theorem countTuplesWithGammaProd_large_gamma (n γ H τ : ℕ)
+    (hγ : 0 < γ) (hH : 0 < H) (hτ_lower : tauOne n + 1 ≤ τ) (hτ_upper : τ ≤ n)
+    (h_gt : (H : ℝ) ^ tupleBoundWeight n (τ - 1) < (γ : ℝ))
+    (h_le : (γ : ℝ) ≤ (H : ℝ) ^ tupleBoundWeight n τ) :
+    (countTuplesWithGammaProd n γ H : ℝ) ≤
+      ((2 ^ (n + 1).choose 2) : ℝ) ^ γ.primeFactors.card *
+        (H : ℝ) ^ (n + 1 - τ) := by
+  sorry
+
 end PoissonCRT

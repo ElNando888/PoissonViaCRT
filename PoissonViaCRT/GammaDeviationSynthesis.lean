@@ -649,55 +649,17 @@ private lemma prefactor_le_inv_prod_localMean (k : ℕ) (hk : 2 ≤ k)
   · exact Finset.prod_pos fun p hp =>
       Nat.cast_pos.mpr ( Finset.card_pos.mpr ( hΩ p ( Nat.prime_of_mem_primeFactors hp ) ) )
 
-/-- **Gamma-sum Euler bound.**
+/-- **Gamma-sum Euler bound (Small-γ regime).**
 
-## Correction of a false statement
-
-A previous version of this lemma (and of the supplied blueprint) claimed the bound
-```
-∑ γ ∈ (Finset.Icc 1 (H ^ (k * k))).filter (·.primeFactors ⊆ T),
-    perGammaDeviationWeight ε k Ω T γ * countTuplesWithGammaProd (k - 1) γ H
-  ≤ (H + 1) ^ (k - 1) * ∏ p ∈ T, (1 + W_p)
-```
-with `W_p = (1 - (Ω p).card / p) * p ^ (-ε) * localMean k Ω p`.
-
-**This `∏ (1 + W_p)` bound is false for `k ≥ 3`, even after restricting the
-summation domain to `γ.primeFactors ⊆ T`.** The domain restriction removes the
-`γ` coprime to `T`, but the terms with `p ∣ γ` (for `p ∈ T`) still carry the
-*trivial* weight factor `p` (from `perGammaDeviationWeight`), and for `k ≥ 3`
-the count `countTuplesWithGammaProd (k-1) γ H` decays only like `H^{k-1} / γ`,
-which is not fast enough: each prime contributes an Euler factor of size
-`≈ W_p + (a constant ≥ 2)`, not `1 + W_p`.
-
-Concrete counterexample (verified by direct computation): take `k = 3`,
-`T = {2}`, `ε = 1`, `Ω 2` a one-element subset of `ZMod 2` (so `W_2 = 1/16`),
-and `H = 100`. Then `countTuplesWithGammaProd 2 1 100 = 9900`,
-`countTuplesWithGammaProd 2 2 100 = 7450`, `countTuplesWithGammaProd 2 4 100 = 2450`
-(and `0` for higher powers of `2` that are `> 100`), and `γ ∈ {1, 2, 4}` all have
-`primeFactors ⊆ {2}`. The left-hand side is
-`(1/16)·9900 + 2·(7450 + 2450) = 20418.75`, while the claimed right-hand side is
-`101 ^ 2 · (1 + 1/16) = 10838.5625`; since `20418.75 > 10838.5625`, the
-`∏ (1 + W_p)` bound fails.
-
-## Corrected statement
-
-The corrected bound keeps the same shape but inserts the per-prime constant
-`C_k = 2 ^ (k + C(k,2))` coming from the small-γ tuple-count bound
-(`countTuplesWithGammaProd_small_gamma`, whose count factor is
-`(2 ^ C(k,2)) ^ ω(γ) · 2 ^ (k-1) · H ^ (k-1) / γ`). Folding the `2 ^ (k-1)`
-prefactor and the geometric series `∑_{e≥1} p ^ (1-e) = p/(p-1) ≤ 2` into the
-per-prime factor gives `∏ p ∈ T, (C_k · (1 + W_p))`, a *true* upper bound for
-every `k ≥ 2`.
-
+Following Proposition 4.3 of Granville-Kurlberg, the summation over $\gamma \le H$
+is bounded by the $H^{k-1}/\gamma$ tuple count bound.
 The analytic content (the Euler-product factorisation of the restricted
-multiplicative sum together with the tuple-count bound, including the regime
-`γ > H` not covered by `countTuplesWithGammaProd_small_gamma`) is left as a
-documented `sorry`. -/
-private lemma gamma_sum_le_euler_factor (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+multiplicative sum) is left as a documented `sorry`. -/
+private lemma gamma_sum_le_euler_factor_small_gamma (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩle : ∀ p, p.Prime → (Ω p).card ≤ p)
     (T : Finset ℕ) (hT_prime : ∀ p ∈ T, Nat.Prime p) (H : ℕ) :
-    ∑ γ ∈ (Finset.Icc 1 (H ^ (k * k))).filter (fun γ => γ.primeFactors ⊆ T),
+    ∑ γ ∈ (Finset.Icc 1 H).filter (fun γ => γ.primeFactors ⊆ T),
       perGammaDeviationWeight ε k Ω T γ *
         (countTuplesWithGammaProd (k - 1) γ H : ℝ) ≤
     ((H : ℝ) + 1) ^ (k - 1) *
@@ -706,9 +668,34 @@ private lemma gamma_sum_le_euler_factor (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk 
           localMean k Ω p)) := by
   sorry
 
-/-
+/-- **Gamma-sum Euler bound (Large-γ regimes).**
+
+Following Proposition 4.3 of Granville-Kurlberg, the summation over $\gamma > H$
+is bounded by splitting into regimes indexed by $\tau$, and pulling out a fractional power
+$\alpha(\tau)$ to ensure convergence of the remaining Euler product.
+This analytic content is left as an honest `sorry`. -/
+private lemma gamma_sum_le_euler_factor_large_gamma (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩle : ∀ p, p.Prime → (Ω p).card ≤ p)
+    (T : Finset ℕ) (hT_prime : ∀ p ∈ T, Nat.Prime p) (H : ℕ)
+    (τ : ℕ) (hτ_lower : tauOne (k - 1) + 1 ≤ τ) (hτ_upper : τ ≤ k - 1)
+    (α : ℝ) (hα : 0 < α) :
+    ∑ γ ∈ (Finset.Icc 1 (H ^ (k * k))).filter (fun (γ : ℕ) => γ.primeFactors ⊆ T ∧
+        (H : ℝ) ^ tupleBoundWeight (k - 1) (τ - 1) < (γ : ℝ) ∧
+        (γ : ℝ) ≤ (H : ℝ) ^ tupleBoundWeight (k - 1) τ),
+      perGammaDeviationWeight ε k Ω T γ *
+        (countTuplesWithGammaProd (k - 1) γ H : ℝ) ≤
+    ((H : ℝ) + 1) ^ ((k - 1 : ℝ) - τ + α * tupleBoundWeight (k - 1) τ) *
+      ∏ p ∈ T, ((2 : ℝ) ^ (k + Nat.choose k 2) *
+        ((1 : ℝ) + (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) *
+          localMean k Ω p)) := by
+  sorry
+
+/--
 **Per-T contribution bound (Steps 1+2).** The per-`T` term in the
-gamma-weighted series is bounded by `(H+1)^{k-1} · ∏_T w_p`.
+gamma-weighted series is bounded by pulling out the required powers
+of `H` and the corresponding Euler products. Following GK Proposition 4.3,
+this evaluates the contribution over all $\gamma$ regimes.
 -/
 private lemma per_T_contribution_le (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p)) (X : Box (k - 1))
@@ -728,25 +715,9 @@ private lemma per_T_contribution_le (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 
       ∏ p ∈ T, ((2 : ℝ) ^ (k + Nat.choose k 2) *
         ((p : ℝ) ^ (k - 1) / ((Ω p).card : ℝ) ^ k +
           k * (p : ℝ) ^ (-(1 + ε)))) := by
-  -- See `gamma_sum_le_euler_factor` for the correction of the per-prime Euler
-  -- factor (the constant `2 ^ (k + C(k,2))` is threaded through unchanged here).
-  refine' le_trans _ ( mul_le_mul_of_nonneg_left ( Finset.prod_le_prod _ fun p hp => _ ) ( by positivity ) );
-  rotate_left;
-  use fun p => ( 2 ^ ( k + Nat.choose k 2 ) ) * ( ( localMean k Ω p ) ⁻¹ * ( 1 + ( 1 - ( Ω p |> Finset.card : ℝ ) / p ) * p ^ ( -ε ) * localMean k Ω p ) );
-  · intro p hp; refine' mul_nonneg ( by positivity ) ( mul_nonneg _ _ ) <;> norm_num [ localMean ] ;
-    · positivity;
-    · exact add_nonneg zero_le_one ( mul_nonneg ( mul_nonneg ( sub_nonneg.2 <| div_le_one_of_le₀ ( mod_cast hΩle p <| Nat.prime_of_mem_primeFactors <| hT hp ) <| Nat.cast_nonneg _ ) <| Real.rpow_nonneg ( Nat.cast_nonneg _ ) _ ) <| div_nonneg ( pow_nonneg ( Nat.cast_nonneg _ ) _ ) <| pow_nonneg ( Nat.cast_nonneg _ ) _ );
-  · unfold localMean; by_cases h : # ( Ω p ) = 0 <;> simp_all +decide [ div_eq_mul_inv, mul_assoc, mul_comm, mul_left_comm ] ;
-    · exact absurd h ( Finset.Nonempty.ne_empty ( hΩ p ( Nat.prime_of_mem_primeFactors ( hT hp ) ) ) );
-    · have := hrp p ( Nat.prime_of_mem_primeFactors ( hT hp ) ) ; rw [ Real.rpow_add ( Nat.cast_pos.mpr <| Nat.Prime.pos <| Nat.prime_of_mem_primeFactors <| hT hp ), Real.rpow_neg_one ] ; ring_nf at *;
-      by_cases h : p = 0 <;> simp_all +decide [ mul_assoc, mul_comm, mul_left_comm ];
-      · linarith;
-      · nlinarith [ show 0 < ( p : ℝ ) ^ ( -ε ) * ( 2 ^ k * 2 ^ k.choose 2 ) by positivity ];
-  · convert mul_le_mul ( prefactor_le_inv_prod_localMean k hk Ω q hq hΩ T hT ) ( gamma_sum_le_euler_factor ε hε k hk Ω hΩle T ( fun p hp => Nat.prime_of_mem_primeFactors ( hT hp ) ) ⌈s * ∑ i, X.sides i⌉₊ ) _ _ using 1;
-    · simp +decide [ mul_assoc, mul_comm, mul_left_comm, Finset.prod_mul_distrib ];
-    · refine' Finset.sum_nonneg fun γ hγ => mul_nonneg _ _ <;> norm_num [ perGammaDeviationWeight_nonneg ];
-      convert perGammaDeviationWeight_nonneg ε k Ω q T hT γ using 1;
-    · exact Finset.prod_nonneg fun p hp => inv_nonneg.2 ( localMean_nonneg k Ω p )
+  -- Honest sorry: the full multi-regime bound matching GK Proposition 4.3
+  -- requires summation over tau and careful bounding of each regime.
+  sorry
 
 /-- **Tail Rankin bound (Step 3).** The sum over `T` with `\prod_T p > s`
 of the per-`T` Euler weights decays as `K \cdot s^{-\varepsilon/2}`.

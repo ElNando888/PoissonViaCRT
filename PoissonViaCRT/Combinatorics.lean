@@ -866,4 +866,121 @@ public theorem countTuples_bound_small_gamma
     · rw [mul_pow]
   · exact Nat.cast_pos.mpr (GammaStructure.gammaProd_pos Γ)
 
+/-! ### A "good" re-ordering (§4.2, Corollary 4.5)
+
+We formalize the greedy re-ordering of a `GammaStructure` from Granville–Kurlberg's
+Corollary 4.5.  Given `Γ`, one looks for a permutation `σ ∈ S_{k-1}` (fixing `0`) so that
+the re-ordered structure `Γ^(σ) = Γ.permute σ` has row LCMs `γ_r = γ^(σ)_r` satisfying the
+recursive bound `γ_{r+1} ≤ H · γ_r`, valid whenever every entry `γ^(σ)_{i,j} ≤ H` (which is
+the case relevant to bounding `M_Γ(H)`, since otherwise `M_Γ(H) = 0`).
+
+The construction is greedy: at each rank `r` one selects, among the indices not yet placed,
+the one maximizing the *partial-row* LCM `LCM[γ_{j,0}, …, γ_{j,r-1}]` taken over the indices
+already placed.  This greedy choice guarantees that `γ_r` dominates the partial-row LCM of
+every later index `j ≥ r`, from which the bound
+`γ_{r+1} ≤ LCM[γ_{r,0}, …, γ_{r,r-1}] · γ_{r+1,r} = γ_r · γ_{r+1,r} ≤ H · γ_r`
+of equation (4.x) follows. -/
+
+/-- The "partial row" LCM `LCM[γ_{j,0}, …, γ_{j,r-1}]` of index `j` over the prefix of
+indices `i < r`.  For `j = r` it is exactly the row LCM `γ_r = gammaRow r`. -/
+@[expose]
+def GammaStructure.partialRow (Γ : GammaStructure k) (r j : Fin k) : ℕ :=
+  (Finset.Iio r).lcm fun i => Γ.gamma i j
+
+@[simp]
+lemma GammaStructure.partialRow_self (Γ : GammaStructure k) (r : Fin k) :
+    Γ.partialRow r r = Γ.gammaRow r := rfl
+
+/-- `σ` is a *good ordering* for `Γ` (Cor. 4.5): in the re-ordered structure `Γ^(σ)` the
+row LCM `γ_r = γ^(σ)_r` at each rank `r` is maximal (as a natural number) among the
+partial-row LCMs of all later indices `j ≥ r`. -/
+def GammaStructure.IsGoodOrdering (Γ : GammaStructure k) (σ : Equiv.Perm (Fin k)) : Prop :=
+  ∀ r j : Fin k, r ≤ j → (Γ.permute σ).partialRow r j ≤ (Γ.permute σ).gammaRow r
+
+/-- `Finset.Iio` of a `Fin` successor splits off the predecessor:
+`Iio s = insert r (Iio r)` when `s = r + 1`. -/
+lemma Finset.Iio_fin_eq_insert {k : ℕ} (r s : Fin k) (h : (s : ℕ) = (r : ℕ) + 1) :
+    Finset.Iio s = insert r (Finset.Iio r) := by
+  ext i
+  simp only [Finset.mem_Iio, Finset.mem_insert, Fin.lt_def]
+  constructor
+  · intro hi
+    rcases Nat.lt_or_ge (i : ℕ) (r : ℕ) with h' | h'
+    · exact Or.inr h'
+    · exact Or.inl (Fin.ext (by omega))
+  · rintro (rfl | hi) <;> omega
+
+/-- `Nat.lcm a b ≤ a * b` (with the convention that both sides are `0` when a factor is). -/
+lemma Nat.lcm_le_mul (a b : ℕ) : Nat.lcm a b ≤ a * b := by
+  rcases Nat.eq_zero_or_pos (a * b) with h0 | hpos
+  · rw [Nat.mul_eq_zero] at h0
+    rcases h0 with h0 | h0
+    · rw [h0, Nat.lcm_zero_left, Nat.zero_mul]
+    · rw [h0, Nat.lcm_zero_right, Nat.mul_zero]
+  · exact Nat.le_of_dvd hpos (Nat.lcm_dvd (dvd_mul_right _ _) (dvd_mul_left _ _))
+
+/-- **Core recursive bound (Cor. 4.5).** For a good ordering `σ`, if every entry of the
+re-ordered structure is `≤ H`, then consecutive row LCMs satisfy `γ_{r+1} ≤ H · γ_r`. -/
+theorem GammaStructure.gammaRow_succ_le_of_isGoodOrdering
+    (Γ : GammaStructure k) (σ : Equiv.Perm (Fin k)) (hσ : Γ.IsGoodOrdering σ)
+    (H : ℕ) (hH : ∀ i j : Fin k, (Γ.permute σ).gamma i j ≤ H)
+    (r s : Fin k) (hrs : (s : ℕ) = (r : ℕ) + 1) :
+    (Γ.permute σ).gammaRow s ≤ H * (Γ.permute σ).gammaRow r := by
+  set Γ' := Γ.permute σ with hΓ'
+  have hsplit : Finset.Iio s = insert r (Finset.Iio r) := Finset.Iio_fin_eq_insert r s hrs
+  have hrow : Γ'.gammaRow s = Nat.lcm (Γ'.gamma r s) (Γ'.partialRow r s) := by
+    show (Finset.Iio s).lcm (fun i => Γ'.gamma i s) = _
+    rw [hsplit, Finset.lcm_insert, lcm_eq_nat_lcm]
+    rfl
+  have hA : Γ'.partialRow r s ≤ Γ'.gammaRow r := by
+    apply hσ r s
+    rw [Fin.le_iff_val_le_val]; omega
+  have hB : Γ'.gamma r s ≤ H := hH r s
+  calc Γ'.gammaRow s = Nat.lcm (Γ'.gamma r s) (Γ'.partialRow r s) := hrow
+    _ ≤ Γ'.gamma r s * Γ'.partialRow r s := Nat.lcm_le_mul _ _
+    _ ≤ H * Γ'.gammaRow r := Nat.mul_le_mul hB hA
+
+open Classical in
+/-- Greedy selection-sort construction of the good ordering (Cor. 4.5), as a composition of
+transpositions.  `goodPermAux Γ r` is the permutation after fixing the choices for all ranks
+`< r`.  At step `r` we pick, among the indices not yet placed (positions of value `≥ r`),
+the one whose partial-row LCM against the already-placed prefix is maximal, and swap it into
+rank `r`. -/
+noncomputable def GammaStructure.goodPermAux (Γ : GammaStructure k) : ℕ → Equiv.Perm (Fin k)
+  | 0 => 1
+  | (r + 1) =>
+      let σ := Γ.goodPermAux r
+      if hr : r < k then
+        let r' : Fin k := ⟨r, hr⟩
+        let cand : Finset (Fin k) := Finset.univ.filter (fun p => r ≤ (p : ℕ))
+        have hne : cand.Nonempty :=
+          ⟨r', Finset.mem_filter.mpr ⟨Finset.mem_univ _, by simp [r']⟩⟩
+        let key : Fin k → ℕ := fun p => (Γ.permute σ).partialRow r' p
+        let p := (Finset.exists_max_image cand key hne).choose
+        σ * Equiv.swap r' p
+      else σ
+
+/-- The greedy good ordering of `Γ` (Cor. 4.5): the permutation obtained after greedily
+fixing every rank. -/
+noncomputable def GammaStructure.goodPerm (Γ : GammaStructure k) : Equiv.Perm (Fin k) :=
+  Γ.goodPermAux k
+
+/-- The greedy construction produces a good ordering (Cor. 4.5).
+
+The correctness of the greedy selection — that the row LCM `γ_r` chosen at each rank
+dominates the partial-row LCM of every later index — is left as `sorry`: this is the
+combinatorial heart of the construction and is intricate to formalize over `Fin k`. -/
+theorem GammaStructure.goodPerm_isGoodOrdering (Γ : GammaStructure k) :
+    Γ.IsGoodOrdering Γ.goodPerm := by
+  sorry
+
+/-- **Corollary 4.5.** The greedy re-ordering produces a row-LCM sequence obeying
+`γ_{r+1} ≤ H · γ_r` whenever every entry of the re-ordered structure is `≤ H`. -/
+theorem GammaStructure.goodPerm_gammaRow_succ_le
+    (Γ : GammaStructure k) (H : ℕ)
+    (hH : ∀ i j : Fin k, (Γ.permute Γ.goodPerm).gamma i j ≤ H)
+    (r s : Fin k) (hrs : (s : ℕ) = (r : ℕ) + 1) :
+    (Γ.permute Γ.goodPerm).gammaRow s ≤ H * (Γ.permute Γ.goodPerm).gammaRow r :=
+  Γ.gammaRow_succ_le_of_isGoodOrdering Γ.goodPerm Γ.goodPerm_isGoodOrdering H hH r s hrs
+
 end PoissonCRT
