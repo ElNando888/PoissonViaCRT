@@ -965,14 +965,61 @@ fixing every rank. -/
 noncomputable def GammaStructure.goodPerm (Γ : GammaStructure k) : Equiv.Perm (Fin k) :=
   Γ.goodPermAux k
 
-/-- The greedy construction produces a good ordering (Cor. 4.5).
+/-- **Greedy correctness invariant.** After `m` greedy steps, every settled rank `r < m`
+already dominates the partial-row LCM of all later indices `j ≥ r` in the partially
+re-ordered structure `Γ.permute (Γ.goodPermAux m)`. Taking `m = k` yields
+`goodPerm_isGoodOrdering`. -/
+lemma GammaStructure.goodPermAux_settled (Γ : GammaStructure k) :
+    ∀ m, ∀ r : Fin k, (r : ℕ) < m → ∀ j : Fin k, r ≤ j →
+      (Γ.permute (Γ.goodPermAux m)).partialRow r j ≤
+        (Γ.permute (Γ.goodPermAux m)).gammaRow r := by
+  intro m
+  induction' m with m ih
+  · grind +splitImp
+  · by_cases hm : m < k
+    · rw [GammaStructure.goodPermAux]
+      intro r hr j hj
+      by_cases hr' : r.val < m
+      · convert ih r hr' (Equiv.swap ⟨m, hm⟩ (Classical.choose (Finset.exists_max_image
+          (Finset.filter (fun p : Fin k => m ≤ (p : ℕ)) Finset.univ)
+          (fun p : Fin k => (Γ.permute (Γ.goodPermAux m)).partialRow ⟨m, hm⟩ p)
+          ⟨⟨m, hm⟩, Finset.mem_filter.mpr ⟨Finset.mem_univ _, by simp +decide⟩⟩)) j) _ using 1
+        · simp +decide [hm, GammaStructure.partialRow, GammaStructure.permute]
+          refine Finset.lcm_congr rfl fun i hi => ?_
+          grind +suggestions
+        · split_ifs ; simp_all +decide [GammaStructure.permute]
+          refine Finset.lcm_congr rfl fun i hi => ?_
+          grind
+        · grind +revert
+      · cases eq_or_lt_of_le (Nat.le_of_lt_succ hr) <;> simp_all +decide
+        have := Exists.choose_spec (Finset.exists_max_image
+          (Finset.univ.filter fun p : Fin k => m ≤ (p : ℕ))
+          (fun p => (Γ.permute (Γ.goodPermAux m)).partialRow ⟨m, hm⟩ p)
+          ⟨⟨m, hm⟩, Finset.mem_filter.mpr ⟨Finset.mem_univ _, by simp +decide⟩⟩)
+        convert this.2 (Equiv.swap ⟨m, hm⟩ (Exists.choose (Finset.exists_max_image
+          (Finset.univ.filter fun p : Fin k => m ≤ (p : ℕ))
+          (fun p => (Γ.permute (Γ.goodPermAux m)).partialRow ⟨m, hm⟩ p)
+          ⟨⟨m, hm⟩, Finset.mem_filter.mpr ⟨Finset.mem_univ _, by simp +decide⟩⟩)) j) _ using 1
+        · refine Finset.lcm_congr ?_ ?_
+          · exact congr_arg _ (Fin.ext ‹_›)
+          · simp +decide [GammaStructure.permute]
+            grind +suggestions
+        · simp +decide [GammaStructure.gammaRow, GammaStructure.partialRow, GammaStructure.permute]
+          refine Finset.lcm_congr ?_ ?_
+          · exact congr_arg _ (Fin.ext ‹_›)
+          · grind
+        · grind
+    · convert ih using 1
+      rw [show Γ.goodPermAux (m + 1) = Γ.goodPermAux m from ?_]
+      · grind
+      · rw [GammaStructure.goodPermAux] ; aesop
 
-The correctness of the greedy selection — that the row LCM `γ_r` chosen at each rank
-dominates the partial-row LCM of every later index — is left as `sorry`: this is the
-combinatorial heart of the construction and is intricate to formalize over `Fin k`. -/
+/-- The greedy construction produces a good ordering (Cor. 4.5): the row LCM `γ_r` chosen at
+each rank dominates the partial-row LCM of every later index. -/
 theorem GammaStructure.goodPerm_isGoodOrdering (Γ : GammaStructure k) :
     Γ.IsGoodOrdering Γ.goodPerm := by
-  sorry
+  intro r j hrj
+  exact Γ.goodPermAux_settled k r r.isLt j hrj
 
 /-- **Corollary 4.5.** The greedy re-ordering produces a row-LCM sequence obeying
 `γ_{r+1} ≤ H · γ_r` whenever every entry of the re-ordered structure is `≤ H`. -/

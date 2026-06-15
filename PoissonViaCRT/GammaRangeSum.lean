@@ -15,6 +15,7 @@ Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 -/
 
 import PoissonViaCRT.Combinatorics
+import Mathlib.Analysis.SpecialFunctions.Log.Base
 
 /-!
 # Gamma-Range Summation Bounds (§3.1 Integration)
@@ -141,8 +142,8 @@ The overall structure follows the three-step plan of §4.2:
   `M_Γ(H) ≤ 2ⁿ Hⁿ / ∏ᵢ min(γᵢ, H)`, a direct consequence of `countTuples_bound_prop`.
 * **Step 2** (`gk_prodMin_lower_med`, `gk_prodMin_lower_large`): the pure real-analysis
   optimization, bounding `∏ᵢ min(γᵢ, H)` from below for a sequence satisfying the greedy
-  recurrence `γ_{r+1} ≤ H·γ_r`.  This is the discrete-calculus heart of GK §4.2 and is the
-  only part left as a documented `sorry`.
+  recurrence `γ_{r+1} ≤ H·γ_r`.  This is the discrete-calculus heart of GK §4.2, reduced to the
+  elementary optimization lemma `gk_sum_le_minSq`.
 * **Step 3** (`countTuplesWithGammaProd_med_gamma`, `countTuplesWithGammaProd_large_gamma`):
   combining the per-structure bound with the structure count `countGammaStructures_le` and the
   decomposition `countTuplesWithGammaProd_le_sum`.
@@ -256,17 +257,97 @@ lemma GammaStructure.gammaRow_succ_zero_le {n : ℕ} (Γ : GammaStructure (n + 1
   rw [ show ( Iio i.succ : Finset ( Fin ( n + 1 ) ) ) = { 0 } from ?_ ] ; aesop;
   ext x; simp [Fin.lt_def, hi]
 
-/-- **Existence of a good ordering fixing `0`** (GK §4.2).  There is a permutation of the
+/-
+**Base-`B` (positional) strict monotonicity.** If two digit sequences `a, a'` over
+`Fin (N+1)` are bounded by `B`, agree on all positions before `r`, and `a' r > a r`, then
+the base-`B` value with position `0` most significant (`∑ i, a i * B ^ (N - i)`) is strictly
+larger for `a'`. The earlier (more significant) position `r` dominates the lower positions.
+-/
+lemma base_pow_sum_lt {N B : ℕ} (a a' : Fin (N + 1) → ℕ) (r : Fin (N + 1))
+    (hB : ∀ i, a i < B) (hB' : ∀ i, a' i < B)
+    (hlt : a r < a' r) (heq : ∀ i : Fin (N + 1), (i : ℕ) < (r : ℕ) → a i = a' i) :
+    ∑ i : Fin (N + 1), a i * B ^ (N - (i : ℕ)) <
+      ∑ i : Fin (N + 1), a' i * B ^ (N - (i : ℕ)) := by
+  -- Split the sum into two parts: one over indices less than `r` and one over indices greater than or equal to `r`.
+  have h_split : ∑ i, a i * B ^ (N - i.val) = (∑ i ∈ Finset.univ.filter (fun i => i.val < r.val), a i * B ^ (N - i.val)) + (∑ i ∈ Finset.univ.filter (fun i => r.val ≤ i.val), a i * B ^ (N - i.val)) ∧ ∑ i, a' i * B ^ (N - i.val) = (∑ i ∈ Finset.univ.filter (fun i => i.val < r.val), a' i * B ^ (N - i.val)) + (∑ i ∈ Finset.univ.filter (fun i => r.val ≤ i.val), a' i * B ^ (N - i.val)) := by
+    constructor <;> rw [ Finset.sum_filter, Finset.sum_filter ] <;> rw [ ← Finset.sum_add_distrib ] <;> congr <;> ext i <;> split_ifs <;> linarith [ Fin.is_lt i ] ;
+  -- The remaining terms (`i.val > r.val`) satisfy
+  -- `∑_{i.val > r.val} a i * B^(N - i.val) ≤ ∑_{i.val > r.val} (B-1) * B^(N - i.val) < B^(N - r.val)`.
+  have h_remaining : ∑ i ∈ Finset.univ.filter (fun i => r.val < i.val), a i * B ^ (N - i.val) < B ^ (N - r.val) := by
+    refine' lt_of_le_of_lt ( Finset.sum_le_sum fun i hi => Nat.mul_le_mul_right _ ( Nat.le_sub_one_of_lt ( hB i ) ) ) _;
+    -- Reindex the sum to simplify the expression.
+    have h_reindex : ∑ i ∈ Finset.univ.filter (fun i : Fin (N + 1) => r.val < i.val), (B - 1) * B ^ (N - i.val) = ∑ j ∈ Finset.range (N - r.val), (B - 1) * B ^ j := by
+      refine' Finset.sum_bij ( fun i hi => N - i ) _ _ _ _ <;> simp +decide [ Finset.mem_filter, Finset.mem_range ];
+      · exact fun i hi => by rw [ tsub_lt_tsub_iff_left_of_le ( Nat.le_of_lt_succ <| Fin.is_lt _ ) ] ; exact hi;
+      · exact fun i hi j hj hij => Fin.ext <| by rw [ tsub_right_inj ] at hij <;> linarith [ Fin.is_lt i, Fin.is_lt j, show ( i : ℕ ) > r from hi, show ( j : ℕ ) > r from hj ] ;
+      · intro b hb; use ⟨ N - b, by omega ⟩ ; simp +decide [ Fin.lt_def ] ; omega;
+    rcases B with ( _ | _ | B ) <;> simp_all +decide [ ← Finset.mul_sum _ _ _ ];
+    nlinarith [ geom_sum_mul_neg ( B + 1 + 1 : ℤ ) ( N - r ), pow_pos ( by linarith : 0 < B + 1 + 1 ) ( N - r ) ];
+  -- The term for `i = r` is `a r * B^(N - r.val)`.
+  have h_term_r : ∑ i ∈ Finset.univ.filter (fun i => r.val ≤ i.val), a i * B ^ (N - i.val) = a r * B ^ (N - r.val) + ∑ i ∈ Finset.univ.filter (fun i => r.val < i.val), a i * B ^ (N - i.val) := by
+    have herase : (Finset.univ.filter (fun i : Fin (N + 1) => r.val ≤ i.val)).erase r
+        = Finset.univ.filter (fun i : Fin (N + 1) => r.val < i.val) := by
+      ext i
+      simp only [Finset.mem_erase, Finset.mem_filter, Finset.mem_univ, true_and, ne_eq,
+        Fin.ext_iff]
+      omega
+    rw [← Finset.add_sum_erase (Finset.univ.filter (fun i : Fin (N + 1) => r.val ≤ i.val))
+      (fun i => a i * B ^ (N - i.val))
+      (Finset.mem_filter.mpr ⟨Finset.mem_univ r, le_rfl⟩), herase]
+  -- The term for `i = r` is `a' r * B^(N - r.val)`.
+  have h_term_r' : ∑ i ∈ Finset.univ.filter (fun i => r.val ≤ i.val), a' i * B ^ (N - i.val) ≥ a' r * B ^ (N - r.val) := by
+    exact Finset.single_le_sum ( fun i _ => Nat.zero_le ( a' i * B ^ ( N - i.val ) ) ) ( Finset.mem_filter.mpr ⟨ Finset.mem_univ _, le_rfl ⟩ );
+  simp_all +decide [ Finset.sum_filter ];
+  nlinarith [ pow_pos ( show 0 < B by linarith [ hB r ] ) ( N - r.val ) ]
+
+/-
+**Existence of a good ordering fixing `0`** (GK §4.2).  There is a permutation of the
 indices fixing the anchor `0` which is a good ordering for `Γ` (so that the re-ordered rows
 obey the greedy recurrence `γ_{r+1} ≤ H·γ_r` whenever all entries are `≤ H`).
 
-The `0`-th rank is unconstrained (its partial-row LCM is the empty LCM `1`), so the greedy
-construction of `goodPerm` can be carried out keeping `0` fixed.  Establishing the greedy
-correctness over `Fin (n+1)` is the intricate combinatorial core of GK §4.2 and is left here
-as a documented `sorry`, mirroring `GammaStructure.goodPerm_isGoodOrdering`. -/
+The `0`-th rank is unconstrained (its partial-row LCM is the empty LCM `1`), so we may keep
+`0` fixed.  We pick, among all permutations fixing `0`, one maximizing the base-`B` potential
+`∑_r γ_r · B^{n-r}` (with `B = γ(Γ)+1` strictly above every row LCM); an exchange argument
+shows this maximizer is a good ordering.
+-/
 theorem GammaStructure.exists_isGoodOrdering_fixing_zero {n : ℕ} (Γ : GammaStructure (n + 1)) :
     ∃ σ : Equiv.Perm (Fin (n + 1)), σ 0 = 0 ∧ Γ.IsGoodOrdering σ := by
-  sorry
+  by_contra h_contra;
+  obtain ⟨σ, hσ⟩ : ∃ σ : Equiv.Perm (Fin (n + 1)), σ 0 = 0 ∧ ∀ τ : Equiv.Perm (Fin (n + 1)), τ 0 = 0 → (∑ r : Fin (n + 1), (Γ.permute σ).gammaRow r * (Γ.gammaProd + 1) ^ (n - r.val)) ≥ (∑ r : Fin (n + 1), (Γ.permute τ).gammaRow r * (Γ.gammaProd + 1) ^ (n - r.val)) := by
+    have := Finset.exists_max_image ( Finset.univ.filter fun σ : Equiv.Perm ( Fin ( n + 1 ) ) => σ 0 = 0 ) ( fun σ => ∑ r : Fin ( n + 1 ), ( Γ.permute σ ).gammaRow r * ( Γ.gammaProd + 1 ) ^ ( n - r.val ) ) ⟨ 1, by simp +decide ⟩ ; aesop;
+  -- Let `r` be the smallest index such that `(Γ.permute σ).gammaRow r < (Γ.permute σ).partialRow r j` for some `j`.
+  obtain ⟨r, hr⟩ : ∃ r : Fin (n + 1), ∃ j : Fin (n + 1), r ≤ j ∧ (Γ.permute σ).gammaRow r < (Γ.permute σ).partialRow r j := by
+    unfold GammaStructure.IsGoodOrdering at h_contra; aesop;
+  obtain ⟨j, hj₁, hj₂⟩ := hr
+  have hr_pos : 0 < r.val := by
+    contrapose! hj₂; aesop;
+  have hj_pos : 0 < j.val := by
+    exact lt_of_lt_of_le hr_pos hj₁
+  have hr_ne_zero : r ≠ 0 := by
+    exact ne_of_gt hr_pos
+  have hj_ne_zero : j ≠ 0 := by
+    exact ne_of_gt hj_pos
+  set τ : Equiv.Perm (Fin (n + 1)) := σ * Equiv.swap r j
+  have hτ : τ 0 = 0 := by
+    simp +zetaDelta at *;
+    grind +extAll
+  have hτ_max : (∑ r : Fin (n + 1), (Γ.permute τ).gammaRow r * (Γ.gammaProd + 1) ^ (n - r.val)) > (∑ r : Fin (n + 1), (Γ.permute σ).gammaRow r * (Γ.gammaProd + 1) ^ (n - r.val)) := by
+    apply base_pow_sum_lt;
+    any_goals exact r;
+    · intro i; exact Nat.lt_succ_of_le (gammaRow_le_gammaProd (Γ.permute σ) i |> le_trans <| by simp +decide [ GammaStructure.gammaProd_perm_invariant ( Nat.succ_pos n ) Γ σ hσ.1 ]) ;
+    · intro i; exact Nat.lt_succ_of_le (gammaRow_le_gammaProd (Γ.permute τ) i |> le_trans <| by simp +decide [ GammaStructure.gammaProd_perm_invariant (Nat.succ_pos n) Γ τ hτ ] ;) ;
+    · convert hj₂ using 1;
+      refine' Finset.lcm_congr _ _;
+      · rfl;
+      · simp +zetaDelta at *;
+        intro a ha; simp +decide [ GammaStructure.permute, Equiv.swap_apply_def ] ;
+        grind;
+    · intro i hi; simp +decide [ GammaStructure.gammaRow ] ;
+      refine' Finset.lcm_congr rfl fun x hx => _;
+      simp +zetaDelta at *;
+      simp +decide [ GammaStructure.permute, Equiv.swap_apply_def, show x ≠ r from ne_of_lt ( lt_trans hx hi ), show x ≠ j from ne_of_lt ( lt_of_lt_of_le ( lt_trans hx hi ) hj₁ ) ];
+      grind
+  exact absurd hτ_max (not_lt_of_ge (hσ.right τ hτ))
 
 /-! #### Step 2: the algebraic optimization core (GK §4.2, eq. 4.6 – Cor. 4.5)
 
@@ -274,12 +355,74 @@ Given the re-ordered row sequence `g : Fin n → ℝ` satisfying `g r ≥ 1`, th
 `g 0 ≤ H`, and the greedy recurrence `g_{r+1} ≤ H · g_r`, with product `∏ g = γ`, one
 optimizes the lower bound on `∏ min(g_r, H)` over the number `ρ = |{r : g_r ≤ H}|` of
 "small" rows.  This discrete calculus produces the regime-dependent exponents of GK
-Corollary 5.  We isolate it as documented `sorry`s, stated exactly in the form consumed by
-Step 1's `D(Γ)` bound. -/
+Corollary 5.  It is reduced to the elementary discrete inequality `gk_sum_le_minSq`
+(`∑ b ≤ (∑ min(b_i,1) + 1/2)²/2`) via the logarithmic substitution `b_i = log_H g_i`, and stated
+in the form consumed by Step 1's `D(Γ)` bound. -/
 
-/-- **Step 2 (intermediate regime).** Optimized lower bound on `∏ min(g_r, H)` in the
+/-
+**Discrete optimization core (GK §4.2).** For a nonnegative real sequence `b` with
+`b₀ ≤ 1` and the unit-step recurrence `b_{i+1} ≤ 1 + b_i`, the total `∑ b` is controlled by
+the truncated total `T = ∑ min(b_i, 1)` via `∑ b ≤ (T + 1/2)² / 2`. Equality is approached by
+the slope-1 ramp `b_i = i`. With `b_i = log_H g_i` this is exactly the bound on
+`log_H(∏ g) ≤ (log_H(∏ min(g_i,H)) + 1/2)²/2` underlying GK Corollary 5.
+-/
+set_option maxHeartbeats 800000 in
+lemma gk_sum_le_minSq {n : ℕ} (b : Fin n → ℝ)
+    (hb0 : ∀ i, 0 ≤ b i)
+    (hfirst : ∀ i : Fin n, i.val = 0 → b i ≤ 1)
+    (hrec : ∀ i j : Fin n, j.val = i.val + 1 → b j ≤ 1 + b i) :
+    ∑ i, b i ≤ (∑ i, min (b i) 1 + 1 / 2) ^ 2 / 2 := by
+  revert b;
+  -- Prove the stronger statement by induction on `n`.
+  have h_strong : ∀ m : ℕ, ∀ (b : Fin (m + 1) → ℝ), (∀ i, 0 ≤ b i) → (∀ i, i.val = 0 → b i ≤ 1) → (∀ i j, j.val = i.val + 1 → b j ≤ 1 + b i) →
+    let S := ∑ i, b i
+    let T := ∑ i, min (b i) 1
+    let c := if h : 0 < m + 1 then b (Fin.last m) else 0
+    c ≤ T ∧ 2 * S ≤ T^2 + T + 1/4 - (max (1/2 - T) 0)^2 := by
+      intro m b hb0 hfirst hrec
+      induction' m with m ih;
+      · simp_all +decide [ Fin.eq_zero ];
+        cases max_cases ( 2⁻¹ - b 0 ) 0 <;> nlinarith;
+      · specialize ih ( fun i => b i.castSucc ) ( fun i => hb0 _ ) ( fun i hi => hfirst _ <| by simpa using hi ) ( fun i j hj => hrec _ _ <| by simpa using hj ) ; simp_all +decide [ Fin.sum_univ_castSucc ];
+        constructor <;> norm_num [ Fin.add_def, Fin.last ] at *;
+        · have := hrec ⟨ m, by linarith ⟩ ⟨ m + 1, by linarith ⟩ ; norm_num at *;
+          cases min_cases ( b ⟨ m, by linarith ⟩ ) 1 <;> cases min_cases ( b ⟨ m + 1, by linarith ⟩ ) 1 <;> linarith [ hb0 ⟨ m, by linarith ⟩, hb0 ⟨ m + 1, by linarith ⟩ ];
+        · cases min_cases ( b ⟨ m + 1, by linarith ⟩ ) 1 <;> cases max_cases ( 1 / 2 - ( ∑ i : Fin m, min ( b ( Fin.castSucc ( Fin.castSucc i ) ) ) 1 + min ( b ⟨ m, by linarith ⟩ ) 1 ) ) 0 <;> cases max_cases ( 1 / 2 - ( ∑ i : Fin m, min ( b ( Fin.castSucc ( Fin.castSucc i ) ) ) 1 + min ( b ⟨ m, by linarith ⟩ ) 1 + min ( b ⟨ m + 1, by linarith ⟩ ) 1 ) ) 0 <;> simp_all +decide only;
+          any_goals linarith [ hb0 ⟨ m, by linarith ⟩, hb0 ⟨ m + 1, by linarith ⟩, hrec ⟨ m, by linarith ⟩ ⟨ m + 1, by linarith ⟩ rfl ];
+          · nlinarith [ hb0 ⟨ m, by linarith ⟩, hb0 ⟨ m + 1, by linarith ⟩, hrec ⟨ m, by linarith ⟩ ⟨ m + 1, by linarith ⟩ rfl ];
+          · nlinarith [ sq_nonneg ( b ⟨ m + 1, by linarith ⟩ - 1 / 2 ), hb0 ⟨ m + 1, by linarith ⟩ ];
+          · nlinarith [ hb0 ⟨ m, by linarith ⟩, hb0 ⟨ m + 1, by linarith ⟩, hrec ⟨ m, by linarith ⟩ ⟨ m + 1, by linarith ⟩ rfl ];
+  intro b hb0 hfirst hrec; rcases n with ( _ | n ) <;> norm_num at *;
+  nlinarith [ h_strong n b hb0 hfirst hrec, sq_nonneg ( max ( 1 / 2 - ∑ i, min ( b i ) 1 ) 0 ) ]
+
+/-
+**Logarithmic form of the optimization core.** Setting `b_i = log_H g_i` (valid for
+`H > 1`), the constraints `g_i ≥ 1`, `g_0 ≤ H`, `g_{i+1} ≤ H g_i` become the hypotheses of
+`gk_sum_le_minSq`, and `∑ b = log_H ∏ g`, `∑ min(b_i,1) = log_H ∏ min(g_i,H)`.
+-/
+lemma gk_logb_prod_le {n : ℕ} (H : ℝ) (g : Fin n → ℝ) (hH : 1 < H)
+    (hg : ∀ i, 1 ≤ g i) (hg_first : ∀ i : Fin n, i.val = 0 → g i ≤ H)
+    (hrec : ∀ i j : Fin n, j.val = i.val + 1 → g j ≤ H * g i) :
+    Real.logb H (∏ i, g i) ≤
+      (Real.logb H (∏ i, min (g i) H) + 1 / 2) ^ 2 / 2 := by
+  convert gk_sum_le_minSq ( fun i => Real.logb H ( g i ) ) ?_ ?_ ?_ using 1;
+  · rw [ Real.logb_prod _ _ fun i _ => by linarith [ hg i ] ];
+  · rw [ Real.logb_prod ];
+    · congr! 2;
+      congr! 2;
+      cases le_total ( g ‹_› ) H <;> simp +decide [ * ];
+      · rw [ Real.logb_le_iff_le_rpow ] <;> norm_num <;> linarith [ hg ‹_› ];
+      · rw [ Real.le_logb_iff_rpow_le ] <;> norm_num <;> linarith [ hg ‹_› ];
+    · exact fun i _ => ne_of_gt ( lt_min ( by linarith [ hg i ] ) ( by linarith ) );
+  · exact fun i => Real.logb_nonneg hH ( hg i );
+  · exact fun i hi => by rw [ Real.logb_le_iff_le_rpow ] <;> norm_num <;> linarith [ hg i, hg_first i hi ] ;
+  · intro i j hij; have := hrec i j hij; rw [ Real.logb_le_iff_le_rpow, Real.rpow_add, Real.rpow_logb ] <;> norm_num <;> linarith [ hg i, hg j ] ;
+
+/-
+**Step 2 (intermediate regime).** Optimized lower bound on `∏ min(g_r, H)` in the
 regime `H^{w(0)} < γ ≤ H^{w(τ₁)}`, stated as the resulting upper bound on
-`2ⁿ Hⁿ / ∏ min(g_r, H)`. -/
+`2ⁿ Hⁿ / ∏ min(g_r, H)`.
+-/
 theorem gk_prodMin_lower_med {n : ℕ} (H : ℝ) (g : Fin n → ℝ)
     (hH : 1 ≤ H) (hg : ∀ i, 1 ≤ g i)
     (hg_first : ∀ i : Fin n, i.val = 0 → g i ≤ H)
@@ -288,10 +431,41 @@ theorem gk_prodMin_lower_med {n : ℕ} (H : ℝ) (g : Fin n → ℝ)
     (h_le : ∏ i, g i ≤ H ^ tupleBoundWeight n (tauOne n)) :
     2 ^ n * H ^ n / ∏ i, min (g i) H ≤
       2 ^ n * H ^ ((n : ℝ) + 1.5 - Real.sqrt (2 * (n : ℝ) + 2.25)) := by
-  sorry
+  rcases eq_or_lt_of_le hH with rfl | hH1 <;> norm_num [ tupleBoundWeight ] at *;
+  · linarith;
+  · -- Let $Q := \prod_{i} \min(g_i, H)$ and $T := \log_H(Q)$.
+    set Q := ∏ i, min (g i) H
+    set T := Real.logb H Q
+    have hT_nonneg : 0 ≤ T := by
+      exact Real.logb_nonneg hH1 ( le_trans ( by norm_num ) ( Finset.prod_le_prod ( fun _ _ => by positivity ) fun _ _ => le_min ( hg _ ) hH ) )
+    have hQ_pos : 0 < Q := by
+      exact Finset.prod_pos fun i _ => lt_min ( by linarith [ hg i ] ) ( by linarith [ hg i ] )
+    have hQ_eq : Q = H ^ T := by
+      rw [ Real.rpow_logb ] <;> linarith;
+    -- From `h_gt`, we have `H ^ (n : ℝ) < P`.
+    have hP_gt : (n : ℝ) < Real.logb H (∏ i, g i) := by
+      rw [ Real.lt_logb_iff_rpow_lt ] <;> norm_num at * <;> try linarith [ show 0 < ∏ i : Fin n, g i from Finset.prod_pos fun _ _ => zero_lt_one.trans_le ( hg _ ) ] ;
+      exact lt_of_le_of_lt ( by rw [ ← Real.rpow_natCast ] ; exact Real.rpow_le_rpow_of_exponent_le hH ( by linarith ) ) h_gt;
+    -- From `gk_logb_prod_le`, we have `Real.logb H P ≤ (T + 1/2)^2 / 2`.
+    have hP_le : Real.logb H (∏ i, g i) ≤ (T + 1 / 2) ^ 2 / 2 := by
+      apply gk_logb_prod_le H g hH1 hg hg_first hrec;
+    -- From `hP_gt` and `hP_le`, we have `2 * n < (T + 1/2)^2`.
+    have hT_sq : 2 * (n : ℝ) < (T + 1 / 2) ^ 2 := by
+      linarith;
+    -- From `hT_sq`, we have `T ≥ Real.sqrt (2 * (n : ℝ) + 2.25) - 1.5`.
+    have hT_ge : T ≥ Real.sqrt (2 * (n : ℝ) + 2.25) - 1.5 := by
+      by_cases hT_le : T ≤ 1 / 2;
+      · rcases n with ( _ | _ | n ) <;> norm_num at *; all_goals nlinarith only [ hT_sq, hT_le, hT_nonneg ];
+      · nlinarith only [ hT_sq, hT_le, Real.mul_self_sqrt ( show 0 ≤ 2 * ( n : ℝ ) + 2.25 by positivity ) ];
+    rw [div_le_iff₀ hQ_pos, mul_assoc, hQ_eq, ← Real.rpow_natCast H n,
+      ← Real.rpow_add (by positivity : (0:ℝ) < H)]
+    gcongr
+    linarith [hT_ge]
 
-/-- **Step 2 (large regime).** Optimized lower bound on `∏ min(g_r, H)` in the regime
-`H^{w(τ-1)} < γ ≤ H^{w(τ)}`, stated as the resulting upper bound on `2ⁿ Hⁿ / ∏ min(g_r, H)`. -/
+/-
+**Step 2 (large regime).** Optimized lower bound on `∏ min(g_r, H)` in the regime
+`H^{w(τ-1)} < γ ≤ H^{w(τ)}`, stated as the resulting upper bound on `2ⁿ Hⁿ / ∏ min(g_r, H)`.
+-/
 theorem gk_prodMin_lower_large {n : ℕ} (H : ℝ) (g : Fin n → ℝ) (τ : ℕ)
     (hH : 1 ≤ H) (hg : ∀ i, 1 ≤ g i)
     (hg_first : ∀ i : Fin n, i.val = 0 → g i ≤ H)
@@ -300,7 +474,26 @@ theorem gk_prodMin_lower_large {n : ℕ} (H : ℝ) (g : Fin n → ℝ) (τ : ℕ
     (h_gt : H ^ tupleBoundWeight n (τ - 1) < ∏ i, g i)
     (h_le : ∏ i, g i ≤ H ^ tupleBoundWeight n τ) :
     2 ^ n * H ^ n / ∏ i, min (g i) H ≤ 2 ^ n * H ^ (n + 1 - τ) := by
-  sorry
+  by_cases hH1 : H = 1;
+  · aesop;
+  · have hT_ge : Real.logb H (∏ i, min (g i) H) ≥ (τ : ℝ) - 1 := by
+      have hT_ge : (tupleBoundWeight n (τ - 1) : ℝ) < (Real.logb H (∏ i, min (g i) H) + 1 / 2) ^ 2 / 2 := by
+        have hT_ge : Real.logb H (∏ i, g i) > tupleBoundWeight n (τ - 1) := by
+          rw [ gt_iff_lt, Real.lt_logb_iff_rpow_lt ] <;> try linarith;
+          · exact lt_of_le_of_ne hH ( Ne.symm hH1 );
+          · exact lt_of_le_of_lt ( by positivity ) h_gt;
+        refine lt_of_lt_of_le hT_ge ?_;
+        convert gk_logb_prod_le H g ( lt_of_le_of_ne hH ( Ne.symm hH1 ) ) hg hg_first hrec using 1;
+      contrapose! hT_ge;
+      unfold tupleBoundWeight; rcases τ with ( _ | τ ) <;> norm_num at *;
+      nlinarith [ show ( τ : ℝ ) + 1 ≤ n by norm_cast, show ( Real.logb H ( ∏ i, min ( g i ) H ) : ℝ ) ≥ 0 by exact Real.logb_nonneg ( lt_of_le_of_ne hH ( Ne.symm hH1 ) ) ( show ( ∏ i, min ( g i ) H ) ≥ 1 by exact le_trans ( by norm_num ) ( Finset.prod_le_prod ( fun _ _ => by positivity ) fun _ _ => show ( min ( g _ ) H ) ≥ 1 by exact le_min ( hg _ ) ( by linarith ) ) ) ];
+    have h_exp : (∏ i, min (g i) H) ≥ H ^ ((τ : ℝ) - 1) := by
+      rw [ ge_iff_le, Real.le_logb_iff_rpow_le ] at hT_ge <;> norm_cast at *;
+      · exact lt_of_le_of_ne hH ( Ne.symm hH1 );
+      · exact Finset.prod_pos fun i _ => lt_min ( zero_lt_one.trans_le ( hg i ) ) ( zero_lt_one.trans_le hH );
+    convert mul_le_mul_of_nonneg_left ( inv_anti₀ ( Real.rpow_pos_of_pos ( zero_lt_one.trans_le hH ) _ ) h_exp ) ( show ( 0 : ℝ ) ≤ 2 ^ n * H ^ n by positivity ) using 1 ; ring_nf;
+    rw [ ← Real.rpow_natCast, ← Real.rpow_natCast, ← Real.rpow_neg ( by positivity ) ] ; norm_num [ Nat.cast_sub ( by linarith : τ ≤ 1 + n ) ] ; ring_nf;
+    rw [ ← Real.rpow_natCast, ← Real.rpow_add ( by positivity ) ] ; ring_nf
 
 /-! #### Per-structure bounds (Steps 1 + 2 combined) -/
 
