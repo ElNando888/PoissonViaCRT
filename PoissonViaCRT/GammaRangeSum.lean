@@ -555,6 +555,107 @@ theorem countTuplesWithGamma_large_bound {n γ H τ : ℕ} (Γ : GammaStructure 
     rw [ countTuplesWithGamma_permute_eq Γ σ hσ0 H ];
   · aesop
 
+/-! #### Sharp optimization core retaining the `1/γ^α` saving
+
+The `gk_prodMin_lower_large` route only keeps the lossy bound `T ≥ τ - 1`, discarding the
+actual `√(2 S)` lower bound on `T = log_H ∏ min(gᵢ,H)` (where `S = log_H ∏ gᵢ`).  This
+discards the `1/γ` dependence needed for convergence of the γ-sum against the radical
+Euler weight.  The sharp version below keeps the `√(2 S)` bound and uses the fractional
+power trick: when `S ≤ 2/α²` we have `√(2 S) ≥ α S`, hence `T ≥ α S - 1/2` and
+`2ⁿ Hⁿ / ∏ min(gᵢ,H) ≤ 2ⁿ H^{n+1/2} / (∏ gᵢ)^α`. -/
+
+/-
+**Sharp optimization core (fractional saving).** With `α > 0` and `∏ gᵢ ≤ H^{2/α²}`,
+the `D(Γ)` ratio `2ⁿ Hⁿ / ∏ min(gᵢ,H)` is bounded by `2ⁿ H^{n+1/2} / (∏ gᵢ)^α`.
+This injects the fractional power `(H^{2/α²}/∏gᵢ)^α ≥ 1` into the discrete-calculus core
+(`gk_logb_prod_le`) *before* discarding the product over `gᵢ`, retaining the `1/γ^α` factor.
+-/
+theorem gk_prodMin_lower_sharp {n : ℕ} (H : ℝ) (g : Fin n → ℝ) (α : ℝ)
+    (hH : 1 < H) (hg : ∀ i, 1 ≤ g i)
+    (hg_first : ∀ i : Fin n, i.val = 0 → g i ≤ H)
+    (hrec : ∀ i j : Fin n, j.val = i.val + 1 → g j ≤ H * g i)
+    (hα : 0 < α) (hbound : ∏ i, g i ≤ H ^ (2 / α ^ 2)) :
+    2 ^ n * H ^ n / ∏ i, min (g i) H ≤
+      2 ^ n * H ^ ((n : ℝ) + 1 / 2) / (∏ i, g i) ^ α := by
+  -- Let $P = \prod_{i} g_i$ and $Q = \prod_{i} \min(g_i, H)$. Then $P \geq 1$ and $Q \geq 1$.
+  set P := ∏ i, g i
+  set Q := ∏ i, min (g i) H
+  have hP_pos : 0 < P := by
+    exact Finset.prod_pos fun i _ => zero_lt_one.trans_le ( hg i )
+  have hQ_pos : 0 < Q := by
+    exact Finset.prod_pos fun i _ => lt_min ( zero_lt_one.trans_le ( hg i ) ) ( zero_lt_one.trans hH )
+  have hP_ge_one : 1 ≤ P := by
+    exact le_trans ( by norm_num ) ( Finset.prod_le_prod ( fun _ _ => by norm_num ) fun _ _ => hg _ )
+  have hQ_ge_one : 1 ≤ Q := by
+    exact le_trans ( by norm_num ) ( Finset.prod_le_prod ( fun _ _ => by norm_num ) fun _ _ => show 1 ≤ Min.min ( g _ ) H from le_min ( hg _ ) ( by linarith ) )
+  have hP_le_H_pow : P ≤ H ^ (2 / α ^ 2) := by
+    exact hbound;
+  -- Let $S = \log_H P$ and $T = \log_H Q$. Then $S \geq 0$ and $T \geq 0$.
+  set S := Real.logb H P
+  set T := Real.logb H Q
+  have hS_nonneg : 0 ≤ S := by
+    exact Real.logb_nonneg hH hP_ge_one
+  have hT_nonneg : 0 ≤ T := by
+    exact Real.logb_nonneg hH hQ_ge_one
+  have hS_le_two_div_alpha_sq : S ≤ 2 / α ^ 2 := by
+    rw [ Real.logb_le_iff_le_rpow ] <;> norm_cast
+  have hT_ge_alpha_S_minus_half : T ≥ α * S - 1 / 2 := by
+    -- By `gk_logb_prod_le H g hH hg hg_first hrec` we get $S \leq (T + 1/2)^2 / 2$.
+    have hS_le_T_plus_half_sq_div_two : S ≤ (T + 1 / 2) ^ 2 / 2 := by
+      convert gk_logb_prod_le H g hH hg hg_first hrec using 1;
+    rw [ le_div_iff₀ ] at hS_le_two_div_alpha_sq <;> nlinarith [ mul_pos hα ( sq_pos_of_pos hα ), Real.sqrt_nonneg ( 2 * S ), Real.mul_self_sqrt ( show 0 ≤ 2 * S by positivity ) ];
+  -- Therefore, $2^n * H^n / Q \leq 2^n * H^{n + 1/2 - \alpha S}$.
+  have h_final : 2 ^ n * H ^ n / Q ≤ 2 ^ n * H ^ (n + 1 / 2 - α * S) := by
+    have h_final : 2 ^ n * H ^ n / Q ≤ 2 ^ n * H ^ (n - T) := by
+      rw [ Real.rpow_sub ] <;> norm_num <;> try linarith;
+      rw [ ← mul_div_assoc, show H ^ T = Q by rw [ Real.rpow_logb ] <;> linarith ];
+    exact h_final.trans ( mul_le_mul_of_nonneg_left ( Real.rpow_le_rpow_of_exponent_le hH.le ( by linarith ) ) ( by positivity ) );
+  convert h_final using 1 ; rw [ Real.rpow_sub ( by positivity ), Real.rpow_mul ( by positivity ) ] ; norm_num [ Real.rpow_logb, hH, hP_pos ] ; ring_nf;
+  rw [ ← Real.rpow_mul ( by positivity ), mul_comm ] ; norm_num [ Real.rpow_logb, hH, hP_pos ] ; ring_nf;
+  rw [ mul_comm α, Real.rpow_mul ( by positivity ), Real.rpow_logb ] <;> linarith
+
+/-
+**Per-structure sharp large-γ bound.** `M_Γ(H) ≤ 2ⁿ · H^{n+1/2} / γ^α` whenever
+`γ(Γ) = γ ≤ H^{2/α²}`.  Combines the `D(Γ)` bound (Step 1) on a good re-ordering fixing `0`
+with the sharp optimization core `gk_prodMin_lower_sharp`.
+-/
+theorem countTuplesWithGamma_sharp_bound {n γ H : ℕ} (Γ : GammaStructure (n + 1)) (α : ℝ)
+    (hΓ : Γ.gammaProd = γ) (hH : 1 < H) (hα : 0 < α)
+    (hbound : (γ : ℝ) ≤ (H : ℝ) ^ (2 / α ^ 2)) :
+    (countTuplesWithGamma Γ H : ℝ) ≤ 2 ^ n * (H : ℝ) ^ ((n : ℝ) + 1 / 2) / (γ : ℝ) ^ α := by
+  by_cases hpos : 0 < countTuplesWithGamma Γ H;
+  · -- By `countTuplesWithGamma_permute_eq Γ σ hσ0 H`, countTuplesWithGamma Γ H = countTuplesWithGamma (Γ.permute σ) H.
+    obtain ⟨σ, hσ0, hσgood⟩ := Γ.exists_isGoodOrdering_fixing_zero
+    have hcount_eq : countTuplesWithGamma Γ H = countTuplesWithGamma (Γ.permute σ) H := by
+      exact Eq.symm ( countTuplesWithGamma_permute_eq Γ σ hσ0 H );
+    -- By `countTuplesWithGamma_le_div_prod_min (Γ.permute σ) H (by omega : 0 < H)`, this is ≤ 2^n * H^n / ∏ i, min ((Γ.permute σ).gammaRow i.succ : ℝ) H.
+    have hcount_le : (countTuplesWithGamma (Γ.permute σ) H : ℝ) ≤ 2 ^ n * (H : ℝ) ^ n / ∏ i : Fin n, min ((Γ.permute σ).gammaRow i.succ : ℝ) (H : ℝ) := by
+      convert countTuplesWithGamma_le_div_prod_min ( Γ.permute σ ) H ( by linarith ) using 1;
+    -- Apply `gk_prodMin_lower_sharp H (fun i => ((Γ.permute σ).gammaRow i.succ : ℝ)) α hH ?_ ?_ ?_ hα ?_` to bound this by 2^n * H^((n:ℝ)+1/2) / (∏ i, ((Γ.permute σ).gammaRow i.succ : ℝ))^α.
+    have hsharp : 2 ^ n * (H : ℝ) ^ n / ∏ i : Fin n, min ((Γ.permute σ).gammaRow i.succ : ℝ) (H : ℝ) ≤ 2 ^ n * (H : ℝ) ^ ((n : ℝ) + 1 / 2) / (∏ i : Fin n, ((Γ.permute σ).gammaRow i.succ : ℝ)) ^ α := by
+      apply gk_prodMin_lower_sharp;
+      any_goals assumption;
+      · norm_cast;
+      · exact fun i => mod_cast GammaStructure.gammaRow_cast_ge_one _ _;
+      · intro i hi
+        have hgamma_le_H : ∀ i j : Fin (n + 1), (Γ.permute σ).gamma i j ≤ H := by
+          apply GammaStructure.gamma_le_of_countTuples_pos;
+          linarith;
+        exact_mod_cast GammaStructure.gammaRow_succ_zero_le ( Γ.permute σ ) H hgamma_le_H i hi;
+      · intro i j hj; norm_cast; exact (by
+        apply GammaStructure.gammaRow_succ_le_of_isGoodOrdering;
+        · assumption;
+        · apply GammaStructure.gamma_le_of_countTuples_pos;
+          linarith;
+        · simp +decide [ hj ]);
+      · convert hbound using 1;
+        rw_mod_cast [ ← hΓ, ← ( Γ.permute σ ).gammaProd_eq_prod_succ, GammaStructure.gammaProd_perm_invariant ( Nat.succ_pos n ) Γ σ hσ0 ];
+    convert hcount_le.trans hsharp using 1;
+    · rw [hcount_eq];
+    · rw_mod_cast [ ← hΓ, ← ( Γ.permute σ ).gammaProd_eq_prod_succ, GammaStructure.gammaProd_perm_invariant ( Nat.succ_pos n ) Γ σ hσ0 ];
+  · norm_num +zetaDelta at *;
+    rw [ hpos ] ; norm_num ; positivity
+
 /-! #### Step 3: the main piecewise bounds -/
 
 /-- **Intermediate-γ bound**: `M_γ(H) ≤ C^ω(γ) · 2ⁿ · H^{n+1.5-\sqrt{2n+2.25}}`
@@ -599,6 +700,33 @@ theorem countTuplesWithGammaProd_large_gamma (n γ H τ : ℕ)
     countTuplesWithGamma_large_bound Γ (mem_finsetGammaStructures.mp hΓ) hH hτ_lower hτ_upper
       h_gt h_le) ?_
   rw [Finset.sum_const, nsmul_eq_mul, mul_assoc]
+  exact mul_le_mul_of_nonneg_right (by exact_mod_cast countGammaStructures_le γ hγ)
+    (by positivity)
+
+/-- **Sharp large-γ aggregate bound (retaining `1/γ^α`).**
+`M_γ(H) ≤ C^ω(γ) · 2ⁿ · H^{n+1/2} / γ^α` whenever `0 < γ ≤ H^{2/α²}` and `1 < H`.
+This is the sharpened reformulation of the large-γ count: unlike the lossy
+`H^{n+1-τ}` bound it keeps a genuine `1/γ^α` saving, which is what makes the
+sum over `γ` converge against the radical Euler weight.
+Combines the decomposition `countTuplesWithGammaProd_le_sum`, the per-structure sharp
+bound `countTuplesWithGamma_sharp_bound`, and the structure count `countGammaStructures_le`. -/
+theorem countTuplesWithGammaProd_large_gamma_sharp (n γ H : ℕ) (α : ℝ)
+    (hγ : 0 < γ) (hH : 1 < H) (hα : 0 < α)
+    (hbound : (γ : ℝ) ≤ (H : ℝ) ^ (2 / α ^ 2)) :
+    (countTuplesWithGammaProd n γ H : ℝ) ≤
+      ((2 ^ (n + 1).choose 2) : ℝ) ^ γ.primeFactors.card * 2 ^ n *
+        (H : ℝ) ^ ((n : ℝ) + 1 / 2) / (γ : ℝ) ^ α := by
+  refine le_trans (countTuplesWithGammaProd_le_sum γ H hγ (by omega) (finsetGammaStructures γ)
+    (fun Γ hΓ => by simpa using hΓ)
+    (fun h _ _ _ hh₄ =>
+      ⟨hh₄.choose, mem_finsetGammaStructures.mpr hh₄.choose_spec.1, hh₄.choose_spec.2⟩)) ?_
+  refine le_trans (Finset.sum_le_sum fun Γ hΓ =>
+    countTuplesWithGamma_sharp_bound Γ α (mem_finsetGammaStructures.mp hΓ) hH hα hbound) ?_
+  rw [Finset.sum_const, nsmul_eq_mul]
+  rw [show ((2 ^ (n + 1).choose 2 : ℝ)) ^ γ.primeFactors.card * 2 ^ n *
+      (H : ℝ) ^ ((n : ℝ) + 1 / 2) / (γ : ℝ) ^ α
+      = ((2 ^ (n + 1).choose 2 : ℝ)) ^ γ.primeFactors.card *
+          (2 ^ n * (H : ℝ) ^ ((n : ℝ) + 1 / 2) / (γ : ℝ) ^ α) by ring]
   exact mul_le_mul_of_nonneg_right (by exact_mod_cast countGammaStructures_le γ hγ)
     (by positivity)
 

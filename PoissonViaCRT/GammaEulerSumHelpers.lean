@@ -5,7 +5,8 @@ Authors: Fernando Portela, Aristotle (Harmonic)
 -/
 
 import PoissonViaCRT.Defs
-import Mathlib
+import Mathlib.Data.Nat.Log
+import Mathlib.Data.Pi.Interval
 
 set_option linter.unusedVariables false
 
@@ -56,7 +57,7 @@ lemma sum_inv_smooth_le (R : Finset ℕ) (hR : ∀ p ∈ R, Nat.Prime p) (N : �
       obtain ⟨hn_pos, hn_subset⟩ := Finset.mem_filter.mp hn;
       refine' Finset.mem_image.mpr ⟨ fun p => Nat.factorization n p, _, _ ⟩ <;> simp_all +decide [ Finset.subset_iff ];
       · intro p; exact Nat.le_log_of_pow_le ( Nat.Prime.one_lt ( hR _ p.2 ) ) ( Nat.le_trans ( Nat.le_of_dvd hn_pos.1 ( Nat.ordProj_dvd _ _ ) ) hn_pos.2 ) ;
-      · conv_rhs => rw [ ← Nat.factorization_prod_pow_eq_self ( by linarith : n ≠ 0 ) ] ;
+      · conv_rhs => rw [ ← Nat.prod_factorization_pow_eq_self ( by linarith : n ≠ 0 ) ] ;
         rw [ Finsupp.prod_of_support_subset ] <;> aesop_cat;
     refine' le_trans ( Finset.sum_le_sum_of_subset_of_nonneg h_sum_le_prod fun _ _ _ => by positivity ) _;
     rw [ Finset.sum_image ];
@@ -66,9 +67,9 @@ lemma sum_inv_smooth_le (R : Finset ℕ) (hR : ∀ p ∈ R, Nat.Prime p) (N : �
       · exact fun f hf p hp => hf ⟨ p, hp ⟩;
       · simp +contextual [ funext_iff ];
       · exact fun b hb => ⟨ fun p => b p p.2, fun p => hb p p.2, rfl ⟩;
-    · intro f hf g hg hfg; simp_all +decide [ Finset.prod_pow_eq_pow_sum ] ;
-      ext ⟨ p, hp ⟩ ; replace hfg := congr_arg ( fun x : ℕ => x.factorization p ) hfg ; simp_all +decide [ Nat.factorization_prod, Nat.Prime.ne_zero ] ;
-      rw [ Nat.factorization_prod, Nat.factorization_prod ] at hfg <;> simp_all +decide [ Nat.Prime.ne_zero, Finset.prod_eq_zero_iff ];
+    · intro f hf g hg hfg; simp_all +decide ;
+      ext ⟨ p, hp ⟩ ; replace hfg := congr_arg ( fun x : ℕ => x.factorization p ) hfg ; simp_all +decide ;
+      rw [ Nat.factorization_prod, Nat.factorization_prod ] at hfg <;> simp_all +decide [ Nat.Prime.ne_zero ];
       rw [ Finset.sum_eq_single ⟨ p, hp ⟩, Finset.sum_eq_single ⟨ p, hp ⟩ ] at hfg <;> aesop;
   have h_prod_le_prod : ∀ p ∈ R, (∑ j ∈ Finset.range (Nat.log p N + 1), (1 : ℝ) / p ^ j) ≤ (p : ℝ) / (p - 1) := by
     intro p hp; have := hR p hp; have := this.two_le; norm_num [ div_eq_mul_inv ];
