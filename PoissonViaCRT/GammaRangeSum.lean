@@ -214,7 +214,7 @@ theorem countTuplesWithGamma_permute_eq {n : ℕ} (Γ : GammaStructure (n + 1))
   · aesop;
   · simp +decide [ hσ, GammaStructure.sqfreepart_permute Γ σ hσ ];
     intro a ha₁ ha₂ ha₃ ha₄; refine' ⟨ _, ha₂, _, _ ⟩ <;> simp_all +decide [ GammaStructure.permute ] ;
-  · simp +contextual [ hσ, GammaStructure.sqfreepart_permute Γ σ hσ ];
+  · simp +contextual [ GammaStructure.sqfreepart_permute Γ σ hσ ];
     intro a ha₁ ha₂ ha₃ ha₄; simp_all +decide [ GammaStructure.permute ] ;
     rw [ ← hσ, Equiv.symm_apply_apply, ha₂ ]
 
@@ -362,47 +362,9 @@ theorem countTuplesWithGamma_large_bound {n γ H τ : ℕ} (Γ : GammaStructure 
     rw [ countTuplesWithGamma_permute_eq Γ σ hσ0 H ];
   · aesop
 
-/-! #### Step 3: the main piecewise bounds
+/-! #### Step 3: the main piecewise bounds -/
 
-**Correction of the original statements.** The two theorems below were originally stated
-(in the task skeleton) without the constant factor `2 ^ n`:
-```
-(countTuplesWithGammaProd n γ H : ℝ) ≤ ((2 ^ (n+1).choose 2) : ℝ) ^ ω(γ) * H ^ (…)
-```
-That form is **not** what the Granville–Kurlberg §4.2 argument (the plan we follow) yields,
-and is in fact too strong: the per-structure `D(Γ)` bound
-`M_Γ(H) ≤ ∏ᵢ (H/γᵢ + 1)` unavoidably carries a factor `2 ^ n` (e.g. when every `γᵢ = H`
-the product is `2 ^ n`, while `Hⁿ / ∏ min(γᵢ,H) = 1`).  Concretely, for `n = 4`, `H = 10`
-and the row sequence `(10,100,1000,10000)` (which satisfies the greedy recurrence and lands
-in the `τ = n` regime), the `D(Γ)` bound gives `2⁴·10⁴/10⁴ = 16 > 10 = H^{n+1-τ}`.
-The `2 ^ n` is genuinely present and matches the existing `countTuplesWithGammaProd_small_gamma`
-in this file, whose conclusion is `(2^C)^ω(γ) * 2 ^ k * H^k / γ`.
-
-We therefore preserve the original statements verbatim (commented out, below) and prove the
-faithful corrected versions, which include the `* 2 ^ n` factor in exactly the position used
-by `countTuplesWithGammaProd_small_gamma`.
-
-Original (incorrect — missing the `2 ^ n` factor):
-```
-theorem countTuplesWithGammaProd_med_gamma (n γ H : ℕ)
-    (hγ : 0 < γ) (hH : 0 < H)
-    (h_gt : (H : ℝ) ^ tupleBoundWeight n 0 < (γ : ℝ))
-    (h_le : (γ : ℝ) ≤ (H : ℝ) ^ tupleBoundWeight n (tauOne n)) :
-    (countTuplesWithGammaProd n γ H : ℝ) ≤
-      ((2 ^ (n + 1).choose 2) : ℝ) ^ γ.primeFactors.card *
-        (H : ℝ) ^ ((n : ℝ) + 1.5 - Real.sqrt (2 * (n : ℝ) + 2.25))
-
-theorem countTuplesWithGammaProd_large_gamma (n γ H τ : ℕ)
-    (hγ : 0 < γ) (hH : 0 < H) (hτ_lower : tauOne n + 1 ≤ τ) (hτ_upper : τ ≤ n)
-    (h_gt : (H : ℝ) ^ tupleBoundWeight n (τ - 1) < (γ : ℝ))
-    (h_le : (γ : ℝ) ≤ (H : ℝ) ^ tupleBoundWeight n τ) :
-    (countTuplesWithGammaProd n γ H : ℝ) ≤
-      ((2 ^ (n + 1).choose 2) : ℝ) ^ γ.primeFactors.card *
-        (H : ℝ) ^ (n + 1 - τ)
-```
--/
-
-/-- **Intermediate-γ bound** (corrected): `M_γ(H) ≤ C^ω(γ) · 2ⁿ · H^{n+1.5-\sqrt{2n+2.25}}`
+/-- **Intermediate-γ bound**: `M_γ(H) ≤ C^ω(γ) · 2ⁿ · H^{n+1.5-\sqrt{2n+2.25}}`
 when `H^{w(0)} < γ ≤ H^{w(τ_1)}`.  The `2 ^ n` factor (absent from the original task statement)
 is required by the per-structure `D(Γ)` bound; see the section note above.
 Combines the decomposition `countTuplesWithGammaProd_le_sum`, the per-structure bound
@@ -424,7 +386,7 @@ theorem countTuplesWithGammaProd_med_gamma (n γ H : ℕ)
   exact mul_le_mul_of_nonneg_right (by exact_mod_cast countGammaStructures_le γ hγ)
     (by positivity)
 
-/-- **Large-γ piecewise bound** (corrected): `M_γ(H) ≤ C^ω(γ) · 2ⁿ · H^{n+1-τ}` when
+/-- **Large-γ piecewise bound**: `M_γ(H) ≤ C^ω(γ) · 2ⁿ · H^{n+1-τ}` when
 `H^{w(τ-1)} < γ ≤ H^{w(τ)}`.  The `2 ^ n` factor (absent from the original task statement) is
 required by the per-structure `D(Γ)` bound; see the section note above.
 Combines the decomposition `countTuplesWithGammaProd_le_sum`, the per-structure bound

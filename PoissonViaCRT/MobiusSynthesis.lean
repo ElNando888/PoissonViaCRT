@@ -237,7 +237,7 @@ private lemma deviation_large_divisors (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk :
     have : (Ω p).card ≤ Fintype.card (ZMod p) := Finset.card_le_univ _
     rw [ZMod.card] at this
     exact_mod_cast this
-  obtain ⟨K, hK_pos, hK⟩ := gamma_weighted_series_bound ε hε k hk Ω X hΩ hΩle hrp
+  obtain ⟨K, hK_pos, hK⟩ := gamma_weighted_series_bound ε hε k hk Ω X hΩ hΩle hrp hsp
   refine ⟨K, hK_pos, fun q _ hq_sq => ?_⟩
   -- Step 0: Establish s ≥ 1.
   have hs : 1 ≤ (q : ℝ) / (crtSubset q Ω).card := by
@@ -258,7 +258,7 @@ private lemma deviation_large_divisors (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk :
           localMean k Ω p)) *
         ∏ p ∈ q.primeFactors \ T, localMean k Ω p)|) _]
   -- Step 2: Bound each T-summand and apply `hK`.
-  refine le_trans (Finset.sum_le_sum fun T hT => ?_) (hK q hq_sq _ hs)
+  refine le_trans (Finset.sum_le_sum fun T hT => ?_) (hK q hq_sq)
   -- Extract T ⊆ q.primeFactors and T.Nonempty from membership.
   have hT_mem := Finset.mem_filter.mp hT
   have hT_inner := Finset.mem_filter.mp hT_mem.1
