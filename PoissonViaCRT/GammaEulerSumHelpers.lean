@@ -55,10 +55,19 @@ lemma sum_inv_smooth_le (R : Finset ℕ) (hR : ∀ p ∈ R, Nat.Prime p) (N : �
     have h_sum_le_prod : Finset.filter (fun n => n.primeFactors ⊆ R) (Finset.Icc 1 N) ⊆ Finset.image (fun f : R → ℕ => ∏ p : R, p.val ^ f p) (Finset.Icc 0 (fun p : R => Nat.log p.val N)) := by
       intro n hn
       obtain ⟨hn_pos, hn_subset⟩ := Finset.mem_filter.mp hn;
-      refine' Finset.mem_image.mpr ⟨ fun p => Nat.factorization n p, _, _ ⟩ <;> simp_all +decide [ Finset.subset_iff ];
-      · intro p; exact Nat.le_log_of_pow_le ( Nat.Prime.one_lt ( hR _ p.2 ) ) ( Nat.le_trans ( Nat.le_of_dvd hn_pos.1 ( Nat.ordProj_dvd _ _ ) ) hn_pos.2 ) ;
-      · conv_rhs => rw [ ← Nat.prod_factorization_pow_eq_self ( by linarith : n ≠ 0 ) ] ;
-        rw [ Finsupp.prod_of_support_subset ] <;> aesop_cat;
+      rw [Finset.mem_Icc] at hn_pos
+      refine Finset.mem_image.mpr ⟨fun p => Nat.factorization n p.val, ?_, ?_⟩
+      · rw [Finset.mem_Icc]
+        refine ⟨fun p => Nat.zero_le _, fun p => ?_⟩
+        exact Nat.le_log_of_pow_le (Nat.Prime.one_lt (hR _ p.2))
+          (Nat.le_trans (Nat.le_of_dvd hn_pos.1 (Nat.ordProj_dvd _ _)) hn_pos.2)
+      · have hs : (n.factorization).support ⊆ R := by
+          rw [Nat.support_factorization]; exact hn_subset
+        have key : n = ∏ p ∈ R, p ^ n.factorization p := by
+          conv_lhs => rw [← Nat.prod_factorization_pow_eq_self (show n ≠ 0 by omega)]
+          rw [Finsupp.prod_of_support_subset _ hs (fun p k => p ^ k) (fun i _ => pow_zero i)]
+        rw [Finset.prod_coe_sort R fun p => p ^ n.factorization p]
+        exact key.symm
     refine' le_trans ( Finset.sum_le_sum_of_subset_of_nonneg h_sum_le_prod fun _ _ _ => by positivity ) _;
     rw [ Finset.sum_image ];
     · erw [ Finset.prod_sum ];
