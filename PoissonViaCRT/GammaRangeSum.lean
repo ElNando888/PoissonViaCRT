@@ -16,6 +16,7 @@ Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 
 import PoissonViaCRT.Combinatorics
 import Mathlib.Analysis.SpecialFunctions.Log.Base
+import Mathlib.Analysis.SpecialFunctions.Pow.NNReal
 
 /-!
 # Gamma-Range Summation Bounds (§3.1 Integration)
@@ -729,5 +730,69 @@ theorem countTuplesWithGammaProd_large_gamma_sharp (n γ H : ℕ) (α : ℝ)
           (2 ^ n * (H : ℝ) ^ ((n : ℝ) + 1 / 2) / (γ : ℝ) ^ α) by ring]
   exact mul_le_mul_of_nonneg_right (by exact_mod_cast countGammaStructures_le γ hγ)
     (by positivity)
+
+/-! ### Sharp joint tuple-count theorems (Blueprint §1)
+
+These theorems merge the collision factor `radical γ` with the genuine count
+saving (`1/γ^α` in the large regime, `1/γ` in the small regime) into a single
+per-prime weight `p^{1-α}` (resp. `1`). They are the only outputs the swapped
+synthesis of `gamma_weighted_series_bound` consumes. -/
+
+/-
+**Radical-distribution inequality.** Distributes the `1/γ^α` saving across the
+collision primes: writing `γ = ∏_{p∣γ} p^{a_p}` with `a_p ≥ 1`,
+`radical γ / γ^α = ∏_{p∣γ} p^{1 - α·a_p} ≤ ∏_{p∣γ} p^{1 - α}` (since `p ≥ 2`,
+`α·a_p ≥ α`).
+-/
+lemma radical_div_rpow_le_prod_primeFactors_rpow
+    (γ : ℕ) (hγ : 0 < γ) (α : ℝ) (hα : 0 ≤ α) (hα1 : α ≤ 1) :
+    (radical γ : ℝ) / (γ : ℝ) ^ α ≤ ∏ p ∈ γ.primeFactors, (p : ℝ) ^ (1 - α) := by
+  -- Using properties of products and exponents, we can rewrite the right-hand side.
+  have h_rhs : (∏ p ∈ γ.primeFactors, (p : ℝ) ^ (1 - α)) = (∏ p ∈ γ.primeFactors, (p : ℝ)) / (∏ p ∈ γ.primeFactors, (p : ℝ) ^ α) := by
+    rw [ ← Finset.prod_div_distrib ] ; exact Finset.prod_congr rfl fun x hx => by rw [ Real.rpow_sub ( Nat.cast_pos.mpr <| Nat.pos_of_mem_primeFactors hx ) ] ; norm_num;
+  rw [ h_rhs, radical ];
+  gcongr;
+  · exact Finset.prod_pos fun p hp => Real.rpow_pos_of_pos ( Nat.cast_pos.mpr <| Nat.pos_of_mem_primeFactors hp ) _;
+  · rw [ Nat.cast_prod ];
+  · -- By definition of prime factors, we know that $\prod_{p \in \text{primeFactors}(\gamma)} p \leq \gamma$.
+    have h_prod_le_gamma : (∏ p ∈ γ.primeFactors, (p : ℝ)) ≤ (γ : ℝ) := by
+      rw [ ← Nat.cast_prod ] ; exact mod_cast Nat.le_of_dvd hγ <| Nat.prod_primeFactors_dvd _;
+    exact le_trans ( by rw [ Real.finsetProd_rpow _ _ fun p hp => Nat.cast_nonneg _ ] ) ( Real.rpow_le_rpow ( Finset.prod_nonneg fun _ _ => Nat.cast_nonneg _ ) h_prod_le_gamma hα )
+
+/-
+**Sharp joint tuple-count (large-γ).** The collision factor `radical γ`
+paired with the genuine `1/γ^α` saving, distributed across the collision primes
+as a per-prime weight `p^{1-α}`. Obtained from
+`countTuplesWithGammaProd_large_gamma_sharp` by multiplying through by `radical γ`
+and applying `radical_div_rpow_le_prod_primeFactors_rpow`.
+-/
+theorem countTuplesWithGammaProd_large_gamma_sharp_joint
+    (n γ H : ℕ) (α : ℝ) (hγ : 0 < γ) (hH : 1 < H) (hα : 0 < α) (hα1 : α ≤ 1)
+    (hbound : (γ : ℝ) ≤ (H : ℝ) ^ (2 / α ^ 2)) :
+    (radical γ : ℝ) * (countTuplesWithGammaProd n γ H : ℝ) ≤
+      ((2 ^ (n + 1).choose 2 : ℝ)) ^ γ.primeFactors.card * 2 ^ n *
+        (H : ℝ) ^ ((n : ℝ) + 1 / 2) *
+        ∏ p ∈ γ.primeFactors, (p : ℝ) ^ (1 - α) := by
+  refine' le_trans ( mul_le_mul_of_nonneg_left ( countTuplesWithGammaProd_large_gamma_sharp n γ H α hγ hH hα hbound ) ( Nat.cast_nonneg _ ) ) _;
+  convert mul_le_mul_of_nonneg_left ( radical_div_rpow_le_prod_primeFactors_rpow γ hγ α hα.le hα1 ) ( show ( 0 : ℝ ) ≤ ( 2 ^ ( n + 1 ).choose 2 ) ^ #γ.primeFactors * 2 ^ n * H ^ ( n + 1 / 2 : ℝ ) by positivity ) using 1 ; ring
+
+/-
+**Sharp joint tuple-count (small-γ).** Collision factor fully absorbed:
+`radical γ · M_γ(H) ≤ C^{ω(γ)}·2ⁿ·Hⁿ`. Obtained from
+`countTuplesWithGammaProd_small_gamma` by multiplying through by `radical γ` and
+using `radical γ / γ ≤ 1` (the `α = 1` case of
+`radical_div_rpow_le_prod_primeFactors_rpow`).
+-/
+theorem countTuplesWithGammaProd_small_gamma_joint
+    (n γ H : ℕ) (hγ : 0 < γ) (hH : 0 < H) (hγ_le : γ ≤ H) :
+    (radical γ : ℝ) * (countTuplesWithGammaProd n γ H : ℝ) ≤
+      ((2 ^ (n + 1).choose 2 : ℝ)) ^ γ.primeFactors.card * 2 ^ n * (H : ℝ) ^ n := by
+  refine' le_trans ( mul_le_mul_of_nonneg_left ( Nat.cast_le.mpr <| show countTuplesWithGammaProd n γ H ≤ _ from _ ) <| Nat.cast_nonneg _ ) _;
+  exact ( 2 ^ ( n + 1 ).choose 2 ) ^ γ.primeFactors.card * 2 ^ n * H ^ n / γ;
+  · refine' Nat.le_div_iff_mul_le hγ |>.2 _;
+    have := @countTuplesWithGammaProd_small_gamma n γ H hγ hH hγ_le;
+    rw [ le_div_iff₀ ] at this <;> norm_cast at *;
+  · refine' le_trans ( mul_le_mul_of_nonneg_right ( show ( radical γ : ℝ ) ≤ γ by exact_mod_cast Nat.le_of_dvd hγ <| Nat.prod_primeFactors_dvd _ ) <| by positivity ) _;
+    exact_mod_cast Nat.mul_div_le _ _
 
 end PoissonCRT
