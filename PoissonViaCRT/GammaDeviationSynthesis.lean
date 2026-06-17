@@ -902,33 +902,339 @@ private lemma gamma_sum_le_euler_factor_large_gamma (ε : ℝ) (hε : 0 < ε) (k
     · exact fun p hp => mul_nonneg ( mul_nonneg ( sub_nonneg.2 <| div_le_one_of_le₀ ( mod_cast hΩle p <| hT_prime p hp ) <| Nat.cast_nonneg _ ) <| Real.rpow_nonneg ( Nat.cast_nonneg _ ) _ ) <| localMean_nonneg _ _ _;
   · positivity
 
+/-- Per-prime simplification: `localMean k Ω p / |Ω_p| = (|Ω_p|/p)^{k-1}` (needs `k ≥ 1`
+and `|Ω_p| ≠ 0`). -/
+lemma localMean_mul_inv_card (k : ℕ) (hk : 1 ≤ k) (Ω : ∀ p : ℕ, Finset (ZMod p)) (p : ℕ)
+    (hp : ((Ω p).card : ℝ) ≠ 0) :
+    (localMean k Ω p : ℝ) * (1 / ((Ω p).card : ℝ)) = ((Ω p).card / (p : ℝ)) ^ (k - 1) := by
+  unfold localMean
+  have hpow : ((Ω p).card : ℝ) ^ k = ((Ω p).card : ℝ) ^ (k - 1) * ((Ω p).card : ℝ) := by
+    rw [← pow_succ, Nat.sub_add_cancel hk]
+  rw [hpow, div_pow]
+  field_simp
+
+/-
+**Pointwise factorisation identity for the reduction.**
+
+For `R(γ) = γ.primeFactors ⊆ T ⊆ q.primeFactors` (`q` squarefree), the per-`(T,γ)`
+summand factorises by distributing the normalisation `1/|crtSubset q Ω| =
+∏_{p∈q.pf}(1/|Ω_p|)` across the three prime blocks `q.pf\T`, `T\R(γ)`, `R(γ)`,
+using `perGammaDeviationWeight_eq_of_subset`.  The free factor `M` carries the
+tuple count `M_γ(H)` along unchanged.
+-/
+lemma reduction_pointwise_identity (ε : ℝ) (k : ℕ) (hk : 1 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (q : ℕ) [NeZero q] (hq : Squarefree q)
+    (γ : ℕ) (T : Finset ℕ) (hTq : T ⊆ q.primeFactors) (hRT : γ.primeFactors ⊆ T)
+    (M : ℝ) :
+    (1 / (crtSubset q Ω).card : ℝ) *
+      (∏ p ∈ q.primeFactors \ T, localMean k Ω p) *
+      (perGammaDeviationWeight ε k Ω T γ * M) =
+    (radical γ : ℝ) * M * (∏ p ∈ γ.primeFactors, (1 / (Ω p).card : ℝ)) *
+      (∏ p ∈ q.primeFactors \ T, ((Ω p).card / (p : ℝ)) ^ (k - 1)) *
+      (∏ p ∈ T \ γ.primeFactors,
+        (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) * ((Ω p).card / (p : ℝ)) ^ (k - 1)) := by
+  have hTprime : ∀ p ∈ T, Nat.Prime p := fun p hp =>
+    Nat.prime_of_mem_primeFactors (hTq hp)
+  have h_card : ((crtSubset q Ω).card : ℝ) = ∏ p ∈ q.primeFactors, ((Ω p).card : ℝ) := by
+    convert globalMean_eq_prod_localMean 1 q hq Ω using 1
+    · norm_num
+    · unfold localMean; norm_num
+  rw [ perGammaDeviationWeight_eq_of_subset ε k Ω T hTprime γ hRT, h_card ];
+  field_simp;
+  rw [ div_eq_iff ];
+  · rw [ ← Finset.prod_sdiff <| Finset.subset_iff.mpr hTq, ← Finset.prod_sdiff <| Finset.subset_iff.mpr hRT ];
+    simp +decide [ localMean, Finset.prod_pow, mul_assoc, mul_comm, mul_left_comm, div_pow, Finset.prod_mul_distrib ];
+    by_cases h : ∏ x ∈ γ.primeFactors, ( # ( Ω x ) : ℝ ) = 0 <;> simp_all +decide [ mul_assoc, mul_comm, mul_left_comm, div_eq_mul_inv ];
+    · exact absurd h <| ne_of_gt <| Finset.prod_pos fun p hp => Nat.cast_pos.mpr <| Finset.card_pos.mpr <| hΩ p <| Nat.prime_of_mem_primeFactors hp;
+    · field_simp [h];
+      rcases k with ( _ | k ) <;> simp_all +decide [ pow_succ, mul_assoc, mul_comm, mul_left_comm ];
+  · exact Finset.prod_ne_zero_iff.mpr fun p hp => Nat.cast_ne_zero.mpr <| Finset.card_ne_zero_of_mem <| hΩ p ( Nat.prime_of_mem_primeFactors hp ) |> Classical.choose_spec
+
+/-
+**Gamma-weighted series reduction (Blueprint §4, Steps 1–3).**
+
+The mechanical (lossless) core of the synthesis: applying the summation swap
+(`sum_T_gamma_swap`) and, for each fixed `γ`, the Rankin–Euler factorisation
+(`rankin_euler_factorisation`) to the inner `T`-sum, the large-divisor `T`-sum is
+bounded by `s^{-ε/2}` times a single `γ`-sum whose `T`-dependence has been
+factorised into a per-prime Euler product.
+
+Crucially this *keeps* the well-distributed Euler product
+`∏_{p ∈ q.pf \ R(γ)} (a_p + b_p · p^{ε/2})` intact (with `a_p = r_p^{k-1}`,
+`b_p = (1-r_p)·p^{-ε}·r_p^{k-1}`), rather than bounding it by the uniform constant
+of `rankin_euler_tail_bounded`.  This is essential: that product is `≈ s^{-(k-1)}`,
+the factor that cancels the `H^{k-1} ≈ s^{k-1}` growth of the tuple count `M_γ(H)`
+on the small-radical terms.  (Bounding it by a constant — as in the first draft of
+the blueprint — is too lossy: the `γ = 1` term alone would then read `≈ H^{k-1}·
+s^{-ε/2}`, which is unbounded.)
+-/
+lemma gamma_weighted_series_reduction (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (hΩle : ∀ p, p.Prime → (Ω p).card ≤ p)
+    (q : ℕ) [NeZero q] (hq : Squarefree q) (H : ℕ) :
+    ∑ T ∈ (q.primeFactors.powerset.filter (· ≠ ∅)).filter
+          (fun (T : Finset ℕ) => ¬((∏ p ∈ T, (p : ℝ)) ≤ (q : ℝ) / (crtSubset q Ω).card)),
+      (1 / (crtSubset q Ω).card : ℝ) *
+      (∏ p ∈ q.primeFactors \ T, localMean k Ω p) *
+      (∑ γ ∈ (Finset.Icc 1 (H ^ (k * k))).filter (fun γ => γ.primeFactors ⊆ T),
+        perGammaDeviationWeight ε k Ω T γ *
+          (countTuplesWithGammaProd (k - 1) γ H : ℝ)) ≤
+    ((q : ℝ) / (crtSubset q Ω).card) ^ (-(ε / 2)) *
+    ∑ γ ∈ (Finset.Icc 1 (H ^ (k * k))).filter (fun γ => γ.primeFactors ⊆ q.primeFactors),
+      (radical γ : ℝ) * (countTuplesWithGammaProd (k - 1) γ H : ℝ) *
+        ((∏ p ∈ γ.primeFactors, ((p : ℝ) ^ (ε / 2) / (Ω p).card)) *
+         (∏ p ∈ q.primeFactors \ γ.primeFactors,
+           (((Ω p).card / (p : ℝ)) ^ (k - 1) +
+             (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) *
+               ((Ω p).card / (p : ℝ)) ^ (k - 1) * (p : ℝ) ^ (ε / 2)))) := by
+  -- Let's simplify the expression by factoring out common terms and using the properties of the Euler product.
+  set s := (q : ℝ) / (crtSubset q Ω).card with hs_def
+  have hs_pos : 0 < s := by
+    refine' div_pos _ _ <;> norm_cast;
+    · exact NeZero.pos q;
+    · by_contra h_empty;
+      simp_all +decide [ crtSubset ];
+      contrapose! h_empty;
+      choose! f hf using fun p hp => hΩ p hp;
+      have h_crt : ∀ {S : Finset ℕ}, (∀ p ∈ S, Nat.Prime p) → ∃ x : ℕ, ∀ p ∈ S, (x : ZMod p) = f p := by
+        intros S hS_prime
+        have h_crt : ∀ p ∈ S, ∃ x : ℕ, (x : ZMod p) = f p ∧ ∀ q ∈ S, q ≠ p → (x : ZMod q) = 0 := by
+          intros p hp
+          obtain ⟨x, hx⟩ : ∃ x : ℕ, (x : ZMod p) = f p ∧ (x : ZMod (∏ q ∈ S \ {p}, q)) = 0 := by
+            have h_crt : Nat.gcd p (∏ q ∈ S \ {p}, q) = 1 := by
+              exact Nat.Coprime.prod_right fun q hq => by have := Nat.coprime_primes ( hS_prime p hp ) ( hS_prime q ( Finset.mem_sdiff.mp hq |>.1 ) ) ; aesop;
+            have := Nat.chineseRemainder h_crt;
+            obtain ⟨ x, hx₁, hx₂ ⟩ := this ( f p |> ZMod.val ) 0;
+            use x;
+            simp_all +decide [ ← ZMod.natCast_eq_natCast_iff ];
+            haveI := Fact.mk ( hS_prime p hp ) ; simp +decide [ ZMod.natCast_zmod_val ] ;
+          use x;
+          simp_all +decide [ ZMod.natCast_eq_zero_iff ];
+          exact fun q hq hqp => dvd_trans ( Finset.dvd_prod_of_mem _ ( by aesop ) ) hx.2;
+        choose! x hx₁ hx₂ using h_crt;
+        use ∑ p ∈ S, x p;
+        intro p hp; simp +decide [ ← hx₁ p hp, Finset.sum_eq_single p, hx₂ p hp ] ;
+        rw [ Finset.sum_eq_single p ] <;> aesop;
+      obtain ⟨ x, hx ⟩ := @h_crt ( q.primeFactors ) ( fun p hp => Nat.prime_of_mem_primeFactors hp ) ; use x; aesop;
+  rw [ Finset.mul_sum _ _ _ ];
+  rw [ sum_T_gamma_swap ];
+  refine' Finset.sum_le_sum fun γ hγ => _;
+  · refine' le_trans ( Finset.sum_le_sum_of_subset_of_nonneg _ _ ) _;
+    exact q.primeFactors.powerset.filter ( fun T => γ.primeFactors ⊆ T ∧ ¬ ( ∏ p ∈ T, ( p : ℝ ) ) ≤ s );
+    · grind;
+    · intro T hT₁ hT₂; exact mul_nonneg ( mul_nonneg ( by positivity ) ( Finset.prod_nonneg fun _ _ => by
+        exact div_nonneg ( pow_nonneg ( Nat.cast_nonneg _ ) _ ) ( pow_nonneg ( Nat.cast_nonneg _ ) _ ) ) ) ( mul_nonneg ( by
+        grind +suggestions ) ( Nat.cast_nonneg _ ) ) ;
+    · have := @reduction_pointwise_identity;
+      rw [ Finset.sum_congr rfl fun T hT => this ε k ( by linarith ) Ω hΩ q hq γ T ( Finset.mem_powerset.mp ( Finset.mem_filter.mp hT |>.1 ) ) ( Finset.mem_filter.mp hT |>.2.1 ) _ ];
+      have := @rankin_euler_factorisation;
+      convert mul_le_mul_of_nonneg_left ( this q s hs_pos ε hε γ.primeFactors ( Finset.mem_filter.mp hγ |>.2 ) ( fun p => ( ( Ω p |> Finset.card : ℝ ) / p ) ^ ( k - 1 ) ) ( fun p => ( 1 - ( Ω p |> Finset.card : ℝ ) / p ) * p ^ ( -ε ) * ( ( Ω p |> Finset.card : ℝ ) / p ) ^ ( k - 1 ) ) _ _ ) ( show 0 ≤ ( radical γ : ℝ ) * countTuplesWithGammaProd ( k - 1 ) γ H * ( ∏ p ∈ γ.primeFactors, 1 / ( Ω p |> Finset.card : ℝ ) ) by
+                                                                                                                                                                                                                                                                                                      exact mul_nonneg ( mul_nonneg ( Nat.cast_nonneg _ ) ( Nat.cast_nonneg _ ) ) ( Finset.prod_nonneg fun _ _ => one_div_nonneg.mpr ( Nat.cast_nonneg _ ) ) ) using 1;
+      · simp +decide only [mul_assoc, Finset.mul_sum _ _ _];
+      · simp +decide [ div_eq_mul_inv, mul_assoc, mul_comm, mul_left_comm, Finset.prod_mul_distrib ];
+      · exact fun p hp => pow_nonneg ( div_nonneg ( Nat.cast_nonneg _ ) ( Nat.cast_nonneg _ ) ) _;
+      · simp +zetaDelta at *;
+        exact fun p pp dp _ => mul_nonneg ( mul_nonneg ( sub_nonneg.2 <| div_le_one_of_le₀ ( mod_cast hΩle p pp ) <| Nat.cast_nonneg _ ) <| Real.rpow_nonneg ( Nat.cast_nonneg _ ) _ ) <| pow_nonneg ( div_nonneg ( Nat.cast_nonneg _ ) <| Nat.cast_nonneg _ ) _;
+  · grind +locals
+
+/-! ### Modular decomposition of the convergence kernel (Blueprint §4–§5)
+
+The single monolithic kernel estimate `gamma_weighted_kernel_bound` is broken into
+five strict, sequentially-provable steps so that the search space for each is
+manageable.  The two abbreviations below name the (long) per-prime well-distributed
+weight `c_p` and the fully *decoupled* inner `γ`-summand (which, crucially, depends
+only on `H`, `k`, `ε`, `Ω` — never on the modulus `q` or the spacing `s`).
+-/
+
+/-- The per-prime well-distributed Euler factor `c_p = a_p + b_p · p^{ε/2}`,
+with `a_p = (|Ω_p|/p)^{k-1}` and `b_p = (1-|Ω_p|/p)·p^{-ε}·(|Ω_p|/p)^{k-1}`.
+Factoring out `(|Ω_p|/p)^{k-1}` exhibits the convergent tail `1 + (1-|Ω_p|/p)·p^{-ε/2}`. -/
+private noncomputable def kernelCWeight (ε : ℝ) (k : ℕ)
+    (Ω : ∀ p : ℕ, Finset (ZMod p)) (p : ℕ) : ℝ :=
+  ((Ω p).card / (p : ℝ)) ^ (k - 1) +
+    (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) *
+      ((Ω p).card / (p : ℝ)) ^ (k - 1) * (p : ℝ) ^ (ε / 2)
+
+/-- The decoupled inner `γ`-summand: `radical γ · M_{k-1}(γ, H)` times the per-prime
+collision weight `p^{ε/2}/|Ω_p|` divided by the global Euler factor `c_p`.  This is
+exactly the term that survives after the global Euler extraction
+(`kernel_euler_factorisation`) pulls the `q`-dependent prefactor outside the sum. -/
+private noncomputable def kernelInnerWeight (ε : ℝ) (k : ℕ)
+    (Ω : ∀ p : ℕ, Finset (ZMod p)) (γ H : ℕ) : ℝ :=
+  (radical γ : ℝ) * (countTuplesWithGammaProd (k - 1) γ H : ℝ) *
+    ∏ p ∈ γ.primeFactors,
+      ((p : ℝ) ^ (ε / 2) / (Ω p).card / kernelCWeight ε k Ω p)
+
+/-- **Step 1 — Global Euler extraction.**
+The global product over *all* prime factors of `q` of the well-distributed Euler
+factor `c_p` factors as `s^{-(k-1)} · ∏_{p∈q.pf}(1 + (1-|Ω_p|/p)·p^{-ε/2})`, where
+`s^{-(k-1)} = (|crtSubset q Ω|/q)^{k-1}`.  Both `s^{-(k-1)}` and the convergent tail
+are independent of `γ`, so once we rewrite `∏_{q.pf∖R(γ)} c_p = (∏_{q.pf} c_p) /
+(∏_{R(γ)} c_p)` they can be pulled completely outside the `γ`-sum. -/
+private lemma kernel_euler_factorisation (ε : ℝ) (k : ℕ) (hk : 2 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (hΩle : ∀ p, p.Prime → (Ω p).card ≤ p)
+    (q : ℕ) [NeZero q] (hq : Squarefree q) :
+    (∏ p ∈ q.primeFactors, kernelCWeight ε k Ω p)
+      = (((crtSubset q Ω).card : ℝ) / (q : ℝ)) ^ (k - 1) *
+        ∏ p ∈ q.primeFactors,
+          (1 + (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-(ε / 2))) := by
+  sorry
+
+/-- **Step 2 — `q`-decoupling.**
+After the global Euler extraction, the restricted `γ`-sum (with the constraint
+`γ.primeFactors ⊆ q.primeFactors`) is bounded by the global prefactor `∏_{q.pf} c_p`
+times the *decoupled* inner sum over **all** `γ ∈ [1, H^{k²}]`.  The decoupled inner
+sum depends only on `H` (and `k, ε, Ω`), completely independent of `q` and `s`. -/
+private lemma kernel_sum_decoupled (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (hΩle : ∀ p, p.Prime → (Ω p).card ≤ p)
+    (q : ℕ) [NeZero q] (hq : Squarefree q) (H : ℕ) :
+    (∑ γ ∈ (Finset.Icc 1 (H ^ (k * k))).filter (fun γ => γ.primeFactors ⊆ q.primeFactors),
+        (radical γ : ℝ) * (countTuplesWithGammaProd (k - 1) γ H : ℝ) *
+          ((∏ p ∈ γ.primeFactors, ((p : ℝ) ^ (ε / 2) / (Ω p).card)) *
+           (∏ p ∈ q.primeFactors \ γ.primeFactors,
+             (((Ω p).card / (p : ℝ)) ^ (k - 1) +
+               (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) *
+                 ((Ω p).card / (p : ℝ)) ^ (k - 1) * (p : ℝ) ^ (ε / 2)))))
+    ≤ (∏ p ∈ q.primeFactors, kernelCWeight ε k Ω p) *
+        ∑ γ ∈ Finset.Icc 1 (H ^ (k * k)), kernelInnerWeight ε k Ω γ H := by
+  sorry
+
+/-- **Step 3 — Small regime (pure `H`-bound).**
+The decoupled inner sum over the small range `γ ∈ [1, H]` is bounded by
+`C₁ · H^{k-1}` for a constant `C₁` independent of `H` (and `q`, `s`).  This uses the
+sharp joint tuple-count `countTuplesWithGammaProd_small_gamma_joint` together with
+the convergence of the resulting per-prime Euler product (the `hsp` saving). -/
+private lemma kernel_small_regime (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (hΩle : ∀ p, p.Prime → (Ω p).card ≤ p)
+    (hrp : ∀ p, p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ))
+    (hsp : ∀ p : ℕ, p.Prime → (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε)) :
+    ∃ C₁ : ℝ, 0 < C₁ ∧ ∀ H : ℕ,
+      ∑ γ ∈ Finset.Icc 1 H, kernelInnerWeight ε k Ω γ H ≤ C₁ * (H : ℝ) ^ (k - 1) := by
+  sorry
+
+/-- **Step 4 — Large regimes (pure `H`-bound).**
+The decoupled inner sum over the large range `γ ∈ (H, H^{k²}]` is bounded by
+`C₂ · H^{k-1}` for a constant `C₂` independent of `H` (and `q`, `s`).  This uses the
+sharp joint tuple-count `countTuplesWithGammaProd_large_gamma_sharp_joint`, summed
+over the finitely many `τ`-intervals, with the regime balance carried by the
+defining minimality of `lambdaExponent k` — entirely against `H`, ignoring `s`. -/
+private lemma kernel_large_regimes (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (hΩle : ∀ p, p.Prime → (Ω p).card ≤ p)
+    (hrp : ∀ p, p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ))
+    (hsp : ∀ p : ℕ, p.Prime → (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε)) :
+    ∃ C₂ : ℝ, 0 < C₂ ∧ ∀ H : ℕ,
+      ∑ γ ∈ Finset.Icc (H + 1) (H ^ (k * k)), kernelInnerWeight ε k Ω γ H
+        ≤ C₂ * (H : ℝ) ^ (k - 1) := by
+  sorry
+
+/-- **Step 5 — Final coupling.**
+The purely geometric coupling that turns the extracted prefactor `s^{-(k-1)}`
+against the `H^{k-1}` of the decoupled `γ`-sum into a uniform constant: since
+`H = ⌈s·∑X.sides⌉ ≤ s·∑X.sides + 1` and `s ≥ 1`,
+`s^{-(k-1)} · H^{k-1} = (H/s)^{k-1} ≤ (∑X.sides + 1)^{k-1}`. -/
+private lemma kernel_final_coupling (k : ℕ) (hk : 2 ≤ k) (X : Box (k - 1))
+    (s : ℝ) (hs1 : 1 ≤ s) :
+    ((1 : ℝ) / s) ^ (k - 1) * ((⌈s * ∑ i, X.sides i⌉₊ : ℝ)) ^ (k - 1)
+      ≤ (∑ i, X.sides i + 1) ^ (k - 1) := by
+  sorry
+
+/-
+**Gamma-weighted convergence kernel (Blueprint §4–§5, Steps 4–5).**
+
+The analytic heart of Granville–Kurlberg §3.2: with `H = ⌈s · ∑ X.sides⌉`, the
+reduced `γ`-sum is bounded by a constant uniformly in the squarefree modulus `q`.
+This is where the `hsp` saving (`s_p ≤ p^{λ_k - ε}`) on the collision primes, the
+sharp joint tuple-counts of §1, the regime split over the finitely many regimes
+`τ ≤ τ_max ≈ √(2k)`, and `divisor_bound` all combine.  The coupling `H ≈ s` makes
+the per-prime Euler product `∏_{q.pf \ R} (a_p + b_p p^{ε/2}) ≈ s^{-(k-1)}` cancel
+the `H^{k-1}` of the small-`γ` tuple count.
+
+The proof is assembled from the five modular steps `kernel_euler_factorisation`,
+`kernel_sum_decoupled`, `kernel_small_regime`, `kernel_large_regimes`, and
+`kernel_final_coupling` (each currently an honest `sorry`).
+-/
+lemma gamma_weighted_kernel_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p)) (X : Box (k - 1))
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (hΩle : ∀ p, p.Prime → (Ω p).card ≤ p)
+    (hrp : ∀ p, p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ))
+    (hsp : ∀ p : ℕ, p.Prime → (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε)) :
+    ∃ K : ℝ, 0 < K ∧ ∀ (q : ℕ) [NeZero q] (hq : Squarefree q),
+      let s := (q : ℝ) / (crtSubset q Ω).card
+      let H := ⌈s * ∑ i, X.sides i⌉₊
+      ∑ γ ∈ (Finset.Icc 1 (H ^ (k * k))).filter (fun γ => γ.primeFactors ⊆ q.primeFactors),
+        (radical γ : ℝ) * (countTuplesWithGammaProd (k - 1) γ H : ℝ) *
+          ((∏ p ∈ γ.primeFactors, ((p : ℝ) ^ (ε / 2) / (Ω p).card)) *
+           (∏ p ∈ q.primeFactors \ γ.primeFactors,
+             (((Ω p).card / (p : ℝ)) ^ (k - 1) +
+               (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) *
+                 ((Ω p).card / (p : ℝ)) ^ (k - 1) * (p : ℝ) ^ (ε / 2)))) ≤ K := by
+  obtain ⟨ C₁, hC₁_pos, hC₁ ⟩ := kernel_small_regime ε hε k hk Ω hΩ hΩle hrp hsp;
+  obtain ⟨ C₂, hC₂_pos, hC₂ ⟩ := kernel_large_regimes ε hε k hk Ω hΩ hΩle hrp hsp;
+  -- Obtain the uniform tail bound T from the Euler product convergence result.
+  obtain ⟨ T, hT_pos, hT ⟩ : ∃ T : ℝ, 0 < T ∧ ∀ (S : Finset ℕ), (∀ p ∈ S, p.Prime) → ∏ p ∈ S, (1 + (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-(ε / 2))) ≤ T := by
+    obtain ⟨T, hT⟩ : ∃ T : ℝ, 0 < T ∧ ∀ (S : Finset ℕ), (∀ p ∈ S, Nat.Prime p) → ∏ p ∈ S, (1 + (k : ℝ) / (p : ℝ) ^ (1 + ε / 2)) ≤ T := by
+      have := @euler_product_converges k ( ε / 2 ) ( by positivity );
+      exact ⟨ Max.max this.choose 1, by positivity, fun S hS => le_trans ( this.choose_spec S hS ) ( le_max_left _ _ ) ⟩;
+    refine' ⟨ T, hT.1, fun S hS => le_trans ( Finset.prod_le_prod _ fun p hp => _ ) ( hT.2 S hS ) ⟩;
+    · exact fun p hp => add_nonneg zero_le_one ( mul_nonneg ( sub_nonneg.2 <| div_le_one_of_le₀ ( mod_cast hΩle p <| hS p hp ) <| Nat.cast_nonneg _ ) <| Real.rpow_nonneg ( Nat.cast_nonneg _ ) _ );
+    · rw [ Real.rpow_add, Real.rpow_neg ] <;> norm_num;
+      · convert mul_le_mul_of_nonneg_right ( hrp p ( hS p hp ) ) ( inv_nonneg.mpr ( Real.rpow_nonneg ( Nat.cast_nonneg p ) ( ε / 2 ) ) ) using 1 ; ring;
+      · exact Nat.Prime.pos ( hS p hp );
+  refine' ⟨ T * ( C₁ + C₂ ) * ( ∑ i, X.sides i + 1 ) ^ ( k - 1 ), _, _ ⟩;
+  · exact mul_pos ( mul_pos hT_pos ( add_pos hC₁_pos hC₂_pos ) ) ( pow_pos ( add_pos_of_nonneg_of_pos ( Finset.sum_nonneg fun _ _ => le_of_lt ( X.sides_pos _ ) ) zero_lt_one ) _ );
+  · intro q hq hq_sq
+    let s := (q : ℝ) / (crtSubset q Ω).card
+    let H := ⌈s * ∑ i, X.sides i⌉₊
+    have hs1 : 1 ≤ s := by
+      rw [ one_le_div ];
+      · exact_mod_cast le_trans ( Finset.card_le_univ _ ) ( by simp +decide [ ZMod.card ] );
+      · exact_mod_cast crtSubset_card_pos_aux Ω hΩ q;
+    refine' le_trans ( kernel_sum_decoupled ε hε k hk Ω hΩ hΩle q hq_sq H ) _;
+    refine' le_trans ( mul_le_mul_of_nonneg_left ( show ∑ γ ∈ Icc 1 ( H ^ ( k * k ) ), kernelInnerWeight ε k Ω γ H ≤ ( C₁ + C₂ ) * H ^ ( k - 1 ) from _ ) ( _ ) ) _;
+    · convert add_le_add ( hC₁ H ) ( hC₂ H ) using 1;
+      · erw [ Finset.sum_Ico_consecutive ] <;> norm_cast <;> norm_num;
+        exact Nat.le_self_pow ( by positivity ) _;
+      · ring;
+    · refine' Finset.prod_nonneg fun p hp => _;
+      refine' add_nonneg _ _;
+      · positivity;
+      · exact mul_nonneg ( mul_nonneg ( mul_nonneg ( sub_nonneg.2 <| div_le_one_of_le₀ ( mod_cast hΩle p <| Nat.prime_of_mem_primeFactors hp ) <| Nat.cast_nonneg _ ) <| Real.rpow_nonneg ( Nat.cast_nonneg _ ) _ ) <| pow_nonneg ( div_nonneg ( Nat.cast_nonneg _ ) <| Nat.cast_nonneg _ ) _ ) <| Real.rpow_nonneg ( Nat.cast_nonneg _ ) _;
+    · rw [ kernel_euler_factorisation ε k hk Ω hΩ hΩle q hq_sq ];
+      rw [ show ( ( # ( crtSubset q Ω ) : ℝ ) / q ) = ( 1 / s ) by rw [ div_div_eq_mul_div, mul_comm ] ; ring ];
+      refine' le_trans ( mul_le_mul_of_nonneg_right ( mul_le_mul_of_nonneg_left ( hT _ fun p hp => Nat.prime_of_mem_primeFactors hp ) ( by positivity ) ) ( by positivity ) ) _;
+      have := kernel_final_coupling k hk X s hs1;
+      convert mul_le_mul_of_nonneg_left this ( show 0 ≤ T * ( C₁ + C₂ ) by positivity ) using 1 ; ring
+
 /-- **Gamma-weighted series bound (Full Multi-Regime Bound).**
 
 The sum over large-divisor subsets `T` of the gamma-weighted tuple counts
 is bounded by `K · s^{−ε/2}`.
 
 The proof follows the *swapped* route of the Granville–Kurlberg §3.2 blueprint
-(`GK_SECTION_3_2_BLUEPRINT.md`), for which the supporting infrastructure is now in
-place and axiom-clean:
+(`GK_SECTION_3_2_BLUEPRINT.md`), assembled from two pieces:
 
-* **§1 — sharp joint tuple-counts** (`GammaRangeSum.lean`):
-  `radical_div_rpow_le_prod_primeFactors_rpow`,
-  `countTuplesWithGammaProd_large_gamma_sharp_joint`, and
-  `countTuplesWithGammaProd_small_gamma_joint`, which merge the collision factor
-  `radical γ` with the `1/γ^α` saving into a per-prime weight `p^{1-α}`.
-* **§2 — summation swap** (`GammaSwapHelper.lean`): `sum_T_gamma_swap`, moving the
-  `γ`-sum outside the `T`-sum.
-* **§3 — Rankin–Euler** (`RankinEuler.lean`): `rankin_euler_factorisation`
-  (absorbs `∏_{p∈T} p > s` into `s^{-ε/2}` and factorises the `T ⊇ R` sum as an
-  Euler product) and `rankin_euler_tail_bounded` (bounds the well-distributed
-  Euler tail by a constant via `euler_product_converges`).
+* `gamma_weighted_series_reduction` (Steps 1–3): the lossless swap + Rankin–Euler
+  factorisation, giving `LHS ≤ s^{-ε/2} · (γ-sum)`;
+* `gamma_weighted_kernel_bound` (Steps 4–5): the deep analytic bound that the
+  reduced `γ`-sum is `≤ K` uniformly in `q`.
 
-**Status (remaining `sorry`).**  What is left is the §4–§5 *synthesis*: assembling
-the swap → joint count → Rankin steps and closing each regime via the defining
-minimality of `lambdaExponent k` (the keystone
-`lambdaExponent_regime_exponent_le`).  The `hsp` hypothesis enters on the collision
-primes through relation (★) of the blueprint.  This synthesis is left as an honest
-`sorry`. -/
+Note: the blueprint's originally-proposed keystone
+`(lambdaExponent k − √(2/w(τ)))·w(τ) ≤ −ε/2` is in fact **false** for large `τ`
+(its left side becomes positive), so the regime balance is carried inside
+`gamma_weighted_kernel_bound` instead, via the coupling `H ≈ s` and the finite
+regime split. -/
 lemma gamma_weighted_series_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p)) (X : Box (k - 1))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
@@ -946,12 +1252,25 @@ lemma gamma_weighted_series_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 �
           perGammaDeviationWeight ε k Ω T γ *
             (countTuplesWithGammaProd (k - 1) γ H : ℝ)) ≤
         K * s ^ (-(ε / 2)) := by
-  -- Honest `sorry`: the §1–§3 infrastructure (`sum_T_gamma_swap`,
-  -- `countTuplesWithGammaProd_{large,small}_gamma_sharp_joint`,
-  -- `rankin_euler_factorisation`, `rankin_euler_tail_bounded`) is available and
-  -- axiom-clean; the remaining §4–§5 synthesis (regime split + `lambdaExponent`
-  -- minimality keystone) is not yet wired in.  See the docstring and
-  -- `GK_SECTION_3_2_BLUEPRINT.md`.
-  sorry
+  obtain ⟨K, hK, hbound⟩ := gamma_weighted_kernel_bound ε hε k hk Ω X hΩ hΩle hrp hsp
+  refine ⟨K, hK, ?_⟩
+  intro q _ hq
+  have hs_nonneg : (0 : ℝ) ≤ ((q : ℝ) / (crtSubset q Ω).card) ^ (-(ε / 2)) :=
+    Real.rpow_nonneg (by positivity) _
+  calc
+    _ ≤ ((q : ℝ) / (crtSubset q Ω).card) ^ (-(ε / 2)) *
+        ∑ γ ∈ (Finset.Icc 1 ((⌈(q : ℝ) / (crtSubset q Ω).card * ∑ i, X.sides i⌉₊) ^ (k * k))).filter
+            (fun γ => γ.primeFactors ⊆ q.primeFactors),
+          (radical γ : ℝ) * (countTuplesWithGammaProd (k - 1) γ
+              (⌈(q : ℝ) / (crtSubset q Ω).card * ∑ i, X.sides i⌉₊) : ℝ) *
+            ((∏ p ∈ γ.primeFactors, ((p : ℝ) ^ (ε / 2) / (Ω p).card)) *
+             (∏ p ∈ q.primeFactors \ γ.primeFactors,
+               (((Ω p).card / (p : ℝ)) ^ (k - 1) +
+                 (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) *
+                   ((Ω p).card / (p : ℝ)) ^ (k - 1) * (p : ℝ) ^ (ε / 2)))) :=
+      gamma_weighted_series_reduction ε hε k hk Ω hΩ hΩle q hq _
+    _ ≤ ((q : ℝ) / (crtSubset q Ω).card) ^ (-(ε / 2)) * K :=
+      mul_le_mul_of_nonneg_left (hbound q hq) hs_nonneg
+    _ = K * ((q : ℝ) / (crtSubset q Ω).card) ^ (-(ε / 2)) := by ring
 
 end PoissonCRT
