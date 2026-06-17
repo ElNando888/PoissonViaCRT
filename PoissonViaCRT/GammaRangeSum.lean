@@ -745,7 +745,7 @@ collision primes: writing `γ = ∏_{p∣γ} p^{a_p}` with `a_p ≥ 1`,
 `α·a_p ≥ α`).
 -/
 lemma radical_div_rpow_le_prod_primeFactors_rpow
-    (γ : ℕ) (hγ : 0 < γ) (α : ℝ) (hα : 0 ≤ α) (hα1 : α ≤ 1) :
+    (γ : ℕ) (hγ : 0 < γ) (α : ℝ) (hα : 0 ≤ α) :
     (radical γ : ℝ) / (γ : ℝ) ^ α ≤ ∏ p ∈ γ.primeFactors, (p : ℝ) ^ (1 - α) := by
   -- Using properties of products and exponents, we can rewrite the right-hand side.
   have h_rhs : (∏ p ∈ γ.primeFactors, (p : ℝ) ^ (1 - α)) = (∏ p ∈ γ.primeFactors, (p : ℝ)) / (∏ p ∈ γ.primeFactors, (p : ℝ) ^ α) := by
@@ -767,14 +767,14 @@ as a per-prime weight `p^{1-α}`. Obtained from
 and applying `radical_div_rpow_le_prod_primeFactors_rpow`.
 -/
 theorem countTuplesWithGammaProd_large_gamma_sharp_joint
-    (n γ H : ℕ) (α : ℝ) (hγ : 0 < γ) (hH : 1 < H) (hα : 0 < α) (hα1 : α ≤ 1)
+    (n γ H : ℕ) (α : ℝ) (hγ : 0 < γ) (hH : 1 < H) (hα : 0 < α)
     (hbound : (γ : ℝ) ≤ (H : ℝ) ^ (2 / α ^ 2)) :
     (radical γ : ℝ) * (countTuplesWithGammaProd n γ H : ℝ) ≤
       ((2 ^ (n + 1).choose 2 : ℝ)) ^ γ.primeFactors.card * 2 ^ n *
         (H : ℝ) ^ ((n : ℝ) + 1 / 2) *
         ∏ p ∈ γ.primeFactors, (p : ℝ) ^ (1 - α) := by
   refine' le_trans ( mul_le_mul_of_nonneg_left ( countTuplesWithGammaProd_large_gamma_sharp n γ H α hγ hH hα hbound ) ( Nat.cast_nonneg _ ) ) _;
-  convert mul_le_mul_of_nonneg_left ( radical_div_rpow_le_prod_primeFactors_rpow γ hγ α hα.le hα1 ) ( show ( 0 : ℝ ) ≤ ( 2 ^ ( n + 1 ).choose 2 ) ^ #γ.primeFactors * 2 ^ n * H ^ ( n + 1 / 2 : ℝ ) by positivity ) using 1 ; ring
+  convert mul_le_mul_of_nonneg_left ( radical_div_rpow_le_prod_primeFactors_rpow γ hγ α hα.le ) ( show ( 0 : ℝ ) ≤ ( 2 ^ ( n + 1 ).choose 2 ) ^ #γ.primeFactors * 2 ^ n * H ^ ( n + 1 / 2 : ℝ ) by positivity ) using 1 ; ring
 
 /-
 **Sharp joint tuple-count (small-γ).** Collision factor fully absorbed:
