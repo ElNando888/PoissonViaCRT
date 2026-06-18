@@ -7,6 +7,7 @@ Authors: Fernando Portela, Aristotle (Harmonic)
 import PoissonViaCRT.Defs
 import Mathlib.Data.Nat.Log
 import Mathlib.Data.Pi.Interval
+import Mathlib.Analysis.SpecialFunctions.Pow.NNReal
 
 set_option linter.unusedVariables false
 
@@ -141,5 +142,119 @@ lemma core_gamma_euler_sum (T : Finset ℕ) (hT : ∀ p ∈ T, Nat.Prime p) (N :
   rw [ h_sum_prod ];
   refine' le_trans ( Finset.sum_le_sum fun R hR => mul_le_mul_of_nonneg_right ( mul_le_mul_of_nonneg_right ( h_bound R hR ) ( by positivity ) ) ( Finset.prod_nonneg fun x hx => hweil x (Finset.mem_sdiff.mp hx).1 ) ) _;
   simp +decide [ ← mul_pow, Finset.prod_add ]
+
+/-
+**Fractional smooth-number harmonic bound.** For a finite set of primes `R` and
+`0 < α`, the sum of `n^{-α}` over `R`-smooth numbers `n ≤ N` is bounded by the
+Euler product `∏_{p ∈ R} 1/(1 - p^{-α})`.  This is the fractional analogue of
+`sum_inv_smooth_le` (geometric sum with ratio `p^{-α}` instead of `p^{-1}`).
+-/
+lemma sum_rpow_smooth_le (R : Finset ℕ) (hR : ∀ p ∈ R, Nat.Prime p) (N : ℕ)
+    (α : ℝ) (hα0 : 0 < α) :
+    ∑ n ∈ (Finset.Icc 1 N).filter (fun n => n.primeFactors ⊆ R), (n : ℝ) ^ (-α) ≤
+    ∏ p ∈ R, 1 / (1 - (p : ℝ) ^ (-α)) := by
+  -- The sum over smooth numbers is a subset of the product of geometric sums.
+  have h_subset : (∑ n ∈ Finset.filter (fun n => n.primeFactors ⊆ R) (Finset.Icc 1 N), (n : ℝ) ^ (-α)) ≤ (∏ p ∈ R, (∑ j ∈ Finset.range (Nat.log p N + 1), (p : ℝ) ^ (-α * j))) := by
+    -- By definition of $R$-smooth numbers, we can write each $n$ as a product of primes in $R$.
+    have h_factor : Finset.filter (fun n => n.primeFactors ⊆ R) (Finset.Icc 1 N) ⊆ Finset.image (fun f : R → ℕ => ∏ p : R, (p : ℕ) ^ (f p)) (Finset.Icc 0 (fun p : R => Nat.log p N)) := by
+      intro n hn;
+      refine' Finset.mem_image.mpr ⟨ fun p => Nat.factorization n p, _, _ ⟩ <;> simp_all +decide [ Finset.subset_iff ];
+      · intro p; exact Nat.le_log_of_pow_le ( Nat.Prime.one_lt ( hR _ ( by aesop ) ) ) ( Nat.le_trans ( Nat.le_of_dvd hn.1.1 ( Nat.ordProj_dvd _ _ ) ) hn.1.2 ) ;
+      · conv_rhs => rw [ ← Nat.prod_factorization_pow_eq_self ( by linarith : n ≠ 0 ) ] ;
+        rw [ Finsupp.prod_of_support_subset ] <;> aesop_cat;
+    refine le_trans ( Finset.sum_le_sum_of_subset_of_nonneg h_factor fun _ _ _ => by positivity ) ?_;
+    rw [ Finset.sum_image ];
+    · erw [ Finset.prod_sum ];
+      refine' le_of_eq _;
+      refine' Finset.sum_bij ( fun f hf => fun p hp => f ⟨ p, hp ⟩ ) _ _ _ _ <;> simp +decide [ Real.rpow_neg, Real.rpow_mul ];
+      · exact fun f hf p hp => hf ⟨ p, hp ⟩;
+      · simp +contextual [ funext_iff ];
+      · exact fun b hb => ⟨ fun p => b p p.2, fun p => hb p p.2, rfl ⟩;
+      · intro a ha; rw [ Real.rpow_neg ( Finset.prod_nonneg fun _ _ => by positivity ) ] ; simp +decide [ ← Real.rpow_natCast, ← Real.rpow_mul ( Nat.cast_nonneg _ ) ] ;
+        rw [ ← Real.finsetProd_rpow _ _ fun x hx => by positivity, Finset.prod_congr rfl ] ; intros ; rw [ ← Real.rpow_mul ( Nat.cast_nonneg _ ) ] ; ring_nf;
+    · intro f hf g hg hfg; ext p; replace hfg := congr_arg ( fun x : ℕ => x.factorization p ) hfg; simp_all +decide ;
+      rw [ Nat.factorization_prod, Nat.factorization_prod ] at hfg <;> simp_all +decide [ Nat.Prime.ne_zero ];
+      simp_all +decide [ Finsupp.single_apply ];
+  refine le_trans h_subset <| Finset.prod_le_prod ?_ ?_ <;> norm_num;
+  · exact fun p hp => Finset.sum_nonneg fun _ _ => Real.rpow_nonneg ( Nat.cast_nonneg _ ) _;
+  · intro p hp; rw [ ← tsum_geometric_of_lt_one ( by positivity ) ( by simpa using Real.rpow_lt_rpow_of_exponent_lt ( Nat.one_lt_cast.mpr ( hR p hp |> Nat.Prime.one_lt ) ) ( neg_lt_zero.mpr hα0 ) ) ] ;
+    norm_num [ Real.rpow_neg, Real.rpow_mul ];
+    exact Summable.sum_le_tsum ( Finset.range ( Nat.log p N + 1 ) ) ( fun _ _ => by positivity ) ( by simpa using summable_geometric_of_lt_one ( by positivity ) ( inv_lt_one_of_one_lt₀ ( Real.one_lt_rpow ( Nat.one_lt_cast.mpr ( hR p hp |> Nat.Prime.one_lt ) ) hα0 ) ) )
+
+/-
+**Per-prime factor bound.** Since every prime `p ∈ R` satisfies `p ≥ 2`, the
+Euler factor `1/(1 - p^{-α})` is bounded by `1/(1 - 2^{-α})`, hence the product
+over `R` is at most `(1/(1 - 2^{-α}))^{|R|}`.  Fractional analogue of
+`prod_p_div_sub_one_le_pow_two`.
+-/
+lemma prod_one_div_one_sub_rpow_le_pow (R : Finset ℕ) (hR : ∀ p ∈ R, Nat.Prime p)
+    (α : ℝ) (hα0 : 0 < α) :
+    ∏ p ∈ R, 1 / (1 - (p : ℝ) ^ (-α)) ≤ (1 / (1 - (2:ℝ)^(-α))) ^ R.card := by
+  have h_euler_prod : ∀ p ∈ R, (1 : ℝ) / (1 - (p : ℝ) ^ (-α)) ≤ (1 : ℝ) / (1 - (2 : ℝ) ^ (-α)) := by
+    intro p hp
+    have h_le : (p : ℝ) ^ (-α) ≤ (2 : ℝ) ^ (-α) := by
+      rw [ Real.rpow_le_rpow_iff_of_neg ] <;> norm_num <;> linarith [ Nat.Prime.two_le ( hR p hp ) ];
+    gcongr;
+    exact sub_pos_of_lt ( by simpa using Real.rpow_lt_rpow_of_exponent_lt ( by norm_num ) ( neg_lt_zero.mpr hα0 ) );
+  convert Finset.prod_le_prod ?_ h_euler_prod using 2 <;> norm_num;
+  exact fun p hp => by simpa using Real.rpow_le_rpow_of_exponent_le ( Nat.one_le_cast.mpr ( Nat.Prime.pos ( hR p hp ) ) ) ( neg_nonpos.mpr hα0.le ) ;
+
+/-
+Fractional radical-regrouping (single fibre).
+-/
+lemma sum_rad_div_rpow_le_pow (R : Finset ℕ) (hR : ∀ p ∈ R, Nat.Prime p)
+    (N : ℕ) (α : ℝ) (hα0 : 0 < α) (hα1 : α ≤ 1) :
+    ∑ γ ∈ (Finset.Icc 1 N).filter (fun γ => γ.primeFactors = R),
+        (radical γ : ℝ) / (γ : ℝ) ^ α
+      ≤ (1 / (1 - (2:ℝ)^(-α))) ^ R.card * ∏ p ∈ R, (p : ℝ) ^ (1 - α) := by
+  -- Apply the radical-regrouping (single fibre) lemma to rewrite the sum.
+  have h_sum_rewrite : ∑ γ ∈ (Finset.Icc 1 N).filter (fun γ => γ.primeFactors = R), (radical γ : ℝ) / (γ : ℝ) ^ α = (∏ p ∈ R, (p : ℝ) ^ (1 - α)) * ∑ γ ∈ (Finset.Icc 1 N).filter (fun γ => γ.primeFactors = R), (γ / radical γ : ℝ) ^ (-α) := by
+    rw [ Finset.mul_sum _ _ _ ];
+    refine Finset.sum_congr rfl fun x hx => ?_;
+    rw [ Real.div_rpow ( by positivity ) ( by positivity ), Real.rpow_neg ( by positivity ) ];
+    rw [ div_eq_mul_inv, mul_comm ];
+    rw [ show ( radical x : ℝ ) = ∏ p ∈ R, ( p : ℝ ) from ?_, Real.finsetProd_rpow _ _ fun p hp => Nat.cast_nonneg _ ] ; ring_nf;
+    · rw [ mul_assoc, ← Real.rpow_neg ( Finset.prod_nonneg fun _ _ => Nat.cast_nonneg _ ), ← Real.rpow_add ( Finset.prod_pos fun _ _ => Nat.cast_pos.mpr ( Nat.Prime.pos ( hR _ ‹_› ) ) ) ] ; norm_num;
+    · unfold radical; aesop;
+  -- Apply the smooth-number harmonic bound to the inner sum.
+  have h_inner_sum_bound : ∑ γ ∈ (Finset.Icc 1 N).filter (fun γ => γ.primeFactors = R), (γ / radical γ : ℝ) ^ (-α) ≤ ∑ n ∈ (Finset.Icc 1 N).filter (fun n => n.primeFactors ⊆ R), (n : ℝ) ^ (-α) := by
+    have h_inner_sum_bound : (Finset.image (fun γ => γ / radical γ) ((Finset.Icc 1 N).filter (fun γ => γ.primeFactors = R))) ⊆ (Finset.Icc 1 N).filter (fun n => n.primeFactors ⊆ R) := by
+      intro n hn
+      obtain ⟨γ, hγ, rfl⟩ := Finset.mem_image.mp hn
+      have h_div : γ / radical γ ∈ Finset.Icc 1 N := by
+        exact Finset.mem_Icc.mpr ⟨ Nat.div_pos ( Nat.le_of_dvd ( Finset.mem_Icc.mp ( Finset.mem_filter.mp hγ |>.1 ) |>.1 ) ( Nat.prod_primeFactors_dvd _ ) ) ( Finset.prod_pos fun p hp => Nat.Prime.pos ( by aesop ) ), Nat.le_trans ( Nat.div_le_self _ _ ) ( Finset.mem_Icc.mp ( Finset.mem_filter.mp hγ |>.1 ) |>.2 ) ⟩
+      have h_prime_factors : (γ / radical γ).primeFactors ⊆ R := by
+        exact Nat.primeFactors_mono ( Nat.div_dvd_of_dvd <| Nat.prod_primeFactors_dvd _ ) ( by aesop ) |> Finset.Subset.trans <| by aesop;
+      exact Finset.mem_filter.mpr ⟨h_div, h_prime_factors⟩;
+    refine' le_trans _ ( Finset.sum_le_sum_of_subset_of_nonneg h_inner_sum_bound fun _ _ _ => Real.rpow_nonneg ( Nat.cast_nonneg _ ) _ );
+    rw [ Finset.sum_image ];
+    · refine' Finset.sum_le_sum fun x hx => _;
+      rw [ Nat.cast_div_charZero ( show radical x ∣ x from Nat.prod_primeFactors_dvd _ ) ];
+    · intro x hx y hy; have := Nat.prod_primeFactors_dvd x; have := Nat.prod_primeFactors_dvd y; simp_all +decide [ radical ] ;
+  convert mul_le_mul_of_nonneg_left ( h_inner_sum_bound.trans <| sum_rpow_smooth_le R hR N α hα0 |> le_trans <| prod_one_div_one_sub_rpow_le_pow R hR α hα0 ) <| show 0 ≤ ( ∏ p ∈ R, ( p : ℝ ) ^ ( 1 - α ) ) by exact Finset.prod_nonneg fun p hp => Real.rpow_nonneg ( Nat.cast_nonneg _ ) _ using 1 ; ring
+
+/-
+Fractional-exponent core Euler engine.
+-/
+lemma core_gamma_euler_sum_frac (T : Finset ℕ) (hT : ∀ p ∈ T, Nat.Prime p)
+    (N : ℕ) (B : ℝ) (hB : 1 ≤ B) (α : ℝ) (hα0 : 0 < α) (hα1 : α ≤ 1)
+    (weil : ℕ → ℝ) (hweil : ∀ p ∈ T, 0 ≤ weil p) :
+    ∑ γ ∈ (Finset.Icc 1 N).filter (fun γ => γ.primeFactors ⊆ T),
+        (radical γ : ℝ) / (γ : ℝ) ^ α * B ^ γ.primeFactors.card *
+          ∏ p ∈ T \ γ.primeFactors, weil p
+      ≤ ∏ p ∈ T, ((1 / (1 - (2:ℝ)^(-α))) * B * (p : ℝ) ^ (1 - α) + weil p) := by
+  -- Apply the regrouping step `h_sum_prod` to rewrite the LHS.
+  have h_sum_prod : ∑ γ ∈ (Finset.Icc 1 N).filter (fun γ => γ.primeFactors ⊆ T),
+        (radical γ : ℝ) / (γ : ℝ) ^ α * B ^ γ.primeFactors.card *
+          ∏ p ∈ T \ γ.primeFactors, weil p
+      = ∑ R ∈ Finset.powerset T, (∑ γ ∈ (Finset.Icc 1 N).filter (fun γ => γ.primeFactors = R), (radical γ : ℝ) / (γ : ℝ) ^ α) * B ^ R.card *
+          ∏ p ∈ T \ R, weil p := by
+            simp +decide only [sum_filter, sum_mul];
+            rw [ Finset.sum_comm, Finset.sum_congr rfl ] ; aesop;
+  rw [ h_sum_prod, Finset.prod_add ];
+  refine Finset.sum_le_sum fun R hR => ?_;
+  refine' mul_le_mul_of_nonneg_right _ ( Finset.prod_nonneg fun p hp => hweil p <| Finset.mem_sdiff.mp hp |>.1 );
+  refine' le_trans ( mul_le_mul_of_nonneg_right ( sum_rad_div_rpow_le_pow R ( fun p hp => hT p ( Finset.mem_powerset.mp hR hp ) ) N α hα0 hα1 ) ( by positivity ) ) _;
+  simp +decide [ mul_comm, mul_left_comm, Finset.prod_mul_distrib ]
 
 end PoissonCRT

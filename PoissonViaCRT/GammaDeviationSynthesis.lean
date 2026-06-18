@@ -827,27 +827,22 @@ private lemma gamma_sum_le_euler_factor_small_gamma (ε : ℝ) (hε : 0 < ε) (k
         exact mul_nonneg ( mul_nonneg ( sub_nonneg.2 <| div_le_one_of_le₀ ( mod_cast hΩle p <| hT_prime p hp ) <| Nat.cast_nonneg _ ) <| Real.rpow_nonneg ( Nat.cast_nonneg _ ) _ ) <| localMean_nonneg k Ω p
 
 /-
-**Gamma-sum Euler bound (Large-γ regime, via the sharp count).**
+**Gamma-sum Euler bound (Large-γ band, via the sharp count and the fractional engine).**
 
-The summation over `γ` in the large regime `H^{w(τ-1)} < γ ≤ H^{w(τ)}` is bounded by
+The summation over `γ` in a single band `H^{w(τ-1)} < γ ≤ H^{w(τ)}` is bounded by
 combining the sharpened large-γ count `countTuplesWithGammaProd_large_gamma_sharp` (which
-retains the genuine `1/γ^α` saving) with the radical-regrouping Euler engine
-`core_gamma_euler_sum`.  The fractional weight `rad γ / γ^α` is converted to the exponent-1
-radical weight `rad γ / γ` that the engine consumes, at the cost of the regime factor
-`H^{(1-α)·w(τ)}` (using `γ ≤ H^{w(τ)}`).
-
-*Note on the exponent.*  The honest output of the radical engine fed by the sharp count is
-the `H`-power `(k-1) + 1/2 + (1-α)·w(τ)`.  The originally-conjectured exponent
-`(k-1) - τ + α·w(τ)` is *not* derivable from this radical-regrouping route (the radical
-engine only consumes the exponent-1 form `rad γ / γ`, against which the conjectured bound
-fails), so the statement has been corrected to the provable form.
+retains the genuine `1/γ^α` saving) with the *fractional* radical-regrouping Euler engine
+`core_gamma_euler_sum_frac`.  Unlike the old exponent-1 route, the fractional weight
+`rad γ / γ^α` is fed directly into the engine, so the `H`-power emerges cleanly as
+`(k-1) + 1/2`, completely avoiding the `(1-α)·w(τ)` inflation.  The saving lives on the
+collision primes as the per-prime factor `p^{1-α}`.
 -/
-private lemma gamma_sum_le_euler_factor_large_gamma (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+private lemma gamma_band_euler_factor (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩle : ∀ p, p.Prime → (Ω p).card ≤ p)
     (T : Finset ℕ) (hT_prime : ∀ p ∈ T, Nat.Prime p) (H : ℕ) (hH : 1 < H)
     (τ : ℕ)
-    (α : ℝ) (hα : 0 < α) (hα1 : α ≤ 1)
+    (α : ℝ) (hα0 : 0 < α) (hα1 : α ≤ 1)
     (hαw : tupleBoundWeight (k - 1) τ ≤ 2 / α ^ 2) :
     ∑ γ ∈ (Finset.Icc 1 (H ^ (k * k))).filter (fun (γ : ℕ) => γ.primeFactors ⊆ T ∧
         (H : ℝ) ^ tupleBoundWeight (k - 1) (τ - 1) < (γ : ℝ) ∧
@@ -855,48 +850,111 @@ private lemma gamma_sum_le_euler_factor_large_gamma (ε : ℝ) (hε : 0 < ε) (k
       perGammaDeviationWeight ε k Ω T γ *
         (countTuplesWithGammaProd (k - 1) γ H : ℝ) ≤
     2 ^ (k - 1) *
-      (H : ℝ) ^ ((k - 1 : ℝ) + 1 / 2 + (1 - α) * tupleBoundWeight (k - 1) τ) *
-      ∏ p ∈ T, (2 * (2 : ℝ) ^ Nat.choose k 2 +
+      (H : ℝ) ^ ((k - 1 : ℝ) + 1 / 2) *
+      ∏ p ∈ T, ((1 / (1 - (2 : ℝ) ^ (-α))) * 2 ^ Nat.choose k 2 * (p : ℝ) ^ (1 - α) +
         (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) * localMean k Ω p) := by
-  refine' le_trans _ ( mul_le_mul_of_nonneg_left ( _ : _ ≤ _ ) _ );
-  convert Finset.sum_le_sum fun γ hγ => ?_ using 1;
-  rw [ Finset.mul_sum _ _ _ ];
-  use fun γ => ( radical γ : ℝ ) / γ * ( 2 ^ k.choose 2 ) ^ γ.primeFactors.card * ∏ p ∈ T \ γ.primeFactors, ( 1 - ( Ω p ).card / p ) * ( p : ℝ ) ^ ( -ε ) * localMean k Ω p;
-  · infer_instance;
-  · refine' le_trans ( mul_le_mul_of_nonneg_left ( countTuplesWithGammaProd_large_gamma_sharp ( k - 1 ) γ H α _ _ _ _ ) _ ) _;
-    any_goals linarith;
-    · exact Finset.mem_Icc.mp ( Finset.mem_filter.mp hγ |>.1 ) |>.1;
-    · refine' le_trans _ ( Real.rpow_le_rpow_of_exponent_le ( mod_cast hH.le ) hαw );
-      exact_mod_cast Finset.mem_filter.mp hγ |>.2.2.2;
-    · apply_rules [ mul_nonneg, Finset.prod_nonneg ];
-      · exact fun _ _ => Nat.cast_nonneg _;
-      · intro p hp; apply_rules [ mul_nonneg, Real.rpow_nonneg ] ;
-        · exact sub_nonneg_of_le ( div_le_one_of_le₀ ( mod_cast hΩle p ( hT_prime p ( Finset.mem_filter.mp hp |>.1 ) ) ) ( Nat.cast_nonneg _ ) );
-        · positivity;
-        · positivity;
-        · positivity;
-    · convert mul_le_mul_of_nonneg_left ( show ( γ : ℝ ) ^ ( 1 - α ) ≤ H ^ ( ( 1 - α ) * tupleBoundWeight ( k - 1 ) τ ) from ?_ ) ( show ( 0 : ℝ ) ≤ 2 ^ ( k - 1 ) * H ^ ( ( k - 1 : ℝ ) + 1 / 2 ) * ( radical γ : ℝ ) / γ * ( 2 ^ k.choose 2 ) ^ γ.primeFactors.card * ∏ p ∈ T \ γ.primeFactors, ( 1 - ( Ω p ).card / p : ℝ ) * p ^ ( -ε ) * localMean k Ω p by
-                                                                                                                                      refine' mul_nonneg ( mul_nonneg _ _ ) _;
-                                                                                                                                      · positivity;
-                                                                                                                                      · positivity;
-                                                                                                                                      · refine' Finset.prod_nonneg fun p hp => mul_nonneg ( mul_nonneg _ _ ) _;
-                                                                                                                                        · exact sub_nonneg_of_le ( div_le_one_of_le₀ ( mod_cast hΩle p ( hT_prime p ( Finset.mem_sdiff.mp hp |>.1 ) ) ) ( Nat.cast_nonneg _ ) );
-                                                                                                                                        · positivity;
-                                                                                                                                        · exact localMean_nonneg _ _ _ ) using 1;
-      · rw [ show ( k - 1 + 1 : ℕ ) = k by omega ];
-        rw [ show ( k : ℝ ) - 1 = ( k - 1 : ℕ ) by rw [ Nat.cast_pred ( by linarith ) ] ] ; rw [ perGammaDeviationWeight_eq_of_subset ε k Ω T hT_prime γ ( Finset.mem_filter.mp hγ |>.2.1 ) ] ; ring_nf;
-        rw [ show ( γ : ℝ ) ^ ( 1 - α ) = ( γ : ℝ ) / ( γ ^ α ) by rw [ Real.rpow_sub ( Nat.cast_pos.mpr <| Finset.mem_Icc.mp ( Finset.mem_filter.mp hγ |>.1 ) |>.1 ), Real.rpow_one ] ] ; ring_nf;
-        norm_num [ show γ ≠ 0 by linarith [ Finset.mem_Icc.mp ( Finset.mem_filter.mp hγ |>.1 ) |>.1 ] ];
-      · rw [ Real.rpow_add ( by positivity ) ] ; ring;
-      · rw [ mul_comm, Real.rpow_mul ] <;> norm_num;
-        exact Real.rpow_le_rpow ( by positivity ) ( by aesop ) ( by linarith );
-  · refine' le_trans _ ( core_gamma_euler_sum T hT_prime ( H ^ ( k * k ) ) ( 2 ^ k.choose 2 ) ( one_le_pow₀ ( by norm_num ) ) _ _ );
-    · refine' Finset.sum_le_sum_of_subset_of_nonneg _ _;
-      · exact fun x hx => Finset.mem_filter.mpr ⟨ Finset.mem_filter.mp hx |>.1, Finset.mem_filter.mp hx |>.2.1 ⟩;
-      · intro γ hγ₁ hγ₂; refine' mul_nonneg ( mul_nonneg ( div_nonneg ( Nat.cast_nonneg _ ) ( Nat.cast_nonneg _ ) ) ( pow_nonneg ( by positivity ) _ ) ) ( Finset.prod_nonneg fun p hp => mul_nonneg ( mul_nonneg ( sub_nonneg.2 <| div_le_one_of_le₀ ( mod_cast hΩle p <| hT_prime p <| Finset.mem_sdiff.1 hp |>.1 ) <| Nat.cast_nonneg _ ) <| Real.rpow_nonneg ( Nat.cast_nonneg _ ) _ ) <| _ ) ;
-        exact localMean_nonneg _ _ _;
-    · exact fun p hp => mul_nonneg ( mul_nonneg ( sub_nonneg.2 <| div_le_one_of_le₀ ( mod_cast hΩle p <| hT_prime p hp ) <| Nat.cast_nonneg _ ) <| Real.rpow_nonneg ( Nat.cast_nonneg _ ) _ ) <| localMean_nonneg _ _ _;
-  · positivity
+  -- The collision-prime weight is nonnegative on `T`.
+  have hweil_nonneg : ∀ p ∈ T,
+      0 ≤ (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) * localMean k Ω p := by
+    intro p hp
+    refine mul_nonneg (mul_nonneg ?_ (Real.rpow_nonneg (Nat.cast_nonneg _) _))
+      (localMean_nonneg _ _ _)
+    exact sub_nonneg.2 (div_le_one_of_le₀ (by exact_mod_cast hΩle p (hT_prime p hp))
+      (Nat.cast_nonneg _))
+  have hB1 : (1 : ℝ) ≤ (2 : ℝ) ^ Nat.choose k 2 := one_le_pow₀ (by norm_num)
+  have hc_nonneg : (0 : ℝ) ≤ 2 ^ (k - 1) * (H : ℝ) ^ ((k - 1 : ℝ) + 1 / 2) := by positivity
+  -- The fractional radical Euler engine bounds the full smooth sum by the Euler product.
+  have hcore := core_gamma_euler_sum_frac T hT_prime (H ^ (k * k))
+    ((2 : ℝ) ^ Nat.choose k 2) hB1 α hα0 hα1
+    (fun p => (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) * localMean k Ω p) hweil_nonneg
+  refine le_trans ?_ (mul_le_mul_of_nonneg_left hcore hc_nonneg)
+  rw [Finset.mul_sum]
+  -- Bound the band-sum termwise, then extend the index set to the full smooth filter.
+  refine le_trans (Finset.sum_le_sum ?_)
+    (Finset.sum_le_sum_of_subset_of_nonneg ?_ ?_)
+  · -- Per-band term bound.
+    intro γ hγ
+    obtain ⟨hγIcc, hpf, _, hupper⟩ := by
+      simpa only [Finset.mem_filter, and_assoc] using hγ
+    have hγpos : 0 < γ := (Finset.mem_Icc.mp hγIcc).1
+    have hbound : (γ : ℝ) ≤ (H : ℝ) ^ (2 / α ^ 2) :=
+      le_trans hupper (Real.rpow_le_rpow_of_exponent_le (by exact_mod_cast hH.le) hαw)
+    rw [perGammaDeviationWeight_eq_of_subset ε k Ω T hT_prime γ hpf]
+    have hcount := countTuplesWithGammaProd_large_gamma_sharp (k - 1) γ H α hγpos hH hα0 hbound
+    refine le_trans (mul_le_mul_of_nonneg_left hcount ?_) ?_
+    · exact mul_nonneg (Nat.cast_nonneg _)
+        (Finset.prod_nonneg fun p hp => hweil_nonneg p (Finset.mem_sdiff.mp hp).1)
+    · refine le_of_eq ?_
+      rw [show (k - 1) + 1 = k from by omega,
+        show ((k - 1 : ℕ) : ℝ) = (k : ℝ) - 1 from by
+          rw [Nat.cast_pred (by omega)]]
+      ring
+  · -- The band filter is a subset of the full smooth filter.
+    intro x hx
+    exact Finset.mem_filter.mpr ⟨(Finset.mem_filter.mp hx).1, (Finset.mem_filter.mp hx).2.1⟩
+  · -- Nonnegativity of the (constant times) smooth-sum term off the band.
+    intro γ hγ _
+    refine mul_nonneg hc_nonneg (mul_nonneg (mul_nonneg
+      (div_nonneg (Nat.cast_nonneg _) (Real.rpow_nonneg (Nat.cast_nonneg _) _))
+      (pow_nonneg (by positivity) _))
+      (Finset.prod_nonneg fun p hp => hweil_nonneg p (Finset.mem_sdiff.mp hp).1))
+
+/-- The per-band exponent `α(n, τ)`, the *clamped* square-root choice
+`min 1 (sqrt(2 / w(τ)))`, where `w(τ) = tupleBoundWeight n τ`.
+
+**Faithfulness correction.**  The bare choice `sqrt(2 / w(τ))` (as originally
+proposed) does *not* satisfy `α ≤ 1`: whenever `w(τ) < 2` (e.g. `n = 1`, `τ = 0`,
+where `w = 1` and `sqrt 2 > 1`) it exceeds `1`.  Since the band engine
+`gamma_band_euler_factor` simultaneously requires `α ≤ 1` *and* the band
+constraint `w(τ) ≤ 2 / α²`, the genuine per-band choice must clamp at `1`.  The
+clamp keeps the band constraint as an (almost) equality — exact when `w(τ) ≥ 2`
+(so `sqrt(2/w) ≤ 1`), and `w(τ) < 2 ≤ 2/1²` otherwise. -/
+noncomputable def alphaOf (n τ : ℕ) : ℝ := min 1 (Real.sqrt (2 / tupleBoundWeight n τ))
+
+/-- The per-band exponent `alphaOf n τ` is positive (for `n ≥ 1`, which is the
+relevant regime `n = k - 1` with `k ≥ 2`).  The hypothesis `1 ≤ n` is necessary:
+`tupleBoundWeight 0 0 = 0`, forcing `alphaOf 0 0 = 0`. -/
+lemma alphaOf_pos (n τ : ℕ) (hn : 1 ≤ n) : 0 < alphaOf n τ := by
+  unfold alphaOf tupleBoundWeight
+  apply lt_min
+  · norm_num
+  · apply Real.sqrt_pos.mpr
+    have h1 : (1:ℝ) ≤ (n:ℝ) := by exact_mod_cast hn
+    have hwpos : (0:ℝ) < (n:ℝ) + 1 - 9/8 + ((τ:ℝ) - 1/2)^2 / 2 := by
+      nlinarith [sq_nonneg ((τ:ℝ) - 1/2)]
+    exact _root_.div_pos (by norm_num) hwpos
+
+/-- The per-band exponent `alphaOf n τ` is at most `1` (immediate from the clamp). -/
+lemma alphaOf_le_one (n τ : ℕ) : alphaOf n τ ≤ 1 := by
+  unfold alphaOf; exact min_le_left _ _
+
+/-- The band constraint holds for `alphaOf n τ`: `w(τ) ≤ 2 / α(n,τ)²`, with equality
+when `w(τ) ≥ 2` and the harmless slack `w(τ) < 2 ≤ 2/1²` otherwise. -/
+lemma alphaOf_band_ok (n τ : ℕ) : tupleBoundWeight n τ ≤ 2 / (alphaOf n τ) ^ 2 := by
+  unfold alphaOf
+  set w := tupleBoundWeight n τ with hw
+  have hnn : 0 ≤ w := by
+    rw [hw]; unfold tupleBoundWeight
+    have h : (1:ℝ)/4 ≤ ((τ:ℝ) - 1/2)^2 := by
+      have h : (0:ℝ) ≤ (τ:ℝ) * ((τ:ℝ) - 1) := by
+        rcases Nat.eq_zero_or_pos τ with h | h
+        · simp [h]
+        · have h1 : (1:ℝ) ≤ (τ:ℝ) := by exact_mod_cast h
+          nlinarith [Nat.cast_nonneg (α := ℝ) τ]
+      nlinarith
+    have hn : (0:ℝ) ≤ (n:ℝ) := by positivity
+    linarith
+  rcases eq_or_lt_of_le hnn with h0 | hpos
+  · rw [← h0]; simp
+  · have hs : Real.sqrt (2 / w) ^ 2 = 2 / w := Real.sq_sqrt (by positivity)
+    rcases le_total (Real.sqrt (2 / w)) 1 with hle | hge
+    · rw [min_eq_right hle, hs, div_div_eq_mul_div]; linarith
+    · rw [min_eq_left hge]
+      simp only [one_pow, div_one]
+      have h2 : (1:ℝ) ≤ 2 / w := by nlinarith [hs, hge, Real.sqrt_nonneg (2/w)]
+      rw [le_div_iff₀ hpos] at h2
+      linarith
+
 
 /-- Per-prime simplification: `localMean k Ω p / |Ω_p| = (|Ω_p|/p)^{k-1}` (needs `k ≥ 1`
 and `|Ω_p| ≠ 0`). -/
