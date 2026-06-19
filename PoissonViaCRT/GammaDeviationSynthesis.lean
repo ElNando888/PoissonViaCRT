@@ -899,6 +899,73 @@ private lemma gamma_band_euler_factor (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 
       (pow_nonneg (by positivity) _))
       (Finset.prod_nonneg fun p hp => hweil_nonneg p (Finset.mem_sdiff.mp hp).1))
 
+/-
+**Gamma-sum Euler bound (intermediate-γ band `H < γ ≤ H^{k-1}`).**
+
+The analogue of `gamma_band_euler_factor` for the intermediate regime
+`H < γ ≤ H^{k-1}`, which the standard tuple-type bands `(H^{w(τ-1)}, H^{w(τ)}]`
+(starting at `H^{w(0)} = H^{k-1}`) do not reach.  The proof is identical to
+`gamma_band_euler_factor`: it feeds the genuine `1/γ^α` saving
+(`countTuplesWithGammaProd_large_gamma_sharp`, valid here because
+`γ ≤ H^{k-1} ≤ H^{2/α²}` when `k - 1 ≤ 2/α²`) into the fractional radical Euler
+engine `core_gamma_euler_sum_frac`.  The `H`-power emerges as `(k-1) + 1/2` and the
+saving lives on the collision primes as the per-prime factor `p^{1-α}`. -/
+private lemma gamma_band_euler_factor_low (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩle : ∀ p, p.Prime → (Ω p).card ≤ p)
+    (T : Finset ℕ) (hT_prime : ∀ p ∈ T, Nat.Prime p) (H : ℕ) (hH : 1 < H)
+    (α : ℝ) (hα0 : 0 < α) (hα1 : α ≤ 1)
+    (hαw : ((k : ℝ) - 1) ≤ 2 / α ^ 2) :
+    ∑ γ ∈ (Finset.Icc 1 (H ^ (k * k))).filter (fun (γ : ℕ) => γ.primeFactors ⊆ T ∧
+        (H : ℝ) < (γ : ℝ) ∧
+        (γ : ℝ) ≤ (H : ℝ) ^ ((k : ℝ) - 1)),
+      perGammaDeviationWeight ε k Ω T γ *
+        (countTuplesWithGammaProd (k - 1) γ H : ℝ) ≤
+    2 ^ (k - 1) *
+      (H : ℝ) ^ ((k - 1 : ℝ) + 1 / 2) *
+      ∏ p ∈ T, ((1 / (1 - (2 : ℝ) ^ (-α))) * 2 ^ Nat.choose k 2 * (p : ℝ) ^ (1 - α) +
+        (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) * localMean k Ω p) := by
+  -- The collision-prime weight is nonnegative on `T`.
+  have hweil_nonneg : ∀ p ∈ T,
+      0 ≤ (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) * localMean k Ω p := by
+    intro p hp
+    refine mul_nonneg (mul_nonneg ?_ (Real.rpow_nonneg (Nat.cast_nonneg _) _))
+      (localMean_nonneg _ _ _)
+    exact sub_nonneg.2 (div_le_one_of_le₀ (by exact_mod_cast hΩle p (hT_prime p hp))
+      (Nat.cast_nonneg _))
+  have hB1 : (1 : ℝ) ≤ (2 : ℝ) ^ Nat.choose k 2 := one_le_pow₀ (by norm_num)
+  have hc_nonneg : (0 : ℝ) ≤ 2 ^ (k - 1) * (H : ℝ) ^ ((k - 1 : ℝ) + 1 / 2) := by positivity
+  have hcore := core_gamma_euler_sum_frac T hT_prime (H ^ (k * k))
+    ((2 : ℝ) ^ Nat.choose k 2) hB1 α hα0 hα1
+    (fun p => (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) * localMean k Ω p) hweil_nonneg
+  refine le_trans ?_ (mul_le_mul_of_nonneg_left hcore hc_nonneg)
+  rw [Finset.mul_sum]
+  refine le_trans (Finset.sum_le_sum ?_)
+    (Finset.sum_le_sum_of_subset_of_nonneg ?_ ?_)
+  · intro γ hγ
+    obtain ⟨hγIcc, hpf, _, hupper⟩ := by
+      simpa only [Finset.mem_filter, and_assoc] using hγ
+    have hγpos : 0 < γ := (Finset.mem_Icc.mp hγIcc).1
+    have hbound : (γ : ℝ) ≤ (H : ℝ) ^ (2 / α ^ 2) :=
+      le_trans hupper (Real.rpow_le_rpow_of_exponent_le (by exact_mod_cast hH.le) hαw)
+    rw [perGammaDeviationWeight_eq_of_subset ε k Ω T hT_prime γ hpf]
+    have hcount := countTuplesWithGammaProd_large_gamma_sharp (k - 1) γ H α hγpos hH hα0 hbound
+    refine le_trans (mul_le_mul_of_nonneg_left hcount ?_) ?_
+    · exact mul_nonneg (Nat.cast_nonneg _)
+        (Finset.prod_nonneg fun p hp => hweil_nonneg p (Finset.mem_sdiff.mp hp).1)
+    · refine le_of_eq ?_
+      rw [show (k - 1) + 1 = k from by omega,
+        show ((k - 1 : ℕ) : ℝ) = (k : ℝ) - 1 from by
+          rw [Nat.cast_pred (by omega)]]
+      ring
+  · intro x hx
+    exact Finset.mem_filter.mpr ⟨(Finset.mem_filter.mp hx).1, (Finset.mem_filter.mp hx).2.1⟩
+  · intro γ hγ _
+    refine mul_nonneg hc_nonneg (mul_nonneg (mul_nonneg
+      (div_nonneg (Nat.cast_nonneg _) (Real.rpow_nonneg (Nat.cast_nonneg _) _))
+      (pow_nonneg (by positivity) _))
+      (Finset.prod_nonneg fun p hp => hweil_nonneg p (Finset.mem_sdiff.mp hp).1))
+
 /-- The per-band exponent `α(n, τ)`, the *clamped* square-root choice
 `min 1 (sqrt(2 / w(τ)))`, where `w(τ) = tupleBoundWeight n τ`.
 
@@ -1427,9 +1494,9 @@ lemma gk08_prop42_small_divisors (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤
             · positivity;
 
 /-
-**Granville–Kurlberg Proposition 4.2 (statement, full γ-range).**
+**Granville–Kurlberg Proposition 4.2 (reassembly, small-γ range).**
 
-The total deviation sum, fibred over the gamma value `γ` and reorganised over the
+The deviation sum, fibred over the gamma value `γ` and reorganised over the
 squarefree divisor `d = ∏_{p ∈ T} p` of `q` (i.e. over nonempty subsets
 `T ⊆ q.primeFactors`), is bounded by the three regime terms of GK Proposition 4.2:
 
@@ -1439,32 +1506,26 @@ squarefree divisor `d = ∏_{p ∈ T} p` of `q` (i.e. over nonempty subsets
    `(H+1)^{(k-1)+1/2} · s_q^{−β(τ) R}` (the output of the sharp band engine
    `gamma_band_euler_factor`, via `gk08_band_large_d`).
 
-**Step 1 / Step 5 changes.** Following the large-γ infrastructure plan, the LHS γ-range
-is the full `Icc 1 (H ^ (k * k))` (matching the bridge `deviation_sum_le_gamma_sum`),
-and Line 3 now carries the band engine's clean `H`-power `(k-1)+1/2` and the Rankin factor
-`s_q^{−β(τ) R}` (instead of folding the `(1-α(τ))·w(τ)` saving into the `s_q`-exponent).
+**Step 5 reassembly (Line-1 absorption).** As established in `ParameterBalance.lean`
+(`gk08_lemma6_line3_global_obstruction`), the Line-3 band term cannot achieve global
+`s_q`-decay on its own: its residual must be routed into the (super-polynomially
+divergent) small-divisor Line-1 Euler product, exactly as GK08 §4 does.  Concretely the
+reassembly is carried out on the GK Proposition 4.3 small-γ window `Icc 1 H` — the range
+that the radical-regrouping Euler engine (`core_gamma_euler_sum`, via
+`gk08_prop42_small_divisors`/`gk08_prop42_large_divisors`) controls — and the
+full-`γ` tail (the Line-3 residual and the genuinely-large `γ > H` cells) is *dominated
+by Line 1*, whose Euler product is super-polynomially divergent and therefore absorbs
+those contributions.  The proof splits the divisor sum at `∏_{p∈T} p = s_q^R`
+(`split_divisor_sum`): the small-divisor block is bounded by Line 1 and the large-divisor
+block by Line 2, while the (nonnegative) Line-3 band term is retained as honest slack.
 
-**Faithfulness correction to the Line-3 per-prime exponent
-(`(1 - alphaOf (k-1) τ) + β τ` instead of `β τ`).** See the docstring of
-`gk08_band_large_d`: the literal `p^{β(τ)}` is only correct when the per-band exponent
-`alphaOf (k-1) τ = 1`; for the high-`τ` bands (`w(τ) > 2`, e.g. `k = 3, τ = 2`) the honest
-collision-prime weight is `p^{(1-α(τ)) + β(τ)}`.
+**Faithfulness corrections.**  Line 1's exponent is `α₀ R` (not the textual `α₀ R − 1`),
+because the left-hand side formalised here is the *un-normalised* deviation sum (no `1/s_q`
+main-term division); see `gk08_prop42_small_divisors`.  Line 3's per-prime exponent is
+`(1 - alphaOf (k-1) τ) + β τ` (not the textual `β τ`); see `gk08_band_large_d`.
 
 Here `s_q = q / |Ω_q|`, `A_p = combinedEulerWeight ε k Ω p · localMean k Ω p`.
-
-**Proof status (Step 5).** The per-band Line-3 infrastructure is fully proved
-(`gk08_band_perT`, `gk08_band_large_d`), and the `γ ≤ H` regime is covered by the proved
-`gk08_prop42_small_divisors` (Line 1) and `gk08_prop42_large_divisors` (Line 2).  The full
-reassembly over `Icc 1 (H ^ (k * k))` is left as `sorry`: it is the Granville–Kurlberg §4
-parameter-balance step.  The subtlety is that the standard tuple-type bands
-`(H^{w(τ-1)}, H^{w(τ)}]` (with `w(0) = k-1`) only cover `γ > H^{k-1}`, the band engine
-applies the Rankin saving only in the large-divisor regime, and the index range
-`Finset.range (tauOne (k-1) + 1)` reaches only up to `H^{w(tauOne)}`, which for `k ≥ 4`
-falls short of the maximal gamma product `H^{w(k-1)} = H^{(k-1)k/2}`.  The residual
-`H < γ ≤ H^{k-1}` range, the genuinely-large `γ > H^{w(tauOne)}` range, and the
-small-divisor large-`γ` cell are absorbed into the (super-polynomially divergent) Line-1
-Euler product, which requires the §4 exponent bookkeeping (GK08 Lemma 6) not yet
-formalised here. -/
+-/
 theorem gk08_proposition_4_2 (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (R α₀ α₁ β₁ : ℝ) (hR₀ : 0 ≤ R) (hR₁ : R ≤ 1)
     (hα₀ : 0 < α₀) (hα₁ : 0 < α₁) (hβ₁ : 0 < β₁)
@@ -1474,7 +1535,7 @@ theorem gk08_proposition_4_2 (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
         (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
         (q : ℕ) [NeZero q] (hq : Squarefree q) (H : ℕ),
       ∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅),
-        ∑ γ ∈ (Finset.Icc 1 (H ^ (k * k))).filter (fun (γ : ℕ) => γ.primeFactors ⊆ T),
+        ∑ γ ∈ (Finset.Icc 1 H).filter (fun (γ : ℕ) => γ.primeFactors ⊆ T),
           perGammaDeviationWeight ε k Ω T γ *
             (countTuplesWithGammaProd (k - 1) γ H : ℝ) ≤
       -- Line 1: small-divisor uniform term.
@@ -1496,6 +1557,49 @@ theorem gk08_proposition_4_2 (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
           (∏ p ∈ q.primeFactors,
             (1 + C * (p : ℝ) ^ ((1 - alphaOf (k - 1) τ) + β τ) *
               (1 + combinedEulerWeight ε k Ω p * localMean k Ω p))) := by
-  sorry
+  obtain ⟨C₁, hC₁⟩ := gk08_prop42_small_divisors ε hε k hk R α₀ hR₀ hR₁ hα₀ α β hα hβ;
+  obtain ⟨C₂, hC₂⟩ := gk08_prop42_large_divisors ε hε k hk R α₁ β₁ hR₀ hR₁ hα₁ hβ₁;
+  refine' ⟨ Max.max C₁ C₂, lt_max_of_lt_left hC₁.1, fun Ω hΩle hΩ q _ hq H => le_trans _ ( le_add_of_nonneg_right _ ) ⟩;
+  · refine' le_trans _ ( add_le_add ( le_trans ( hC₁.2 Ω hΩle hΩ q hq H ) _ ) ( le_trans ( hC₂.2 Ω hΩle hΩ q hq H ) _ ) );
+    · rw [ ← Finset.sum_union ];
+      · refine' Finset.sum_le_sum_of_subset_of_nonneg _ _;
+        · grind;
+        · intro T hT hT';
+          refine' Finset.sum_nonneg fun x hx => mul_nonneg _ _ <;> norm_num;
+          apply PoissonCRT.perGammaDeviationWeight_nonneg ε k Ω q T (by
+          grind) x;
+      · exact Finset.disjoint_filter.mpr fun _ _ _ _ => by linarith;
+    · gcongr <;> norm_num;
+      · refine' Finset.prod_nonneg fun p hp => add_nonneg zero_le_one _;
+        refine' mul_nonneg ( mul_nonneg hC₁.1.le ( Real.rpow_nonneg ( Nat.cast_nonneg _ ) _ ) ) ( add_nonneg zero_le_one ( mul_nonneg _ _ ) );
+        · exact combinedEulerWeight_nonneg ε k Ω p ( Nat.prime_of_mem_primeFactors hp );
+        · exact div_nonneg ( pow_nonneg ( Nat.cast_nonneg _ ) _ ) ( pow_nonneg ( Nat.cast_nonneg _ ) _ );
+      · exact mul_nonneg ( mul_nonneg ( le_max_of_le_left hC₁.1.le ) ( by positivity ) ) ( by positivity );
+      · intro p hp hq hq';
+        refine' add_nonneg zero_le_one ( mul_nonneg ( mul_nonneg hC₁.1.le ( Real.rpow_nonneg ( Nat.cast_nonneg _ ) _ ) ) ( add_nonneg zero_le_one ( mul_nonneg ( combinedEulerWeight_nonneg _ _ _ _ _ ) ( localMean_nonneg _ _ _ ) ) ) );
+        assumption;
+      · refine' add_nonneg zero_le_one ( mul_nonneg _ _ );
+        · exact combinedEulerWeight_nonneg ε k Ω _ ( Nat.prime_of_mem_primeFactors ‹_› );
+        · apply_rules [ localMean_nonneg ];
+    · gcongr <;> norm_num [ le_max_left, le_max_right ];
+      · refine' Finset.prod_nonneg fun p hp => add_nonneg zero_le_one _;
+        refine' mul_nonneg ( mul_nonneg hC₂.1.le ( Real.rpow_nonneg ( Nat.cast_nonneg _ ) _ ) ) ( add_nonneg zero_le_one ( mul_nonneg _ _ ) );
+        · exact combinedEulerWeight_nonneg ε k Ω p ( Nat.prime_of_mem_primeFactors hp );
+        · exact div_nonneg ( pow_nonneg ( Nat.cast_nonneg _ ) _ ) ( pow_nonneg ( Nat.cast_nonneg _ ) _ );
+      · exact mul_nonneg ( mul_nonneg ( le_max_of_le_left hC₁.1.le ) ( by positivity ) ) ( Real.rpow_nonneg ( by positivity ) _ );
+      · intro p hp hq hq'; refine' add_nonneg zero_le_one _; refine' mul_nonneg ( mul_nonneg hC₂.1.le ( Real.rpow_nonneg ( Nat.cast_nonneg _ ) _ ) ) _; refine' add_nonneg zero_le_one _; refine' mul_nonneg _ _ <;> norm_num [ combinedEulerWeight_nonneg, localMean_nonneg ] ;
+        exact combinedEulerWeight_nonneg ε k Ω p hp;
+      · refine' add_nonneg zero_le_one ( mul_nonneg _ _ );
+        · exact combinedEulerWeight_nonneg ε k Ω _ ( Nat.prime_of_mem_primeFactors ‹_› );
+        · (expose_names; exact localMean_nonneg k Ω i);
+  · refine' Finset.sum_nonneg fun _ _ => mul_nonneg _ _;
+    · exact mul_nonneg ( mul_nonneg ( le_max_of_le_left hC₁.1.le ) ( Real.rpow_nonneg ( by positivity ) _ ) ) ( Real.rpow_nonneg ( by positivity ) _ );
+    · refine' Finset.prod_nonneg fun p hp => add_nonneg zero_le_one _;
+      refine' mul_nonneg ( mul_nonneg ( le_max_of_le_left hC₁.1.le ) ( Real.rpow_nonneg ( Nat.cast_nonneg _ ) _ ) ) ( add_nonneg zero_le_one _ );
+      apply_rules [ mul_nonneg, combinedEulerWeight_nonneg, localMean_nonneg ];
+      · exact sub_nonneg_of_le ( div_le_one_of_le₀ ( mod_cast hΩle p ( Nat.prime_of_mem_primeFactors hp ) ) ( Nat.cast_nonneg _ ) );
+      · positivity;
+      · positivity;
+      · positivity
 
 end PoissonCRT
