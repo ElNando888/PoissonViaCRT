@@ -1124,13 +1124,209 @@ lemma gk08_prop42_large_divisors (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤
       · norm_num
 
 /-
+**Per-`T` band bound (helper for `gk08_band_large_d`).**
+
+For a fixed prime set `T ⊆ q.primeFactors` in the large-divisor regime
+`s_q^R < ∏_{p∈T} p` (with `1 < H`), the deviation γ-sum over the band
+`H^{w(τ-1)} < γ ≤ H^{w(τ)}` is bounded by the per-`T` Euler factor.  This is the
+per-`T` analogue of the inner `h_per_T_bound` of `gk08_prop42_large_divisors`, with the
+sharp band engine `gamma_band_euler_factor` in place of the small-γ engine.  The constant
+`C` is supplied externally (any `C ≥ 1` dominating the band engine's per-prime constant
+`(1/(1-2^{-α}))·2^{C(k,2)}`).
+-/
+private lemma gk08_band_perT (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+    (R : ℝ) (τ : ℕ) (bτ : ℝ) (hbτ : 0 ≤ bτ) (C : ℝ) (hC1 : 1 ≤ C)
+    (hCc : (1 / (1 - (2 : ℝ) ^ (-alphaOf (k - 1) τ))) * 2 ^ Nat.choose k 2 ≤ C)
+    (Ω : ∀ p : ℕ, Finset (ZMod p)) (hΩle : ∀ p, p.Prime → (Ω p).card ≤ p)
+    (q : ℕ) [NeZero q] (T : Finset ℕ) (hT : T ∈ q.primeFactors.powerset)
+    (H : ℕ) (hH : 1 < H)
+    (hs_pos : 0 < (q : ℝ) / (crtSubset q Ω).card)
+    (hT_large : ((q : ℝ) / (crtSubset q Ω).card) ^ R < (∏ p ∈ T, (p : ℝ))) :
+    ∑ γ ∈ (Finset.Icc 1 (H ^ (k * k))).filter (fun (γ : ℕ) => γ.primeFactors ⊆ T ∧
+        (H : ℝ) ^ tupleBoundWeight (k - 1) (τ - 1) < (γ : ℝ) ∧
+        (γ : ℝ) ≤ (H : ℝ) ^ tupleBoundWeight (k - 1) τ),
+      perGammaDeviationWeight ε k Ω T γ *
+        (countTuplesWithGammaProd (k - 1) γ H : ℝ) ≤
+    2 ^ (k - 1) * ((H : ℝ) + 1) ^ ((k - 1 : ℝ) + 1 / 2) *
+        ((q : ℝ) / (crtSubset q Ω).card) ^ (- bτ * R) *
+        (∏ p ∈ T, (C * (p : ℝ) ^ ((1 - alphaOf (k - 1) τ) + bτ) *
+          (1 + combinedEulerWeight ε k Ω p * localMean k Ω p))) := by
+  have := @gamma_band_euler_factor;
+  refine le_trans ( this ε hε k hk Ω hΩle T ( fun p hp => Nat.prime_of_mem_primeFactors ( Finset.mem_powerset.mp hT hp ) ) H hH τ ( alphaOf ( k - 1 ) τ ) ?_ ?_ ?_ ) ?_;
+  · exact alphaOf_pos _ _ ( Nat.sub_pos_of_lt hk );
+  · exact min_le_left _ _;
+  · exact alphaOf_band_ok _ _;
+  · refine' le_trans _ ( mul_le_mul_of_nonneg_right ( mul_le_mul_of_nonneg_left ( show ( q / ( crtSubset q Ω |> Finset.card : ℝ ) ) ^ ( -bτ * R ) ≥ 1 / ( ∏ p ∈ T, ( p : ℝ ) ) ^ bτ from _ ) ( by positivity ) ) ( Finset.prod_nonneg fun _ _ => _ ) );
+    · refine' le_trans _ ( mul_le_mul_of_nonneg_left ( Finset.prod_le_prod _ fun p hp => _ ) _ );
+      rotate_left;
+      use fun p => ( 1 / ( 1 - 2 ^ ( -alphaOf ( k - 1 ) τ ) ) * 2 ^ k.choose 2 * p ^ ( 1 - alphaOf ( k - 1 ) τ ) + ( 1 - ( Ω p |> Finset.card : ℝ ) / p ) * p ^ ( -ε ) * localMean k Ω p ) * p ^ bτ;
+      · intro p hp; refine mul_nonneg ?_ ( Real.rpow_nonneg ( Nat.cast_nonneg _ ) _ ) ; refine add_nonneg ?_ ?_;
+        · exact mul_nonneg ( mul_nonneg ( one_div_nonneg.mpr ( sub_nonneg.mpr ( by exact le_trans ( Real.rpow_le_rpow_of_exponent_le ( by norm_num ) ( neg_nonpos.mpr ( alphaOf_pos _ _ ( Nat.sub_pos_of_lt hk ) |> le_of_lt ) ) ) ( by norm_num ) ) ) ) ( by positivity ) ) ( by positivity );
+        · refine mul_nonneg ( mul_nonneg ?_ ?_ ) ?_;
+          · exact sub_nonneg_of_le ( div_le_one_of_le₀ ( mod_cast hΩle p ( Nat.prime_of_mem_primeFactors ( Finset.mem_powerset.mp hT hp ) ) ) ( Nat.cast_nonneg _ ) );
+          · positivity;
+          · exact PoissonCRT.localMean_nonneg _ _ _;
+      · rw [ Real.rpow_add ( Nat.cast_pos.mpr <| Nat.Prime.pos <| by exact Nat.prime_of_mem_primeFactors <| Finset.mem_powerset.mp hT hp ) ];
+        rw [ mul_add ];
+        rw [ add_mul ];
+        refine' add_le_add _ _;
+        · rw [ mul_assoc ];
+          rw [ mul_one ] ; gcongr;
+        · rw [ combinedEulerWeight ];
+          rw [ mul_comm ];
+          gcongr;
+          · refine' mul_nonneg ( mul_nonneg _ _ ) _;
+            · exact sub_nonneg_of_le ( div_le_one_of_le₀ ( mod_cast hΩle p ( Nat.prime_of_mem_primeFactors ( Finset.mem_powerset.mp hT hp ) ) ) ( Nat.cast_nonneg _ ) );
+            · positivity;
+            · exact localMean_nonneg _ _ _;
+          · refine' le_trans _ ( le_mul_of_one_le_left _ hC1 );
+            · exact le_mul_of_one_le_left ( by positivity ) ( Real.one_le_rpow ( mod_cast Nat.Prime.pos ( by exact Nat.prime_of_mem_primeFactors ( Finset.mem_powerset.mp hT hp ) ) ) ( sub_nonneg.mpr ( alphaOf_le_one _ _ ) ) );
+            · positivity;
+      · exact mul_nonneg ( mul_nonneg ( pow_nonneg zero_le_two _ ) ( Real.rpow_nonneg ( by positivity ) _ ) ) ( one_div_nonneg.mpr ( Real.rpow_nonneg ( Finset.prod_nonneg fun _ _ => Nat.cast_nonneg _ ) _ ) );
+      · rw [ Finset.prod_mul_distrib, Real.finsetProd_rpow _ _ fun p hp => Nat.cast_nonneg _ ];
+        field_simp;
+        rw [ mul_div_cancel_right₀ _ ( ne_of_gt ( Real.rpow_pos_of_pos ( Finset.prod_pos fun p hp => Nat.cast_pos.mpr ( Nat.Prime.pos ( Nat.prime_of_mem_primeFactors ( Finset.mem_powerset.mp hT hp ) ) ) ) _ ) ) ] ; rw [ mul_comm ] ; gcongr ;
+        · refine Finset.prod_nonneg fun p hp => add_nonneg ?_ ?_;
+          · exact div_nonneg ( mul_nonneg ( pow_nonneg zero_le_two _ ) ( Real.rpow_nonneg ( Nat.cast_nonneg _ ) _ ) ) ( sub_nonneg.2 ( by exact le_trans ( Real.rpow_le_rpow_of_exponent_le ( by norm_num ) ( neg_nonpos.2 ( by exact le_min zero_le_one ( Real.sqrt_nonneg _ ) ) ) ) ( by norm_num ) ) );
+          · refine mul_nonneg ( mul_nonneg ?_ ?_ ) ?_;
+            · exact sub_nonneg_of_le ( div_le_one_of_le₀ ( mod_cast hΩle p ( Nat.prime_of_mem_primeFactors ( Finset.mem_powerset.mp hT hp ) ) ) ( Nat.cast_nonneg _ ) );
+            · positivity;
+            · exact localMean_nonneg _ _ _;
+        · exact div_nonneg ( by linarith [ show ( k : ℝ ) ≥ 2 by norm_cast ] ) zero_le_two;
+        · norm_num;
+    · rw [ one_div, ← Real.rpow_neg ( Finset.prod_nonneg fun _ _ => Nat.cast_nonneg _ ) ];
+      rw [ neg_mul, Real.rpow_neg ( by positivity ), Real.rpow_neg ( by exact Finset.prod_nonneg fun _ _ => Nat.cast_nonneg _ ) ];
+      gcongr;
+      convert Real.rpow_le_rpow ( by positivity ) hT_large.le hbτ using 1 ; rw [ ← Real.rpow_mul ( by positivity ) ] ; ring_nf;
+    · refine' mul_nonneg ( mul_nonneg ( by positivity ) ( Real.rpow_nonneg ( Nat.cast_nonneg _ ) _ ) ) ( add_nonneg zero_le_one ( mul_nonneg _ _ ) );
+      · exact combinedEulerWeight_nonneg _ _ _ _ ( Nat.prime_of_mem_primeFactors ( Finset.mem_powerset.mp hT ‹_› ) );
+      · apply localMean_nonneg
+
+/-
+**Large-`d` band term (Step 4, Line 3 of GK Proposition 4.2).**
+
+This bounds the deviation γ-sum over a single *large-γ band*
+`H^{w(τ-1)} < γ ≤ H^{w(τ)}` (with `w = tupleBoundWeight (k-1)`), restricted to the
+*large-divisor* regime `s_q^R < ∏_{p∈T} p`, by a single Line-3 term.
+
+The argument mirrors `gk08_prop42_large_divisors` but feeds the *sharp/fractional*
+band engine `gamma_band_euler_factor` (with the per-band exponent
+`α = alphaOf (k-1) τ`, valid by `alphaOf_pos`, `alphaOf_le_one`, `alphaOf_band_ok`)
+instead of the small-γ engine.  Concretely:
+
+* The band engine produces `2^{k-1} · H^{(k-1)+1/2} · ∏_{p∈T}(c·p^{1-α} + A_p)`,
+  where `A_p = combinedEulerWeight ε k Ω p · localMean k Ω p` is the Weil weight and
+  `c = (1/(1-2^{-α}))·2^{C(k,2)}` is a constant depending only on `k, τ`.  Unlike the
+  small-γ engine, the `H`-power is the clean `(k-1)+1/2`, with the saving carried on the
+  collision primes as `p^{1-α}`.
+* The Rankin trick `1 ≤ (∏_{p∈T} p / s_q^R)^{bτ}` (valid since `s_q^R < ∏_{p∈T} p`)
+  extracts the global factor `s_q^{-bτ R}` and attaches `p^{bτ}` to each prime.
+* Extending the `T`-sum to the full powerset and decoupling via `Finset.prod_add`
+  yields the Euler product over the primes dividing `q`.
+
+**Faithfulness correction to the per-prime exponent (`(1-α(τ)) + bτ` instead of `bτ`).**
+The literal Line-3 Euler factor of GK Proposition 4.2 reads `1 + C·p^{β(τ)}·(1+A_p)`.
+That shape is only correct when the per-band exponent `α(τ) = 1` (so the collision saving
+`p^{1-α} = p^0` disappears).  With the genuine per-band choice `α(τ) = alphaOf (k-1) τ`,
+which is `< 1` for the high-`τ` bands where `w(τ) > 2` (e.g. `k = 3`, `τ = 2`), the honest
+collision-prime weight after the count saving and the Rankin step is
+`p^{(1-α(τ)) + β(τ)}`, not `p^{β(τ)}`.  We therefore use the exponent
+`(1 - alphaOf (k-1) τ) + bτ` here and in `gk08_proposition_4_2`'s Line 3.
+
+The hypothesis `1 < H` is *not* required: for `H ≤ 1` the band filter is empty (the lower
+bound `H^{w(τ-1)} < γ` forces `γ > 1` while `γ ≤ H^{k·k} ≤ 1`), so the left-hand side is
+`0` and the bound holds trivially.
+-/
+lemma gk08_band_large_d (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+    (R : ℝ) (hR₀ : 0 ≤ R) (hR₁ : R ≤ 1) (τ : ℕ) (bτ : ℝ) (hbτ : 0 ≤ bτ) :
+    ∃ C : ℝ, 0 < C ∧
+      ∀ (Ω : ∀ p : ℕ, Finset (ZMod p)) (hΩle : ∀ p, p.Prime → (Ω p).card ≤ p)
+        (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+        (q : ℕ) [NeZero q] (hq : Squarefree q) (H : ℕ),
+      ∑ T ∈ q.primeFactors.powerset.filter
+          (fun T : Finset ℕ =>
+            ((q : ℝ) / (crtSubset q Ω).card) ^ R < (∏ p ∈ T, (p : ℝ))),
+        ∑ γ ∈ (Finset.Icc 1 (H ^ (k * k))).filter (fun (γ : ℕ) => γ.primeFactors ⊆ T ∧
+            (H : ℝ) ^ tupleBoundWeight (k - 1) (τ - 1) < (γ : ℝ) ∧
+            (γ : ℝ) ≤ (H : ℝ) ^ tupleBoundWeight (k - 1) τ),
+          perGammaDeviationWeight ε k Ω T γ *
+            (countTuplesWithGammaProd (k - 1) γ H : ℝ) ≤
+      C * ((H : ℝ) + 1) ^ ((k - 1 : ℝ) + 1 / 2) *
+          ((q : ℝ) / (crtSubset q Ω).card) ^ (- bτ * R) *
+          (∏ p ∈ q.primeFactors,
+            (1 + C * (p : ℝ) ^ ((1 - alphaOf (k - 1) τ) + bτ) *
+              (1 + combinedEulerWeight ε k Ω p * localMean k Ω p))) := by
+  refine' ⟨ 2 ^ ( k - 1 ) + ( 1 / ( 1 - ( 2 : ℝ ) ^ ( -alphaOf ( k - 1 ) τ ) ) ) * 2 ^ Nat.choose k 2 + 1, _, _ ⟩;
+  · exact add_pos_of_nonneg_of_pos ( add_nonneg ( pow_nonneg ( by norm_num ) _ ) ( mul_nonneg ( one_div_nonneg.mpr ( sub_nonneg.mpr ( by exact le_trans ( Real.rpow_le_rpow_of_exponent_le ( by norm_num ) ( neg_nonpos.mpr ( by exact le_min zero_le_one ( Real.sqrt_nonneg _ ) ) ) ) ( by norm_num ) ) ) ) ( pow_nonneg ( by norm_num ) _ ) ) ) zero_lt_one;
+  · intro Ω hΩle hΩ q _ hq H;
+    by_cases hH : 1 < H;
+    · refine' le_trans ( Finset.sum_le_sum fun T hT => _ ) _;
+      use fun T => 2 ^ ( k - 1 ) * ( H + 1 ) ^ ( ( k - 1 : ℝ ) + 1 / 2 ) * ( q / ( crtSubset q Ω |> Finset.card : ℝ ) ) ^ ( -bτ * R ) * ∏ p ∈ T, ( ( 2 ^ ( k - 1 ) + 1 / ( 1 - 2 ^ ( -alphaOf ( k - 1 ) τ ) ) * 2 ^ k.choose 2 + 1 ) * p ^ ( 1 - alphaOf ( k - 1 ) τ + bτ ) * ( 1 + combinedEulerWeight ε k Ω p * localMean k Ω p ) );
+      · refine' le_trans ( gk08_band_perT ε hε k hk R τ bτ hbτ _ _ _ Ω hΩle q T ( Finset.mem_filter.mp hT |>.1 ) H hH _ _ ) _;
+        exact 2 ^ ( k - 1 ) + 1 / ( 1 - 2 ^ ( -alphaOf ( k - 1 ) τ ) ) * 2 ^ k.choose 2 + 1;
+        · exact le_add_of_nonneg_of_le ( add_nonneg ( pow_nonneg zero_le_two _ ) ( mul_nonneg ( one_div_nonneg.mpr ( sub_nonneg.mpr ( by exact le_trans ( Real.rpow_le_rpow_of_exponent_le ( by norm_num ) ( neg_nonpos.mpr ( by exact le_min zero_le_one ( Real.sqrt_nonneg _ ) ) ) ) ( by norm_num ) ) ) ) ( pow_nonneg zero_le_two _ ) ) ) ( by norm_num );
+        · exact le_add_of_le_of_nonneg ( le_add_of_nonneg_left ( by positivity ) ) zero_le_one;
+        · refine' div_pos ( Nat.cast_pos.mpr <| NeZero.pos q ) ( Nat.cast_pos.mpr <| _ );
+           exact crtSubset_card_pos_aux Ω hΩ q;
+        · exact Finset.mem_filter.mp hT |>.2;
+        · norm_num;
+      · refine' le_trans _ ( mul_le_mul_of_nonneg_right _ _ );
+        rotate_left;
+        exact 2 ^ ( k - 1 ) * ( H + 1 ) ^ ( ( k - 1 : ℝ ) + 1 / 2 ) * ( q / ( crtSubset q Ω |> Finset.card : ℝ ) ) ^ ( -bτ * R );
+        · gcongr;
+          exact le_add_of_le_of_nonneg ( le_add_of_nonneg_right ( mul_nonneg ( one_div_nonneg.mpr ( sub_nonneg.mpr ( by exact le_trans ( Real.rpow_le_rpow_of_exponent_le ( by norm_num ) ( neg_nonpos.mpr ( by exact le_min zero_le_one ( Real.sqrt_nonneg _ ) ) ) ) ( by norm_num ) ) ) ) ( by positivity ) ) ) zero_le_one;
+        · refine' Finset.prod_nonneg fun p hp => add_nonneg zero_le_one _;
+          refine' mul_nonneg ( mul_nonneg _ _ ) _;
+          · exact add_nonneg ( add_nonneg ( pow_nonneg zero_le_two _ ) ( mul_nonneg ( one_div_nonneg.mpr ( sub_nonneg.mpr ( by exact le_trans ( Real.rpow_le_rpow_of_exponent_le ( by norm_num ) ( neg_nonpos.mpr ( by exact le_min zero_le_one ( Real.sqrt_nonneg _ ) ) ) ) ( by norm_num ) ) ) ) ( pow_nonneg zero_le_two _ ) ) ) zero_le_one;
+          · positivity;
+          · refine' add_nonneg zero_le_one ( mul_nonneg _ _ );
+            · apply_rules [ combinedEulerWeight_nonneg ];
+              exact Nat.prime_of_mem_primeFactors hp;
+            · refine' mul_nonneg _ _; all_goals positivity;
+        · refine' le_trans ( Finset.sum_le_sum_of_subset_of_nonneg _ _ ) _;
+          exact q.primeFactors.powerset;
+          · exact Finset.filter_subset _ _;
+          · intro T hT hT'; refine' mul_nonneg _ _;
+            · positivity;
+            · refine' Finset.prod_nonneg fun p hp => mul_nonneg _ _;
+              · exact mul_nonneg ( add_nonneg ( add_nonneg ( pow_nonneg zero_le_two _ ) ( mul_nonneg ( one_div_nonneg.mpr ( sub_nonneg.mpr ( by exact le_trans ( Real.rpow_le_rpow_of_exponent_le ( by norm_num ) ( neg_nonpos.mpr ( by exact le_min zero_le_one ( Real.sqrt_nonneg _ ) ) ) ) ( by norm_num ) ) ) ) ( pow_nonneg zero_le_two _ ) ) ) zero_le_one ) ( Real.rpow_nonneg ( Nat.cast_nonneg _ ) _ );
+              · refine' add_nonneg zero_le_one ( mul_nonneg _ _ );
+                · exact combinedEulerWeight_nonneg ε k Ω p ( Nat.prime_of_mem_primeFactors ( Finset.mem_powerset.mp hT hp ) );
+                · exact localMean_nonneg k Ω p;
+          · rw [ ← Finset.mul_sum _ _ _ ];
+            rw [ Finset.prod_add ];
+            refine' mul_le_mul_of_nonneg_left _ ( by positivity );
+            refine' le_of_eq ( Finset.sum_bij ( fun T _ => q.primeFactors \ T ) _ _ _ _ ) <;> simp +decide;
+            · intro a₁ ha₁ a₂ ha₂ h; rw [ ← Finset.sdiff_sdiff_eq_self ha₁, h, Finset.sdiff_sdiff_eq_self ha₂ ] ;
+            · exact fun b hb => ⟨ q.primeFactors \ b, by aesop_cat, by aesop_cat ⟩;
+            · exact fun a ha => by rw [ Finset.inter_eq_right.mpr ha ] ;
+    · refine' le_trans ( Finset.sum_nonpos _ ) _;
+      · interval_cases H <;> norm_num;
+        · rcases k with ( _ | _ | k ) <;> norm_num [ Nat.succ_ne_zero, pow_succ' ] at *;
+        · simp +decide [ Finset.sum_filter ];
+      · refine' mul_nonneg ( mul_nonneg ( mul_nonneg _ _ ) _ ) _;
+        · exact add_nonneg ( add_nonneg ( pow_nonneg zero_le_two _ ) ( mul_nonneg ( one_div_nonneg.mpr ( sub_nonneg.mpr ( by exact le_trans ( Real.rpow_le_rpow_of_exponent_le ( by norm_num ) ( neg_nonpos.mpr ( by exact le_min zero_le_one ( Real.sqrt_nonneg _ ) ) ) ) ( by norm_num ) ) ) ) ( pow_nonneg zero_le_two _ ) ) ) zero_le_one;
+        · positivity;
+        · positivity;
+        · refine' Finset.prod_nonneg fun p hp => add_nonneg zero_le_one _;
+          refine' mul_nonneg ( mul_nonneg _ _ ) _;
+          · exact add_nonneg ( add_nonneg ( pow_nonneg zero_le_two _ ) ( mul_nonneg ( one_div_nonneg.mpr ( sub_nonneg.mpr ( by exact le_trans ( Real.rpow_le_rpow_of_exponent_le ( by norm_num ) ( show -alphaOf ( k - 1 ) τ ≤ 0 by exact neg_nonpos.mpr ( by exact le_min zero_le_one ( Real.sqrt_nonneg _ ) ) ) ) ( by norm_num ) ) ) ) ( pow_nonneg zero_le_two _ ) ) ) zero_le_one;
+          · positivity;
+          · refine' add_nonneg zero_le_one ( mul_nonneg _ _ );
+            · exact combinedEulerWeight_nonneg ε k Ω p ( Nat.prime_of_mem_primeFactors hp );
+            · refine' mul_nonneg _ _; all_goals positivity
+
+/-
 **Small-divisor regime (Step C/D).**
 
 The part of the divisor sum restricted to the *small-divisor* regime
-`∏_{p ∈ T} p ≤ s_q ^ R` is bounded by Line 1 + Line 3 of GK Proposition 4.2.  As in
-`gk08_prop42_large_divisors`, the constant `C` is quantified *before* `Ω`, `q`, `H`
-(so it is independent of those data), the box-volume factor `((H : ℝ) + 1) ^ (k - 1)`
-is made explicit, and each per-prime Euler factor carries the bare-constant `+1`.
+`∏_{p ∈ T} p ≤ s_q ^ R` is bounded by Line 1 of GK Proposition 4.2.  (The previous
+version of this lemma also carried a nonnegative Line-3 slack term; that term is now
+supplied by the dedicated band lemma `gk08_band_large_d`, so it has been dropped here
+and this lemma yields Line 1 alone.)  As in `gk08_prop42_large_divisors`, the constant
+`C` is quantified *before* `Ω`, `q`, `H` (so it is independent of those data), the
+box-volume factor `((H : ℝ) + 1) ^ (k - 1)` is made explicit, and each per-prime Euler
+factor carries the bare-constant `+1`.
 
 **Faithfulness correction to the Line-1 exponent (`α₀ R` instead of `α₀ R − 1`).**
 The textual exponent of GK Proposition 4.2, Line 1, is `s_q ^ (α₀ R − 1)`.  That
@@ -1144,8 +1340,7 @@ With the textual `α₀ R − 1` the statement is in fact *false*: taking `α₀
 `α ≡ β ≡ 100`, `R = 1/2` and `q` a product of many small primes with each
 `Ω_p` a singleton (so `s_q = q`), the left-hand side grows like `ω(q) · H^{k-1}`
 (indeed `inner {p} ≥ p · M_p(H) ≍ H` for every `p ∣ q`), whereas every term on the
-right-hand side decays in `q`.  Raising the Line-1 exponent to `α₀ R` repairs this
-and the bound then follows from Line 1 alone (the Line-3 sum is nonnegative slack).
+right-hand side decays in `q`.  Raising the Line-1 exponent to `α₀ R` repairs this.
 
 The proof bounds each inner `γ`-sum by `gamma_sum_le_euler_factor_small_gamma`,
 applies the small-divisor Rankin trick with exponent `max 0 (α₀ − 1)`, decouples
@@ -1168,19 +1363,10 @@ lemma gk08_prop42_small_divisors (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤
           ((q : ℝ) / (crtSubset q Ω).card) ^ (α₀ * R) *
           (∏ p ∈ q.primeFactors,
             (1 + C * (p : ℝ) ^ (1 - α₀) *
-              (1 + combinedEulerWeight ε k Ω p * localMean k Ω p))) +
-      -- Line 3: tuple-counting sum over the finitely many tuple types τ.
-      ∑ τ ∈ Finset.range (tauOne (k - 1) + 1),
-        C * ((H : ℝ) + 1) ^ (k - 1) *
-            ((q : ℝ) / (crtSubset q Ω).card) ^
-            (((k : ℝ) - 1) + 1 / 2 + (1 - α τ) * tupleBoundWeight (k - 1) τ - β τ * R) *
-          (∏ p ∈ q.primeFactors,
-            (1 + C * (p : ℝ) ^ β τ *
               (1 + combinedEulerWeight ε k Ω p * localMean k Ω p))) := by
   refine' ⟨ 2 ^ ( k + Nat.choose k 2 ), _, _ ⟩;
   · positivity;
   · intro Ω hΩle hΩ q _ hq H;
-    refine' le_add_of_le_of_nonneg _ _;
     · refine' le_trans ( Finset.sum_le_sum fun T hT => _ ) _;
       use fun T => ( H + 1 ) ^ ( k - 1 ) * ( q / ( crtSubset q Ω |> Finset.card : ℝ ) ) ^ ( max 0 ( α₀ - 1 ) * R ) * ∏ p ∈ T, ( 2 ^ ( k + Nat.choose k 2 ) * ( p : ℝ ) ^ ( -max 0 ( α₀ - 1 ) ) * ( 1 + combinedEulerWeight ε k Ω p * localMean k Ω p ) );
       · refine' le_trans ( gamma_sum_le_euler_factor_small_gamma ε hε k hk Ω hΩle T ( fun p hp => Nat.prime_of_mem_primeFactors ( Finset.mem_powerset.mp ( Finset.mem_filter.mp hT |>.1 ) hp ) ) H ) _;
@@ -1239,36 +1425,46 @@ lemma gk08_prop42_small_divisors (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤
               · exact combinedEulerWeight_nonneg ε k Ω p ( Nat.prime_of_mem_primeFactors hp );
               · exact localMean_nonneg _ _ _;
             · positivity;
-    · refine' Finset.sum_nonneg fun _ _ => mul_nonneg _ _;
-      · positivity;
-      · refine' Finset.prod_nonneg fun p hp => add_nonneg zero_le_one <| mul_nonneg ( mul_nonneg ( by positivity ) <| Real.rpow_nonneg ( Nat.cast_nonneg _ ) _ ) <| add_nonneg zero_le_one <| mul_nonneg _ _;
-        · apply combinedEulerWeight_nonneg;
-          exact Nat.prime_of_mem_primeFactors hp;
-        · exact localMean_nonneg k Ω p
 
 /-
-**Granville–Kurlberg Proposition 4.2 (statement).**
+**Granville–Kurlberg Proposition 4.2 (statement, full γ-range).**
 
 The total deviation sum, fibred over the gamma value `γ` and reorganised over the
 squarefree divisor `d = ∏_{p ∈ T} p` of `q` (i.e. over nonempty subsets
 `T ⊆ q.primeFactors`), is bounded by the three regime terms of GK Proposition 4.2:
 
-1. **(Line 1, small divisors.)** the uniform term, of size `s_q ^ (α₀ R - 1)` times
-   a convergent Euler product;
-2. **(Line 2, large divisors.)** the tail term, of size `s_q ^ (α₁ - β₁ R)` times a
-   convergent Euler product;
-3. **(Line 3, tuple counting.)** a sum over the finitely many tuple types `τ`.
+1. **(Line 1, small divisors.)** the uniform term, of size `s_q ^ (α₀ R)`;
+2. **(Line 2, large divisors.)** the tail term, of size `s_q ^ (α₁ − β₁ R)`;
+3. **(Line 3, tuple counting.)** a sum over the tuple types `τ`, each of size
+   `(H+1)^{(k-1)+1/2} · s_q^{−β(τ) R}` (the output of the sharp band engine
+   `gamma_band_euler_factor`, via `gk08_band_large_d`).
 
-**Uniform constant.**  The implied big-`O` constant `C` is quantified *before* `Ω`,
-`q`, and `H`, so it is uniform over all of those data; it depends only on the
-analytic parameters `ε, k, R, α₀, α₁, β₁, α, β`.
+**Step 1 / Step 5 changes.** Following the large-γ infrastructure plan, the LHS γ-range
+is the full `Icc 1 (H ^ (k * k))` (matching the bridge `deviation_sum_le_gamma_sum`),
+and Line 3 now carries the band engine's clean `H`-power `(k-1)+1/2` and the Rankin factor
+`s_q^{−β(τ) R}` (instead of folding the `(1-α(τ))·w(τ)` saving into the `s_q`-exponent).
 
-Here `s_q = q / |Ω_q|` is the average spacing, each per-prime Euler factor uses the
-concrete fluctuation weight `A_p = combinedEulerWeight ε k Ω p · localMean k Ω p`, and
-the common box-volume factor `((H : ℝ) + 1) ^ (k - 1)` is made explicit (see the
-docstring of `gk08_prop42_large_divisors` for why these two faithfulness corrections
-to the right-hand side are needed).
--/
+**Faithfulness correction to the Line-3 per-prime exponent
+(`(1 - alphaOf (k-1) τ) + β τ` instead of `β τ`).** See the docstring of
+`gk08_band_large_d`: the literal `p^{β(τ)}` is only correct when the per-band exponent
+`alphaOf (k-1) τ = 1`; for the high-`τ` bands (`w(τ) > 2`, e.g. `k = 3, τ = 2`) the honest
+collision-prime weight is `p^{(1-α(τ)) + β(τ)}`.
+
+Here `s_q = q / |Ω_q|`, `A_p = combinedEulerWeight ε k Ω p · localMean k Ω p`.
+
+**Proof status (Step 5).** The per-band Line-3 infrastructure is fully proved
+(`gk08_band_perT`, `gk08_band_large_d`), and the `γ ≤ H` regime is covered by the proved
+`gk08_prop42_small_divisors` (Line 1) and `gk08_prop42_large_divisors` (Line 2).  The full
+reassembly over `Icc 1 (H ^ (k * k))` is left as `sorry`: it is the Granville–Kurlberg §4
+parameter-balance step.  The subtlety is that the standard tuple-type bands
+`(H^{w(τ-1)}, H^{w(τ)}]` (with `w(0) = k-1`) only cover `γ > H^{k-1}`, the band engine
+applies the Rankin saving only in the large-divisor regime, and the index range
+`Finset.range (tauOne (k-1) + 1)` reaches only up to `H^{w(tauOne)}`, which for `k ≥ 4`
+falls short of the maximal gamma product `H^{w(k-1)} = H^{(k-1)k/2}`.  The residual
+`H < γ ≤ H^{k-1}` range, the genuinely-large `γ > H^{w(tauOne)}` range, and the
+small-divisor large-`γ` cell are absorbed into the (super-polynomially divergent) Line-1
+Euler product, which requires the §4 exponent bookkeeping (GK08 Lemma 6) not yet
+formalised here. -/
 theorem gk08_proposition_4_2 (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (R α₀ α₁ β₁ : ℝ) (hR₀ : 0 ≤ R) (hR₁ : R ≤ 1)
     (hα₀ : 0 < α₀) (hα₁ : 0 < α₁) (hβ₁ : 0 < β₁)
@@ -1278,11 +1474,10 @@ theorem gk08_proposition_4_2 (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
         (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
         (q : ℕ) [NeZero q] (hq : Squarefree q) (H : ℕ),
       ∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅),
-        ∑ γ ∈ (Finset.Icc 1 H).filter (fun γ => γ.primeFactors ⊆ T),
+        ∑ γ ∈ (Finset.Icc 1 (H ^ (k * k))).filter (fun (γ : ℕ) => γ.primeFactors ⊆ T),
           perGammaDeviationWeight ε k Ω T γ *
             (countTuplesWithGammaProd (k - 1) γ H : ℝ) ≤
-      -- Line 1: small-divisor uniform term (exponent `α₀ R`; see
-      -- `gk08_prop42_small_divisors` for why the textual `α₀ R − 1` is corrected here).
+      -- Line 1: small-divisor uniform term.
       C * ((H : ℝ) + 1) ^ (k - 1) *
           ((q : ℝ) / (crtSubset q Ω).card) ^ (α₀ * R) *
           (∏ p ∈ q.primeFactors,
@@ -1296,83 +1491,11 @@ theorem gk08_proposition_4_2 (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
               (1 + combinedEulerWeight ε k Ω p * localMean k Ω p))) +
       -- Line 3: tuple-counting sum over the finitely many tuple types τ.
       ∑ τ ∈ Finset.range (tauOne (k - 1) + 1),
-        C * ((H : ℝ) + 1) ^ (k - 1) *
-            ((q : ℝ) / (crtSubset q Ω).card) ^
-            (((k : ℝ) - 1) + 1 / 2 + (1 - α τ) * tupleBoundWeight (k - 1) τ - β τ * R) *
+        C * ((H : ℝ) + 1) ^ ((k - 1 : ℝ) + 1 / 2) *
+            ((q : ℝ) / (crtSubset q Ω).card) ^ (- β τ * R) *
           (∏ p ∈ q.primeFactors,
-            (1 + C * (p : ℝ) ^ β τ *
+            (1 + C * (p : ℝ) ^ ((1 - alphaOf (k - 1) τ) + β τ) *
               (1 + combinedEulerWeight ε k Ω p * localMean k Ω p))) := by
-  obtain ⟨C₁, hC₁pos, hC₁⟩ := gk08_prop42_small_divisors ε hε k hk R α₀ hR₀ hR₁ hα₀ α β hα hβ
-  obtain ⟨C₂, hC₂pos, hC₂⟩ := gk08_prop42_large_divisors ε hε k hk R α₁ β₁ hR₀ hR₁ hα₁ hβ₁
-  use max C₁ C₂;
-  refine' ⟨ lt_max_of_lt_left hC₁pos, fun Ω hΩle hΩ q hq H => _ ⟩;
-  intro H
-  have h_sum_le : ∑ T ∈ q.primeFactors.powerset, ∑ γ ∈ Finset.filter (fun γ => γ.primeFactors ⊆ T) (Finset.Icc 1 H), perGammaDeviationWeight ε k Ω T γ * (countTuplesWithGammaProd (k - 1) γ H : ℝ) ≤
-    C₁ * (H + 1) ^ (k - 1) * (q / (crtSubset q Ω).card : ℝ) ^ (α₀ * R) * (∏ p ∈ q.primeFactors, (1 + C₁ * (p : ℝ) ^ (1 - α₀) * (1 + combinedEulerWeight ε k Ω p * localMean k Ω p))) +
-    C₂ * (H + 1) ^ (k - 1) * (q / (crtSubset q Ω).card : ℝ) ^ (α₁ - β₁ * R) * (∏ p ∈ q.primeFactors, (1 + C₂ * (p : ℝ) ^ β₁ * (1 + combinedEulerWeight ε k Ω p * localMean k Ω p))) +
-    ∑ τ ∈ Finset.range (tauOne (k - 1) + 1), C₁ * (H + 1) ^ (k - 1) * (q / (crtSubset q Ω).card : ℝ) ^ ((k - 1 : ℝ) + 1 / 2 + (1 - α τ) * tupleBoundWeight (k - 1) τ - β τ * R) * (∏ p ∈ q.primeFactors, (1 + C₁ * (p : ℝ) ^ β τ * (1 + combinedEulerWeight ε k Ω p * localMean k Ω p))) := by
-      rw [ split_divisor_sum ];
-      convert add_le_add ( hC₁ Ω hΩle hΩ q ‹_› H ) ( hC₂ Ω hΩle hΩ q ‹_› H ) using 1;
-      ring;
-  refine' le_trans ( Finset.sum_le_sum_of_subset_of_nonneg ( Finset.filter_subset _ _ ) fun _ _ _ => _ ) ( h_sum_le.trans _ );
-  · exact Finset.sum_nonneg fun _ _ => mul_nonneg ( perGammaDeviationWeight_nonneg ε k Ω q _ ( by aesop ) _ ) ( Nat.cast_nonneg _ );
-  · refine' add_le_add_three _ _ _;
-    · gcongr <;> norm_num [ le_max_left, le_max_right ];
-      · refine' Finset.prod_nonneg fun p hp => add_nonneg zero_le_one _;
-        refine' mul_nonneg ( mul_nonneg hC₁pos.le ( Real.rpow_nonneg ( Nat.cast_nonneg _ ) _ ) ) ( add_nonneg zero_le_one _ );
-        apply_rules [ mul_nonneg, combinedEulerWeight_nonneg, localMean_nonneg ];
-        · exact sub_nonneg_of_le ( div_le_one_of_le₀ ( mod_cast hΩle p ( Nat.prime_of_mem_primeFactors hp ) ) ( Nat.cast_nonneg _ ) );
-        · positivity;
-        · positivity;
-        · positivity;
-      · intro p hp hpq hq_nonzero
-        have h_combinedEulerWeight_nonneg : 0 ≤ combinedEulerWeight ε k Ω p := by
-          apply combinedEulerWeight_nonneg;
-          exact hp
-        have h_localMean_nonneg : 0 ≤ localMean k Ω p := by
-          exact div_nonneg ( pow_nonneg ( Nat.cast_nonneg _ ) _ ) ( pow_nonneg ( Nat.cast_nonneg _ ) _ )
-        exact add_nonneg zero_le_one (mul_nonneg (mul_nonneg hC₁pos.le (Real.rpow_nonneg (Nat.cast_nonneg p) _)) (add_nonneg zero_le_one (mul_nonneg h_combinedEulerWeight_nonneg h_localMean_nonneg)));
-      · refine' add_nonneg zero_le_one _;
-        apply_rules [ mul_nonneg, combinedEulerWeight_nonneg, localMean_nonneg ];
-        · exact sub_nonneg_of_le ( div_le_one_of_le₀ ( mod_cast hΩle _ ( Nat.prime_of_mem_primeFactors ‹_› ) ) ( Nat.cast_nonneg _ ) );
-        · positivity;
-        · positivity;
-        · positivity;
-    · gcongr <;> norm_num [ hC₁pos, hC₂pos ];
-      · refine' Finset.prod_nonneg fun p hp => add_nonneg zero_le_one _;
-        refine' mul_nonneg ( mul_nonneg hC₂pos.le ( Real.rpow_nonneg ( Nat.cast_nonneg _ ) _ ) ) ( add_nonneg zero_le_one _ );
-        apply_rules [ mul_nonneg, combinedEulerWeight_nonneg, localMean_nonneg ];
-        · exact sub_nonneg_of_le ( div_le_one_of_le₀ ( mod_cast hΩle p ( Nat.prime_of_mem_primeFactors hp ) ) ( Nat.cast_nonneg _ ) );
-        · positivity;
-        · positivity;
-        · positivity;
-      · intro p hp hpq hq_nonzero
-        have h_combinedEulerWeight_nonneg : 0 ≤ combinedEulerWeight ε k Ω p := by
-          apply combinedEulerWeight_nonneg;
-          exact hp
-        have h_localMean_nonneg : 0 ≤ localMean k Ω p := by
-          exact div_nonneg ( pow_nonneg ( Nat.cast_nonneg _ ) _ ) ( pow_nonneg ( Nat.cast_nonneg _ ) _ )
-        exact add_nonneg zero_le_one (mul_nonneg (mul_nonneg hC₂pos.le (Real.rpow_nonneg (Nat.cast_nonneg p) _)) (add_nonneg zero_le_one (mul_nonneg h_combinedEulerWeight_nonneg h_localMean_nonneg)));
-      · refine' add_nonneg zero_le_one ( mul_nonneg _ _ );
-        · apply combinedEulerWeight_nonneg;
-          exact Nat.prime_of_mem_primeFactors ‹_›;
-        · apply localMean_nonneg;
-    · gcongr <;> norm_num [ hC₁pos.le, hC₂pos.le ];
-      · refine' Finset.prod_nonneg fun p hp => add_nonneg zero_le_one _;
-        refine' mul_nonneg ( mul_nonneg hC₁pos.le ( Real.rpow_nonneg ( Nat.cast_nonneg _ ) _ ) ) ( add_nonneg zero_le_one _ );
-        apply_rules [ mul_nonneg, combinedEulerWeight_nonneg, localMean_nonneg ];
-        · exact sub_nonneg_of_le ( div_le_one_of_le₀ ( mod_cast hΩle p ( Nat.prime_of_mem_primeFactors hp ) ) ( Nat.cast_nonneg _ ) );
-        · positivity;
-        · positivity;
-        · positivity;
-      · intro p hp hpq hq_nonzero
-        have h_combinedEulerWeight_nonneg : 0 ≤ combinedEulerWeight ε k Ω p := by
-          exact le_trans ( by norm_num ) ( combinedEulerWeight_nonneg ε k Ω p hp )
-        have h_localMean_nonneg : 0 ≤ localMean k Ω p := localMean_nonneg k Ω p
-        exact add_nonneg zero_le_one (mul_nonneg (mul_nonneg hC₁pos.le (Real.rpow_nonneg (Nat.cast_nonneg p) _)) (add_nonneg zero_le_one (mul_nonneg h_combinedEulerWeight_nonneg h_localMean_nonneg)));
-      · refine' add_nonneg zero_le_one ( mul_nonneg _ _ );
-        · apply combinedEulerWeight_nonneg;
-          exact Nat.prime_of_mem_primeFactors ‹_›;
-        · apply localMean_nonneg
+  sorry
 
 end PoissonCRT

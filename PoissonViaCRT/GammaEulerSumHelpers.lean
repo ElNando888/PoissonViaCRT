@@ -160,8 +160,12 @@ lemma sum_rpow_smooth_le (R : Finset ℕ) (hR : ∀ p ∈ R, Nat.Prime p) (N : �
       intro n hn;
       refine' Finset.mem_image.mpr ⟨ fun p => Nat.factorization n p, _, _ ⟩ <;> simp_all +decide [ Finset.subset_iff ];
       · intro p; exact Nat.le_log_of_pow_le ( Nat.Prime.one_lt ( hR _ ( by aesop ) ) ) ( Nat.le_trans ( Nat.le_of_dvd hn.1.1 ( Nat.ordProj_dvd _ _ ) ) hn.1.2 ) ;
-      · conv_rhs => rw [ ← Nat.prod_factorization_pow_eq_self ( by linarith : n ≠ 0 ) ] ;
-        rw [ Finsupp.prod_of_support_subset ] <;> aesop_cat;
+      · have hs : (Nat.factorization n).support ⊆ R := by
+          rw [Nat.support_factorization]; intro p hp
+          exact hn.2 (Nat.prime_of_mem_primeFactors hp) (Nat.dvd_of_mem_primeFactors hp)
+            (Nat.one_le_iff_ne_zero.mp hn.1.1)
+        conv_rhs => rw [ ← Nat.prod_factorization_pow_eq_self ( by linarith : n ≠ 0 ) ] ;
+        rw [ Finsupp.prod_of_support_subset _ hs (fun p k => p ^ k) (fun i _ => pow_zero i) ];
     refine le_trans ( Finset.sum_le_sum_of_subset_of_nonneg h_factor fun _ _ _ => by positivity ) ?_;
     rw [ Finset.sum_image ];
     · erw [ Finset.prod_sum ];

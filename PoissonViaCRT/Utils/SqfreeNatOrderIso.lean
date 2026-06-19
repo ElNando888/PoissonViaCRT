@@ -129,8 +129,7 @@ public lemma left_inv (s : Finset Nat.Primes) :
   simp only [Finset.mem_subtype, Nat.mem_primeFactors]
   constructor
   · intro ⟨_, hdvd, _⟩
-    rw [Prime.dvd_finsetProd_iff hp.prime] at hdvd
-    obtain ⟨q, hq, hpq⟩ := hdvd
+    obtain ⟨q, hq, hpq⟩ := hp.prime.exists_mem_finset_dvd hdvd
     have heq : p = q.val := by
       have := q.2.eq_one_or_self_of_dvd p hpq
       rcases this with rfl | rfl
