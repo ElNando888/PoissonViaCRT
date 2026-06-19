@@ -261,6 +261,50 @@ lemma core_gamma_euler_sum_frac (T : Finset ℕ) (hT : ∀ p ∈ T, Nat.Prime p)
   refine' le_trans ( mul_le_mul_of_nonneg_right ( sum_rad_div_rpow_le_pow R ( fun p hp => hT p ( Finset.mem_powerset.mp hR hp ) ) N α hα0 hα1 ) ( by positivity ) ) _;
   simp +decide [ mul_comm, mul_left_comm, Finset.prod_mul_distrib ]
 
+/-- **Per-prime fractional-exponent core Euler engine.**  The per-prime analogue of
+`core_gamma_euler_sum_frac`, where the uniform collision constant `B^{ω(γ)}` is replaced
+by a genuine per-prime product `∏_{p ∈ pf γ} c p` (`c p ≥ 0`).  This lets a *vanishing*
+collision weight (e.g. `c p = k·(1 − r_p)`) be carried through the Euler product so that
+every factor inherits the `c p` factor. -/
+lemma core_gamma_euler_sum_frac_perprime (T : Finset ℕ) (hT : ∀ p ∈ T, Nat.Prime p)
+    (N : ℕ) (α : ℝ) (hα0 : 0 < α) (hα1 : α ≤ 1)
+    (c : ℕ → ℝ) (hc : ∀ p ∈ T, 0 ≤ c p)
+    (weil : ℕ → ℝ) (hweil : ∀ p ∈ T, 0 ≤ weil p) :
+    ∑ γ ∈ (Finset.Icc 1 N).filter (fun γ => γ.primeFactors ⊆ T),
+        (radical γ : ℝ) / (γ : ℝ) ^ α * (∏ p ∈ γ.primeFactors, c p) *
+          ∏ p ∈ T \ γ.primeFactors, weil p
+      ≤ ∏ p ∈ T, ((1 / (1 - (2:ℝ)^(-α))) * c p * (p : ℝ) ^ (1 - α) + weil p) := by
+  have h_sum_prod : ∑ γ ∈ (Finset.Icc 1 N).filter (fun γ => γ.primeFactors ⊆ T),
+        (radical γ : ℝ) / (γ : ℝ) ^ α * (∏ p ∈ γ.primeFactors, c p) *
+          ∏ p ∈ T \ γ.primeFactors, weil p
+      = ∑ R ∈ Finset.powerset T,
+          (∑ γ ∈ (Finset.Icc 1 N).filter (fun γ => γ.primeFactors = R),
+            (radical γ : ℝ) / (γ : ℝ) ^ α) * (∏ p ∈ R, c p) *
+          ∏ p ∈ T \ R, weil p := by
+    simp +decide only [sum_filter, sum_mul]
+    rw [ Finset.sum_comm, Finset.sum_congr rfl ] ; aesop
+  rw [ h_sum_prod ]
+  have hexpand : ∏ p ∈ T, ((1 / (1 - (2:ℝ)^(-α))) * c p * (p : ℝ) ^ (1 - α) + weil p)
+      = ∑ R ∈ Finset.powerset T,
+          (∏ p ∈ R, (1 / (1 - (2:ℝ)^(-α))) * c p * (p : ℝ) ^ (1 - α)) *
+          ∏ p ∈ T \ R, weil p := by
+    rw [Finset.prod_add]
+  rw [ hexpand ]
+  refine Finset.sum_le_sum fun R hR => ?_
+  refine mul_le_mul_of_nonneg_right ?_
+    ( Finset.prod_nonneg fun p hp => hweil p <| Finset.mem_sdiff.mp hp |>.1 )
+  -- bound the radical fibre sum, then attach the per-prime collision product
+  have hrad := sum_rad_div_rpow_le_pow R ( fun p hp => hT p ( Finset.mem_powerset.mp hR hp ) )
+    N α hα0 hα1
+  have hcR : 0 ≤ ∏ p ∈ R, c p := Finset.prod_nonneg fun p hp => hc p (Finset.mem_powerset.mp hR hp)
+  calc (∑ γ ∈ (Finset.Icc 1 N).filter (fun γ => γ.primeFactors = R),
+          (radical γ : ℝ) / (γ : ℝ) ^ α) * (∏ p ∈ R, c p)
+        ≤ ((1 / (1 - (2:ℝ)^(-α))) ^ R.card * ∏ p ∈ R, (p : ℝ) ^ (1 - α)) * (∏ p ∈ R, c p) :=
+          mul_le_mul_of_nonneg_right hrad hcR
+    _ = ∏ p ∈ R, (1 / (1 - (2:ℝ)^(-α))) * c p * (p : ℝ) ^ (1 - α) := by
+          rw [Finset.prod_mul_distrib, Finset.prod_mul_distrib, Finset.prod_const]
+          ring
+
 /-!
 ## Granville–Kurlberg §4 large-divisor helpers
 

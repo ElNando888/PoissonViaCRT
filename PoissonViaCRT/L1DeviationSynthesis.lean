@@ -187,6 +187,79 @@ private lemma localCount_sub_localMean_abs_le_k2 (k : ℕ) (hk : 2 ≤ k)
     (localMean_lower_bound k hk Ω p hp' (hrp p hp'))
     (localMean_le k (by omega) Ω p hp')
 
+/-! ### Sharp collision (union-bound) deviation
+
+For a *collision* prime the trivial bound `|N_p − μ_p| ≤ p` is too lossy: it does
+not vanish when `Ω_p` is (near-)full.  The union bound on the `k` complement
+constraints `Ω_p^c − h_i` gives the sharp, vanishing estimate
+`|N_p − μ_p| ≤ k · (p − |Ω_p|) = k · p · (1 − |Ω_p|/p)`, which carries the
+`(1 − r_p)` factor needed for the near-full regime (GK08, Eq. 19). -/
+
+/-
+**Sharp tuple-count lower bound (union bound).** The number of `t` with
+`t + h i ∈ Ω` for all `i` is at least `p − k·(p − |Ω|)`: the complement is the
+union of the `k` sets `(Ω^c − h_i)`, each of size `p − |Ω|`.
+-/
+public lemma tupleCount_lower_bound_sharp (p : ℕ) [NeZero p] (Ω : Finset (ZMod p))
+    (k : ℕ) (h : Fin k → ZMod p) :
+    (p : ℝ) - (k : ℝ) * ((p : ℝ) - Ω.card) ≤ (tupleCount Ω h : ℝ) := by
+  have h_complement : (Finset.univ \ Finset.filter (fun t => ∀ i, t + h i ∈ Ω) Finset.univ).card ≤ k * (p - Ω.card) := by
+    have h_complement : (Finset.univ \ Finset.filter (fun t => ∀ i, t + h i ∈ Ω) Finset.univ).card ≤ Finset.card (Finset.biUnion Finset.univ (fun i => Finset.image (fun t => t - h i) (Finset.univ \ Ω))) := by
+      refine Finset.card_le_card ?_;
+      intro t ht; simp_all only [Finset.mem_sdiff, Finset.mem_filter, Finset.mem_univ, true_and,
+        not_forall, Finset.mem_biUnion, Finset.mem_image] ;
+      exact ⟨ ht.choose, t + h ht.choose, ht.choose_spec, by ring ⟩;
+    refine le_trans h_complement <| le_trans ( Finset.card_biUnion_le ) ?_;
+    exact le_trans ( Finset.sum_le_sum fun _ _ => Finset.card_image_le ) ( by simp +decide [ Finset.card_sdiff, Finset.card_univ ] );
+  simp_all +decide [ Finset.card_sdiff ];
+  norm_cast;
+  rw [ Int.subNatNat_of_le ] <;> norm_cast;
+  · exact h_complement.trans_eq ( add_comm _ _ );
+  · exact le_trans ( Finset.card_le_univ _ ) ( by norm_num )
+
+/-
+**Sharp local-mean lower bound (Bernoulli).** `μ_p = p · r_p^k ≥ p · (1 − k(1−r_p))
+= p − k·(p − |Ω_p|)`, from Bernoulli's inequality `r^k ≥ 1 − k(1−r)` for `r ∈ [0,1]`.
+-/
+public lemma localMean_lower_bound_sharp (k : ℕ) (hk : 1 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p)) (p : ℕ) (hp : Nat.Prime p) :
+    (p : ℝ) - (k : ℝ) * ((p : ℝ) - (Ω p).card) ≤ localMean k Ω p := by
+  unfold localMean;
+  rw [ le_div_iff₀ ( pow_pos ( Nat.cast_pos.mpr hp.pos ) _ ) ];
+  -- By Bernoulli's inequality, we have $(1 + x)^k \geq 1 + kx$ for $x \geq -1$.
+  have h_bernoulli : (1 + ((Ω p).card - p : ℝ) / p) ^ k ≥ 1 + k * ((Ω p).card - p : ℝ) / p := by
+    refine' le_trans _ ( one_add_mul_le_pow _ _ );
+    · rw [ mul_div ];
+    · rw [ le_div_iff₀ ] <;> linarith [ show ( p : ℝ ) ≥ 1 by exact_mod_cast hp.pos, show ( Finset.card ( Ω p ) : ℝ ) ≥ 0 by positivity ];
+  convert mul_le_mul_of_nonneg_left h_bernoulli ( pow_nonneg ( Nat.cast_nonneg p : ( 0 : ℝ ) ≤ p ) k ) using 1 <;> ring_nf
+  · cases k <;> simp_all +decide [ pow_succ', mul_assoc, mul_comm, mul_left_comm, hp.ne_zero ] ; ring;
+  · simp +decide [ hp.ne_zero, mul_comm, ← mul_pow ]
+
+/-
+**Sharp collision deviation bound (union bound).** For a prime factor `p`,
+`|N_p(h) − μ_p| ≤ k · (p − |Ω_p|) = k · p · (1 − |Ω_p|/p)`.  Both `N_p` and `μ_p`
+lie in the interval `[p − k(p − |Ω_p|), p]`, so their difference is bounded by the
+length `k(p − |Ω_p|)` of that interval.
+-/
+public lemma localCount_sub_localMean_abs_le_collision (k : ℕ) (hk : 2 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (q : ℕ) [NeZero q]
+    (p : ℕ) (hp : p ∈ q.primeFactors)
+    (h : Fin (k - 1) → ℤ) :
+    |localCount Ω q (Fin.cons 0 (fun i => (h i : ZMod q))) p - localMean k Ω p| ≤
+      (k : ℝ) * ((p : ℝ) - (Ω p).card) := by
+  have h_localCount_le_p : localCount Ω q (Fin.cons 0 (fun i => (h i : ZMod q))) p ≤ p := by
+    convert localCount_le p hp Ω ( Fin.cons 0 ( fun i => ( h i : ZMod q ) ) ) using 1
+  have h_localMean_le_p : localMean k Ω p ≤ p := by
+    convert localMean_le k ( by linarith ) Ω p ( Nat.prime_of_mem_primeFactors hp ) using 1;
+  have h_tupleCount_lower_bound : (p : ℝ) - (k : ℝ) * ((p : ℝ) - (Ω p).card) ≤ localCount Ω q (Fin.cons 0 (fun i => (h i : ZMod q))) p := by
+    convert tupleCount_lower_bound_sharp p ( Ω p ) ( k - 1 + 1 ) ( Fin.cons 0 ( fun i => ( h i : ZMod p ) ) ) using 1;
+    rw [ Nat.sub_add_cancel ( by linarith ) ];
+    convert localCount_eq_tupleCount Ω q p hp h;
+  have h_localMean_lower_bound : (p : ℝ) - (k : ℝ) * ((p : ℝ) - (Ω p).card) ≤ localMean k Ω p := by
+    convert localMean_lower_bound_sharp k ( by linarith ) Ω p ( Nat.prime_of_mem_primeFactors hp ) using 1;
+  exact abs_sub_le_iff.mpr ⟨ by linarith, by linarith ⟩
+
 private lemma local_deviation_pointwise_L1_bound (ε : ℝ) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
@@ -235,7 +308,7 @@ private lemma L1_factorization (ε : ℝ) (k : ℕ) (Ω : ∀ p : ℕ, Finset (Z
     sdiff_subset, implies_true, exists_prop, sdiff_sdiff_right_self, inf_eq_inter']
   · intro a₁ ha₁ a₂ ha₂ h
     rw [ ← Finset.sdiff_sdiff_eq_self ha₁, h, Finset.sdiff_sdiff_eq_self ha₂ ]
-  · exact fun b hb => ⟨ T \ b, by aesop_cat, by aesop_cat ⟩
+  · exact fun b hb => ⟨ T \ b, by aesop, by aesop ⟩
   · intro a ha; rw [ Finset.inter_eq_right.mpr ha ] ; ring
 
 private lemma inv_mu_le_C_div_p (k : ℕ) (hk : 2 ≤ k)
