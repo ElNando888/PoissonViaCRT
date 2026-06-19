@@ -884,6 +884,131 @@ lemma gamma_sum_frac_le (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
       · positivity;
       · exact div_nonneg ( pow_nonneg ( Nat.cast_nonneg _ ) _ ) ( pow_nonneg ( Nat.cast_nonneg _ ) _ )
 
+/-
+**Per-band crude-count fractional γ-sum engine (Step 8.1).**
+
+This is the band-localized generalization of `gamma_sum_frac_le`: instead of
+inserting the denominator over the *full* range `γ ≤ H^{k·k}` (insertion cost
+`(H+1)^{α·k²}`), it bounds the γ-sum restricted to the band `γ ≤ H^W` with a
+*band-tailored* insertion cost `(H+1)^{(k-1)+α·W}`.  The crude tuple count
+`M_γ(H) ≤ (H+1)^{k-1}` is multiplied by `1 ≤ (H^W/γ)^α` (`insert_gamma_denominator`)
+to extract the genuine `1/γ^α` decay, which is then fed — together with the
+vanishing collision multiplier `c_p = k·(1 − r_p)` — into the per-prime fractional
+Euler engine `core_gamma_euler_sum_frac_perprime`.  Each resulting Euler factor
+therefore carries the `(1 − r_p)` factor and the `p^{1-α}` collision weight.
+-/
+lemma gamma_sum_frac_le_upper (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p)) (hΩle : ∀ p, p.Prime → (Ω p).card ≤ p)
+    (T : Finset ℕ) (hT_prime : ∀ p ∈ T, Nat.Prime p) (H : ℕ) (hH : 1 < H)
+    (α : ℝ) (hα0 : 0 < α) (hα1 : α ≤ 1) (W : ℝ) (hW : 0 ≤ W) :
+    ∑ γ ∈ (Finset.Icc 1 (H ^ (k * k))).filter
+        (fun γ : ℕ => γ.primeFactors ⊆ T ∧ (γ : ℝ) ≤ (H : ℝ) ^ W),
+      perGammaDeviationWeight ε k Ω T γ * (countTuplesWithGammaProd (k - 1) γ H : ℝ) ≤
+    ((H : ℝ) + 1) ^ (((k - 1 : ℕ) : ℝ) + α * W) *
+      ∏ p ∈ T, ((1 / (1 - (2:ℝ) ^ (-α))) * ((k : ℝ) * (1 - (Ω p).card / (p : ℝ))) *
+          (p : ℝ) ^ (1 - α) +
+        (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) * localMean k Ω p) := by
+  refine' le_trans ( Finset.sum_le_sum fun x hx => _ ) _;
+  use fun x => ( perGammaDeviationWeight ε k Ω T x / ( x : ℝ ) ^ α ) * ( H + 1 ) ^ ( ( k - 1 : ℕ ) + α * W );
+  · rw [ div_mul_eq_mul_div, le_div_iff₀ ];
+    · rw [ mul_assoc ];
+      gcongr;
+      · apply_rules [ mul_nonneg, Finset.prod_nonneg ];
+        · exact fun p hp => mul_nonneg ( mul_nonneg ( Nat.cast_nonneg _ ) ( Nat.cast_nonneg _ ) ) ( sub_nonneg.2 <| div_le_one_of_le₀ ( mod_cast hΩle p <| hT_prime p <| Finset.filter_subset _ _ hp ) <| Nat.cast_nonneg _ );
+        · intro p hp; refine' mul_nonneg ( mul_nonneg _ _ ) _ <;> norm_num;
+          · exact div_le_one_of_le₀ ( mod_cast hΩle p ( hT_prime p ( Finset.mem_filter.mp hp |>.1 ) ) ) ( Nat.cast_nonneg _ );
+          · positivity;
+          · refine' mul_nonneg _ _ <;> norm_num;
+      · refine' le_trans ( mul_le_mul_of_nonneg_right ( countTuplesWithGammaProd_le_pow _ _ _ ) ( by positivity ) ) _;
+        rw [ Real.rpow_add ( by positivity ), Real.rpow_mul ( by positivity ) ];
+        gcongr;
+        · norm_cast;
+        · rw [ ← Real.rpow_mul ( by positivity ), mul_comm, Real.rpow_mul ( by positivity ) ];
+          gcongr;
+          exact le_trans ( Finset.mem_filter.mp hx |>.2.2 ) ( Real.rpow_le_rpow ( by positivity ) ( by linarith ) ( by positivity ) );
+    · exact Real.rpow_pos_of_pos ( Nat.cast_pos.mpr ( Finset.mem_Icc.mp ( Finset.mem_filter.mp hx |>.1 ) |>.1 ) ) _;
+  · have := @core_gamma_euler_sum_frac_perprime;
+    refine' le_trans _ ( mul_le_mul_of_nonneg_left ( this T hT_prime ( H ^ ( k * k ) ) α hα0 hα1 _ _ _ _ ) ( by positivity ) );
+    · rw [ Finset.mul_sum _ _ _ ];
+      refine' le_trans ( Finset.sum_le_sum_of_subset_of_nonneg _ _ ) _;
+      exact Finset.Icc 1 ( H ^ ( k * k ) ) |> Finset.filter fun γ => γ.primeFactors ⊆ T;
+      · exact fun x hx => Finset.mem_filter.mpr ⟨ Finset.mem_filter.mp hx |>.1, Finset.mem_filter.mp hx |>.2.1 ⟩;
+      · intro γ hγ₁ hγ₂; exact mul_nonneg ( div_nonneg ( by
+          apply_rules [ mul_nonneg, Finset.prod_nonneg ];
+          · exact fun p hp => mul_nonneg ( mul_nonneg ( Nat.cast_nonneg _ ) ( Nat.cast_nonneg _ ) ) ( sub_nonneg.2 <| div_le_one_of_le₀ ( mod_cast hΩle p <| hT_prime p <| Finset.mem_filter.mp hp |>.1 ) <| Nat.cast_nonneg _ );
+          · intro p hp; apply_rules [ mul_nonneg, Finset.prod_nonneg ];
+            · exact sub_nonneg_of_le ( div_le_one_of_le₀ ( mod_cast hΩle p ( hT_prime p ( Finset.mem_filter.mp hp |>.1 ) ) ) ( Nat.cast_nonneg _ ) );
+            · positivity;
+            · positivity;
+            · positivity ) ( by positivity ) ) ( by positivity ) ;
+      · refine' Finset.sum_le_sum fun x hx => _;
+        rw [ perGammaDeviationWeight_eq_of_subset ];
+        · unfold radical; simp +decide [ Finset.prod_mul_distrib, mul_assoc, mul_comm, mul_left_comm, div_eq_mul_inv ] ;
+        · assumption;
+        · grind;
+    · exact fun p hp => mul_nonneg ( Nat.cast_nonneg _ ) ( sub_nonneg.2 <| div_le_one_of_le₀ ( mod_cast hΩle p <| hT_prime p hp ) <| Nat.cast_nonneg _ );
+    · intro p hp; apply_rules [ mul_nonneg, sub_nonneg.2, div_le_one_of_le₀, hΩle p ( hT_prime p hp ) ] ;
+      · exact_mod_cast hΩle p ( hT_prime p hp );
+      · positivity;
+      · positivity;
+      · positivity;
+      · positivity
+
+/-
+**Sharp-count fractional γ-sum engine (Step 8, GK §4 genuine route).**
+
+Unlike the crude-count engines (`gamma_sum_frac_le`, `gamma_sum_frac_le_upper`),
+which pay a `γ`-range-dependent insertion cost `(H+1)^{α·W}`, this engine feeds the
+*sharp* tuple count `M_γ(H) ≤ C^{ω(γ)}·2^{k-1}·H^{(k-1)+1/2}/γ^α`
+(`countTuplesWithGammaProd_large_gamma_sharp`) into the per-prime fractional Euler
+engine.  The `1/γ^α` saving is *intrinsic* to the count, so the only insertion is
+the band-independent `H^{1/2}`, and the H-power is `(k-1)+1/2`.  The collision
+constant `C = 2^{C(k,2)}` from the count is folded into the per-prime collision
+multiplier `c_p = 2^{C(k,2)}·k·(1−r_p)`, which still carries the vanishing factor
+`(1−r_p)`.  The covering hypothesis `k² ≤ 2/α²` ensures the sharp count is valid on
+the whole window `γ ≤ H^{k²}` (for a single `α`; for `α = alphaOf (k-1) τ` one
+instead bands the window, cf. `alphaOf_band_ok`).
+-/
+lemma gamma_sum_sharp_le (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p)) (hΩle : ∀ p, p.Prime → (Ω p).card ≤ p)
+    (T : Finset ℕ) (hT_prime : ∀ p ∈ T, Nat.Prime p) (H : ℕ) (hH : 1 < H)
+    (α : ℝ) (hα0 : 0 < α) (hα1 : α ≤ 1)
+    (hcover : ((k * k : ℕ) : ℝ) ≤ 2 / α ^ 2) :
+    ∑ γ ∈ (Finset.Icc 1 (H ^ (k * k))).filter (fun γ : ℕ => γ.primeFactors ⊆ T),
+      perGammaDeviationWeight ε k Ω T γ * (countTuplesWithGammaProd (k - 1) γ H : ℝ) ≤
+    (2 : ℝ) ^ (k - 1) * ((H : ℝ) + 1) ^ (((k - 1 : ℕ) : ℝ) + 1 / 2) *
+      ∏ p ∈ T, ((1 / (1 - (2:ℝ) ^ (-α))) *
+          ((2 : ℝ) ^ (Nat.choose k 2) * ((k : ℝ) * (1 - (Ω p).card / (p : ℝ)))) *
+          (p : ℝ) ^ (1 - α) +
+        (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε) * localMean k Ω p) := by
+  refine' le_trans _ ( mul_le_mul_of_nonneg_left ( core_gamma_euler_sum_frac_perprime T hT_prime ( H ^ ( k * k ) ) α hα0 hα1 ( fun p => 2 ^ Nat.choose k 2 * ( k * ( 1 - ( Ω p |> Finset.card ) / p : ℝ ) ) ) _ ( fun p => ( 1 - ( Ω p |> Finset.card ) / p : ℝ ) * ( p : ℝ ) ^ ( -ε ) * localMean k Ω p ) _ ) ( by positivity ) );
+  · rw [ Finset.mul_sum _ _ _ ];
+    refine' Finset.sum_le_sum fun γ hγ => _;
+    have h_bound : (countTuplesWithGammaProd (k - 1) γ H : ℝ) ≤ (2 ^ (Nat.choose k 2)) ^ γ.primeFactors.card * 2 ^ (k - 1) * (H + 1) ^ ((k - 1 : ℕ) + 1 / 2 : ℝ) / (γ : ℝ) ^ α := by
+      have h_gamma_bound : (γ : ℝ) ≤ (H : ℝ) ^ (2 / α ^ 2) := by
+        refine' le_trans _ ( Real.rpow_le_rpow_of_exponent_le ( mod_cast hH.le ) hcover );
+        exact_mod_cast Finset.mem_Icc.mp ( Finset.mem_filter.mp hγ |>.1 ) |>.2;
+      have := countTuplesWithGammaProd_large_gamma_sharp ( k - 1 ) γ H α;
+      refine le_trans ( this ( Finset.mem_Icc.mp ( Finset.mem_filter.mp hγ |>.1 ) |>.1 ) hH hα0 h_gamma_bound ) ?_;
+      gcongr <;> norm_num;
+      linarith;
+    convert mul_le_mul_of_nonneg_left h_bound ( show 0 ≤ perGammaDeviationWeight ε k Ω T γ from ?_ ) using 1;
+    · rw [ perGammaDeviationWeight_eq_of_subset ];
+      · norm_num [ Finset.prod_mul_distrib, Finset.prod_pow_eq_pow_sum, radical ] ; ring;
+      · assumption;
+      · grind;
+    · apply_rules [ mul_nonneg, Finset.prod_nonneg ];
+      · exact fun p hp => mul_nonneg ( mul_nonneg ( Nat.cast_nonneg _ ) ( Nat.cast_nonneg _ ) ) ( sub_nonneg.2 <| div_le_one_of_le₀ ( mod_cast hΩle p <| hT_prime p <| Finset.mem_filter.mp hp |>.1 ) <| Nat.cast_nonneg _ );
+      · intro p hp; refine' mul_nonneg ( mul_nonneg _ _ ) _ <;> norm_num;
+        · exact div_le_one_of_le₀ ( mod_cast hΩle p ( hT_prime p ( Finset.mem_filter.mp hp |>.1 ) ) ) ( Nat.cast_nonneg _ );
+        · positivity;
+        · refine' mul_nonneg _ _ <;> norm_num;
+  · exact fun p hp => mul_nonneg ( pow_nonneg zero_le_two _ ) ( mul_nonneg ( Nat.cast_nonneg _ ) ( sub_nonneg.2 ( div_le_one_of_le₀ ( mod_cast hΩle p ( hT_prime p hp ) ) ( Nat.cast_nonneg _ ) ) ) );
+  · intro p hp; refine' mul_nonneg ( mul_nonneg _ _ ) _ <;> norm_num;
+    · exact div_le_one_of_le₀ ( mod_cast hΩle p ( hT_prime p hp ) ) ( Nat.cast_nonneg _ );
+    · positivity;
+    · refine' mul_nonneg _ _ <;> norm_num
+
 /- RETIRED (large-divisor re-architecture): `gamma_sum_le_euler_factor_small_gamma`.
 Its fixed RHS constant `2^(k+C(k,2))` no longer dominates the vanishing collision
 weight `k·p·(1 − r_p)` for small `|T|`; the small-gamma reassembly it fed is itself
