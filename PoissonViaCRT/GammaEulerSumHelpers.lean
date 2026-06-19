@@ -261,4 +261,57 @@ lemma core_gamma_euler_sum_frac (T : Finset ℕ) (hT : ∀ p ∈ T, Nat.Prime p)
   refine' le_trans ( mul_le_mul_of_nonneg_right ( sum_rad_div_rpow_le_pow R ( fun p hp => hT p ( Finset.mem_powerset.mp hR hp ) ) N α hα0 hα1 ) ( by positivity ) ) _;
   simp +decide [ mul_comm, mul_left_comm, Finset.prod_mul_distrib ]
 
+/-!
+## Granville–Kurlberg §4 large-divisor helpers
+
+The two lemmas below are the elementary engines of the §4 large-divisor regime
+(the regime where the sharp tuple count is *not* used).  The first inserts a
+genuine `1/γ^α` decay factor into a crude count bound; the second absorbs the
+resulting (super-polynomially divergent) Euler product into a `s_q^η` factor.
+-/
+
+/-- **Trivial γ-insertion.** In a band where `1 ≤ γ ≤ H^w`, a crude nonnegative
+bound `A ≤ H^v` can be upgraded to a bound carrying a genuine `1/γ^α` decay,
+`A ≤ H^(v + α·w) / γ^α`, for any `0 ≤ α`. The cost is inflating the `H`-exponent
+by `α·w`. This is the elementary inequality `1 ≤ (H^w / γ)^α` used in
+Granville–Kurlberg §4 to feed the *crude* tuple counts (e.g.
+`countTuplesWithGammaProd_med_gamma`, `countTuplesWithGammaProd_large_gamma`)
+into the fractional radical Euler engine `core_gamma_euler_sum_frac`. -/
+lemma insert_gamma_denominator (γ H : ℕ) (hγ : 0 < γ) (hH : 0 < H)
+    (v w α : ℝ) (hα : 0 ≤ α)
+    (hbound : (γ : ℝ) ≤ (H : ℝ) ^ w) (A : ℝ) (hA : A ≤ (H : ℝ) ^ v) :
+    A ≤ (H : ℝ) ^ (v + α * w) / (γ : ℝ) ^ α := by
+  have hγ1 : (1 : ℝ) ≤ (γ : ℝ) := by exact_mod_cast hγ
+  have hγ0 : (0 : ℝ) < (γ : ℝ) := by linarith
+  have hH0 : (0 : ℝ) < (H : ℝ) := by exact_mod_cast hH
+  have hHw_pos : (0 : ℝ) < (H : ℝ) ^ w := Real.rpow_pos_of_pos hH0 w
+  have hratio : (1 : ℝ) ≤ (H : ℝ) ^ w / (γ : ℝ) := by
+    rw [le_div_iff₀ hγ0]; linarith
+  have hpow : (1 : ℝ) ≤ ((H : ℝ) ^ w / (γ : ℝ)) ^ α := Real.one_le_rpow hratio hα
+  have hpoww : ((H : ℝ) ^ w) ^ α = (H : ℝ) ^ (α * w) := by
+    rw [← Real.rpow_mul hH0.le, mul_comm]
+  have key : (H : ℝ) ^ (v + α * w) / (γ : ℝ) ^ α
+      = (H : ℝ) ^ v * ((H : ℝ) ^ w / (γ : ℝ)) ^ α := by
+    rw [Real.div_rpow hHw_pos.le hγ0.le, hpoww, Real.rpow_add hH0]; ring
+  rw [key]
+  calc A ≤ (H : ℝ) ^ v := hA
+    _ = (H : ℝ) ^ v * 1 := by ring
+    _ ≤ (H : ℝ) ^ v * ((H : ℝ) ^ w / (γ : ℝ)) ^ α :=
+        mul_le_mul_of_nonneg_left hpow (Real.rpow_nonneg hH0.le v)
+
+/-- **Sub-polynomial growth of a (possibly divergent) Euler product.**
+If every factor of a finite product over primes `p ∈ S` is dominated by the
+`η`-th power of an auxiliary quantity `sp p`, i.e. `1 + f p ≤ (sp p)^η`, then the
+whole product is dominated by `(∏ sp)^η`. Applied with `sp p = s_p = p/|Ω_p|`
+and `∏ sp = s_q`, this is the Granville–Kurlberg §4 absorption step: the (possibly
+divergent) collision Euler product is bounded by `s_q^η` once each factor has been
+reduced to `s_p^η` (e.g. via `1 + x ≤ exp x` together with `s_p ≤ 2` for all but
+finitely many primes). -/
+lemma euler_product_subpoly_growth (S : Finset ℕ) (f sp : ℕ → ℝ) (η : ℝ)
+    (hsp : ∀ p ∈ S, 0 ≤ sp p) (hf0 : ∀ p ∈ S, 0 ≤ 1 + f p)
+    (hf : ∀ p ∈ S, 1 + f p ≤ (sp p) ^ η) :
+    ∏ p ∈ S, (1 + f p) ≤ (∏ p ∈ S, sp p) ^ η := by
+  rw [← Real.finsetProd_rpow S sp hsp η]
+  exact Finset.prod_le_prod hf0 hf
+
 end PoissonCRT
