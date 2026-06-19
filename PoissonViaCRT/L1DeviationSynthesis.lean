@@ -50,7 +50,7 @@ private lemma diff_sq_bound_k4 (N_p μ_p p k : ℝ)
   have h6 : (N_p - μ_p)^2 = |N_p - μ_p|^2 := sq_abs _ |>.symm
   linarith
 
-private lemma diff_abs_bound_k2 (N_p μ_p p k : ℝ)
+public lemma diff_abs_bound_k2 (N_p μ_p p k : ℝ)
   (hk2 : 0 ≤ k)
   (hN_lower : p - k * k ≤ N_p)
   (hN_upper : N_p ≤ p)
@@ -61,7 +61,7 @@ private lemma diff_abs_bound_k2 (N_p μ_p p k : ℝ)
   have h2 : μ_p - N_p ≤ k^2 := by linarith
   exact abs_le.mpr ⟨by linarith, h1⟩
 
-private lemma localCount_eq_tupleCount (Ω : ∀ p : ℕ, Finset (ZMod p))
+public lemma localCount_eq_tupleCount (Ω : ∀ p : ℕ, Finset (ZMod p))
     (q : ℕ) [NeZero q] (p : ℕ) (hp : p ∈ q.primeFactors)
     {m : ℕ} (h : Fin m → ℤ) :
     haveI : NeZero p := ⟨(Nat.mem_primeFactors.mp hp).1.ne_zero⟩
@@ -79,7 +79,7 @@ private lemma localCount_eq_tupleCount (Ω : ∀ p : ℕ, Finset (ZMod p))
         (Int.castRingHom (ZMod q)))
       (Int.castRingHom (ZMod p))) (h j)
 
-private lemma tupleCount_lower_bound (p : ℕ) [NeZero p] (Ω : Finset (ZMod p))
+public lemma tupleCount_lower_bound (p : ℕ) [NeZero p] (Ω : Finset (ZMod p))
     (k : ℕ) (hk : 1 ≤ k)
     (hΩ_large : (p : ℝ) - k ≤ Ω.card)
     (h : Fin k → ZMod p) :
@@ -107,7 +107,7 @@ private lemma tupleCount_lower_bound (p : ℕ) [NeZero p] (Ω : Finset (ZMod p))
     nlinarith! [ Nat.sub_add_cancel ( show #Ω ≤ p from le_trans ( Finset.card_le_univ _ )
       ( by norm_num ) ) ] )
 
-private lemma localMean_lower_bound (k : ℕ) (hk : 2 ≤ k)
+public lemma localMean_lower_bound (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p)) (p : ℕ) (hp : Nat.Prime p)
     (hrp : 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ)) :
     (p : ℝ) - (k : ℝ) * k ≤ localMean k Ω p := by
@@ -135,7 +135,7 @@ private lemma localMean_lower_bound (k : ℕ) (hk : 2 ≤ k)
       mul_div_cancel₀ ( ( k : ℝ ) ^ 2 ) ( show ( p : ℝ ) ≠ 0 by
         exact Nat.cast_ne_zero.mpr hp.ne_zero ) ]
 
-private lemma omega_card_ge_of_hrp (k : ℕ) (Ω : ∀ p : ℕ, Finset (ZMod p))
+public lemma omega_card_ge_of_hrp (k : ℕ) (Ω : ∀ p : ℕ, Finset (ZMod p))
     (p : ℕ) (hp : Nat.Prime p)
     (hrp : 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ)) :
     (p : ℝ) - k ≤ (Ω p).card := by
@@ -161,7 +161,7 @@ private lemma localCount_sub_localMean_le_of_injective (ε : ℝ) (k : ℕ) (hk 
       induction j using Fin.inductionOn <;>
         simp_all +decide [ Function.Injective.eq_iff h_inj.2 ]
 
-private lemma localCount_lower_bound (k : ℕ) (hk : 2 ≤ k)
+public lemma localCount_lower_bound (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (q : ℕ) [NeZero q]
     (p : ℕ) (hp : p ∈ q.primeFactors)
@@ -172,7 +172,7 @@ private lemma localCount_lower_bound (k : ℕ) (hk : 2 ≤ k)
   grind +suggestions
   assumption
 
-private lemma localCount_sub_localMean_abs_le_k2 (k : ℕ) (hk : 2 ≤ k)
+public lemma localCount_sub_localMean_abs_le_k2 (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hrp : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ))
     (q : ℕ) [NeZero q]

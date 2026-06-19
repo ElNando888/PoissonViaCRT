@@ -119,11 +119,11 @@ public lemma abs_localCount_sub_localMean_le_p {k : ℕ} (hk : 1 ≤ k) (q : ℕ
   · apply le_trans ( sub_le_self _ ( localCount_nonneg ) ) _
     exact localMean_le k hk Ω p ( Nat.prime_of_mem_primeFactors hp )
 
-lemma abs_localCount_sub_localMean_le {k : ℕ} (hk : 1 ≤ k) (q : ℕ) [NeZero q]
+lemma abs_localCount_sub_localMean_le_k {k : ℕ} (hk : 1 ≤ k) (q : ℕ) [NeZero q]
     (p : ℕ) (hp : p ∈ q.primeFactors) (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hrp : 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ))
     (h : Fin k → ZMod q) :
-    |localCount Ω q h p - localMean k Ω p| ≤ (p : ℝ) ^ k := by
-  exact le_trans ( abs_localCount_sub_localMean_le_p hk q p hp Ω h )
-    ( mod_cast Nat.le_self_pow ( by linarith ) _ )
+    |localCount Ω q h p - localMean k Ω p| ≤ (k : ℝ)^2 := by
+  sorry
 
 end PoissonCRT

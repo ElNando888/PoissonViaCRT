@@ -23,6 +23,7 @@ import PoissonViaCRT.SmallDivisorHelpers
 import PoissonViaCRT.TupleCount
 import PoissonViaCRT.EulerWeights
 import PoissonViaCRT.L1DeviationSynthesis
+import PoissonViaCRT.L2DeviationSynthesis
 import PoissonViaCRT.GammaDeviationSynthesis
 import PoissonViaCRT.FourierANOVA
 import PoissonViaCRT.FourierSynthesisHelpers
@@ -227,7 +228,66 @@ private lemma deviation_large_divisors (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk :
               (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p -
               localMean k Ω p)) *
             ∏ p ∈ q.primeFactors \ d.primeFactors, localMean k Ω p)| ≤ K₂ * s ^ (-(ε / 2)) := by
-  sorry
+  -- Obtain per-T constant C_T and tail-sum decay constant K
+  obtain ⟨C_T, hC_T_pos, h_per_T⟩ :=
+    per_T_deviation_le_combinedEulerWeight ε hε k hk Ω hΩ hWD hsp hrp hε_lt X C_lp hC_lp_pos hC_lp
+  obtain ⟨K, hK_pos, h_tail⟩ := tail_sum_decay ε hε k hk Ω hrp
+  -- The bound is C_T * K
+  refine ⟨C_T * K, mul_pos hC_T_pos hK_pos, ?_⟩
+  intro q _ hq_sq
+  -- Transport the divisor sum to a powerset sum
+  let s_val := (q : ℝ) / (crtSubset q Ω).card
+  let g : Finset ℕ → ℝ := fun T =>
+    |∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈s_val * ∑ i, X.sides i⌉).filter
+      (fun h => inScaledBox X s_val (fun _ => 0) h)),
+      (1 / ((crtSubset q Ω).card : ℝ)) *
+        ((∏ p ∈ T, (localCount Ω q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p - localMean k Ω p)) *
+          ∏ p ∈ q.primeFactors \ T, localMean k Ω p)|
+  have h_rewrite : ∑ d ∈ (q.divisors.filter (1 < ·)).filter (fun (d : ℕ) => ¬((d : ℝ) ≤ s_val)),
+      |∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈s_val * ∑ i, X.sides i⌉).filter
+        (fun h => inScaledBox X s_val (fun _ => 0) h)),
+        (1 / ((crtSubset q Ω).card : ℝ)) *
+          ((∏ p ∈ d.primeFactors, (localCount Ω q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p - localMean k Ω p)) *
+            ∏ p ∈ q.primeFactors \ d.primeFactors, localMean k Ω p)| =
+      ∑ T ∈ (q.primeFactors.powerset.filter (· ≠ ∅)).filter (fun (T : Finset ℕ) => ¬((∏ p ∈ T, (p : ℝ)) ≤ s_val)),
+        g T := by
+    change ∑ d ∈ (Nat.nontrivDivisors q).filter (fun (d : ℕ) => ¬((d : ℝ) ≤ s_val)), g d.primeFactors = _
+    exact (sum_nonempty_powerset_filtered_not_le_eq q hq_sq g s_val).symm
+  change ∑ d ∈ (q.divisors.filter (1 < ·)).filter (fun (d : ℕ) => ¬((d : ℝ) ≤ s_val)),
+      |∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈s_val * ∑ i, X.sides i⌉).filter
+        (fun h => inScaledBox X s_val (fun _ => 0) h)),
+        (1 / ((crtSubset q Ω).card : ℝ)) *
+          ((∏ p ∈ d.primeFactors, (localCount Ω q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p - localMean k Ω p)) *
+            ∏ p ∈ q.primeFactors \ d.primeFactors, localMean k Ω p)| ≤ _
+  rw [h_rewrite]
+  -- Apply the per-T bound point-wise
+  have h_bound : ∑ T ∈ (q.primeFactors.powerset.filter (· ≠ ∅)).filter (fun (T : Finset ℕ) => ¬((∏ p ∈ T, (p : ℝ)) ≤ s_val)),
+      g T ≤
+      ∑ T ∈ (q.primeFactors.powerset.filter (· ≠ ∅)).filter (fun (T : Finset ℕ) => ¬((∏ p ∈ T, (p : ℝ)) ≤ s_val)),
+        C_T * ∏ p ∈ T, combinedEulerWeight ε k Ω p := by
+    apply Finset.sum_le_sum
+    intro T hT
+    exact h_per_T q hq_sq T (Finset.mem_filter.mp hT |>.1)
+  refine le_trans h_bound ?_
+  -- Factor out C_T and apply tail_sum_decay
+  rw [← Finset.mul_sum]
+  have h_tail_sum : ∑ T ∈ (q.primeFactors.powerset.filter (· ≠ ∅)).filter (fun (T : Finset ℕ) => ¬((∏ p ∈ T, (p : ℝ)) ≤ s_val)),
+      ∏ p ∈ T, combinedEulerWeight ε k Ω p ≤ K * s_val ^ (-(ε / 2)) := by
+    -- Transport powerset back to divisor sum to apply h_tail
+    rw [sum_nonempty_powerset_filtered_not_le_eq q hq_sq _ s_val]
+    have h_card_pos : (0 : ℝ) < (crtSubset q Ω).card := Nat.cast_pos.mpr (crtSubset_card_pos_aux Ω hΩ q)
+    have hs_ge : 1 ≤ s_val := by
+      rw [one_le_div h_card_pos]
+      have h_le : (crtSubset q Ω).card ≤ q := by
+        calc (crtSubset q Ω).card ≤ Fintype.card (ZMod q) := Finset.card_le_univ _
+        _ = q := ZMod.card q
+      exact_mod_cast h_le
+    exact h_tail q ‹_› hq_sq _ hs_ge
+  -- Combine
+  calc C_T * ∑ T ∈ (q.primeFactors.powerset.filter (· ≠ ∅)).filter (fun (T : Finset ℕ) => ¬((∏ p ∈ T, (p : ℝ)) ≤ s_val)),
+      ∏ p ∈ T, combinedEulerWeight ε k Ω p
+    _ ≤ C_T * (K * s_val ^ (-(ε / 2))) := mul_le_mul_of_nonneg_left h_tail_sum hC_T_pos.le
+    _ = C_T * K * s_val ^ (-(ε / 2)) := by ring
 
 /-! ### Core deviation bound assembly -/
 
