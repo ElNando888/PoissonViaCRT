@@ -1,7 +1,7 @@
 /-
 Copyright (c) 2026 Fernando Portela. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
-Authors: Fernando Portela
+Authors: Fernando Portela, Gemini 3.1 Pro (Google DeepMind)
 -/
 
 /-
@@ -119,11 +119,150 @@ public lemma abs_localCount_sub_localMean_le_p {k : ℕ} (hk : 1 ≤ k) (q : ℕ
   · apply le_trans ( sub_le_self _ ( localCount_nonneg ) ) _
     exact localMean_le k hk Ω p ( Nat.prime_of_mem_primeFactors hp )
 
+lemma filter_exists_eq_biUnion {α : Type*} [Fintype α] {k : ℕ} (P : Fin k → α → Prop)
+    [∀ i x, Decidable (P i x)] [DecidablePred fun x => ∃ i, P i x] :
+    (univ.filter fun x => ∃ i, P i x) = univ.biUnion fun i => univ.filter (fun x => P i x) := by
+  ext x
+  simp
+
+lemma card_filter_forall_lower_bound {α : Type*} [Fintype α] {k : ℕ} (P : Fin k → α → Prop)
+    [∀ i x, Decidable (P i x)] [DecidablePred fun x => ∀ i, P i x] :
+    (Fintype.card α : ℤ) - ∑ i, ((univ.filter (fun x => ¬ P i x)).card : ℤ) ≤ ((univ.filter fun x => ∀ i, P i x).card : ℤ) := by
+  have H : (univ.filter fun x => ∃ i, ¬ P i x).card ≤ ∑ i, (univ.filter (fun x => ¬ P i x)).card := by
+    rw [filter_exists_eq_biUnion]
+    exact Finset.card_biUnion_le
+  have H2 : (univ.filter fun x => ∀ i, P i x).card + (univ.filter fun x => ∃ i, ¬ P i x).card = Fintype.card α := by
+    have h_eq : (univ.filter fun x => ∃ i, ¬ P i x) = (univ.filter fun x => ¬ ∀ i, P i x) := by
+      ext x; simp
+    rw [h_eq]
+    have := @Finset.card_filter_add_card_filter_not α univ (fun x => ∀ i, P i x) _ _
+    rwa [Finset.card_univ] at this
+  zify at H H2
+  linarith
+
+lemma filter_add_card {G : Type*} [AddGroup G] [Fintype G] (S : Finset G) (a : G) :
+    (Finset.univ.filter (fun x => x + a ∈ S)).card = S.card := by
+  have eq : (Finset.univ.filter (fun x => x + a ∈ S)) = S.map (Equiv.addRight a).symm.toEmbedding := by
+    ext x
+    simp
+  rw [eq, Finset.card_map]
+
 lemma abs_localCount_sub_localMean_le_k {k : ℕ} (hk : 1 ≤ k) (q : ℕ) [NeZero q]
     (p : ℕ) (hp : p ∈ q.primeFactors) (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hrp : 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ))
     (h : Fin k → ZMod q) :
     |localCount Ω q h p - localMean k Ω p| ≤ (k : ℝ)^2 := by
-  sorry
+  have hp_prime : p.Prime := Nat.prime_of_mem_primeFactors hp
+  haveI : NeZero p := ⟨hp_prime.ne_zero⟩
+  have p_pos : (0 : ℝ) < p := Nat.cast_pos.mpr hp_prime.pos
+  have p_ge_2 : 2 ≤ (p : ℝ) := by exact_mod_cast hp_prime.two_le
+
+  -- c = |Ω p| / p
+  set c : ℝ := ((Ω p).card : ℝ) / (p : ℝ)
+  have hc0 : 0 ≤ c := div_nonneg (Nat.cast_nonneg _) p_pos.le
+  have hc1 : c ≤ 1 := by
+    rw [div_le_one p_pos]
+    have : (Ω p).card ≤ p := by
+      calc
+        (Ω p).card ≤ Fintype.card (ZMod p) := Finset.card_le_univ _
+        _ = p := ZMod.card p
+    exact_mod_cast this
+
+  have hrp' : 1 - c ≤ (k : ℝ) / (p : ℝ) := hrp
+
+  -- Bounds for localCount
+  have h_count_le : localCount Ω q h p ≤ p := localCount_le p hp Ω h
+  have h_count_eq : localCount Ω q h p = (tupleCount (Ω p) (fun i => ZMod.castHom (Nat.dvd_of_mem_primeFactors hp) (ZMod p) (h i)) : ℝ) := by
+    unfold localCount
+    simp [hp]
+
+  have h_count_ge : (p : ℝ) - (k : ℝ)^2 ≤ localCount Ω q h p := by
+    rw [h_count_eq]
+    have := card_filter_forall_lower_bound (fun i x => x + ZMod.castHom (Nat.dvd_of_mem_primeFactors hp) (ZMod p) (h i) ∈ Ω p)
+    have H2 : ∀ i, ((univ.filter (fun x : ZMod p => ¬(x + ZMod.castHom (Nat.dvd_of_mem_primeFactors hp) (ZMod p) (h i) ∈ Ω p))).card : ℝ) = p - (Ω p).card := by
+      intro i
+      have : univ.filter (fun x : ZMod p => ¬(x + ZMod.castHom (Nat.dvd_of_mem_primeFactors hp) (ZMod p) (h i) ∈ Ω p)) = univ \ univ.filter (fun x : ZMod p => x + ZMod.castHom (Nat.dvd_of_mem_primeFactors hp) (ZMod p) (h i) ∈ Ω p) := by
+        ext x; simp
+      rw [this]
+      rw [Finset.card_sdiff_of_subset (Finset.subset_univ _), Finset.card_univ, ZMod.card p]
+      have h_card : (univ.filter (fun x : ZMod p => x + ZMod.castHom (Nat.dvd_of_mem_primeFactors hp) (ZMod p) (h i) ∈ Ω p)).card = (Ω p).card := by
+        convert filter_add_card (Ω p) (ZMod.castHom (Nat.dvd_of_mem_primeFactors hp) (ZMod p) (h i))
+      have H_le : (univ.filter (fun x : ZMod p => x + ZMod.castHom (Nat.dvd_of_mem_primeFactors hp) (ZMod p) (h i) ∈ Ω p)).card ≤ p := by
+        calc
+          (univ.filter (fun x : ZMod p => x + ZMod.castHom (Nat.dvd_of_mem_primeFactors hp) (ZMod p) (h i) ∈ Ω p)).card = (Ω p).card := h_card
+          _ ≤ Fintype.card (ZMod p) := Finset.card_le_univ _
+          _ = p := ZMod.card p
+      rw [Nat.cast_sub H_le]
+      exact congrArg (fun X : ℕ => (p : ℝ) - (X : ℝ)) h_card
+    have H : (p : ℝ) - (k : ℝ) * ((p : ℝ) - ((Ω p).card : ℝ)) ≤ ((tupleCount (Ω p) (fun i => ZMod.castHom (Nat.dvd_of_mem_primeFactors hp) (ZMod p) (h i))) : ℝ) := by
+      calc
+        (p : ℝ) - (k : ℝ) * ((p : ℝ) - ((Ω p).card : ℝ)) = (Fintype.card (ZMod p) : ℝ) - ∑ i : Fin k, ((univ.filter (fun x : ZMod p => ¬(x + ZMod.castHom (Nat.dvd_of_mem_primeFactors hp) (ZMod p) (h i) ∈ Ω p))).card : ℝ) := by
+          simp only [H2, Finset.sum_const, Finset.card_univ, Fintype.card_fin, nsmul_eq_mul]
+          have H_ZMod : (Fintype.card (ZMod p) : ℝ) = p := by simp
+          rw [H_ZMod]
+        _ ≤ ((univ.filter fun x => ∀ i, x + ZMod.castHom (Nat.dvd_of_mem_primeFactors hp) (ZMod p) (h i) ∈ Ω p).card : ℝ) := by exact_mod_cast this
+        _ = ((tupleCount (Ω p) (fun i => ZMod.castHom (Nat.dvd_of_mem_primeFactors hp) (ZMod p) (h i))) : ℝ) := rfl
+    have H3 : (k : ℝ) * ((p : ℝ) - (Ω p).card) ≤ (k : ℝ)^2 := by
+      calc
+        (k : ℝ) * ((p : ℝ) - (Ω p).card) = (k : ℝ) * p * (1 - c) := by
+          have : ((p : ℝ) - (Ω p).card) = p * (1 - c) := by
+            calc
+              (p : ℝ) - (Ω p).card = p - p * c := by rw [mul_div_cancel₀ _ p_pos.ne']
+              _ = p * (1 - c) := by ring
+          rw [this, mul_assoc]
+        _ ≤ (k : ℝ) * p * ((k : ℝ) / p) := by
+          apply mul_le_mul_of_nonneg_left hrp'
+          exact mul_nonneg (Nat.cast_nonneg _) p_pos.le
+        _ = (k : ℝ)^2 := by
+          calc
+            (k : ℝ) * p * ((k : ℝ) / p) = (k : ℝ) * (k : ℝ) * (p / p) := by ring
+            _ = (k : ℝ)^2 := by rw [div_self p_pos.ne', mul_one, sq]
+    linarith
+
+  -- Bounds for localMean
+  have h_mean_le : localMean k Ω p ≤ p := localMean_le k hk Ω p hp_prime
+  have h_mean_ge : (p : ℝ) - (k : ℝ)^2 ≤ localMean k Ω p := by
+    unfold localMean
+    have : ((Ω p).card : ℝ) ^ k / (p : ℝ) ^ (k - 1) = p * c ^ k := by
+      calc
+        ((Ω p).card : ℝ) ^ k / (p : ℝ) ^ (k - 1) = (p * c) ^ k / (p : ℝ) ^ (k - 1) := by
+          congr 2; exact (mul_div_cancel₀ _ p_pos.ne').symm
+        _ = p ^ k * c ^ k / (p : ℝ) ^ (k - 1) := by rw [mul_pow]
+        _ = p * c ^ k := by
+          rw [div_eq_iff (pow_pos p_pos _).ne']
+          have : p * c ^ k * (p : ℝ) ^ (k - 1) = c ^ k * ((p : ℝ) * (p : ℝ) ^ (k - 1)) := by ring
+          rw [this]
+          have hp_pow : (p : ℝ) * (p : ℝ) ^ (k - 1) = (p : ℝ) ^ k := by
+            nth_rw 1 [← pow_one (p : ℝ)]
+            rw [← pow_add]
+            congr 1
+            omega
+          rw [hp_pow, mul_comm]
+    rw [this]
+
+    have h_bern : 1 - (k : ℝ) * (1 - c) ≤ c ^ k := by
+      have H_le : -2 ≤ c - 1 := by linarith [hc0]
+      have := one_add_mul_le_pow H_le k
+      have h1 : 1 + (k : ℝ) * (c - 1) = 1 - (k : ℝ) * (1 - c) := by ring
+      have h2 : 1 + (c - 1) = c := by ring
+      rwa [h1, h2] at this
+
+    calc
+      (p : ℝ) - (k : ℝ)^2 = p * (1 - (k : ℝ)^2 / p) := by
+        rw [mul_sub, mul_one, mul_div_cancel₀ _ p_pos.ne']
+      _ ≤ p * (1 - (k : ℝ) * (1 - c)) := by
+        apply mul_le_mul_of_nonneg_left _ p_pos.le
+        have : (k : ℝ) * (1 - c) ≤ (k : ℝ)^2 / p := by
+          calc
+            (k : ℝ) * (1 - c) ≤ (k : ℝ) * ((k : ℝ) / p) := mul_le_mul_of_nonneg_left hrp' (Nat.cast_nonneg _)
+            _ = (k : ℝ)^2 / p := by ring
+        linarith
+      _ ≤ p * c ^ k := mul_le_mul_of_nonneg_left h_bern p_pos.le
+
+  -- Conclude using triangle inequality on interval [p - k^2, p]
+  rw [abs_sub_le_iff]
+  constructor
+  · linarith
+  · linarith
 
 end PoissonCRT
