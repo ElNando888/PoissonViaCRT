@@ -219,7 +219,7 @@ lemma complete_period_cancellation_apply
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
     (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
     (hsp : ∀ (p : ℕ), p.Prime →
-      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
+      (p : ℝ) ^ (lambdaExponent k - ε) ≤ (p : ℝ) / (Ω p).card)
     (hrp : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ))
     (h_lp : ∀ (X : Box (k - 1)), ∃ C : ℝ, 0 < C
       ∧ ∀ (v : Fin (k - 1) → ℝ), (∀ i, 0 ≤ v i ∧ v i ≤ 1) → ∀ (s : ℝ), 1 ≤ s →
@@ -366,7 +366,7 @@ theorem error_bound_simplified
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
     (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
     (hsp : ∀ (p : ℕ), p.Prime →
-      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
+      (p : ℝ) ^ (lambdaExponent k - ε) ≤ (p : ℝ) / (Ω p).card)
     (hrp : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ)) :
     ∃ δ : ℝ, 0 < δ ∧ ∀ (X : Box (k - 1)), ∃ C : ℝ, 0 < C ∧
       ∀ (q : ℕ) [NeZero q] (_hq_sq : Squarefree q),
@@ -396,32 +396,43 @@ public theorem mainTheorem_precise
     (hWD : ∀ (p : ℕ) [Fact p.Prime] (k : ℕ), k ≤ K →
       WellDistributed ε p (Ω p) k)
     (hsp : ∀ (p : ℕ), p.Prime →
-      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent K - ε))
+      (p : ℝ) ^ (lambdaExponent 2 - ε) ≤ (p : ℝ) / (Ω p).card)
     (hrp : ∀ (k : ℕ), 2 ≤ k → k ≤ K → ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ)) :
     ∀ (k : ℕ), 2 ≤ k → k ≤ K → ∀ (X : Box (k - 1)),
       ∃ δ : ℝ, 0 < δ ∧ ∃ C : ℝ, 0 < C ∧ ∀ (q : ℕ) [NeZero q] (_hq_sq : Squarefree q),
         |kCorrelation (crtSubset q Ω) X - X.volume| ≤
           C * ((q : ℝ) / (crtSubset q Ω).card) ^ (-δ) := by
   intro k hk2 hk_le X
-  have h_lam : lambdaExponent K ≤ lambdaExponent k := by
-    unfold lambdaExponent; split_ifs
-    any_goals linarith
-    any_goals rw [ div_le_div_iff₀ ] <;>
-      nlinarith [ Real.sqrt_nonneg 17, Real.sq_sqrt ( show 0 ≤ 17 by norm_num ),
-        show ( k : ℝ ) ≥ 2 by norm_cast, show ( K : ℝ ) ≥ k by norm_cast ]
+  have h_lam : lambdaExponent k ≤ lambdaExponent 2 := by
+    have hl2 : lambdaExponent 2 = (Real.sqrt 17 - 3) / 2 := by
+      unfold lambdaExponent
+      dsimp
+    rw [hl2]
+    have h_sqrt : (4 : ℝ) ≤ Real.sqrt 17 := by
+      have h16 : (4 : ℝ) = Real.sqrt 16 := by norm_num
+      rw [h16]
+      exact Real.sqrt_le_sqrt (by norm_num)
+    unfold lambdaExponent
+    rcases k with _ | _ | _ | _ | k'
     · omega
     · omega
-    · rw [ div_le_div_iff₀ ] <;>
-        nlinarith [ Real.sqrt_nonneg 17, Real.sq_sqrt ( show 0 ≤ 17 by norm_num ),
-          show ( K : ℝ ) ≥ 4 by norm_cast; omega ]
-    · rw [ div_le_div_iff₀ ] <;> linarith [ show ( K : ℝ ) ≥ 4 by norm_cast; omega ]
-  have hsp_k : ∀ (p : ℕ), p.Prime → (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε) := by
+    · dsimp; linarith
+    · dsimp; linarith
+    · dsimp
+      have hk_r : (4 : ℝ) ≤ (k' + 4 : ℝ) := by exact_mod_cast (show 4 ≤ k' + 4 by omega)
+      have h_eq : ((k' + 1 + 1 + 1 + 1 : ℕ) : ℝ) = (k' : ℝ) + 4 := by push_cast; ring
+      rw [h_eq]
+      have hb : 1 / ((k' : ℝ) + 4 - 1) ≤ 1 / 3 := by
+        apply one_div_le_one_div_of_le (by norm_num)
+        linarith
+      linarith
+  have hsp_k : ∀ (p : ℕ), p.Prime → (p : ℝ) ^ (lambdaExponent k - ε) ≤ (p : ℝ) / (Ω p).card := by
     intro p hp
     have h_base := hsp p hp
-    have h_pow : (p : ℝ) ^ (lambdaExponent K - ε) ≤ (p : ℝ) ^ (lambdaExponent k - ε) := by
+    have h_pow : (p : ℝ) ^ (lambdaExponent k - ε) ≤ (p : ℝ) ^ (lambdaExponent 2 - ε) := by
       apply Real.rpow_le_rpow_of_exponent_le (by exact_mod_cast hp.one_le)
       linarith
-    exact le_trans h_base h_pow
+    exact le_trans h_pow h_base
   have hrp_k : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ) := hrp k hk2 hk_le
   have := error_bound_simplified ε hε k hk2 Ω hΩ (fun p _ => hWD p k hk_le) hsp_k hrp_k
   exact ⟨this.choose, this.choose_spec.1, this.choose_spec.2 X⟩

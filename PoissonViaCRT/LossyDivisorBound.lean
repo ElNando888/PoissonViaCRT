@@ -46,56 +46,22 @@ private lemma two_pow_primeFactors_card_le_tau {n : ℕ} (hn : n ≠ 0) :
 
 /-
 A negative real power eventually dominates the logarithm: for `a > 0` the function
-`x ↦ x ^ (-a) * (log x + 1)` is bounded on `[1, ∞)` by a constant.
+`x ↦ x ^ (-a) * (log x + 1)^{k-1}` is bounded on `[1, ∞)` by a constant.
 -/
-private lemma rpow_neg_mul_log_bounded {a : ℝ} (ha : 0 < a) :
-    ∃ C : ℝ, 0 ≤ C ∧ ∀ x : ℝ, 1 ≤ x → x ^ (-a) * (Real.log x + 1) ≤ C := by
-  refine' ⟨ 2 / a + 1, by positivity, fun x hx => _ ⟩
-  -- Apply the inequality $\log x \leq \frac{x^{a/2}}{a/2}$ to get
-  -- $\log x + 1 \leq \frac{x^{a/2}}{a/2} + 1$.
-  have h_log : Real.log x + 1 ≤ (2 / a) * x ^ (a / 2) + 1 := by
-    have := Real.log_le_sub_one_of_pos ( by positivity : 0 < x ^ ( a / 2 ) )
-    rw [ Real.log_rpow ( by positivity ) ] at this ; ring_nf at *
-    nlinarith [ inv_mul_cancel_left₀ ha.ne' ( Real.log x ), inv_mul_cancel₀ ha.ne' ]
-  refine le_trans ( mul_le_mul_of_nonneg_left h_log <| by positivity ) ?_
-  ring_nf
-  norm_num [ mul_assoc, mul_comm, mul_left_comm, ← Real.rpow_add ( by positivity : 0 < x ) ]
-  exact add_le_add ( by
-    simpa using Real.rpow_le_rpow_of_exponent_le hx ( show -a ≤ 0 by linarith ) )
-      ( mul_le_mul_of_nonneg_left ( mul_le_of_le_one_right ( by positivity ) ( by
-        simpa using Real.rpow_le_rpow_of_exponent_le hx
-          ( show -a + a * ( 1 / 2 ) ≤ 0 by linarith ) ) ) ( by positivity ) )
+private lemma rpow_neg_mul_log_bounded_gen (k : ℕ) {a : ℝ} (ha : 0 < a) :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ x : ℝ, 1 ≤ x → x ^ (-a) * (Real.log x + 1) ^ (k - 1) ≤ C := by
+  sorry
 
 /-
-**Step 2a.** The summand `2^{ω(d)} · d^{-ε} · (log d + 1)` is bounded by a constant,
-independent of `d`.  Split `d^{-ε} = d^{-ε/2} · d^{-ε/2}`: by `divisorCount_subpoly`
-(with `δ = ε/2`) and `two_pow_primeFactors_card_le_tau` we get `2^{ω(d)} · d^{-ε/2} ≤ C₁`,
-while `d^{-ε/2} · (log d + 1) ≤ C₂` by `rpow_neg_mul_log_bounded`.
+**Step 2a.** The summand `k^{ω(d)} · d^{-ε} · (log d + 1)^{k-1}` is bounded by a constant,
+independent of `d`.  Split `d^{-ε} = d^{-ε/2} · d^{-ε/2}`: by a subpolynomial bound on `k^{ω(d)}`
+(with `δ = ε/2`) we get `k^{ω(d)} · d^{-ε/2} ≤ C₁`,
+while `d^{-ε/2} · (log d + 1)^{k-1} ≤ C₂` by `rpow_neg_mul_log_bounded_gen`.
 -/
-private lemma lossy_summand_bound (ε : ℝ) (hε : 0 < ε) :
+private lemma lossy_summand_bound_gen (ε : ℝ) (hε : 0 < ε) (k : ℕ) :
     ∃ C : ℝ, 0 < C ∧ ∀ d : ℕ, d ≠ 0 →
-      (2 : ℝ) ^ d.primeFactors.card * (d : ℝ) ^ (-ε) * (Real.log (d : ℝ) + 1) ≤ C := by
-  -- By `divisorCount_subpoly` (with `δ = ε/2`) and `two_pow_primeFactors_card_le_tau`
-  -- we get `2^{ω(d)} · d^{-ε/2} ≤ C₁`.
-  obtain ⟨C₁, hC₁⟩ : ∃ C₁ : ℝ, ∀ d : ℕ, d ≠ 0 →
-      (2 ^ d.primeFactors.card : ℝ) * (d : ℝ) ^ (-(ε / 2)) ≤ C₁ := by
-    obtain ⟨ C₁, hC₁ ⟩ := PoissonCRT.divisorCount_subpoly ( show 0 < ε / 2 by linarith )
-    use C₁; intro d hd; specialize hC₁ d; simp_all +decide [ Real.rpow_neg ]
-    rw [ ← div_eq_mul_inv, div_le_iff₀ ( by positivity ) ]
-    refine' le_trans _ hC₁
-    exact_mod_cast PoissonCRT.two_pow_primeFactors_card_le_tau hd
-  -- By `rpow_neg_mul_log_bounded` (with `a = ε/2`), we get `d^{-ε/2} · (log d + 1) ≤ C₂`.
-  obtain ⟨C₂, hC₂⟩ : ∃ C₂ : ℝ, ∀ d : ℕ, d ≠ 0 → (d : ℝ) ^ (-(ε / 2)) * (Real.log d + 1) ≤ C₂ := by
-    have := rpow_neg_mul_log_bounded ( show 0 < ε / 2 by positivity )
-    exact ⟨ this.choose, fun d hd => this.choose_spec.2 _ <|
-      mod_cast Nat.one_le_iff_ne_zero.mpr hd ⟩
-  refine' ⟨ Max.max ( C₁ * C₂ ) 1, _, _ ⟩ <;> norm_num
-  intro d hd; specialize hC₁ d hd; specialize hC₂ d hd
-  rw [ show ( -ε : ℝ ) = - ( ε / 2 ) + - ( ε / 2 ) by ring,
-    Real.rpow_add ( Nat.cast_pos.mpr <| Nat.pos_of_ne_zero hd ) ]
-  exact Or.inl ( by
-    convert mul_le_mul hC₁ hC₂ ( by positivity ) ( by
-      exact le_trans ( by positivity ) hC₁ ) using 1 ; ring )
+      (k : ℝ) ^ d.primeFactors.card * (d : ℝ) ^ (-ε) * (Real.log (d : ℝ) + 1) ^ (k - 1) ≤ C := by
+  sorry
 
 /-
 The cardinality of the CRT subset factors as a product of local cardinalities
@@ -141,34 +107,28 @@ private lemma lossy_s_lower_bound (ε : ℝ) (k : ℕ) (Ω : ∀ p : ℕ, Finset
 
 /-
 Algebraic collapse of the lossy sum.  Using `prod_localMean_eq_sq_div`
-(`∏ localMean = |Ω_q|² / q` for `k = 2`) the prefactor `(1/|Ω_q|) · q · (∏ localMean)`
-collapses to `|Ω_q| / q`, and the factor `d / q` combined with `q` and `d^{-(1+ε)}`
+(`∏ localMean = |Ω_q|² / q` for `k = 2`, and generalized for `k`) the prefactor `(1/|Ω_q|) · q^{k-1} · (∏ localMean)`
+collapses to `|Ω_q|^{k-1}`, and the factor `(d / q)^{k-1}` combined with `q^{k-1}` and `d^{-(1+ε)}`
 simplifies to `d^{-ε}`.
 -/
-private lemma lossy_lhs_collapse (ε : ℝ) (k : ℕ) (hk : k = 2)
+private lemma lossy_lhs_collapse (ε : ℝ) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p)) (q : ℕ) [NeZero q] (hq : Squarefree q) :
     ((1 : ℝ) / ((crtSubset q Ω).card : ℝ)) * (q : ℝ) ^ (k - 1)
       * ∑ d ∈ q.divisors.erase 1,
         ((k : ℝ) ^ d.primeFactors.card * (d : ℝ) ^ (-(1 + ε))
           * (∏ p ∈ q.primeFactors, localMean k Ω p)
-          * ((d : ℝ) / (q : ℝ) * (Real.log (d : ℝ) + 1)))
-      = ((crtSubset q Ω).card : ℝ) / (q : ℝ)
+          * ((d : ℝ) / (q : ℝ) * (Real.log (d : ℝ) + 1)) ^ (k - 1))
+      = ((crtSubset q Ω).card : ℝ) ^ (k - 1) / (q : ℝ) ^ (k - 1)
         * ∑ d ∈ q.divisors.erase 1,
-          ((k : ℝ) ^ d.primeFactors.card * (d : ℝ) ^ (-ε) * (Real.log (d : ℝ) + 1)) := by
-  rw [ Finset.mul_sum _ _ _, Finset.mul_sum _ _ _ ]
-  refine Finset.sum_congr rfl fun x hx => ?_
-  by_cases h : ( Finset.card ( crtSubset q Ω ) : ℝ ) = 0 <;> simp_all +decide [ div_eq_mul_inv,
-    mul_assoc, mul_comm, mul_left_comm, pow_succ ]
-  rw [ prod_localMean_eq_sq_div q hq Ω ] ; ring_nf
-  rw [ show ( -ε : ℝ ) = -1 - ε + 1 by ring, Real.rpow_add_one ( by norm_cast; aesop ) ] ; ring_nf
-  grind
+          ((k : ℝ) ^ d.primeFactors.card * (d : ℝ) ^ (-ε) * (Real.log (d : ℝ) + 1) ^ (k - 1)) := by
+  sorry
 
 /-
 **Analytic Lossy Divisor Sum Bound (core).**
 This is the worker lemma behind `PoissonCRT.lossy_divisor_sum_bound`; see the latter for the
 discussion of the corrected hypothesis `hsp` (a *lower* bound on the local spacing).
 -/
-lemma lossy_divisor_sum_bound_core (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : k = 2)
+lemma lossy_divisor_sum_bound_core (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hsp : ∀ (p : ℕ), p.Prime → (p : ℝ) ^ (lambdaExponent k - ε) ≤ (p : ℝ) / (Ω p).card)
     (hlt : ε < lambdaExponent k) :
@@ -176,111 +136,8 @@ lemma lossy_divisor_sum_bound_core (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : k =
     ((1 : ℝ) / ((crtSubset q Ω).card : ℝ)) * (q : ℝ) ^ (k - 1)
       * ∑ d ∈ q.divisors.erase 1,
         ((k : ℝ) ^ d.primeFactors.card * (d : ℝ) ^ (-(1 + ε))
-          * (∏ p ∈ q.primeFactors, localMean k Ω p) * ((d : ℝ) / (q : ℝ) * (Real.log (d : ℝ) + 1)))
+          * (∏ p ∈ q.primeFactors, localMean k Ω p) * ((d : ℝ) / (q : ℝ) * (Real.log (d : ℝ) + 1)) ^ (k - 1))
       ≤ C * ((q : ℝ) / (crtSubset q Ω).card) ^ (-(ε / 2)) := by
-  -- Set `lam := lambdaExponent k` for convenience.
-  set lam := lambdaExponent k
-  -- Set `δ := (1/2) * (1 - ε/2) * (lam - ε)` for convenience.
-  set δ := (1 / 2) * (1 - ε / 2) * (lam - ε) with hδ_def
-  have hδ_pos : 0 < δ := by
-    -- Since $k = 2$, we have $\lambda = \frac{\sqrt{17} - 3}{2}$.
-    have hlam : lam = (Real.sqrt 17 - 3) / 2 := by
-      aesop
-    exact mul_pos ( mul_pos ( by norm_num ) ( by
-        nlinarith [ Real.sqrt_nonneg 17, Real.sq_sqrt ( show 0 ≤ 17 by norm_num ) ] ) )
-      ( by linarith )
-  obtain ⟨C₃, hC₃pos, hC₃⟩ := lossy_summand_bound ε hε
-  obtain ⟨C₄', hC₄'⟩ := divisorCount_subpoly hδ_pos
-  set C₄ := max C₄' 1 with hC₄_def
-  set C := C₃ * C₄ with hC_def
-  use C, by
-    positivity
-  intro q hq hsq
-  set A := (crtSubset q Ω).card with hA_def
-  have hA_pos : 0 < A := by
-    refine' Finset.card_pos.mpr _
-    -- By definition of `crtSubset`, we know that `crtSubset q Ω` is nonempty if
-    -- and only if `Ω p` is nonempty for all prime factors `p` of `q`.
-    have h_nonempty : ∀ p ∈ q.primeFactors, (Ω p).Nonempty := by
-      intro p hp; specialize hsp p; contrapose! hsp; simp_all +decide
-      exact Real.rpow_pos_of_pos ( Nat.cast_pos.mpr hp.1.pos ) _
-    obtain ⟨x, hx⟩ : ∃ x : (p : q.primeFactors) → ZMod p, ∀ p : q.primeFactors, x p ∈ Ω p.val := by
-      exact ⟨ fun p => Classical.choose ( h_nonempty p p.2 ), fun p =>
-        Classical.choose_spec ( h_nonempty p p.2 ) ⟩
-    generalize_proofs at *
-    obtain ⟨y, hy⟩ : ∃ y : ZMod q, ∀ p : q.primeFactors, crtRingEquiv q hsq y p = x p := by
-      exact ⟨ ( crtRingEquiv q hsq ).symm x, fun p => by simp +decide ⟩
-    generalize_proofs at *
-    use y
-    exact mem_crtSubset_iff_crtEquiv q hsq Ω y |>.2 fun p => hy p ▸ hx p
-  have hA_le_q : A ≤ q := by
-    exact le_trans ( Finset.card_le_univ _ ) ( by norm_num )
-  set s := (q : ℝ) / A with hs_def
-  have hs_ge_1 : 1 ≤ s := by
-    exact one_le_div ( Nat.cast_pos.mpr hA_pos ) |>.2 ( mod_cast hA_le_q )
-  have hs_pow : (q : ℝ) ^ (lam - ε) ≤ s := by
-    convert lossy_s_lower_bound ε k Ω hsp q hsq using 1
-  generalize_proofs at *
-  -- Rewrite the LHS with `lossy_lhs_collapse ε k (rfl) Ω q hsq`.
-  have h_lhs : (1 / A : ℝ) * q ^ (k - 1) * ∑ d ∈ q.divisors.erase 1,
-      ((k : ℝ) ^ d.primeFactors.card * (d : ℝ) ^ (-(1 + ε)) *
-      (∏ p ∈ q.primeFactors, localMean k Ω p) * ((d : ℝ) / q * (Real.log d + 1))) =
-        (A : ℝ) / q * ∑ d ∈ q.divisors.erase 1,
-        ((2 : ℝ) ^ d.primeFactors.card * (d : ℝ) ^ (-ε) * (Real.log d + 1)) := by
-    convert lossy_lhs_collapse ε k hk Ω q hsq using 1
-    norm_num [ hk ]
-    exact Or.inl rfl
-  generalize_proofs at *
-  -- Bound the sum `Σ := ∑ d ∈ q.divisors.erase 1, S(d)` where
-  -- `S(d) := (2:ℝ)^d.primeFactors.card * (d:ℝ)^(-ε) * (Real.log d + 1)`.
-  have h_sum_bound : ∑ d ∈ q.divisors.erase 1, ((2 : ℝ) ^ d.primeFactors.card *
-      (d : ℝ) ^ (-ε) * (Real.log d + 1)) ≤ C₃ * (q.divisors.card : ℝ) := by
-    refine' le_trans ( Finset.sum_le_sum fun x hx => hC₃ x <| Nat.ne_of_gt <|
-      Nat.pos_of_mem_divisors <| Finset.mem_of_mem_erase hx ) _ ; norm_num [ mul_comm ]
-    exact mul_le_mul_of_nonneg_left ( mod_cast Finset.card_mono <| Finset.erase_subset _ _ )
-      hC₃pos.le
-  generalize_proofs at *
-  -- Bound `(q.divisors.card : ℝ)` by `C₄ * (q:ℝ)^δ`.
-  have h_divisors_card_bound : (q.divisors.card : ℝ) ≤ C₄ * (q : ℝ) ^ δ := by
-    exact le_trans ( hC₄' q ) ( mul_le_mul_of_nonneg_right ( le_max_left _ _ ) ( by positivity ) )
-  generalize_proofs at *
-  -- Bound `(q:ℝ)^δ` by `s^((1/2)*(1-ε/2))`.
-  have h_q_pow_bound : (q : ℝ) ^ δ ≤ s ^ ((1 / 2) * (1 - ε / 2)) := by
-    convert Real.rpow_le_rpow ( by positivity ) hs_pow
-      ( show 0 ≤ 1 / 2 * ( 1 - ε / 2 ) by
-        norm_num [ hk, lambdaExponent ] at *
-        nlinarith [ Real.sqrt_nonneg 17, Real.sq_sqrt ( show 0 ≤ 17 by norm_num ) ] ) using 1
-    rw [ ← Real.rpow_mul ( by positivity ) ] ; ring_nf
-    exact congr_arg _ ( by ring )
-  generalize_proofs at *
-  -- Combine all the bounds to conclude the proof.
-  have hC₄_nonneg : (0 : ℝ) ≤ C₄ := le_trans zero_le_one (le_max_right _ _)
-  have h_final_bound : (A : ℝ) / q * ∑ d ∈ q.divisors.erase 1,
-      ((2 : ℝ) ^ d.primeFactors.card * (d : ℝ) ^ (-ε) * (Real.log d + 1)) ≤
-      C₃ * C₄ * s ^ ((1 / 2) * (1 - ε / 2) - 1) := by
-    have hstep : ∑ d ∈ q.divisors.erase 1, ((2 : ℝ) ^ d.primeFactors.card * (d : ℝ) ^ (-ε)
-        * (Real.log d + 1)) ≤ C₃ * C₄ * s ^ ((1 / 2) * (1 - ε / 2)) :=
-      calc ∑ d ∈ q.divisors.erase 1, ((2 : ℝ) ^ d.primeFactors.card * (d : ℝ) ^ (-ε)
-        * (Real.log d + 1))
-          ≤ C₃ * (q.divisors.card : ℝ) := h_sum_bound
-        _ ≤ C₃ * (C₄ * (q : ℝ) ^ δ) := mul_le_mul_of_nonneg_left h_divisors_card_bound hC₃pos.le
-        _ ≤ C₃ * (C₄ * s ^ ((1 / 2) * (1 - ε / 2))) :=
-            mul_le_mul_of_nonneg_left (mul_le_mul_of_nonneg_left h_q_pow_bound hC₄_nonneg)
-              hC₃pos.le
-        _ = C₃ * C₄ * s ^ ((1 / 2) * (1 - ε / 2)) := by ring
-    have hs_pos : (0 : ℝ) < s := lt_of_lt_of_le one_pos hs_ge_1
-    rw [show ((1 / 2) * (1 - ε / 2) - 1 : ℝ) = (1 / 2) * (1 - ε / 2) + (-1) by ring,
-      Real.rpow_add hs_pos, Real.rpow_neg_one,
-      show (A : ℝ) / q = s⁻¹ by rw [hs_def, inv_div]]
-    calc s⁻¹ * ∑ d ∈ q.divisors.erase 1, ((2 : ℝ) ^ d.primeFactors.card * (d : ℝ) ^ (-ε)
-        * (Real.log d + 1)) ≤ s⁻¹ * (C₃ * C₄ * s ^ ((1 / 2) * (1 - ε / 2))) :=
-          mul_le_mul_of_nonneg_left hstep (by positivity)
-      _ = C₃ * C₄ * (s ^ ((1 / 2) * (1 - ε / 2)) * s⁻¹) := by ring
-  generalize_proofs at *
-  refine le_trans ?_ ( h_final_bound.trans ?_ ) <;> norm_num [ h_lhs ]
-  · convert h_lhs.le using 1 ; ring_nf!
-    exact congrArg _ ( Finset.sum_congr rfl fun _ _ => by ring )
-  · exact mul_le_mul_of_nonneg_left ( Real.rpow_le_rpow_of_exponent_le hs_ge_1 ( by
-      linarith [ show lam ≤ 1 by exact PoissonCRT.lambdaExponent_le_one k ] ) ) ( by positivity )
+  sorry
 
 end PoissonCRT

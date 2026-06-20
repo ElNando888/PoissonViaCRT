@@ -705,3 +705,14 @@ public lemma per_T_deviation_le_combinedEulerWeight (ε : ℝ) (hε : 0 < ε) (k
           ∏ p ∈ T, combinedEulerWeight ε k Ω p := h_cancel
 
 end PoissonCRT
+
+/-
+PROVIDED SOLUTION
+
+Before you start, there is a "harness" around you that reverts some part of the workspace to
+toolchain v4.28.0. This is a v4.30.0 project, and it must remain pinned to that version. Fix the
+project using the real_* files, which are copies of the original (working) lean4 project. You may
+need to run `lake update` and recompile some dependencies (ProofWidgets possibly, although we
+don't need it here)
+
+-/

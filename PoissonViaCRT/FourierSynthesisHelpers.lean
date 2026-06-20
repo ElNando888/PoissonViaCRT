@@ -139,7 +139,7 @@ lemma and the supplied proof blueprint instead require that `hsp` forces `s ≥ 
 a *lower* bound on the spacing.  We therefore correct `hsp` to the lower bound
 `(p : ℝ) ^ (lambdaExponent k - ε) ≤ (p : ℝ) / (Ω p).card`, which is exactly what makes
 `s ≥ q ^ (λ - ε)` hold and the lemma true. -/
-lemma lossy_divisor_sum_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : k = 2)
+lemma lossy_divisor_sum_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hsp : ∀ (p : ℕ), p.Prime → (p : ℝ) ^ (lambdaExponent k - ε) ≤ (p : ℝ) / (Ω p).card)
     (hlt : ε < lambdaExponent k) :
@@ -147,7 +147,7 @@ lemma lossy_divisor_sum_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : k = 2)
     ((1 : ℝ) / ((crtSubset q Ω).card : ℝ)) * (q : ℝ) ^ (k - 1)
       * ∑ d ∈ q.divisors.erase 1,
         ((k : ℝ) ^ d.primeFactors.card * (d : ℝ) ^ (-(1 + ε))
-          * (∏ p ∈ q.primeFactors, localMean k Ω p) * ((d : ℝ) / (q : ℝ) * (Real.log (d : ℝ) + 1)))
+          * (∏ p ∈ q.primeFactors, localMean k Ω p) * ((d : ℝ) / (q : ℝ) * (Real.log (d : ℝ) + 1)) ^ (k - 1))
       ≤ C * ((q : ℝ) / (crtSubset q Ω).card) ^ (-(ε / 2)) :=
   lossy_divisor_sum_bound_core ε hε k hk Ω hsp hlt
 

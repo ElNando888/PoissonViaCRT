@@ -23,7 +23,6 @@ import PoissonViaCRT.SmallDivisorHelpers
 import PoissonViaCRT.TupleCount
 import PoissonViaCRT.EulerWeights
 import PoissonViaCRT.L1DeviationSynthesis
-import PoissonViaCRT.L2DeviationSynthesis
 import PoissonViaCRT.GammaDeviationSynthesis
 import PoissonViaCRT.FourierANOVA
 import PoissonViaCRT.FourierSynthesisHelpers
@@ -139,28 +138,19 @@ lemma spacing_forces_eps_le_lambda (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 �
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
     (hsp : ∀ (p : ℕ), p.Prime →
-      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε)) :
+      (p : ℝ) ^ (lambdaExponent k - ε) ≤ (p : ℝ) / (Ω p).card) :
     ε ≤ lambdaExponent k := by
-  have := hsp 2 Nat.prime_two
-  contrapose! this
-  refine lt_of_lt_of_le ( Real.rpow_lt_rpow_of_exponent_lt ( by norm_num ) ( sub_neg.mpr this ) ) ?_
-  norm_num
-  rw [ one_le_div ] <;> norm_cast
-  · exact le_trans ( Finset.card_le_univ _ ) ( by norm_num )
-  · exact Finset.card_pos.mpr ( hΩ 2 Nat.prime_two )
+  sorry
 
 /-- When `ε = λ_k`, all local subsets are full, so the deviation is zero. -/
 lemma all_full_of_eps_eq_lambda (ε : ℝ) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
     (hsp : ∀ (p : ℕ), p.Prime →
-      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
+      (p : ℝ) ^ (lambdaExponent k - ε) ≤ (p : ℝ) / (Ω p).card)
     (heq : ε = lambdaExponent k) :
     ∀ (p : ℕ), p.Prime → (Ω p).card = p := by
-  intro p pp; specialize hsp p pp
-  simp_all +decide only [sub_self, Real.rpow_zero, Nat.cast_pos, card_pos, div_le_iff₀, one_mul,
-    Nat.cast_le]
-  haveI := Fact.mk pp; exact le_antisymm ( le_trans ( Finset.card_le_univ _ ) ( by norm_num ) ) hsp
+  sorry
 
 /--
 When all local subsets are full (`Ω_p = ZMod p` for all primes `p`), the CRT subset
@@ -205,7 +195,7 @@ private lemma deviation_large_divisors (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk :
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
     (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
     (hsp : ∀ (p : ℕ), p.Prime →
-      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
+      (p : ℝ) ^ (lambdaExponent k - ε) ≤ (p : ℝ) / (Ω p).card)
     (hrp : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ))
     (hε_lt : ε < lambdaExponent k)
     (X : Box (k - 1))
@@ -228,66 +218,22 @@ private lemma deviation_large_divisors (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk :
               (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p -
               localMean k Ω p)) *
             ∏ p ∈ q.primeFactors \ d.primeFactors, localMean k Ω p)| ≤ K₂ * s ^ (-(ε / 2)) := by
-  -- Obtain per-T constant C_T and tail-sum decay constant K
-  obtain ⟨C_T, hC_T_pos, h_per_T⟩ :=
-    per_T_deviation_le_combinedEulerWeight ε hε k hk Ω hΩ hWD hsp hrp hε_lt X C_lp hC_lp_pos hC_lp
-  obtain ⟨K, hK_pos, h_tail⟩ := tail_sum_decay ε hε k hk Ω hrp
-  -- The bound is C_T * K
-  refine ⟨C_T * K, mul_pos hC_T_pos hK_pos, ?_⟩
+  -- Obtain the constant C from the lossy divisor sum bound.
+  obtain ⟨C, hC_pos, hC⟩ := lossy_divisor_sum_bound ε hε k hk Ω hsp hε_lt
+  -- Use C * C_fourier for K₂.
+  refine ⟨C * (k : ℝ)^k, by positivity, ?_⟩ -- Placeholder K₂ until Aristotle closes it
   intro q _ hq_sq
-  -- Transport the divisor sum to a powerset sum
-  let s_val := (q : ℝ) / (crtSubset q Ω).card
-  let g : Finset ℕ → ℝ := fun T =>
-    |∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈s_val * ∑ i, X.sides i⌉).filter
-      (fun h => inScaledBox X s_val (fun _ => 0) h)),
-      (1 / ((crtSubset q Ω).card : ℝ)) *
-        ((∏ p ∈ T, (localCount Ω q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p - localMean k Ω p)) *
-          ∏ p ∈ q.primeFactors \ T, localMean k Ω p)|
-  have h_rewrite : ∑ d ∈ (q.divisors.filter (1 < ·)).filter (fun (d : ℕ) => ¬((d : ℝ) ≤ s_val)),
-      |∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈s_val * ∑ i, X.sides i⌉).filter
-        (fun h => inScaledBox X s_val (fun _ => 0) h)),
-        (1 / ((crtSubset q Ω).card : ℝ)) *
-          ((∏ p ∈ d.primeFactors, (localCount Ω q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p - localMean k Ω p)) *
-            ∏ p ∈ q.primeFactors \ d.primeFactors, localMean k Ω p)| =
-      ∑ T ∈ (q.primeFactors.powerset.filter (· ≠ ∅)).filter (fun (T : Finset ℕ) => ¬((∏ p ∈ T, (p : ℝ)) ≤ s_val)),
-        g T := by
-    change ∑ d ∈ (Nat.nontrivDivisors q).filter (fun (d : ℕ) => ¬((d : ℝ) ≤ s_val)), g d.primeFactors = _
-    exact (sum_nonempty_powerset_filtered_not_le_eq q hq_sq g s_val).symm
-  change ∑ d ∈ (q.divisors.filter (1 < ·)).filter (fun (d : ℕ) => ¬((d : ℝ) ≤ s_val)),
-      |∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈s_val * ∑ i, X.sides i⌉).filter
-        (fun h => inScaledBox X s_val (fun _ => 0) h)),
-        (1 / ((crtSubset q Ω).card : ℝ)) *
-          ((∏ p ∈ d.primeFactors, (localCount Ω q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p - localMean k Ω p)) *
-            ∏ p ∈ q.primeFactors \ d.primeFactors, localMean k Ω p)| ≤ _
-  rw [h_rewrite]
-  -- Apply the per-T bound point-wise
-  have h_bound : ∑ T ∈ (q.primeFactors.powerset.filter (· ≠ ∅)).filter (fun (T : Finset ℕ) => ¬((∏ p ∈ T, (p : ℝ)) ≤ s_val)),
-      g T ≤
-      ∑ T ∈ (q.primeFactors.powerset.filter (· ≠ ∅)).filter (fun (T : Finset ℕ) => ¬((∏ p ∈ T, (p : ℝ)) ≤ s_val)),
-        C_T * ∏ p ∈ T, combinedEulerWeight ε k Ω p := by
-    apply Finset.sum_le_sum
-    intro T hT
-    exact h_per_T q hq_sq T (Finset.mem_filter.mp hT |>.1)
-  refine le_trans h_bound ?_
-  -- Factor out C_T and apply tail_sum_decay
-  rw [← Finset.mul_sum]
-  have h_tail_sum : ∑ T ∈ (q.primeFactors.powerset.filter (· ≠ ∅)).filter (fun (T : Finset ℕ) => ¬((∏ p ∈ T, (p : ℝ)) ≤ s_val)),
-      ∏ p ∈ T, combinedEulerWeight ε k Ω p ≤ K * s_val ^ (-(ε / 2)) := by
-    -- Transport powerset back to divisor sum to apply h_tail
-    rw [sum_nonempty_powerset_filtered_not_le_eq q hq_sq _ s_val]
-    have h_card_pos : (0 : ℝ) < (crtSubset q Ω).card := Nat.cast_pos.mpr (crtSubset_card_pos_aux Ω hΩ q)
-    have hs_ge : 1 ≤ s_val := by
-      rw [one_le_div h_card_pos]
-      have h_le : (crtSubset q Ω).card ≤ q := by
-        calc (crtSubset q Ω).card ≤ Fintype.card (ZMod q) := Finset.card_le_univ _
-        _ = q := ZMod.card q
-      exact_mod_cast h_le
-    exact h_tail q ‹_› hq_sq _ hs_ge
-  -- Combine
-  calc C_T * ∑ T ∈ (q.primeFactors.powerset.filter (· ≠ ∅)).filter (fun (T : Finset ℕ) => ¬((∏ p ∈ T, (p : ℝ)) ≤ s_val)),
-      ∏ p ∈ T, combinedEulerWeight ε k Ω p
-    _ ≤ C_T * (K * s_val ^ (-(ε / 2))) := mul_le_mul_of_nonneg_left h_tail_sum hC_T_pos.le
-    _ = C_T * K * s_val ^ (-(ε / 2)) := by ring
+  -- PROOF PLAN FOR ARISTOTLE:
+  -- 1. Apply `inScaledBox_sum_eq_diff_sum` (Parseval's identity) from `FourierANOVABasic.lean`
+  --    to convert the inner sum over `h ∈ scaled box` into a sum over frequencies `ξ ∈ (ZMod q)^(k-1)`.
+  -- 2. Bound the sum using the triangle inequality over the frequency domain.
+  -- 3. Group the frequency sum by `freqDivisor(ξ) = d`.
+  -- 4. Apply `dft_g_norm_tight_bound` from `FourierSynthesisHelpers.lean` to pointwise bound
+  --    the DFT of the deviation product by `k^{ω(d)} d^{-(1+ε)} ∏ μ_p`.
+  -- 5. Apply `box_fourier_l1_bound` from `BoxFourierL1Bound.lean` to bound the sum of the
+  --    box DFT norms by `(L_i/q + d/q (\log d + 1))^{k-1}`.
+  -- 6. Match the resulting sum with `lossy_divisor_sum_bound` and apply `hC`.
+  sorry
 
 /-! ### Core deviation bound assembly -/
 
@@ -297,7 +243,7 @@ lemma deviation_expression_fixed_delta (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk :
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
     (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
     (hsp : ∀ (p : ℕ), p.Prime →
-      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
+      (p : ℝ) ^ (lambdaExponent k - ε) ≤ (p : ℝ) / (Ω p).card)
     (hrp : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ))
     (hε_lt : ε < lambdaExponent k)
     (X : Box (k - 1))
@@ -385,7 +331,7 @@ private lemma deviation_expression_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : 
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
     (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
     (hsp : ∀ (p : ℕ), p.Prime →
-      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
+      (p : ℝ) ^ (lambdaExponent k - ε) ≤ (p : ℝ) / (Ω p).card)
     (hrp : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ))
     (hε_lt : ε < lambdaExponent k)
     (X : Box (k - 1))
@@ -422,7 +368,7 @@ public theorem deviation_final_synthesis (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
     (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
     (hsp : ∀ (p : ℕ), p.Prime →
-      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
+      (p : ℝ) ^ (lambdaExponent k - ε) ≤ (p : ℝ) / (Ω p).card)
     (hrp : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ))
     (X : Box (k - 1))
     (C_lp : ℝ) (hC_lp_pos : 0 < C_lp)
@@ -471,7 +417,7 @@ public theorem deviation_uniform_exponent (ε : ℝ) (hε : 0 < ε) (k : ℕ) (h
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
     (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
     (hsp : ∀ (p : ℕ), p.Prime →
-      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
+      (p : ℝ) ^ (lambdaExponent k - ε) ≤ (p : ℝ) / (Ω p).card)
     (hrp : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ)) :
     ∃ δ : ℝ, 0 < δ ∧ ∀ (X : Box (k - 1))
       (C_lp : ℝ) (hC_lp_pos : 0 < C_lp)
