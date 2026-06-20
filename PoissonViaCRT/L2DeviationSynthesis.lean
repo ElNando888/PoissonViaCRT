@@ -433,7 +433,10 @@ mathematically honest `sorry`, accurately reflecting the current limits
 of formalized analytic number theory. -/
 private lemma variance_product_absorption (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
-    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k) (C_gamma : ℝ) :
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
+    (hsp : ∀ (p : ℕ), p.Prime →
+      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε)) (C_gamma : ℝ) :
     ∃ K : ℝ, 0 < K ∧ ∀ (q : ℕ) [NeZero q] (T : Finset ℕ) (_ : T ⊆ q.primeFactors) (s : ℝ) (_ : 1 ≤ s),
     s ^ (k - 1 : ℕ) * ∏ p ∈ T, ((combinedEulerWeight ε k Ω p * localMean k Ω p) ^ 2 + (k : ℝ)^4 * C_gamma / (p : ℝ)) +
     s ^ (k - 1 - 1 : ℕ) * ∏ p ∈ T, ((combinedEulerWeight ε k Ω p * localMean k Ω p) ^ 2 + (k : ℝ)^4 * C_gamma) ≤
@@ -453,7 +456,10 @@ is bounded by `C_var · s^{k-1} · (∏_T (cEW · μ))²`.
 -/
 private lemma variance_per_T_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
     (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
+    (hsp : ∀ (p : ℕ), p.Prime →
+      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
     (hrp : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ))
     (X : Box (k - 1)) (C_lp : ℝ) :
     ∃ C_var : ℝ, 0 < C_var ∧ ∀ (q : ℕ) [NeZero q] (T : Finset ℕ) (_ : T ⊆ q.primeFactors)
@@ -467,7 +473,7 @@ private lemma variance_per_T_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 �
   -- Obtain uniform Gamma-structure constants
   obtain ⟨C_box, C_gamma, hC_box_pos, hC_gamma_pos, hC_bound⟩ := box_collision_sum_bound (k - 1) (by omega) X
   -- Obtain absorption constant K
-  obtain ⟨K, hK_pos, hK_bound⟩ := variance_product_absorption ε hε k hk Ω hWD C_gamma
+  obtain ⟨K, hK_pos, hK_bound⟩ := variance_product_absorption ε hε k hk Ω hΩ hWD hsp C_gamma
   -- Set C_var = C_box * K.
   refine ⟨C_box * K, mul_pos hC_box_pos hK_pos, ?_⟩
   intro q hq T hT_sub s hs
@@ -610,7 +616,7 @@ public lemma per_T_deviation_le_combinedEulerWeight (ε : ℝ) (hε : 0 < ε) (k
             ∏ p ∈ q.primeFactors \ T, localMean k Ω p)| ≤
       C_T * ∏ p ∈ T, combinedEulerWeight ε k Ω p := by
   -- Obtain the variance constant
-  obtain ⟨C_var, hC_var_pos, h_var⟩ := variance_per_T_bound ε hε k hk Ω hWD hrp X C_lp
+  obtain ⟨C_var, hC_var_pos, h_var⟩ := variance_per_T_bound ε hε k hk Ω hΩ hWD hsp hrp X C_lp
   -- Volume is positive
   have hvol_pos : 0 < X.volume := Finset.prod_pos fun i _ => X.sides_pos i
   -- Set C_T = √((X.volume + C_lp) * C_var)
