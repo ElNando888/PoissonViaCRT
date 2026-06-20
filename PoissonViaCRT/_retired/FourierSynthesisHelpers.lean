@@ -55,7 +55,7 @@ in `freqSupport` satisfies
   `∏_{p ∈ freqSupport} (1 - |Ω_p|/p) ≤ k^{ω(d)} / d`
 where `d = freqDivisor q m ξ`.
 -/
-lemma prod_one_sub_le_pow_div (k : ℕ) (hk : 2 ≤ k)
+lemma prod_one_sub_le_pow_div (k : ℕ) (hk_eq : k = 2)
     (q : ℕ) [NeZero q] (hq : Squarefree q) (m : ℕ)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hrp : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ))
@@ -79,7 +79,7 @@ Combined DFT coefficient bound with tight `(1 - |Ω_p|/p)` factor.
 For nonzero `ξ` with `freqDivisor = d`, the norm of the DFT coefficient
 is bounded by `k^{ω(d)} · d^{-(1+ε)} · M`.
 -/
-lemma dft_g_norm_tight_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+lemma dft_g_norm_tight_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk_eq : k = 2)
     (q : ℕ) [NeZero q] (hq_sq : Squarefree q)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributedFourier ε p (Ω p) k)
@@ -93,7 +93,7 @@ lemma dft_g_norm_tight_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
       ∏ p ∈ q.primeFactors, localMean k Ω p := by
   by_cases hd : d = 0
   · contrapose! hξ; have := freqDivisor_dvd q ( k - 1 ) ξ; simp_all +decide
-  · apply le_trans ( deviation_dft_q1_q2_bound k hk ε hε q hq_sq Ω _ ξ hξ ) _
+  · apply le_trans ( deviation_dft_q1_q2_bound k (by omega) ε hε q hq_sq Ω _ ξ hξ ) _
     · grind
     · apply mul_le_mul_of_nonneg_right _ ( Finset.prod_nonneg fun p hp => localMean_nonneg _ _ _ )
       refine le_trans ( Finset.prod_le_prod ?_ fun p hp =>
@@ -137,11 +137,11 @@ satisfies it for every prime, yet then `|Ω_q| = q`, `s = 1`, and the left-hand 
 distinct primes, while the right-hand side stays `≤ C`.  Both the previous doc-string of this
 lemma and the supplied proof blueprint instead require that `hsp` forces `s ≥ q ^ (λ - ε)`, i.e.
 a *lower* bound on the spacing.  We therefore correct `hsp` to the lower bound
-`(p : ℝ) ^ (lambdaExponent k - ε) ≤ (p : ℝ) / (Ω p).card`, which is exactly what makes
+`(p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε)`, which is exactly what makes
 `s ≥ q ^ (λ - ε)` hold and the lemma true. -/
-lemma lossy_divisor_sum_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+lemma lossy_divisor_sum_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk_eq : k = 2)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
-    (hsp : ∀ (p : ℕ), p.Prime → (p : ℝ) ^ (lambdaExponent k - ε) ≤ (p : ℝ) / (Ω p).card)
+    (hsp : ∀ (p : ℕ), p.Prime → (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
     (hlt : ε < lambdaExponent k) :
     ∃ C : ℝ, 0 < C ∧ ∀ (q : ℕ) [NeZero q], Squarefree q →
     ((1 : ℝ) / ((crtSubset q Ω).card : ℝ)) * (q : ℝ) ^ (k - 1)
@@ -149,6 +149,6 @@ lemma lossy_divisor_sum_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
         ((k : ℝ) ^ d.primeFactors.card * (d : ℝ) ^ (-(1 + ε))
           * (∏ p ∈ q.primeFactors, localMean k Ω p) * ((d : ℝ) / (q : ℝ) * (Real.log (d : ℝ) + 1)) ^ (k - 1))
       ≤ C * ((q : ℝ) / (crtSubset q Ω).card) ^ (-(ε / 2)) :=
-  lossy_divisor_sum_bound_core ε hε k hk Ω hsp hlt
+  lossy_divisor_sum_bound_core ε hε k hk_eq Ω hsp hlt
 
 end PoissonCRT

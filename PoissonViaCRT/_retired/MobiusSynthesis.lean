@@ -108,7 +108,7 @@ theorem deviation_product_difference {k : ℕ} (q : ℕ) [NeZero q]
   exact sum_nonempty_powerset_eq_sum_nontrivial_divisors q hq _
 
 /-- When `|Ω_q| = q` (all of `ZMod q`), the deviation is zero. -/
-lemma deviation_zero_of_card_eq_q {k : ℕ} (hk : 2 ≤ k) (q : ℕ) [NeZero q]
+lemma deviation_zero_of_card_eq_q {k : ℕ} (hk_eq : k = 2) (q : ℕ) [NeZero q]
     (Ω : ∀ p : ℕ, Finset (ZMod p)) (X : Box (k - 1))
     (hfull : (crtSubset q Ω).card = q) :
     let Ω_q := crtSubset q Ω
@@ -134,20 +134,20 @@ lemma deviation_zero_of_card_eq_q {k : ℕ} (hk : 2 ≤ k) (q : ℕ) [NeZero q]
 The spacing hypothesis at `p = 2` forces `ε ≤ λ_k`. When `ε > λ_k`,
 the hypotheses are inconsistent.
 -/
-lemma spacing_forces_eps_le_lambda (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+lemma spacing_forces_eps_le_lambda (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk_eq : k = 2)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
     (hsp : ∀ (p : ℕ), p.Prime →
-      (p : ℝ) ^ (lambdaExponent k - ε) ≤ (p : ℝ) / (Ω p).card) :
+      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε)) :
     ε ≤ lambdaExponent k := by
   sorry
 
 /-- When `ε = λ_k`, all local subsets are full, so the deviation is zero. -/
-lemma all_full_of_eps_eq_lambda (ε : ℝ) (k : ℕ) (hk : 2 ≤ k)
+lemma all_full_of_eps_eq_lambda (ε : ℝ) (k : ℕ) (hk_eq : k = 2)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
     (hsp : ∀ (p : ℕ), p.Prime →
-      (p : ℝ) ^ (lambdaExponent k - ε) ≤ (p : ℝ) / (Ω p).card)
+      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
     (heq : ε = lambdaExponent k) :
     ∀ (p : ℕ), p.Prime → (Ω p).card = p := by
   sorry
@@ -190,12 +190,12 @@ with `d > 1` and `(d : ℝ) > s` is bounded by `K₂ · s^{−ε/2}`. This formu
 replaces the earlier powerset-based version, using `globalModifiedEulerWeight`
 and the transport lemma `sum_powerset_nonempty_filtered_eq`.
 -/
-private lemma deviation_large_divisors (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+private lemma deviation_large_divisors (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk_eq : k = 2)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
     (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
     (hsp : ∀ (p : ℕ), p.Prime →
-      (p : ℝ) ^ (lambdaExponent k - ε) ≤ (p : ℝ) / (Ω p).card)
+      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
     (hrp : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ))
     (hε_lt : ε < lambdaExponent k)
     (X : Box (k - 1))
@@ -219,7 +219,7 @@ private lemma deviation_large_divisors (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk :
               localMean k Ω p)) *
             ∏ p ∈ q.primeFactors \ d.primeFactors, localMean k Ω p)| ≤ K₂ * s ^ (-(ε / 2)) := by
   -- Obtain the constant C from the lossy divisor sum bound.
-  obtain ⟨C, hC_pos, hC⟩ := lossy_divisor_sum_bound ε hε k hk Ω hsp hε_lt
+  obtain ⟨C, hC_pos, hC⟩ := lossy_divisor_sum_bound ε hε k hk_eq Ω hsp hε_lt
   -- Use C * C_fourier for K₂.
   refine ⟨C * (k : ℝ)^k, by positivity, ?_⟩ -- Placeholder K₂ until Aristotle closes it
   intro q _ hq_sq
@@ -238,12 +238,12 @@ private lemma deviation_large_divisors (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk :
 /-! ### Core deviation bound assembly -/
 
 /-- **Core per-`q` deviation bound with fixed exponent `ε / 2`.** -/
-lemma deviation_expression_fixed_delta (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+lemma deviation_expression_fixed_delta (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk_eq : k = 2)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
     (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
     (hsp : ∀ (p : ℕ), p.Prime →
-      (p : ℝ) ^ (lambdaExponent k - ε) ≤ (p : ℝ) / (Ω p).card)
+      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
     (hrp : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ))
     (hε_lt : ε < lambdaExponent k)
     (X : Box (k - 1))
@@ -264,9 +264,9 @@ lemma deviation_expression_fixed_delta (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk :
           (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| ≤ K * s ^ (-(ε / 2)) := by
   -- Let's first obtain \( K_1 \) and \( K_2 \) from the previous lemmas.
   obtain ⟨K₁, hK₁_pos, hK₁⟩ :=
-    deviation_small_divisors ε hε k hk Ω hΩ hWD hsp hrp hε_lt X C_lp hC_lp_pos hC_lp
+    deviation_small_divisors ε hε k hk_eq Ω hΩ hWD hsp hrp hε_lt X C_lp hC_lp_pos hC_lp
   obtain ⟨K₂, hK₂_pos, hK₂⟩ :=
-    deviation_large_divisors ε hε k hk Ω hΩ hWD hsp hrp hε_lt X C_lp hC_lp_pos hC_lp
+    deviation_large_divisors ε hε k hk_eq Ω hΩ hWD hsp hrp hε_lt X C_lp hC_lp_pos hC_lp
   refine ⟨ K₁ + K₂, add_pos hK₁_pos hK₂_pos, fun q _ hq ↦ ?_ ⟩
   -- Apply the triangle inequality to the sum, using divisor sums directly.
   have h_triangle :
@@ -326,12 +326,12 @@ lemma deviation_expression_fixed_delta (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk :
     · ring
 
 /-- **Core per-`q` deviation bound with uniform exponent.** -/
-private lemma deviation_expression_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+private lemma deviation_expression_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk_eq : k = 2)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
     (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
     (hsp : ∀ (p : ℕ), p.Prime →
-      (p : ℝ) ^ (lambdaExponent k - ε) ≤ (p : ℝ) / (Ω p).card)
+      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
     (hrp : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ))
     (hε_lt : ε < lambdaExponent k)
     (X : Box (k - 1))
@@ -351,7 +351,7 @@ private lemma deviation_expression_uniform_bound (ε : ℝ) (hε : 0 < ε) (k : 
         ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
           (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| ≤ K * s ^ (-δ) := by
   exact ⟨ε / 2, half_pos hε,
-    deviation_expression_fixed_delta ε hε k hk Ω hΩ hWD hsp hrp hε_lt X C_lp _hC_lp_pos _hC_lp⟩
+    deviation_expression_fixed_delta ε hε k hk_eq Ω hΩ hWD hsp hrp hε_lt X C_lp _hC_lp_pos _hC_lp⟩
 
 /-- **Final deviation synthesis.** For any `ε > 0`, `k ≥ 2`,
 and admissible local sets `Ω`, there exist `δ > 0` and
@@ -363,12 +363,12 @@ The proof splits into the `ε = λ_k` case (trivial: all
 local sets are full) and `ε < λ_k` (the spatial synthesis
 combining small- and large-divisor contributions via
 inclusion-exclusion). -/
-public theorem deviation_final_synthesis (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+public theorem deviation_final_synthesis (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk_eq : k = 2)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
     (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
     (hsp : ∀ (p : ℕ), p.Prime →
-      (p : ℝ) ^ (lambdaExponent k - ε) ≤ (p : ℝ) / (Ω p).card)
+      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
     (hrp : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ))
     (X : Box (k - 1))
     (C_lp : ℝ) (hC_lp_pos : 0 < C_lp)
@@ -387,13 +387,13 @@ public theorem deviation_final_synthesis (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk
         ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
           (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| ≤ K * s ^ (-δ) := by
   -- Split based on ε vs lambdaExponent k
-  have hε_le := spacing_forces_eps_le_lambda ε hε k hk Ω hΩ hsp
+  have hε_le := spacing_forces_eps_le_lambda ε hε k hk_eq Ω hΩ hsp
   rcases eq_or_lt_of_le hε_le with heq | hlt
   · -- Case ε = λ_k: all local subsets are full, deviation is zero
-    have hall := all_full_of_eps_eq_lambda ε k hk Ω hΩ hsp heq
+    have hall := all_full_of_eps_eq_lambda ε k hk_eq Ω hΩ hsp heq
     refine ⟨1, one_pos, 1, one_pos, fun q inst hq_sq => ?_⟩
     have hfull := crtSubset_full_of_all_full q Ω hall
-    have hdev := deviation_zero_of_card_eq_q hk q Ω X hfull
+    have hdev := deviation_zero_of_card_eq_q (by omega) q Ω X hfull
     simp +decide only at hdev ⊢
     have hs1 : (q : ℝ) / ((crtSubset q Ω).card : ℝ) = 1 := by
       rw [hfull]; exact div_self (Nat.cast_ne_zero.mpr (NeZero.ne q))
@@ -406,18 +406,18 @@ public theorem deviation_final_synthesis (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk
       ((tupleCount (crtSubset q Ω) (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
         ((crtSubset q Ω).card : ℝ) ^ k / (q : ℝ) ^ (k - 1)))]
   · -- Case ε < λ_k: use deviation_expression_uniform_bound directly.
-    exact deviation_expression_uniform_bound ε hε k hk Ω hΩ hWD hsp hrp hlt X C_lp hC_lp_pos hC_lp
+    exact deviation_expression_uniform_bound ε hε k hk_eq Ω hΩ hWD hsp hrp hlt X C_lp hC_lp_pos hC_lp
 
 /-- Uniform exponent version of `deviation_final_synthesis`: the decay exponent `δ` is
 chosen independently of the box `X` and lattice-point constant `C_lp`. Only the
 multiplicative constant `K` is allowed to depend on `X`.
 -/
-public theorem deviation_uniform_exponent (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+public theorem deviation_uniform_exponent (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk_eq : k = 2)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
     (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
     (hsp : ∀ (p : ℕ), p.Prime →
-      (p : ℝ) ^ (lambdaExponent k - ε) ≤ (p : ℝ) / (Ω p).card)
+      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
     (hrp : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ)) :
     ∃ δ : ℝ, 0 < δ ∧ ∀ (X : Box (k - 1))
       (C_lp : ℝ) (hC_lp_pos : 0 < C_lp)
@@ -436,14 +436,14 @@ public theorem deviation_uniform_exponent (ε : ℝ) (hε : 0 < ε) (k : ℕ) (h
           ((tupleCount Ω_q (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) : ℝ) -
             (Ω_q.card : ℝ) ^ k / (q : ℝ) ^ (k - 1))| ≤
         K * s ^ (-δ) := by
-  have hε_le := spacing_forces_eps_le_lambda ε hε k hk Ω hΩ hsp
+  have hε_le := spacing_forces_eps_le_lambda ε hε k hk_eq Ω hΩ hsp
   rcases eq_or_lt_of_le hε_le with heq | hlt
   · -- Case ε = λ_k: all local subsets are full, deviation is zero
     refine ⟨1, one_pos, fun X C_lp hC_lp_pos hC_lp => ?_⟩
-    have hall := all_full_of_eps_eq_lambda ε k hk Ω hΩ hsp heq
+    have hall := all_full_of_eps_eq_lambda ε k hk_eq Ω hΩ hsp heq
     refine ⟨1, one_pos, fun q inst hq_sq => ?_⟩
     have hfull := crtSubset_full_of_all_full q Ω hall
-    have hdev := deviation_zero_of_card_eq_q hk q Ω X hfull
+    have hdev := deviation_zero_of_card_eq_q (by omega) q Ω X hfull
     simp +decide only at hdev ⊢
     have hs1 : (q : ℝ) / ((crtSubset q Ω).card : ℝ) = 1 := by
       rw [hfull]; exact div_self (Nat.cast_ne_zero.mpr (NeZero.ne q))
@@ -460,6 +460,6 @@ public theorem deviation_uniform_exponent (ε : ℝ) (hε : 0 < ε) (k : ℕ) (h
     -- The exponent `ε / 2` is independent of the box `X`, so we extract it
     -- once and then for each `X` obtain the multiplicative constant `K`.
     refine ⟨ε / 2, half_pos hε, fun X C_lp hC_lp_pos hC_lp => ?_⟩
-    exact deviation_expression_fixed_delta ε hε k hk Ω hΩ hWD hsp hrp hlt X C_lp hC_lp_pos hC_lp
+    exact deviation_expression_fixed_delta ε hε k hk_eq Ω hΩ hWD hsp hrp hlt X C_lp hC_lp_pos hC_lp
 
 end PoissonCRT

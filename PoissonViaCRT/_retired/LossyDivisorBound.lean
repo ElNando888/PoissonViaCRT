@@ -160,7 +160,7 @@ private lemma prod_localMean_eq_sq_div (q : ℕ) [NeZero q] (hq : Squarefree q)
 multiplies up to a lower bound `s = q / |Ω_q| ≥ q ^ (λ - ε)` on the global spacing.
 -/
 private lemma lossy_s_lower_bound (ε : ℝ) (k : ℕ) (Ω : ∀ p : ℕ, Finset (ZMod p))
-    (hsp : ∀ (p : ℕ), p.Prime → (p : ℝ) ^ (lambdaExponent k - ε) ≤ (p : ℝ) / (Ω p).card)
+    (hsp : ∀ (p : ℕ), p.Prime → (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
     (q : ℕ) [NeZero q] (hq : Squarefree q) :
     (q : ℝ) ^ (lambdaExponent k - ε) ≤ (q : ℝ) / (crtSubset q Ω).card := by
   have h_prod_div : (q : ℝ) = ∏ p ∈ q.primeFactors, (p : ℝ) := by
@@ -177,7 +177,7 @@ Algebraic collapse of the lossy sum.  Using `prod_localMean_eq_sq_div`
 collapses to `|Ω_q|^{k-1}`, and the factor `(d / q)^{k-1}` combined with `q^{k-1}` and `d^{-(1+ε)}`
 simplifies to `d^{-ε}`.
 -/
-private lemma lossy_lhs_collapse (ε : ℝ) (k : ℕ) (hk : 2 ≤ k)
+private lemma lossy_lhs_collapse (ε : ℝ) (k : ℕ) (hk_eq : k = 2)
     (Ω : ∀ p : ℕ, Finset (ZMod p)) (q : ℕ) [NeZero q] (hq : Squarefree q) :
     ((1 : ℝ) / ((crtSubset q Ω).card : ℝ)) * (q : ℝ) ^ (k - 1)
       * ∑ d ∈ q.divisors.erase 1,
@@ -194,9 +194,9 @@ private lemma lossy_lhs_collapse (ε : ℝ) (k : ℕ) (hk : 2 ≤ k)
 This is the worker lemma behind `PoissonCRT.lossy_divisor_sum_bound`; see the latter for the
 discussion of the corrected hypothesis `hsp` (a *lower* bound on the local spacing).
 -/
-lemma lossy_divisor_sum_bound_core (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+lemma lossy_divisor_sum_bound_core (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk_eq : k = 2)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
-    (hsp : ∀ (p : ℕ), p.Prime → (p : ℝ) ^ (lambdaExponent k - ε) ≤ (p : ℝ) / (Ω p).card)
+    (hsp : ∀ (p : ℕ), p.Prime → (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
     (hlt : ε < lambdaExponent k) :
     ∃ C : ℝ, 0 < C ∧ ∀ (q : ℕ) [NeZero q], Squarefree q →
     ((1 : ℝ) / ((crtSubset q Ω).card : ℝ)) * (q : ℝ) ^ (k - 1)

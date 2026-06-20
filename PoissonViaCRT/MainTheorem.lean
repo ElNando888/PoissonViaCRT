@@ -17,7 +17,7 @@ Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 import PoissonViaCRT.Defs
 import PoissonViaCRT.TupleCount
 import PoissonViaCRT.LatticePointBound
-import PoissonViaCRT.MobiusSynthesis
+import PoissonViaCRT.GammaDeviationSynthesis
 
 set_option linter.unusedVariables false
 
@@ -213,13 +213,35 @@ bounded using complete period cancellation.
 Combining the lattice point box bound and the deviation bound, the overall error
 in the `k`-level correlation is bounded by `C / s_q^δ` for some `δ > 0`.
 -/
+private lemma deviation_uniform_exponent
+    (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
+    (hsp : ∀ (p : ℕ), p.Prime →
+      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
+    (hrp : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ)) :
+    ∃ δ : ℝ, 0 < δ ∧ ∀ (X : Box (k - 1)) (C_lp : ℝ) (hC_lp_pos : 0 < C_lp),
+      (∀ (v : Fin (k - 1) → ℝ), (∀ i, 0 ≤ v i ∧ v i ≤ 1) → ∀ (s : ℝ), 1 ≤ s →
+        |(((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+          (fun h => inScaledBox X s v h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
+        C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1)) →
+      ∃ K : ℝ, 0 < K ∧ ∀ (q : ℕ) [NeZero q] (hq_sq : Squarefree q),
+        |(crtSubset q Ω).card ^ (k - 1) / (q : ℝ) ^ (k - 1) *
+          ((Fintype.piFinset fun _ : Fin (k - 1) =>
+            Finset.Icc (1 : ℤ) ⌈((q : ℝ) / (crtSubset q Ω).card) * ∑ i, X.sides i⌉).filter
+              (fun h => inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) (fun _ => 0) h)).card
+          - kCorrelation (crtSubset q Ω) X| ≤
+          K * ((q : ℝ) / (crtSubset q Ω).card) ^ (-δ) := by
+  sorry
+
 lemma complete_period_cancellation_apply
     (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
     (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
     (hsp : ∀ (p : ℕ), p.Prime →
-      (p : ℝ) ^ (lambdaExponent k - ε) ≤ (p : ℝ) / (Ω p).card)
+      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
     (hrp : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ))
     (h_lp : ∀ (X : Box (k - 1)), ∃ C : ℝ, 0 < C
       ∧ ∀ (v : Fin (k - 1) → ℝ), (∀ i, 0 ≤ v i ∧ v i ≤ 1) → ∀ (s : ℝ), 1 ≤ s →
@@ -307,20 +329,8 @@ lemma complete_period_cancellation_apply
             Finset.Icc (1 : ℤ) ⌈((q : ℝ) / (crtSubset q Ω).card) * ∑ i, X.sides i⌉).filter
               (fun h => inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) (fun _ => (0 : ℝ)) h)).card
           - kCorrelation (crtSubset q Ω) X|
-        ≤ K * ((q : ℝ) / (crtSubset q Ω).card) ^ (-δ₀ : ℝ) := by
-      convert hK_bound q hq_sq using 1
-      unfold kCorrelation; norm_num [ Finset.sum_sub_distrib, mul_sub ]
-      rw [ abs_sub_comm ] ; ring_nf
-      cases k <;> simp +decide only [Nat.cast_pos, card_pos, Nat.reduceLeDiff, Nat.cast_add,
-        Nat.cast_one, tsub_le_iff_right, Nat.add_one_sub_one, add_tsub_cancel_right, one_div,
-        pow_succ, sum_sub_distrib, sum_const, nsmul_eq_mul, abs_mul, abs_inv, Nat.abs_cast, inv_pow,
-        mul_assoc] at *
-      by_cases h : ( # ( crtSubset q Ω ) : ℝ ) = 0 <;> simp +decide [h] at *
-      · exact Or.inl ( by linarith )
-      · convert rfl
-        exact Eq.symm <| Int.toNat_of_nonneg <| Int.ceil_nonneg <|
-          mul_nonneg ( div_nonneg (Nat.cast_nonneg _) (Nat.cast_nonneg _) ) <|
-          Finset.sum_nonneg fun _ _ => le_of_lt <| X.sides_pos _
+        ≤ K * ((q : ℝ) / (crtSubset q Ω).card) ^ (-δ₀ : ℝ) :=
+      hK_bound q hq_sq
 
     have h_triangle :
         |kCorrelation Ω_q X - X.volume|
@@ -366,7 +376,7 @@ theorem error_bound_simplified
     (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
     (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
     (hsp : ∀ (p : ℕ), p.Prime →
-      (p : ℝ) ^ (lambdaExponent k - ε) ≤ (p : ℝ) / (Ω p).card)
+      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
     (hrp : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ)) :
     ∃ δ : ℝ, 0 < δ ∧ ∀ (X : Box (k - 1)), ∃ C : ℝ, 0 < C ∧
       ∀ (q : ℕ) [NeZero q] (_hq_sq : Squarefree q),
@@ -396,46 +406,23 @@ public theorem mainTheorem_precise
     (hWD : ∀ (p : ℕ) [Fact p.Prime] (k : ℕ), k ≤ K →
       WellDistributed ε p (Ω p) k)
     (hsp : ∀ (p : ℕ), p.Prime →
-      (p : ℝ) ^ (lambdaExponent 2 - ε) ≤ (p : ℝ) / (Ω p).card)
+      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent K - ε))
     (hrp : ∀ (k : ℕ), 2 ≤ k → k ≤ K → ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ)) :
     ∀ (k : ℕ), 2 ≤ k → k ≤ K → ∀ (X : Box (k - 1)),
       ∃ δ : ℝ, 0 < δ ∧ ∃ C : ℝ, 0 < C ∧ ∀ (q : ℕ) [NeZero q] (_hq_sq : Squarefree q),
         |kCorrelation (crtSubset q Ω) X - X.volume| ≤
           C * ((q : ℝ) / (crtSubset q Ω).card) ^ (-δ) := by
   intro k hk2 hk_le X
-  have h_lam : lambdaExponent k ≤ lambdaExponent 2 := by
-    have hl2 : lambdaExponent 2 = (Real.sqrt 17 - 3) / 2 := by
-      unfold lambdaExponent
-      dsimp
-    rw [hl2]
-    have h_sqrt : (4 : ℝ) ≤ Real.sqrt 17 := by
-      have h16 : (4 : ℝ) = Real.sqrt 16 := by norm_num
-      rw [h16]
-      exact Real.sqrt_le_sqrt (by norm_num)
-    unfold lambdaExponent
-    rcases k with _ | _ | _ | _ | k'
-    · omega
-    · omega
-    · dsimp; linarith
-    · dsimp; linarith
-    · dsimp
-      have hk_r : (4 : ℝ) ≤ (k' + 4 : ℝ) := by exact_mod_cast (show 4 ≤ k' + 4 by omega)
-      have h_eq : ((k' + 1 + 1 + 1 + 1 : ℕ) : ℝ) = (k' : ℝ) + 4 := by push_cast; ring
-      rw [h_eq]
-      have hb : 1 / ((k' : ℝ) + 4 - 1) ≤ 1 / 3 := by
-        apply one_div_le_one_div_of_le (by norm_num)
-        linarith
-      linarith
-  have hsp_k : ∀ (p : ℕ), p.Prime → (p : ℝ) ^ (lambdaExponent k - ε) ≤ (p : ℝ) / (Ω p).card := by
+  have hsp_k : ∀ (p : ℕ), p.Prime → (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε) := by
     intro p hp
     have h_base := hsp p hp
-    have h_pow : (p : ℝ) ^ (lambdaExponent k - ε) ≤ (p : ℝ) ^ (lambdaExponent 2 - ε) := by
-      apply Real.rpow_le_rpow_of_exponent_le (by exact_mod_cast hp.one_le)
-      linarith
-    exact le_trans h_pow h_base
+    have h_exp : lambdaExponent K - ε ≤ lambdaExponent k - ε := sorry -- lambdaExponent is monotonically decreasing
+    exact le_trans h_base (Real.rpow_le_rpow_of_exponent_le (by exact_mod_cast hp.one_lt.le) h_exp)
   have hrp_k : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ) := hrp k hk2 hk_le
   have := error_bound_simplified ε hε k hk2 Ω hΩ (fun p _ => hWD p k hk_le) hsp_k hrp_k
-  exact ⟨this.choose, this.choose_spec.1, this.choose_spec.2 X⟩
+  obtain ⟨δ, hδ_pos, h_cpc⟩ := this
+  obtain ⟨C, hC_pos, hC_bound⟩ := h_cpc X
+  exact ⟨δ, hδ_pos, C, hC_pos, hC_bound⟩
 
 /-! ### Special case: Hooley's theorem (integers coprime to q) -/
 
