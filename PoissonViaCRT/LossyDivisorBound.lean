@@ -50,7 +50,28 @@ A negative real power eventually dominates the logarithm: for `a > 0` the functi
 -/
 private lemma rpow_neg_mul_log_bounded_gen (k : ℕ) {a : ℝ} (ha : 0 < a) :
     ∃ C : ℝ, 0 ≤ C ∧ ∀ x : ℝ, 1 ≤ x → x ^ (-a) * (Real.log x + 1) ^ (k - 1) ≤ C := by
-  sorry
+  by_cases hk : k ≤ 1;
+  · interval_cases k <;> use 1 <;> norm_num; all_goals exact fun x hx => by simpa using Real.rpow_le_rpow_of_exponent_le hx ( neg_nonpos.mpr ha.le ) ;
+  · -- Set $b := a / (k - 1)$, so $b > 0$ and $b * (k - 1) = a$.
+    set b : ℝ := a / (k - 1)
+    have hb_pos : 0 < b := by
+      exact div_pos ha ( sub_pos.mpr ( Nat.one_lt_cast.mpr ( lt_of_not_ge hk ) ) )
+    have hb_mul : b * (k - 1) = a := by
+      rw [ div_mul_cancel₀ _ ( sub_ne_zero_of_ne ( by norm_cast; linarith ) ) ];
+    -- Key pointwise bound: for $x \geq 1$, $\log x + 1 \leq (1/b + 1) * x^b$.
+    have h_bound : ∀ x : ℝ, 1 ≤ x → Real.log x + 1 ≤ (1 / b + 1) * x ^ b := by
+      -- First, we have $\log x \leq x^b / b$.
+      have h_log_bound : ∀ x : ℝ, 1 ≤ x → Real.log x ≤ x ^ b / b := by
+        intro x hx; rw [ le_div_iff₀ hb_pos ] ; have := Real.log_le_sub_one_of_pos ( by positivity : 0 < x ^ b ) ; rw [ Real.log_rpow ( by positivity ) ] at this; nlinarith;
+      intro x hx; convert add_le_add ( h_log_bound x hx ) ( show 1 ≤ x ^ b from Real.one_le_rpow hx hb_pos.le ) using 1 ; ring;
+    -- Therefore, $x^{-a} * (\log x + 1)^{k-1} \leq x^{-a} * ((1/b + 1) * x^b)^{k-1}$.
+    have h_ineq : ∀ x : ℝ, 1 ≤ x → x ^ (-a) * (Real.log x + 1) ^ (k - 1) ≤ x ^ (-a) * ((1 / b + 1) * x ^ b) ^ (k - 1) := by
+      exact fun x hx => mul_le_mul_of_nonneg_left ( pow_le_pow_left₀ ( by linarith [ Real.log_nonneg hx ] ) ( h_bound x hx ) _ ) ( by positivity );
+    -- Simplify the right-hand side: $x^{-a} * ((1/b + 1) * x^b)^{k-1} = (1/b + 1)^{k-1} * x^{-a + b(k-1)}$.
+    have h_simplify : ∀ x : ℝ, 1 ≤ x → x ^ (-a) * ((1 / b + 1) * x ^ b) ^ (k - 1) = (1 / b + 1) ^ (k - 1) * x ^ (-a + b * (k - 1)) := by
+      intro x hx; rw [ mul_pow, Real.rpow_add ( by positivity ), Real.rpow_mul ( by positivity ) ] ; norm_cast; ring_nf;
+      rw [ Int.subNatNat_of_le ( by linarith ) ] ; norm_cast;
+    exact ⟨ ( 1 / b + 1 ) ^ ( k - 1 ), by positivity, fun x hx => le_trans ( h_ineq x hx ) ( by rw [ h_simplify x hx, hb_mul ] ; norm_num ) ⟩
 
 /-
 **Step 2a.** The summand `k^{ω(d)} · d^{-ε} · (log d + 1)^{k-1}` is bounded by a constant,
@@ -61,7 +82,52 @@ while `d^{-ε/2} · (log d + 1)^{k-1} ≤ C₂` by `rpow_neg_mul_log_bounded_gen
 private lemma lossy_summand_bound_gen (ε : ℝ) (hε : 0 < ε) (k : ℕ) :
     ∃ C : ℝ, 0 < C ∧ ∀ d : ℕ, d ≠ 0 →
       (k : ℝ) ^ d.primeFactors.card * (d : ℝ) ^ (-ε) * (Real.log (d : ℝ) + 1) ^ (k - 1) ≤ C := by
-  sorry
+  by_cases hk : k = 0 ∨ k = 1;
+  · cases hk <;> simp_all +decide [ Real.rpow_neg ];
+    · exact ⟨ 1, by norm_num, fun d hd => by cases h : #d.primeFactors <;> aesop ⟩;
+    · exact ⟨ 1, zero_lt_one, fun d hd => inv_le_one_of_one_le₀ <| Real.one_le_rpow ( mod_cast Nat.one_le_iff_ne_zero.mpr hd ) hε.le ⟩;
+  · -- By `two_pow_primeFactors_card_le_tau` and `Real.rpow_logb` we bound $k^{\omega(d)}$ by $C₀ \cdot d^{\varepsilon/2}$.
+    have h_bound_k : ∃ C₀ : ℝ, 0 < C₀ ∧ ∀ d : ℕ, d ≠ 0 → (k : ℝ) ^ (d.primeFactors.card) ≤ C₀ * (d : ℝ) ^ (ε / 2) := by
+      -- By `two_pow_primeFactors_card_le_tau` and `Real.rpow_logb` we bound $k^{\omega(d)}$ by $C₀ \cdot d^{\varepsilon/2}$ for some $C₀ > 0$.
+      have h_bound_k : ∃ C₀ : ℝ, 0 < C₀ ∧ ∀ d : ℕ, d ≠ 0 → (2 : ℝ) ^ (d.primeFactors.card * (Real.log k / Real.log 2)) ≤ C₀ * (d : ℝ) ^ (ε / 2) := by
+        have h_bound_k : ∃ C₀ : ℝ, 0 < C₀ ∧ ∀ d : ℕ, d ≠ 0 → (d.divisors.card : ℝ) ^ (Real.log k / Real.log 2) ≤ C₀ * (d : ℝ) ^ (ε / 2) := by
+          have h_bound_k : ∃ C₀ : ℝ, 0 < C₀ ∧ ∀ d : ℕ, d ≠ 0 → (d.divisors.card : ℝ) ≤ C₀ * (d : ℝ) ^ (ε / (2 * (Real.log k / Real.log 2))) := by
+            have := PoissonCRT.divisorCount_subpoly ( show 0 < ε / ( 2 * ( Real.log k / Real.log 2 ) ) by exact div_pos hε ( mul_pos zero_lt_two ( div_pos ( Real.log_pos ( Nat.one_lt_cast.mpr ( Nat.one_lt_iff_ne_zero_and_ne_one.mpr ⟨ by tauto, by tauto ⟩ ) ) ) ( Real.log_pos one_lt_two ) ) ) );
+            exact ⟨ Max.max this.choose 1, by positivity, fun n hn => le_trans ( this.choose_spec n ) ( mul_le_mul_of_nonneg_right ( le_max_left _ _ ) ( by positivity ) ) ⟩;
+          obtain ⟨ C₀, hC₀₁, hC₀₂ ⟩ := h_bound_k; use C₀ ^ ( Real.log k / Real.log 2 ), Real.rpow_pos_of_pos hC₀₁ _, fun d hd => ?_; convert Real.rpow_le_rpow ( by positivity ) ( hC₀₂ d hd ) ( show 0 ≤ Real.log k / Real.log 2 by exact div_nonneg ( Real.log_nonneg ( Nat.one_le_cast.mpr ( Nat.pos_of_ne_zero ( by tauto ) ) ) ) ( Real.log_nonneg ( by norm_num ) ) ) using 1 ; ring_nf;
+          rw [ Real.mul_rpow ( by positivity ) ( by positivity ), ← Real.rpow_mul ( by positivity ) ] ; ring_nf;
+          norm_num [ mul_assoc, mul_comm, mul_left_comm, ne_of_gt, Real.log_pos, show k > 1 from lt_of_le_of_ne ( Nat.succ_le_of_lt ( Nat.pos_of_ne_zero ( by tauto ) ) ) ( Ne.symm ( by tauto ) ) ]
+          left
+          have h1k : 1 < k := by omega
+          have hlk : Real.log (k : ℝ) ≠ 0 :=
+            ne_of_gt (Real.log_pos (by exact_mod_cast h1k))
+          rw [mul_inv_cancel₀ hlk, mul_one]
+        refine' ⟨ h_bound_k.choose, h_bound_k.choose_spec.1, fun d hd => le_trans _ ( h_bound_k.choose_spec.2 d hd ) ⟩;
+        convert Real.rpow_le_rpow ( by positivity ) ( two_pow_primeFactors_card_le_tau hd ) ( show 0 ≤ Real.log k / Real.log 2 by exact div_nonneg ( Real.log_nonneg ( mod_cast Nat.one_le_iff_ne_zero.mpr <| by tauto ) ) ( Real.log_nonneg ( by norm_num ) ) ) using 1 ; norm_num [ Real.rpow_mul ];
+      convert h_bound_k using 6;
+      rw [ mul_div, Real.rpow_def_of_pos ( by positivity ), mul_comm ] ; norm_num;
+      rw [ Real.exp_nat_mul, Real.exp_log ( Nat.cast_pos.mpr ( Nat.pos_of_ne_zero ( by tauto ) ) ) ];
+    -- By `rpow_neg_mul_log_bounded_gen` we bound $(\log d + 1)^{k-1}$ by $C₂ \cdot d^{\varepsilon/2}$.
+    have h_bound_log : ∃ C₂ : ℝ, 0 < C₂ ∧ ∀ d : ℕ, d ≠ 0 → (Real.log d + 1) ^ (k - 1) ≤ C₂ * (d : ℝ) ^ (ε / 2) := by
+      obtain ⟨ C₂, hC₂ ⟩ := rpow_neg_mul_log_bounded_gen k ( show 0 < ε / 2 by linarith );
+      refine' ⟨ Max.max C₂ 1, by positivity, fun d hd => _ ⟩ ; specialize hC₂ ; rcases d with ( _ | _ | d ) <;> norm_num at *;
+      have := hC₂.2 ( d + 1 + 1 ) ( by linarith ) ; rw [ Real.rpow_neg ( by linarith ) ] at this; rw [ inv_mul_le_iff₀ ( by positivity ) ] at this; nlinarith [ le_max_left C₂ 1, le_max_right C₂ 1, Real.rpow_pos_of_pos ( by linarith : 0 < ( d:ℝ ) + 1 + 1 ) ( ε / 2 ) ] ;
+    obtain ⟨ C₀, hC₀_pos, hC₀ ⟩ := h_bound_k
+    obtain ⟨ C₂, hC₂_pos, hC₂ ⟩ := h_bound_log
+    refine ⟨ C₀ * C₂, mul_pos hC₀_pos hC₂_pos, fun d hd => ?_ ⟩
+    have hd0 : (0 : ℝ) < (d : ℝ) := by exact_mod_cast Nat.pos_of_ne_zero hd
+    have hd1 : (1 : ℝ) ≤ (d : ℝ) := by exact_mod_cast Nat.one_le_iff_ne_zero.mpr hd
+    have hlog : (0 : ℝ) ≤ Real.log (d : ℝ) + 1 := by
+      have := Real.log_nonneg hd1; linarith
+    have key : (k : ℝ) ^ d.primeFactors.card * (d : ℝ) ^ (-ε) * (Real.log (d : ℝ) + 1) ^ (k - 1)
+        ≤ (C₀ * (d : ℝ) ^ (ε / 2)) * (d : ℝ) ^ (-ε) * (C₂ * (d : ℝ) ^ (ε / 2)) := by
+      refine mul_le_mul (mul_le_mul_of_nonneg_right (hC₀ d hd) (by positivity)) (hC₂ d hd)
+        (pow_nonneg hlog _) (by positivity)
+    refine le_trans key ?_
+    rw [show (C₀ * (d : ℝ) ^ (ε / 2)) * (d : ℝ) ^ (-ε) * (C₂ * (d : ℝ) ^ (ε / 2))
+          = C₀ * C₂ * ((d : ℝ) ^ (ε / 2) * (d : ℝ) ^ (ε / 2) * (d : ℝ) ^ (-ε)) from by ring]
+    rw [← Real.rpow_add hd0, ← Real.rpow_add hd0,
+      show ε / 2 + ε / 2 + (-ε) = 0 by ring, Real.rpow_zero, mul_one]
 
 /-
 The cardinality of the CRT subset factors as a product of local cardinalities
