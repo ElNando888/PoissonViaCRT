@@ -416,7 +416,19 @@ public theorem mainTheorem_precise
   have hsp_k : ∀ (p : ℕ), p.Prime → (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε) := by
     intro p hp
     have h_base := hsp p hp
-    have h_exp : lambdaExponent K - ε ≤ lambdaExponent k - ε := sorry -- lambdaExponent is monotonically decreasing
+    have h_lam : lambdaExponent K ≤ lambdaExponent k := by
+      unfold lambdaExponent; split_ifs
+      any_goals linarith
+      any_goals rw [ div_le_div_iff₀ ] <;>
+        nlinarith [ Real.sqrt_nonneg 17, Real.sq_sqrt ( show 0 ≤ 17 by norm_num ),
+          show ( k : ℝ ) ≥ 2 by norm_cast, show ( K : ℝ ) ≥ k by norm_cast ]
+      · omega
+      · omega
+      · rw [ div_le_div_iff₀ ] <;>
+          nlinarith [ Real.sqrt_nonneg 17, Real.sq_sqrt ( show 0 ≤ 17 by norm_num ),
+            show ( K : ℝ ) ≥ 4 by norm_cast; omega ]
+      · rw [ div_le_div_iff₀ ] <;> linarith [ show ( K : ℝ ) ≥ 4 by norm_cast; omega ]
+    have h_exp : lambdaExponent K - ε ≤ lambdaExponent k - ε := sub_le_sub_right h_lam _
     exact le_trans h_base (Real.rpow_le_rpow_of_exponent_le (by exact_mod_cast hp.one_lt.le) h_exp)
   have hrp_k : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ) := hrp k hk2 hk_le
   have := error_bound_simplified ε hε k hk2 Ω hΩ (fun p _ => hWD p k hk_le) hsp_k hrp_k
