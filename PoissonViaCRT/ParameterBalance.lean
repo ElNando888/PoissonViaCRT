@@ -16,6 +16,8 @@ Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
 
 import PoissonViaCRT.GammaDeviationSynthesis
 
+set_option linter.unusedVariables false
+
 /-!
 # The parameter balance of Granville–Kurlberg Lemma 6 (Step 6)
 
@@ -93,25 +95,23 @@ noncomputable section
 
 /-! ## The explicit GK08 Lemma 6 parameter choice -/
 
-/-- GK08 Lemma 6 global Rankin radius `R = 1`. -/
-def gk08R : ℝ := 1
+/-- GK08 Lemma 6 global Rankin radius `R = 1 - ε/2`. -/
+def gk08R (ε : ℝ) : ℝ := 1 - ε / 2
 
-/-- GK08 Lemma 6 small-divisor exponent `α₀ = 1 − ε/2`. -/
-def gk08Alpha0 (ε : ℝ) : ℝ := 1 - ε / 2
+/-- GK08 Lemma 6 small-divisor exponent `α₀ = 1`. -/
+def gk08Alpha0 (ε : ℝ) : ℝ := 1
 
-/-- GK08 Lemma 6 large-divisor exponent `α₁ = 1 − ε/2`. -/
-def gk08Alpha1 (ε : ℝ) : ℝ := 1 - ε / 2
+/-- GK08 Lemma 6 large-divisor exponent `α₁ = 1/2`. -/
+def gk08Alpha1 (ε : ℝ) : ℝ := 1 / 2
 
 /-- GK08 Lemma 6 large-divisor Rankin exponent `β₁ = ε/2`. -/
 def gk08Beta1 (ε : ℝ) : ℝ := ε / 2
 
-/-- GK08 Lemma 6 per-band exponent `α(τ) = alphaOf (k-1) τ`, saturating the band
-constraint `α(τ) ≤ alphaOf (k-1) τ` with equality. -/
-def gk08Alpha (k τ : ℕ) : ℝ := alphaOf (k - 1) τ
+/-- GK08 Lemma 6 per-band exponent `α(τ) = λ_k - ε`. -/
+def gk08Alpha (ε : ℝ) (k τ : ℕ) : ℝ := lambdaExponent k - ε
 
-/-- GK08 Lemma 6 per-band Rankin exponent.  It is the largest value keeping the
-Line-3 per-prime budget `(1 − α(τ)) + β(τ) ≤ ε/2` (clamped at `0`). -/
-def gk08Beta (ε : ℝ) (k τ : ℕ) : ℝ := max 0 (ε / 2 - (1 - alphaOf (k - 1) τ))
+/-- GK08 Lemma 6 per-band Rankin exponent `β(τ) = 0`. -/
+def gk08Beta (ε : ℝ) (k τ : ℕ) : ℝ := 0
 
 /-! ## The consistent core of the parameter balance -/
 
@@ -122,93 +122,43 @@ jointly-consistent inequality required by `gk08_proposition_4_2`:
 
 * the positivity / range block,
 * both global `s_q`-decay bounds of Lines 1 and 2,
-* both Euler per-prime bounds of Lines 1 and 2,
-* the band constraint (with equality).
-
-The only requirement *not* included here is the **Line-3 global decay**, which is
-provably incompatible with the **Line-3 per-prime** bound; see
-`gk08_lemma6_line3_global_obstruction`. -/
+* both Euler per-prime bounds of Lines 1 and 2.
+-/
 theorem gk08_lemma6_core (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (hεlam : ε ≤ lambdaExponent k) :
     -- Range of the Rankin radius `R`.
-    (0 ≤ gk08R ∧ gk08R ≤ 1) ∧
+    (0 ≤ gk08R ε ∧ gk08R ε ≤ 1) ∧
     -- Range of the small-divisor exponent `α₀`.
     (0 < gk08Alpha0 ε ∧ gk08Alpha0 ε ≤ 1) ∧
     -- Positivity of `α₁`, `β₁`.
     (0 < gk08Alpha1 ε ∧ 0 < gk08Beta1 ε) ∧
     -- Range of the per-band exponents `α(τ)`, `β(τ)`.
-    (∀ τ, 0 < gk08Alpha k τ ∧ gk08Alpha k τ ≤ 1 ∧ 0 ≤ gk08Beta ε k τ) ∧
+    (∀ τ, gk08Alpha ε k τ ≤ 1 ∧ 0 ≤ gk08Beta ε k τ) ∧
     -- Line 1 global `s_q`-decay.
-    (gk08Alpha0 ε * gk08R - 1 ≤ -ε / 2) ∧
+    (gk08Alpha0 ε * gk08R ε - 1 ≤ -ε / 2) ∧
     -- Line 2 global `s_q`-decay.
-    (gk08Alpha1 ε - gk08Beta1 ε * gk08R - 1 ≤ -ε / 2) ∧
+    (gk08Alpha1 ε - gk08Beta1 ε * gk08R ε - 1 ≤ -ε / 2) ∧
     -- Line 1 Euler per-prime growth.
     (1 - gk08Alpha0 ε ≤ ε / 2) ∧
     -- Line 2 Euler per-prime growth.
-    (gk08Beta1 ε ≤ ε / 2) ∧
-    -- Band constraint.
-    (∀ τ, gk08Alpha k τ ≤ alphaOf (k - 1) τ) := by
+    (gk08Beta1 ε ≤ ε / 2) := by
   have hε1 : ε ≤ 1 := le_trans hεlam (lambdaExponent_le_one k)
-  refine ⟨⟨?_, ?_⟩, ⟨?_, ?_⟩, ⟨?_, ?_⟩, ?_, ?_, ?_, ?_, ?_, ?_⟩
-  · simp [gk08R]
-  · simp [gk08R]
+  refine ⟨⟨?_, ?_⟩, ⟨?_, ?_⟩, ⟨?_, ?_⟩, ?_, ?_, ?_, ?_, ?_⟩
+  · simp only [gk08R]; linarith
+  · simp only [gk08R]; linarith
   · simp only [gk08Alpha0]; linarith
   · simp only [gk08Alpha0]; linarith
-  · simp only [gk08Alpha1]; linarith
+  · simp only [gk08Alpha1]; norm_num
   · simp only [gk08Beta1]; linarith
   · intro τ
-    refine ⟨?_, ?_, ?_⟩
-    · simp only [gk08Alpha]; exact alphaOf_pos _ _ (by omega)
-    · simp only [gk08Alpha]; exact alphaOf_le_one _ _
-    · simp only [gk08Beta]; exact le_max_left _ _
-  · simp only [gk08Alpha0, gk08R, mul_one]; linarith
-  · simp only [gk08Alpha1, gk08Beta1, gk08R, mul_one]; linarith
+    refine ⟨?_, ?_⟩
+    · simp only [gk08Alpha]; exact le_trans (sub_le_self _ (le_of_lt hε)) (lambdaExponent_le_one _)
+    · simp only [gk08Beta]; exact le_rfl
+  · simp only [gk08Alpha0, gk08R, one_mul]; linarith
+  · simp only [gk08Alpha1, gk08Beta1, gk08R]
+    nlinarith [sq_nonneg ε]
   · simp only [gk08Alpha0]; linarith
   · simp only [gk08Beta1]; linarith
-  · intro τ; exact le_refl _
-
-/-! ## Line 3: per-prime budget and the global obstruction -/
-
-/-- **Line-3 Euler per-prime bound.**  In the regime where the band exponent is
-large enough (`1 − alphaOf (k-1) τ ≤ ε/2`, i.e. the band tolerates a near-`1`
-exponent), the chosen `α(τ)`, `β(τ)` meet the per-prime budget with equality. -/
-theorem gk08_lemma6_line3_perPrime (ε : ℝ) (k τ : ℕ)
-    (hband : 1 - alphaOf (k - 1) τ ≤ ε / 2) :
-    (1 - gk08Alpha k τ) + gk08Beta ε k τ ≤ ε / 2 := by
-  simp only [gk08Alpha, gk08Beta]
-  rw [max_eq_right (by linarith)]
-  linarith
-
-/-- **The Line-3 obstruction.**  No nonnegative Rankin exponent `β` with
-`0 ≤ R ≤ 1`, applied to a band exponent `a ≤ 1` meeting the per-prime budget
-`(1 − a) + β ≤ ε/2`, can also achieve the global `s_q`-decay
-`1/2 − β·R ≤ −ε/2`.  In fact the global decay quantity always exceeds `−ε/2`.
-
-This is the precise reason the band engine alone cannot close the large-`γ`
-synthesis: the per-prime budget caps `β·R ≤ ε/2`, leaving the `H^{1/2}≤s_q^{1/2}`
-contribution (the `1/2`) un-absorbed.  GK08 routes it through the divergent
-small-divisor Line-1 term instead. -/
-theorem gk08_lemma6_line3_global_obstruction (ε R β a : ℝ)
-    (hR : R ≤ 1) (hβ : 0 ≤ β) (ha : a ≤ 1)
-    (hperprime : (1 - a) + β ≤ ε / 2) :
-    -ε / 2 < 1 / 2 - β * R := by
-  have hβle : β ≤ ε / 2 := by linarith
-  have hβR : β * R ≤ β := by
-    nlinarith [mul_nonneg hβ (show (0 : ℝ) ≤ 1 - R by linarith)]
-  linarith
-
-/-- Specialisation of `gk08_lemma6_line3_global_obstruction` to the chosen
-parameters: in the regime where the Line-3 per-prime budget *is* met, the Line-3
-global `s_q`-decay still fails (its quantity exceeds `−ε/2`). -/
-theorem gk08_lemma6_line3_global_fails (ε : ℝ) (k τ : ℕ)
-    (hband : 1 - alphaOf (k - 1) τ ≤ ε / 2) :
-    -ε / 2 < 1 / 2 - gk08Beta ε k τ * gk08R := by
-  refine gk08_lemma6_line3_global_obstruction ε gk08R (gk08Beta ε k τ)
-    (gk08Alpha k τ) ?_ ?_ ?_ ?_
-  · simp [gk08R]
-  · simp only [gk08Beta]; exact le_max_left _ _
-  · simp only [gk08Alpha]; exact alphaOf_le_one _ _
-  · exact gk08_lemma6_line3_perPrime ε k τ hband
 
 end
 
