@@ -877,7 +877,7 @@ lemma gamma_sum_frac_le (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
       · unfold radical; norm_num [ Finset.prod_mul_distrib, mul_assoc, mul_comm, mul_left_comm ] ;
         ring;
       · assumption;
-      · sorry;
+      · exact (Finset.mem_filter.mp hx).2;
     · exact mul_nonneg ( Nat.cast_nonneg _ ) ( sub_nonneg.2 <| div_le_one_of_le₀ ( mod_cast hΩle p <| hT_prime p hp ) <| Nat.cast_nonneg _ );
     · refine' mul_nonneg ( mul_nonneg _ _ ) _ <;> norm_num;
       · exact div_le_one_of_le₀ ( mod_cast hΩle p ( hT_prime p hp ) ) ( Nat.cast_nonneg _ );
@@ -945,7 +945,7 @@ lemma gamma_sum_frac_le_upper (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
         rw [ perGammaDeviationWeight_eq_of_subset ];
         · unfold radical; simp +decide [ Finset.prod_mul_distrib, mul_assoc, mul_comm, mul_left_comm, div_eq_mul_inv ] ;
         · assumption;
-        · sorry;
+        · exact (Finset.mem_filter.mp hx).2;
     · exact fun p hp => mul_nonneg ( Nat.cast_nonneg _ ) ( sub_nonneg.2 <| div_le_one_of_le₀ ( mod_cast hΩle p <| hT_prime p hp ) <| Nat.cast_nonneg _ );
     · intro p hp; apply_rules [ mul_nonneg, sub_nonneg.2, div_le_one_of_le₀, hΩle p ( hT_prime p hp ) ] ;
       · exact_mod_cast hΩle p ( hT_prime p hp );
@@ -996,7 +996,7 @@ lemma gamma_sum_sharp_le (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     · rw [ perGammaDeviationWeight_eq_of_subset ];
       · norm_num [ Finset.prod_mul_distrib, Finset.prod_pow_eq_pow_sum, radical ] ; ring;
       · assumption;
-      · sorry;
+      · exact (Finset.mem_filter.mp hγ).2;
     · apply_rules [ mul_nonneg, Finset.prod_nonneg ];
       · exact fun p hp => mul_nonneg ( mul_nonneg ( Nat.cast_nonneg _ ) ( Nat.cast_nonneg _ ) ) ( sub_nonneg.2 <| div_le_one_of_le₀ ( mod_cast hΩle p <| hT_prime p <| Finset.mem_filter.mp hp |>.1 ) <| Nat.cast_nonneg _ );
       · intro p hp; refine' mul_nonneg ( mul_nonneg _ _ ) _ <;> norm_num;
