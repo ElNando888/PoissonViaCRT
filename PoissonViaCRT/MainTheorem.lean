@@ -21,6 +21,7 @@ import PoissonViaCRT.GammaDeviationSynthesis
 import PoissonViaCRT.ParameterBalance
 import PoissonViaCRT.CRTMultiplicativity
 import PoissonViaCRT.ProductDifference
+import PoissonViaCRT.HardCaseSynthesis
 
 set_option linter.unusedVariables false
 
@@ -285,6 +286,87 @@ private lemma residue_prod_localDeviation_sum_zero {m : ℕ} (Ω : ∀ p : ℕ, 
     exact congr_arg₂ _ rfl ( funext fun i => by exact ( box_period_equiv_apply_eq_castHom d hd _ _ _ ) ▸ rfl );
   convert deviation_sum_pullback d hd_pos Ω m using 1
 
+/-- **Small-divisor regime of `T_sum_decay`.** The part of the subset-deviation
+sum restricted to subsets `T` with `∏_{p∈T} p ≤ s_q ^ (1 - ε/2)` is bounded by
+`K · s_q^{-ε/2}` uniformly in `q`.
+
+For these small divisors one must *not* take absolute values inside the `h`-sum
+(that would destroy cancellation). Instead the signed `h`-sum is bounded directly
+using complete-period cancellation modulo `d = ∏_{p∈T} p`
+(`residue_prod_localDeviation_sum_zero` / `divisor_boundary_bound`): the full
+periods vanish exactly, leaving only the lattice-point boundary error controlled
+by `hlp` (the constant `C_lp`), which supplies the `s_q^{-1}` saving (relative to
+the `s_q^{k-1}` main term). Rankin's trick for `d ≤ s_q^{1-ε/2}` (multiplying by
+`(s_q^{1-ε/2}/d)^{α₀} ≥ 1` with `α₀ = 1`) makes the Euler product over the prime
+factors of `q` converge, pulling out `s_q^{(1-ε/2)·1}`. Combined with the `s_q^{-1}`
+boundary saving this gives the relative exponent `α₀·(1-ε/2) - 1 = -ε/2`, which
+`gk08_lemma6_core` certifies is `≤ -ε/2`. -/
+private lemma T_sum_decay_small
+    (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
+    (hsp : ∀ (p : ℕ), p.Prime →
+      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
+    (hrp : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ))
+    (X : Box (k - 1)) (C_lp : ℝ) (hC_lp_pos : 0 < C_lp)
+    (hlp : ∀ (v : Fin (k - 1) → ℝ), (∀ i, 0 ≤ v i ∧ v i ≤ 1) → ∀ (s : ℝ), 1 ≤ s →
+        |(((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+          (fun h => inScaledBox X s v h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
+        C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1)) :
+    ∃ K : ℝ, 0 < K ∧ ∀ (q : ℕ) [NeZero q] (hq_sq : Squarefree q),
+      (∑ T ∈ (q.primeFactors.powerset.filter (· ≠ ∅)).filter
+          (fun T : Finset ℕ => (∏ p ∈ T, (p : ℝ)) ≤
+            ((q : ℝ) / (crtSubset q Ω).card) ^ (1 - ε / 2)),
+        |∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+              Finset.Icc (1 : ℤ) ⌈((q : ℝ) / (crtSubset q Ω).card) * ∑ i, X.sides i⌉).filter
+            (fun h => inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) (fun _ => 0) h)),
+          (1 / ((crtSubset q Ω).card : ℝ)) *
+            ((∏ p ∈ T, (localCount Ω q
+                (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p - localMean k Ω p)) *
+              ∏ p ∈ q.primeFactors \ T, localMean k Ω p)|)
+      ≤ K * ((q : ℝ) / (crtSubset q Ω).card) ^ (-(ε / 2)) := by
+  sorry
+
+/-- **Large-divisor regime of `T_sum_decay`.** The part of the subset-deviation
+sum restricted to subsets `T` with `s_q ^ (1 - ε/2) < ∏_{p∈T} p` is bounded by
+`K · s_q^{-ε/2}` uniformly in `q`.
+
+For large divisors the crude tuple-count bound is sufficient: passing to absolute
+values inside the `h`-sum (`deviation_sum_le_gamma_sum`) and applying the
+large-divisor Proposition 4.2 estimate (`gk08_prop42_large_divisors`) yields the
+exponent `s_q^{α₁ - β₁·(1-ε/2)}` with `α₁ = 1/2`, `β₁ = ε/2`. After accounting for
+the `s_q^{k-1}` main-term normalisation, `gk08_lemma6_core` certifies
+`α₁ - β₁·(1-ε/2) - 1 ≤ -ε/2`; the convergent Euler products
+(`modifiedEulerWeight_le`, `euler_product_converges`) bound the remaining
+`q`-dependent factor by a `q`-independent constant. -/
+private lemma T_sum_decay_large
+    (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
+    (hsp : ∀ (p : ℕ), p.Prime →
+      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
+    (hrp : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ))
+    (X : Box (k - 1)) (C_lp : ℝ) (hC_lp_pos : 0 < C_lp)
+    (hlp : ∀ (v : Fin (k - 1) → ℝ), (∀ i, 0 ≤ v i ∧ v i ≤ 1) → ∀ (s : ℝ), 1 ≤ s →
+        |(((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+          (fun h => inScaledBox X s v h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
+        C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1)) :
+    ∃ K : ℝ, 0 < K ∧ ∀ (q : ℕ) [NeZero q] (hq_sq : Squarefree q),
+      (∑ T ∈ (q.primeFactors.powerset.filter (· ≠ ∅)).filter
+          (fun T : Finset ℕ => ¬ ((∏ p ∈ T, (p : ℝ)) ≤
+            ((q : ℝ) / (crtSubset q Ω).card) ^ (1 - ε / 2))),
+        |∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+              Finset.Icc (1 : ℤ) ⌈((q : ℝ) / (crtSubset q Ω).card) * ∑ i, X.sides i⌉).filter
+            (fun h => inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) (fun _ => 0) h)),
+          (1 / ((crtSubset q Ω).card : ℝ)) *
+            ((∏ p ∈ T, (localCount Ω q
+                (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p - localMean k Ω p)) *
+              ∏ p ∈ q.primeFactors \ T, localMean k Ω p)|)
+      ≤ K * ((q : ℝ) / (crtSubset q Ω).card) ^ (-(ε / 2)) := by
+  sorry
+
 /-- **Uniform decay of the subset-deviation sum.** With `δ = ε/2`, the sum over
 nonempty subsets `T` of the prime factors of `q` of the (cancellation-preserving)
 per-`T` lattice deviation is bounded by `K · s_q^{-ε/2}` uniformly in `q`.
@@ -295,7 +377,9 @@ sum over lattice points `h`, so the complete-period cancellation
 lattice-point boundary bound `hlp` (the constant `C_lp`) provides the genuine power
 saving `s_q^{-ε/2}`; the Rankin-balanced parameters of `gk08_lemma6_core` and the
 convergent Euler products (`modifiedEulerWeight_le`, `euler_product_converges`)
-control the remaining factors. -/
+control the remaining factors. The sum is split at `∏_{p∈T} p = s_q^{1-ε/2}` into
+the small-divisor regime (`T_sum_decay_small`) and the large-divisor regime
+(`T_sum_decay_large`). -/
 private lemma T_sum_decay
     (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
@@ -319,7 +403,13 @@ private lemma T_sum_decay
                 (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p - localMean k Ω p)) *
               ∏ p ∈ q.primeFactors \ T, localMean k Ω p)|)
       ≤ K * ((q : ℝ) / (crtSubset q Ω).card) ^ (-(ε / 2)) := by
-  sorry
+  obtain ⟨K₁, hK₁_pos, hK₁⟩ := T_sum_decay_small ε hε k hk Ω hΩ hWD hsp hrp X C_lp hC_lp_pos hlp
+  obtain ⟨K₂, hK₂_pos, hK₂⟩ := T_sum_decay_large ε hε k hk Ω hΩ hWD hsp hrp X C_lp hC_lp_pos hlp
+  refine ⟨K₁ + K₂, by linarith, fun q _ hq_sq => ?_⟩
+  rw [← Finset.sum_filter_add_sum_filter_not (q.primeFactors.powerset.filter (· ≠ ∅))
+        (fun T : Finset ℕ => (∏ p ∈ T, (p : ℝ)) ≤ ((q : ℝ) / (crtSubset q Ω).card) ^ (1 - ε / 2)),
+      add_mul]
+  exact add_le_add (hK₁ q hq_sq) (hK₂ q hq_sq)
 
 /--
 **Complete period cancellation application**: For a divisor `d > 1` of `q`,
