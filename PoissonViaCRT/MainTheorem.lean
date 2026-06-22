@@ -18,6 +18,9 @@ import PoissonViaCRT.Defs
 import PoissonViaCRT.TupleCount
 import PoissonViaCRT.LatticePointBound
 import PoissonViaCRT.GammaDeviationSynthesis
+import PoissonViaCRT.ParameterBalance
+import PoissonViaCRT.CRTMultiplicativity
+import PoissonViaCRT.ProductDifference
 
 set_option linter.unusedVariables false
 
@@ -205,6 +208,119 @@ lemma lattice_point_box_bound (m : ℕ) (X : Box m) :
         have : 0 ≤ s ^ ((m : ℤ) - 1) := zpow_nonneg (by linarith) _
         nlinarith
 
+/-
+**Algebraic deviation bridge.** For squarefree `q`, the difference between the
+scaled lattice-point main term and the `k`-correlation `kCorrelation` decomposes,
+via CRT multiplicativity of the counting function and the product-difference
+expansion, into a sum over nonempty subsets `T` of the prime factors of `q`.  Each
+summand is exactly the quantity bounded by `per_T_deviation_le_modifiedEulerWeight`.
+
+The proof writes both the main term and `kCorrelation` as `(1/|Ω_q|) · ∑_h (…)`
+over the same lattice-point set `S`, uses `counting_function_multiplicative` to factor
+`tupleCount (crtSubset q Ω) (Fin.cons 0 h) = ∏_{p ∣ q} localCount`, identifies
+`∏_{p ∣ q} localMean = |Ω_q|^k / q^{k-1}`, applies `prod_sub_prod_expansion`, swaps the
+(finite) `T`- and `h`-sums, and finishes with the triangle inequality over `T`.
+-/
+private lemma abs_main_sub_kCorrelation_le_T_sum (k : ℕ) (hk : 2 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (q : ℕ) [NeZero q] (hq : Squarefree q) (X : Box (k - 1)) :
+    |((crtSubset q Ω).card : ℝ) ^ (k - 1) / (q : ℝ) ^ (k - 1) *
+        (((Fintype.piFinset fun _ : Fin (k - 1) =>
+            Finset.Icc (1 : ℤ) ⌈((q : ℝ) / (crtSubset q Ω).card) * ∑ i, X.sides i⌉).filter
+              (fun h => inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) (fun _ => 0) h)).card : ℝ)
+        - kCorrelation (crtSubset q Ω) X|
+    ≤ ∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅),
+        |∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+              Finset.Icc (1 : ℤ) ⌈((q : ℝ) / (crtSubset q Ω).card) * ∑ i, X.sides i⌉).filter
+            (fun h => inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) (fun _ => 0) h)),
+          (1 / ((crtSubset q Ω).card : ℝ)) *
+            ((∏ p ∈ T, (localCount Ω q
+                (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p - localMean k Ω p)) *
+              ∏ p ∈ q.primeFactors \ T, localMean k Ω p)| := by
+  rw [ kCorrelation ];
+  rw [ Int.natCast_ceil_eq_ceil ];
+  · have h_prod_localMean : ∏ p ∈ q.primeFactors, localMean k Ω p = ((crtSubset q Ω).card : ℝ) ^ k / q ^ (k - 1) := by
+      grind +suggestions;
+    have h_main_term : (crtSubset q Ω).card ^ (k - 1) / (q : ℝ) ^ (k - 1) * ((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈(q : ℝ) / (crtSubset q Ω).card * ∑ i, X.sides i⌉).filter (inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) (fun _ => 0))).card = ∑ h ∈ (Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈(q : ℝ) / (crtSubset q Ω).card * ∑ i, X.sides i⌉).filter (inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) (fun _ => 0)), (1 / (crtSubset q Ω).card : ℝ) * (∏ p ∈ q.primeFactors, localMean k Ω p) := by
+      rcases k with ( _ | _ | k ) <;> simp_all +decide [ pow_succ, mul_assoc, mul_comm, mul_left_comm, div_eq_mul_inv ];
+      by_cases h : ( crtSubset q Ω ).card = 0 <;> simp_all +decide;
+      simp +decide [ mul_left_comm ( ( # ( crtSubset q Ω ) : ℝ ) ), ne_of_gt ( Finset.card_pos.mpr ( Finset.nonempty_of_ne_empty h ) ) ];
+    rw [ h_main_term, Finset.mul_sum _ _ _ ];
+    have h_prod_sub_prod_expansion : ∀ h : Fin (k - 1) → ℤ, ∏ p ∈ q.primeFactors, localMean k Ω p - ∏ p ∈ q.primeFactors, localCount Ω q (Fin.cons 0 fun i => (h i : ZMod q)) p = -∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅), (∏ p ∈ T, (localCount Ω q (Fin.cons 0 fun i => (h i : ZMod q)) p - localMean k Ω p)) * ∏ p ∈ q.primeFactors \ T, localMean k Ω p := by
+      intro h;
+      have := prod_sub_prod_expansion ( fun p => localCount Ω q ( Fin.cons 0 fun i => ( h i : ZMod q ) ) p ) ( fun p => localMean k Ω p ) q.primeFactors;
+      linarith;
+    have h_counting_function_multiplicative : ∀ h : Fin (k - 1) → ℤ, tupleCount (crtSubset q Ω) (Fin.cons 0 fun i => (h i : ZMod q)) = ∏ p ∈ q.primeFactors, localCount Ω q (Fin.cons 0 fun i => (h i : ZMod q)) p := by
+      intro h
+      have := counting_function_multiplicative (q := q) (Ω := Ω) (h := Fin.cons 0 fun i => (h i : ZMod q))
+      simp_all +decide;
+      refine' Finset.prod_bij ( fun p hp => p ) _ _ _ _ <;> simp +decide [ localCount ];
+    rw [ Finset.mul_sum _ _ _ ];
+    rw [ ← Finset.sum_sub_distrib ];
+    rw [ Finset.sum_congr rfl fun x hx => by rw [ ← mul_sub, h_counting_function_multiplicative x, h_prod_sub_prod_expansion x ] ];
+    simp +decide [ Finset.mul_sum _ _ _ ];
+    rw [ Finset.sum_comm ];
+    exact Finset.abs_sum_le_sum_abs _ _;
+  · exact mul_nonneg ( div_nonneg ( Nat.cast_nonneg _ ) ( Nat.cast_nonneg _ ) ) ( Finset.sum_nonneg fun _ _ => le_of_lt ( X.sides_pos _ ) )
+
+/-
+**Complete-period cancellation over residues.** For squarefree `d` with at least one
+prime factor, the sum over all residue tuples `g : Fin m → ZMod d` of the product of the
+local deviations `localDeviation Ω m p (g mod p)` over the prime factors `p ∣ d` vanishes.
+
+This is the residue-class form of `deviation_sum_pullback`, transported through the CRT
+period equivalence `boxPeriodEquiv`.  It is the algebraic core that, once combined with a
+lattice-point boundary bound, yields the power saving in `T_sum_decay`.
+-/
+private lemma residue_prod_localDeviation_sum_zero {m : ℕ} (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (d : ℕ) [NeZero d] (hd : Squarefree d) (hd_pos : 0 < d.primeFactors.card) :
+    ∑ g : Fin m → ZMod d,
+      ∏ p : d.primeFactors,
+        localDeviation Ω m (p : ℕ)
+          (fun i => ZMod.castHom (Nat.dvd_of_mem_primeFactors p.2) (ZMod (p : ℕ)) (g i)) = 0 := by
+  -- By separating the sum over the residue class at `p`, we can apply the lemma `deviation_sum_pullback`.
+  have h_sep : ∑ g : Fin m → ZMod d, ∏ p : d.primeFactors, localDeviation Ω m p (fun i => ZMod.castHom (Nat.dvd_of_mem_primeFactors p.2) (ZMod p) (g i)) = ∑ g : ((p : d.primeFactors) → Fin m → ZMod ↑p), ∏ p : d.primeFactors, localDeviation Ω m p (g p) := by
+    convert Equiv.sum_comp ( boxPeriodEquiv d hd ) _ using 1;
+    congr! 2;
+    exact congr_arg₂ _ rfl ( funext fun i => by exact ( box_period_equiv_apply_eq_castHom d hd _ _ _ ) ▸ rfl );
+  convert deviation_sum_pullback d hd_pos Ω m using 1
+
+/-- **Uniform decay of the subset-deviation sum.** With `δ = ε/2`, the sum over
+nonempty subsets `T` of the prime factors of `q` of the (cancellation-preserving)
+per-`T` lattice deviation is bounded by `K · s_q^{-ε/2}` uniformly in `q`.
+
+This is the analytic heart of the argument: each per-`T` summand keeps the signed
+sum over lattice points `h`, so the complete-period cancellation
+(`divisor_boundary_bound` / `divisor_period_cancellation`) together with the
+lattice-point boundary bound `hlp` (the constant `C_lp`) provides the genuine power
+saving `s_q^{-ε/2}`; the Rankin-balanced parameters of `gk08_lemma6_core` and the
+convergent Euler products (`modifiedEulerWeight_le`, `euler_product_converges`)
+control the remaining factors. -/
+private lemma T_sum_decay
+    (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
+    (hsp : ∀ (p : ℕ), p.Prime →
+      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
+    (hrp : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ))
+    (X : Box (k - 1)) (C_lp : ℝ) (hC_lp_pos : 0 < C_lp)
+    (hlp : ∀ (v : Fin (k - 1) → ℝ), (∀ i, 0 ≤ v i ∧ v i ≤ 1) → ∀ (s : ℝ), 1 ≤ s →
+        |(((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+          (fun h => inScaledBox X s v h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
+        C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1)) :
+    ∃ K : ℝ, 0 < K ∧ ∀ (q : ℕ) [NeZero q] (hq_sq : Squarefree q),
+      (∑ T ∈ q.primeFactors.powerset.filter (· ≠ ∅),
+        |∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+              Finset.Icc (1 : ℤ) ⌈((q : ℝ) / (crtSubset q Ω).card) * ∑ i, X.sides i⌉).filter
+            (fun h => inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) (fun _ => 0) h)),
+          (1 / ((crtSubset q Ω).card : ℝ)) *
+            ((∏ p ∈ T, (localCount Ω q
+                (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p - localMean k Ω p)) *
+              ∏ p ∈ q.primeFactors \ T, localMean k Ω p)|)
+      ≤ K * ((q : ℝ) / (crtSubset q Ω).card) ^ (-(ε / 2)) := by
+  sorry
+
 /--
 **Complete period cancellation application**: For a divisor `d > 1` of `q`,
 the sum of the error product over lattice points `h` in the scaled box `sX` is
@@ -233,7 +349,10 @@ private lemma deviation_uniform_exponent
               (fun h => inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) (fun _ => 0) h)).card
           - kCorrelation (crtSubset q Ω) X| ≤
           K * ((q : ℝ) / (crtSubset q Ω).card) ^ (-δ) := by
-  sorry
+  refine ⟨ε / 2, by positivity, fun X C_lp hC_lp_pos hlp => ?_⟩
+  obtain ⟨K, hK_pos, hK_bound⟩ := T_sum_decay ε hε k hk Ω hΩ hWD hsp hrp X C_lp hC_lp_pos hlp
+  exact ⟨K, hK_pos, fun q _ hq =>
+    le_trans (abs_main_sub_kCorrelation_le_T_sum k hk Ω q hq X) (hK_bound q hq)⟩
 
 lemma complete_period_cancellation_apply
     (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
