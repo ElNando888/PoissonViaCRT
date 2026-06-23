@@ -22,6 +22,7 @@ import PoissonViaCRT.ParameterBalance
 import PoissonViaCRT.CRTMultiplicativity
 import PoissonViaCRT.ProductDifference
 import PoissonViaCRT.HardCaseSynthesis
+import PoissonViaCRT.L2DeviationSynthesis
 
 set_option linter.unusedVariables false
 
@@ -326,20 +327,325 @@ private lemma T_sum_decay_small
                 (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p - localMean k Ω p)) *
               ∏ p ∈ q.primeFactors \ T, localMean k Ω p)|)
       ≤ K * ((q : ℝ) / (crtSubset q Ω).card) ^ (-(ε / 2)) := by
-  sorry
+  have hε2 : ε < 2 := by
+    have h_lam := lambdaExponent_le_one k
+    have h_sp := hsp 2 Nat.prime_two
+    have h_card : (Ω 2).card ≤ 2 := ZMod.card 2 ▸ Finset.card_le_univ (Ω 2)
+    have h_card_pos : (0 : ℝ) < (Ω 2).card := Nat.cast_pos.mpr (Finset.card_pos.mpr (hΩ 2 Nat.prime_two))
+    have h_div : 1 ≤ (2 : ℝ) / (Ω 2).card := by
+      rw [one_le_div h_card_pos]
+      exact_mod_cast h_card
+    have h_pow := le_trans h_div h_sp
+    have h_pow_pos : 0 ≤ lambdaExponent k - ε := by
+      by_contra h_neg
+      push Not at h_neg
+      have : (2 : ℝ) ^ (lambdaExponent k - ε) < 1 := Real.rpow_lt_one_of_one_lt_of_neg (by norm_num) h_neg
+      linarith
+    linarith
+  obtain ⟨K_series, hK_pos, hK_series⟩ := SmallDivisorSeriesBound.small_divisor_series_bound ε hε hε2 k
+  refine ⟨C_lp * K_series, mul_pos hC_lp_pos hK_pos, fun q _ hq_sq => ?_⟩
+  set s := (q : ℝ) / (crtSubset q Ω).card
+  have hs_ge : 1 ≤ s := spacing_ge_one Ω hΩ q
+  have hs_pos : 0 < s := by linarith
+  set D := (q.divisors.filter (1 < ·)).filter (fun (d : ℕ) => (d : ℝ) ≤ s ^ (1 - ε / 2))
+  have h_inner : ∀ T ∈ (q.primeFactors.powerset.filter (· ≠ ∅)).filter
+      (fun T : Finset ℕ => (∏ p ∈ T, (p : ℝ)) ≤ s ^ (1 - ε / 2)),
+      |∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+            Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+          (fun h => inScaledBox X s (fun _ => 0) h)),
+        (1 / ((crtSubset q Ω).card : ℝ)) *
+          ((∏ p ∈ T, (localCount Ω q
+              (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p - localMean k Ω p)) *
+            ∏ p ∈ q.primeFactors \ T, localMean k Ω p)| ≤
+      C_lp * s ^ (-1 : ℤ) * ∏ p ∈ T, ((k : ℝ) * (p : ℝ) ^ (-ε)) := by
+    intro T hT
+    simp only [mem_filter] at hT
+    have hT_sub := Finset.mem_powerset.mp hT.1.1
+    have hT_ne := hT.1.2
+    have hT_le_s := hT.2
+    have h_s_pow_le : s ^ (1 - ε / 2) ≤ s ^ (1 : ℝ) := Real.rpow_le_rpow_of_exponent_le hs_ge (by linarith)
+    rw [Real.rpow_one] at h_s_pow_le
+    have h_le_s : (∏ p ∈ T, (p : ℝ)) ≤ s := le_trans hT_le_s h_s_pow_le
+    have h_inner_T := box_deviation_inner_bound k (by omega) q hq_sq ε hε s C_lp hC_lp_pos.le X Ω T hT_sub hT_ne h_le_s rfl (fun p _ => hWD p) hsp hlp
+    refine le_trans h_inner_T ?_
+    have h_prod_le : ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) ≤ ∏ p ∈ T, ((k : ℝ) * (p : ℝ) ^ (-ε)) := by
+      refine Finset.prod_le_prod ?_ ?_
+      · intro p hp
+        have hp_prime := Nat.prime_of_mem_primeFactors (hT_sub hp)
+        haveI : NeZero p := ⟨hp_prime.ne_zero⟩
+        have h_pos : (0 : ℝ) ≤ 1 - (Ω p).card / (p : ℝ) := sub_nonneg.mpr <|
+          div_le_one_of_le₀ (by exact_mod_cast le_trans (Finset.card_le_univ (Ω p)) (by exact_mod_cast ZMod.card p |>.le)) (Nat.cast_nonneg _)
+        positivity
+      · intro p hp
+        have hp_prime := Nat.prime_of_mem_primeFactors (hT_sub hp)
+        have h_rp := hrp p hp_prime
+        have : (p : ℝ) * (1 - (Ω p).card / (p : ℝ)) ≤ k := by
+          calc (p : ℝ) * (1 - (Ω p).card / (p : ℝ))
+            _ ≤ (p : ℝ) * (k / (p : ℝ)) := mul_le_mul_of_nonneg_left h_rp (Nat.cast_nonneg _)
+            _ = k := mul_div_cancel₀ _ (by exact_mod_cast hp_prime.pos.ne')
+        convert mul_le_mul_of_nonneg_right this (Real.rpow_nonneg (Nat.cast_nonneg _) _) using 1
+    have h_factor : 0 ≤ C_lp * s ^ (-1 : ℤ) := mul_nonneg hC_lp_pos.le (zpow_nonneg hs_pos.le _)
+    exact mul_le_mul_of_nonneg_left h_prod_le h_factor
+  have h_sum_T : ∑ T ∈ (q.primeFactors.powerset.filter (· ≠ ∅)).filter
+      (fun T : Finset ℕ => (∏ p ∈ T, (p : ℝ)) ≤ s ^ (1 - ε / 2)),
+      C_lp * s ^ (-1 : ℤ) * ∏ p ∈ T, ((k : ℝ) * (p : ℝ) ^ (-ε)) ≤
+      C_lp * s ^ (-1 : ℤ) * ∑ d ∈ D,
+        ∏ p ∈ d.primeFactors, ((k : ℝ) * (p : ℝ) ^ (-ε)) := by
+    rw [← Finset.mul_sum]
+    apply mul_le_mul_of_nonneg_left
+    · have h_eq := sum_nonempty_powerset_filtered_le_eq q hq_sq (fun T => ∏ p ∈ T, ((k : ℝ) * (p : ℝ) ^ (-ε))) (s ^ (1 - ε / 2))
+      exact le_of_eq h_eq
+    · positivity
+  refine le_trans (Finset.sum_le_sum h_inner) ?_
+  refine le_trans h_sum_T ?_
+  have h_s_thresh : 1 ≤ s ^ (1 - ε / 2) := Real.one_le_rpow hs_ge (by linarith)
+  have h_series := hK_series q hq_sq (s ^ (1 - ε / 2)) h_s_thresh
+  have h_mul_series : C_lp * s ^ (-1 : ℤ) * ∑ d ∈ D,
+      ∏ p ∈ d.primeFactors, ((k : ℝ) * (p : ℝ) ^ (-ε)) ≤
+      C_lp * s ^ (-1 : ℤ) * (K_series * (s ^ (1 - ε / 2)) ^ (1 - ε / 2)) := by
+    apply mul_le_mul_of_nonneg_left _ (by positivity)
+    convert h_series using 1
+  refine le_trans h_mul_series ?_
+  have h_pow_s_z : s ^ (-1 : ℤ) = s ^ (-1 : ℝ) := by rw [Real.rpow_neg_one, zpow_neg_one]
+  rw [h_pow_s_z, ← Real.rpow_mul hs_pos.le]
+  have h_pow_le : s ^ (-1 + (1 - ε / 2) * (1 - ε / 2)) ≤ s ^ (-(ε / 2)) := by
+    have h_exp : -1 + (1 - ε / 2) * (1 - ε / 2) ≤ -(ε / 2) := by nlinarith [hε2]
+    exact Real.rpow_le_rpow_of_exponent_le hs_ge h_exp
+  have h_algebra : C_lp * s ^ (-1 : ℝ) * (K_series * s ^ ((1 - ε / 2) * (1 - ε / 2))) =
+      C_lp * K_series * s ^ (-1 + (1 - ε / 2) * (1 - ε / 2)) := by
+    calc C_lp * s ^ (-1 : ℝ) * (K_series * s ^ ((1 - ε / 2) * (1 - ε / 2)))
+      _ = C_lp * K_series * (s ^ (-1 : ℝ) * s ^ ((1 - ε / 2) * (1 - ε / 2))) := by ring
+      _ = C_lp * K_series * s ^ (-1 + (1 - ε / 2) * (1 - ε / 2)) := by rw [← Real.rpow_add hs_pos]
+  rw [h_algebra]
+  exact mul_le_mul_of_nonneg_left h_pow_le (by positivity)
+
+/-- **Medium-divisor regime of `T_sum_decay`.** The part of the large-divisor sum
+(`s_q ^ (1 - ε/2) < ∏_{p∈T} p`) further restricted to `∏_{p∈T} p ≤ s_q` is bounded by
+`K · s_q^{-ε/2}` uniformly in `q`.
+
+This regime is handled exactly like `T_sum_decay_small`: since `∏_{p∈T} p ≤ s_q`,
+the complete-period cancellation bound `box_deviation_inner_bound` applies, giving
+the per-`T` saving `C_lp · s_q^{-1} · ∏_{p∈T}(k · p^{-ε})`. Summing over all
+divisors `d ≤ s_q` via `small_divisor_series_bound` (threshold `s_q`) contributes
+`K_series · s_q^{1-ε/2}`, and `s_q^{-1} · s_q^{1-ε/2} = s_q^{-ε/2}`. -/
+private lemma T_sum_decay_medium
+    (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
+    (hsp : ∀ (p : ℕ), p.Prime →
+      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
+    (hrp : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ))
+    (X : Box (k - 1)) (C_lp : ℝ) (hC_lp_pos : 0 < C_lp)
+    (hlp : ∀ (v : Fin (k - 1) → ℝ), (∀ i, 0 ≤ v i ∧ v i ≤ 1) → ∀ (s : ℝ), 1 ≤ s →
+        |(((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+          (fun h => inScaledBox X s v h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
+        C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1)) :
+    ∃ K : ℝ, 0 < K ∧ ∀ (q : ℕ) [NeZero q] (hq_sq : Squarefree q),
+      (∑ T ∈ ((q.primeFactors.powerset.filter (· ≠ ∅)).filter
+          (fun T : Finset ℕ => ¬ ((∏ p ∈ T, (p : ℝ)) ≤
+            ((q : ℝ) / (crtSubset q Ω).card) ^ (1 - ε / 2)))).filter
+          (fun T : Finset ℕ => (∏ p ∈ T, (p : ℝ)) ≤ (q : ℝ) / (crtSubset q Ω).card),
+        |∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+              Finset.Icc (1 : ℤ) ⌈((q : ℝ) / (crtSubset q Ω).card) * ∑ i, X.sides i⌉).filter
+            (fun h => inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) (fun _ => 0) h)),
+          (1 / ((crtSubset q Ω).card : ℝ)) *
+            ((∏ p ∈ T, (localCount Ω q
+                (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p - localMean k Ω p)) *
+              ∏ p ∈ q.primeFactors \ T, localMean k Ω p)|)
+      ≤ K * ((q : ℝ) / (crtSubset q Ω).card) ^ (-(ε / 2)) := by
+  have hε2 : ε < 2 := by
+    have h_lam := lambdaExponent_le_one k
+    have h_sp := hsp 2 Nat.prime_two
+    have h_card : (Ω 2).card ≤ 2 := ZMod.card 2 ▸ Finset.card_le_univ (Ω 2)
+    have h_card_pos : (0 : ℝ) < (Ω 2).card := Nat.cast_pos.mpr (Finset.card_pos.mpr (hΩ 2 Nat.prime_two))
+    have h_div : 1 ≤ (2 : ℝ) / (Ω 2).card := by
+      rw [one_le_div h_card_pos]
+      exact_mod_cast h_card
+    have h_pow := le_trans h_div h_sp
+    have h_pow_pos : 0 ≤ lambdaExponent k - ε := by
+      by_contra h_neg
+      push Not at h_neg
+      have : (2 : ℝ) ^ (lambdaExponent k - ε) < 1 := Real.rpow_lt_one_of_one_lt_of_neg (by norm_num) h_neg
+      linarith
+    linarith
+  obtain ⟨K_series, hK_pos, hK_series⟩ := SmallDivisorSeriesBound.small_divisor_series_bound ε hε hε2 k
+  refine ⟨C_lp * K_series, mul_pos hC_lp_pos hK_pos, fun q _ hq_sq => ?_⟩
+  set s := (q : ℝ) / (crtSubset q Ω).card
+  have hs_ge : 1 ≤ s := spacing_ge_one Ω hΩ q
+  have hs_pos : 0 < s := by linarith
+  have h_inner : ∀ T ∈ ((q.primeFactors.powerset.filter (· ≠ ∅)).filter
+      (fun T : Finset ℕ => ¬ ((∏ p ∈ T, (p : ℝ)) ≤ s ^ (1 - ε / 2)))).filter
+      (fun T : Finset ℕ => (∏ p ∈ T, (p : ℝ)) ≤ s),
+      |∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+            Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+          (fun h => inScaledBox X s (fun _ => 0) h)),
+        (1 / ((crtSubset q Ω).card : ℝ)) *
+          ((∏ p ∈ T, (localCount Ω q
+              (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p - localMean k Ω p)) *
+            ∏ p ∈ q.primeFactors \ T, localMean k Ω p)| ≤
+      C_lp * s ^ (-1 : ℤ) * ∏ p ∈ T, ((k : ℝ) * (p : ℝ) ^ (-ε)) := by
+    intro T hT
+    simp only [mem_filter] at hT
+    have hT_sub := Finset.mem_powerset.mp hT.1.1.1
+    have hT_ne := hT.1.1.2
+    have h_le_s := hT.2
+    have h_inner_T := box_deviation_inner_bound k (by omega) q hq_sq ε hε s C_lp hC_lp_pos.le X Ω T hT_sub hT_ne h_le_s rfl (fun p _ => hWD p) hsp hlp
+    refine le_trans h_inner_T ?_
+    have h_prod_le : ∏ p ∈ T, ((p : ℝ) * (1 - (Ω p).card / (p : ℝ)) * (p : ℝ) ^ (-ε)) ≤ ∏ p ∈ T, ((k : ℝ) * (p : ℝ) ^ (-ε)) := by
+      refine Finset.prod_le_prod ?_ ?_
+      · intro p hp
+        have hp_prime := Nat.prime_of_mem_primeFactors (hT_sub hp)
+        haveI : NeZero p := ⟨hp_prime.ne_zero⟩
+        have h_pos : (0 : ℝ) ≤ 1 - (Ω p).card / (p : ℝ) := sub_nonneg.mpr <|
+          div_le_one_of_le₀ (by exact_mod_cast le_trans (Finset.card_le_univ (Ω p)) (by exact_mod_cast ZMod.card p |>.le)) (Nat.cast_nonneg _)
+        positivity
+      · intro p hp
+        have hp_prime := Nat.prime_of_mem_primeFactors (hT_sub hp)
+        have h_rp := hrp p hp_prime
+        have : (p : ℝ) * (1 - (Ω p).card / (p : ℝ)) ≤ k := by
+          calc (p : ℝ) * (1 - (Ω p).card / (p : ℝ))
+            _ ≤ (p : ℝ) * (k / (p : ℝ)) := mul_le_mul_of_nonneg_left h_rp (Nat.cast_nonneg _)
+            _ = k := mul_div_cancel₀ _ (by exact_mod_cast hp_prime.pos.ne')
+        convert mul_le_mul_of_nonneg_right this (Real.rpow_nonneg (Nat.cast_nonneg _) _) using 1
+    have h_factor : 0 ≤ C_lp * s ^ (-1 : ℤ) := mul_nonneg hC_lp_pos.le (zpow_nonneg hs_pos.le _)
+    exact mul_le_mul_of_nonneg_left h_prod_le h_factor
+  refine le_trans (Finset.sum_le_sum h_inner) ?_
+  rw [← Finset.mul_sum]
+  have h_sub_sum : ∑ T ∈ ((q.primeFactors.powerset.filter (· ≠ ∅)).filter
+      (fun T : Finset ℕ => ¬ ((∏ p ∈ T, (p : ℝ)) ≤ s ^ (1 - ε / 2)))).filter
+      (fun T : Finset ℕ => (∏ p ∈ T, (p : ℝ)) ≤ s),
+      ∏ p ∈ T, ((k : ℝ) * (p : ℝ) ^ (-ε)) ≤ K_series * s ^ (1 - ε / 2) := by
+    have h_subset : (((q.primeFactors.powerset.filter (· ≠ ∅)).filter
+        (fun T : Finset ℕ => ¬ ((∏ p ∈ T, (p : ℝ)) ≤ s ^ (1 - ε / 2)))).filter
+        (fun T : Finset ℕ => (∏ p ∈ T, (p : ℝ)) ≤ s)) ⊆
+        (q.primeFactors.powerset.filter (· ≠ ∅)).filter
+          (fun T : Finset ℕ => (∏ p ∈ T, (p : ℝ)) ≤ s) := by
+      intro T hT
+      simp only [mem_filter] at hT ⊢
+      exact ⟨⟨hT.1.1.1, hT.1.1.2⟩, hT.2⟩
+    calc ∑ T ∈ ((q.primeFactors.powerset.filter (· ≠ ∅)).filter
+            (fun T : Finset ℕ => ¬ ((∏ p ∈ T, (p : ℝ)) ≤ s ^ (1 - ε / 2)))).filter
+            (fun T : Finset ℕ => (∏ p ∈ T, (p : ℝ)) ≤ s),
+            ∏ p ∈ T, ((k : ℝ) * (p : ℝ) ^ (-ε))
+        ≤ ∑ T ∈ (q.primeFactors.powerset.filter (· ≠ ∅)).filter
+            (fun T : Finset ℕ => (∏ p ∈ T, (p : ℝ)) ≤ s),
+            ∏ p ∈ T, ((k : ℝ) * (p : ℝ) ^ (-ε)) :=
+          Finset.sum_le_sum_of_subset_of_nonneg h_subset
+            (fun T _ _ => Finset.prod_nonneg fun p _ => by positivity)
+      _ = ∑ d ∈ (q.divisors.filter (1 < ·)).filter (fun (d : ℕ) => (d : ℝ) ≤ s),
+            ∏ p ∈ d.primeFactors, ((k : ℝ) * (p : ℝ) ^ (-ε)) :=
+          sum_nonempty_powerset_filtered_le_eq q hq_sq
+            (fun T => ∏ p ∈ T, ((k : ℝ) * (p : ℝ) ^ (-ε))) s
+      _ ≤ K_series * s ^ (1 - ε / 2) := hK_series q hq_sq s hs_ge
+  calc C_lp * s ^ (-1 : ℤ) * ∑ T ∈ ((q.primeFactors.powerset.filter (· ≠ ∅)).filter
+          (fun T : Finset ℕ => ¬ ((∏ p ∈ T, (p : ℝ)) ≤ s ^ (1 - ε / 2)))).filter
+          (fun T : Finset ℕ => (∏ p ∈ T, (p : ℝ)) ≤ s),
+          ∏ p ∈ T, ((k : ℝ) * (p : ℝ) ^ (-ε))
+      ≤ C_lp * s ^ (-1 : ℤ) * (K_series * s ^ (1 - ε / 2)) :=
+        mul_le_mul_of_nonneg_left h_sub_sum (by positivity)
+    _ = C_lp * K_series * s ^ (-(ε / 2)) := by
+        rw [show s ^ (-1 : ℤ) = s ^ (-1 : ℝ) by rw [Real.rpow_neg_one, zpow_neg_one]]
+        rw [show (-(ε / 2) : ℝ) = (-1 : ℝ) + (1 - ε / 2) by ring, Real.rpow_add hs_pos]
+        ring
+
+/-- **Huge-divisor regime of `T_sum_decay`.** The part of the large-divisor sum
+restricted to `∏_{p∈T} p > s_q` is bounded by `K · s_q^{-ε/4}` uniformly in `q`.
+
+Here `box_deviation_inner_bound` no longer applies (the period `∏_{p∈T} p` exceeds
+the box scale `s_q`, so the residue-class discrepancy bound fails). Instead we use
+the `L²`/Cauchy–Schwarz machinery: `per_T_deviation_le_combinedEulerWeight` bounds
+each per-`T` deviation by `C_T · s_q^{δ/2} · ∏_{p∈T} combinedEulerWeight` while
+preserving the mean-zero cancellation through the local variance bound (the
+`s_q^δ` slack absorbs the sub-polynomially divergent variance Euler product). With
+`δ = ε/2` this contributes `s_q^{ε/4}`. Because `combinedEulerWeight` has the
+correct `O(p^{-1-ε/2})` per-prime decay, the Rankin tail bound `tail_sum_decay`
+sums `∏_{p∈T} combinedEulerWeight` over `∏_{p∈T} p > s_q` to `K_tail · s_q^{-ε/2}`.
+The product is the uniform power saving `s_q^{ε/4} · s_q^{-ε/2} = s_q^{-ε/4}`. -/
+private lemma T_sum_decay_huge
+    (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
+    (Ω : ∀ p : ℕ, Finset (ZMod p))
+    (hΩ : ∀ p, p.Prime → (Ω p).Nonempty)
+    (hWD : ∀ (p : ℕ) [Fact p.Prime], WellDistributed ε p (Ω p) k)
+    (hsp : ∀ (p : ℕ), p.Prime →
+      (p : ℝ) / (Ω p).card ≤ (p : ℝ) ^ (lambdaExponent k - ε))
+    (hrp : ∀ (p : ℕ), p.Prime → 1 - (Ω p).card / (p : ℝ) ≤ k / (p : ℝ))
+    (X : Box (k - 1)) (C_lp : ℝ) (hC_lp_pos : 0 < C_lp)
+    (hlp : ∀ (v : Fin (k - 1) → ℝ), (∀ i, 0 ≤ v i ∧ v i ≤ 1) → ∀ (s : ℝ), 1 ≤ s →
+        |(((Fintype.piFinset fun _ : Fin (k - 1) => Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+          (fun h => inScaledBox X s v h)).card : ℝ) - s ^ (k - 1 : ℕ) * X.volume| ≤
+        C_lp * s ^ (((k - 1 : ℕ) : ℤ) - 1)) :
+    ∃ K : ℝ, 0 < K ∧ ∀ (q : ℕ) [NeZero q] (hq_sq : Squarefree q),
+      (∑ T ∈ ((q.primeFactors.powerset.filter (· ≠ ∅)).filter
+          (fun T : Finset ℕ => ¬ ((∏ p ∈ T, (p : ℝ)) ≤
+            ((q : ℝ) / (crtSubset q Ω).card) ^ (1 - ε / 2)))).filter
+          (fun T : Finset ℕ => ¬ ((∏ p ∈ T, (p : ℝ)) ≤ (q : ℝ) / (crtSubset q Ω).card)),
+        |∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+              Finset.Icc (1 : ℤ) ⌈((q : ℝ) / (crtSubset q Ω).card) * ∑ i, X.sides i⌉).filter
+            (fun h => inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) (fun _ => 0) h)),
+          (1 / ((crtSubset q Ω).card : ℝ)) *
+            ((∏ p ∈ T, (localCount Ω q
+                (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p - localMean k Ω p)) *
+              ∏ p ∈ q.primeFactors \ T, localMean k Ω p)|)
+      ≤ K * ((q : ℝ) / (crtSubset q Ω).card) ^ (-(ε / 4)) := by
+  -- Per-`T` deviation bound (with the L2 variance slack `δ = ε/2`, contributing `s^{ε/4}`).
+  obtain ⟨C_T, hC_T_pos, h_perT⟩ :=
+    per_T_deviation_le_combinedEulerWeight ε hε (ε / 2) (by positivity) k hk Ω hΩ hWD hsp hrp
+      X C_lp hC_lp_pos hlp
+  -- Rankin tail-sum decay of the combined Euler weight over huge divisors (`s^{-ε/2}`).
+  obtain ⟨K_tail, hK_tail_pos, h_tail⟩ := tail_sum_decay ε hε k hk Ω hrp
+  refine ⟨C_T * K_tail, mul_pos hC_T_pos hK_tail_pos, fun q _ hq_sq => ?_⟩
+  set s := (q : ℝ) / (crtSubset q Ω).card with hs_def
+  have hs_ge : 1 ≤ s := spacing_ge_one Ω hΩ q
+  have hs_pos : 0 < s := by linarith
+  -- The huge set (`∏ p > s^{1-ε/2}` and `∏ p > s`) is contained in the set `∏ p > s`.
+  have h_subset :
+      (((q.primeFactors.powerset.filter (· ≠ ∅)).filter
+          (fun T : Finset ℕ => ¬ ((∏ p ∈ T, (p : ℝ)) ≤ s ^ (1 - ε / 2)))).filter
+          (fun T : Finset ℕ => ¬ ((∏ p ∈ T, (p : ℝ)) ≤ s))) ⊆
+        (q.primeFactors.powerset.filter (· ≠ ∅)).filter
+          (fun T : Finset ℕ => ¬ ((∏ p ∈ T, (p : ℝ)) ≤ s)) := by
+    intro T hT
+    simp only [mem_filter] at hT ⊢
+    tauto
+  -- Per-`T` bound over the larger set `∏ p > s`.
+  have h_perT' : ∀ T ∈ (q.primeFactors.powerset.filter (· ≠ ∅)).filter
+        (fun T : Finset ℕ => ¬ ((∏ p ∈ T, (p : ℝ)) ≤ s)),
+      |∑ h ∈ ((Fintype.piFinset fun _ : Fin (k - 1) =>
+            Finset.Icc (1 : ℤ) ⌈s * ∑ i, X.sides i⌉).filter
+          (fun h => inScaledBox X s (fun _ => 0) h)),
+        (1 / ((crtSubset q Ω).card : ℝ)) *
+          ((∏ p ∈ T, (localCount Ω q
+              (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p - localMean k Ω p)) *
+            ∏ p ∈ q.primeFactors \ T, localMean k Ω p)| ≤
+      C_T * s ^ (ε / 2 / 2) * ∏ p ∈ T, combinedEulerWeight ε k Ω p := by
+    intro T hT
+    exact h_perT q hq_sq T (mem_filter.mp hT).1
+  -- Assemble: restrict, apply per-`T` bound, factor out, then Rankin tail.
+  refine le_trans (Finset.sum_le_sum_of_subset_of_nonneg h_subset
+    (fun _ _ _ => abs_nonneg _)) ?_
+  refine le_trans (Finset.sum_le_sum h_perT') ?_
+  rw [← Finset.mul_sum]
+  have h_tb : (∑ T ∈ (q.primeFactors.powerset.filter (· ≠ ∅)).filter
+        (fun T : Finset ℕ => ¬ ((∏ p ∈ T, (p : ℝ)) ≤ s)),
+      ∏ p ∈ T, combinedEulerWeight ε k Ω p) ≤ K_tail * s ^ (-(ε / 2)) := by
+    rw [sum_nonempty_powerset_filtered_not_le_eq q hq_sq
+        (fun T => ∏ p ∈ T, combinedEulerWeight ε k Ω p) s]
+    exact h_tail q ‹NeZero q› hq_sq s hs_ge
+  refine le_trans (mul_le_mul_of_nonneg_left h_tb
+    (mul_nonneg hC_T_pos.le (Real.rpow_nonneg hs_pos.le _))) ?_
+  rw [show (-(ε / 4) : ℝ) = ε / 2 / 2 + (-(ε / 2)) by ring, Real.rpow_add hs_pos]
+  apply le_of_eq; ring
 
 /-- **Large-divisor regime of `T_sum_decay`.** The part of the subset-deviation
 sum restricted to subsets `T` with `s_q ^ (1 - ε/2) < ∏_{p∈T} p` is bounded by
-`K · s_q^{-ε/2}` uniformly in `q`.
+`K · s_q^{-ε/4}` uniformly in `q`.
 
-For large divisors the crude tuple-count bound is sufficient: passing to absolute
-values inside the `h`-sum (`deviation_sum_le_gamma_sum`) and applying the
-large-divisor Proposition 4.2 estimate (`gk08_prop42_large_divisors`) yields the
-exponent `s_q^{α₁ - β₁·(1-ε/2)}` with `α₁ = 1/2`, `β₁ = ε/2`. After accounting for
-the `s_q^{k-1}` main-term normalisation, `gk08_lemma6_core` certifies
-`α₁ - β₁·(1-ε/2) - 1 ≤ -ε/2`; the convergent Euler products
-(`modifiedEulerWeight_le`, `euler_product_converges`) bound the remaining
-`q`-dependent factor by a `q`-independent constant. -/
+The sum is split at `∏_{p∈T} p = s_q` into the medium regime (`T_sum_decay_medium`,
+where complete-period cancellation still applies and yields `s_q^{-ε/2}`) and the
+huge regime (`T_sum_decay_huge`, handled by the `L²`/Cauchy–Schwarz + Rankin
+machinery and yielding `s_q^{-ε/4}`). Since `s_q ≥ 1`, the medium bound
+`s_q^{-ε/2}` is absorbed into `s_q^{-ε/4}`, giving the combined exponent `-ε/4`. -/
 private lemma T_sum_decay_large
     (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
@@ -364,22 +670,31 @@ private lemma T_sum_decay_large
             ((∏ p ∈ T, (localCount Ω q
                 (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p - localMean k Ω p)) *
               ∏ p ∈ q.primeFactors \ T, localMean k Ω p)|)
-      ≤ K * ((q : ℝ) / (crtSubset q Ω).card) ^ (-(ε / 2)) := by
-  sorry
+      ≤ K * ((q : ℝ) / (crtSubset q Ω).card) ^ (-(ε / 4)) := by
+  obtain ⟨K_m, hK_m_pos, hK_m⟩ := T_sum_decay_medium ε hε k hk Ω hΩ hWD hsp hrp X C_lp hC_lp_pos hlp
+  obtain ⟨K_h, hK_h_pos, hK_h⟩ := T_sum_decay_huge ε hε k hk Ω hΩ hWD hsp hrp X C_lp hC_lp_pos hlp
+  refine ⟨K_m + K_h, by linarith, fun q _ hq_sq => ?_⟩
+  rw [← Finset.sum_filter_add_sum_filter_not
+        ((q.primeFactors.powerset.filter (· ≠ ∅)).filter
+          (fun T : Finset ℕ => ¬ ((∏ p ∈ T, (p : ℝ)) ≤
+            ((q : ℝ) / (crtSubset q Ω).card) ^ (1 - ε / 2))))
+        (fun T : Finset ℕ => (∏ p ∈ T, (p : ℝ)) ≤ (q : ℝ) / (crtSubset q Ω).card),
+      add_mul]
+  have hs_ge : 1 ≤ (q : ℝ) / (crtSubset q Ω).card := spacing_ge_one Ω hΩ q
+  refine add_le_add (le_trans (hK_m q hq_sq) ?_) (hK_h q hq_sq)
+  exact mul_le_mul_of_nonneg_left
+    (Real.rpow_le_rpow_of_exponent_le hs_ge (by linarith)) hK_m_pos.le
 
-/-- **Uniform decay of the subset-deviation sum.** With `δ = ε/2`, the sum over
-nonempty subsets `T` of the prime factors of `q` of the (cancellation-preserving)
-per-`T` lattice deviation is bounded by `K · s_q^{-ε/2}` uniformly in `q`.
+/-- **Uniform decay of the subset-deviation sum.** The sum over nonempty subsets
+`T` of the prime factors of `q` of the (cancellation-preserving) per-`T` lattice
+deviation is bounded by `K · s_q^{-ε/4}` uniformly in `q`.
 
 This is the analytic heart of the argument: each per-`T` summand keeps the signed
-sum over lattice points `h`, so the complete-period cancellation
-(`divisor_boundary_bound` / `divisor_period_cancellation`) together with the
-lattice-point boundary bound `hlp` (the constant `C_lp`) provides the genuine power
-saving `s_q^{-ε/2}`; the Rankin-balanced parameters of `gk08_lemma6_core` and the
-convergent Euler products (`modifiedEulerWeight_le`, `euler_product_converges`)
-control the remaining factors. The sum is split at `∏_{p∈T} p = s_q^{1-ε/2}` into
-the small-divisor regime (`T_sum_decay_small`) and the large-divisor regime
-(`T_sum_decay_large`). -/
+sum over lattice points `h`. The sum is split at `∏_{p∈T} p = s_q^{1-ε/2}` into
+the small-divisor regime (`T_sum_decay_small`, via complete-period cancellation,
+yielding `s_q^{-ε/2}`) and the large-divisor regime (`T_sum_decay_large`, yielding
+`s_q^{-ε/4}` through the `L²`/Cauchy–Schwarz + Rankin machinery on the huge band).
+Since `s_q ≥ 1`, the two bounds combine into the uniform power saving `s_q^{-ε/4}`. -/
 private lemma T_sum_decay
     (ε : ℝ) (hε : 0 < ε) (k : ℕ) (hk : 2 ≤ k)
     (Ω : ∀ p : ℕ, Finset (ZMod p))
@@ -402,14 +717,17 @@ private lemma T_sum_decay
             ((∏ p ∈ T, (localCount Ω q
                 (Fin.cons (0 : ZMod q) fun i => (h i : ZMod q)) p - localMean k Ω p)) *
               ∏ p ∈ q.primeFactors \ T, localMean k Ω p)|)
-      ≤ K * ((q : ℝ) / (crtSubset q Ω).card) ^ (-(ε / 2)) := by
+      ≤ K * ((q : ℝ) / (crtSubset q Ω).card) ^ (-(ε / 4)) := by
   obtain ⟨K₁, hK₁_pos, hK₁⟩ := T_sum_decay_small ε hε k hk Ω hΩ hWD hsp hrp X C_lp hC_lp_pos hlp
   obtain ⟨K₂, hK₂_pos, hK₂⟩ := T_sum_decay_large ε hε k hk Ω hΩ hWD hsp hrp X C_lp hC_lp_pos hlp
   refine ⟨K₁ + K₂, by linarith, fun q _ hq_sq => ?_⟩
   rw [← Finset.sum_filter_add_sum_filter_not (q.primeFactors.powerset.filter (· ≠ ∅))
         (fun T : Finset ℕ => (∏ p ∈ T, (p : ℝ)) ≤ ((q : ℝ) / (crtSubset q Ω).card) ^ (1 - ε / 2)),
       add_mul]
-  exact add_le_add (hK₁ q hq_sq) (hK₂ q hq_sq)
+  have hs_ge : 1 ≤ (q : ℝ) / (crtSubset q Ω).card := spacing_ge_one Ω hΩ q
+  refine add_le_add (le_trans (hK₁ q hq_sq) ?_) (hK₂ q hq_sq)
+  exact mul_le_mul_of_nonneg_left
+    (Real.rpow_le_rpow_of_exponent_le hs_ge (by linarith)) hK₁_pos.le
 
 /--
 **Complete period cancellation application**: For a divisor `d > 1` of `q`,
@@ -439,7 +757,7 @@ private lemma deviation_uniform_exponent
               (fun h => inScaledBox X ((q : ℝ) / (crtSubset q Ω).card) (fun _ => 0) h)).card
           - kCorrelation (crtSubset q Ω) X| ≤
           K * ((q : ℝ) / (crtSubset q Ω).card) ^ (-δ) := by
-  refine ⟨ε / 2, by positivity, fun X C_lp hC_lp_pos hlp => ?_⟩
+  refine ⟨ε / 4, by positivity, fun X C_lp hC_lp_pos hlp => ?_⟩
   obtain ⟨K, hK_pos, hK_bound⟩ := T_sum_decay ε hε k hk Ω hΩ hWD hsp hrp X C_lp hC_lp_pos hlp
   exact ⟨K, hK_pos, fun q _ hq =>
     le_trans (abs_main_sub_kCorrelation_le_T_sum k hk Ω q hq X) (hK_bound q hq)⟩
