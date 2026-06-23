@@ -21,6 +21,7 @@ import PoissonViaCRT.SmallDivisorHelpers
 import PoissonViaCRT.EulerWeights
 import PoissonViaCRT.LargeDivisorHelpers
 import PoissonViaCRT.BoxCollisionIntegration
+import PoissonViaCRT.AnalyticInputs
 import Mathlib.Algebra.Order.Chebyshev
 
 set_option linter.unusedVariables false
